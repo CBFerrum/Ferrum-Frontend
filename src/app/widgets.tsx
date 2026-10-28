@@ -2,7 +2,19 @@
 // the editable child-table grid, attachments and read-only cell rendering.
 
 import { useQuery } from "@tanstack/react-query";
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { Link } from "react-router";
 import { api, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { formatValue, humanize, NUMERIC_TYPES, shortId } from "../lib/format";
@@ -16,7 +28,7 @@ import {
   type Field,
   type ListResponse,
 } from "../lib/meta";
-import { Badge, Button, Dialog, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
 
 export interface ControlProps {
   field: Field;
@@ -127,6 +139,8 @@ export function FieldControl(p: ControlProps) {
           rows={p.compact ? 1 : f.type === "code" ? 6 : 3}
           maxLength={f.max_length}
           spellCheck={f.type !== "code"}
+          autoCapitalize={f.type === "code" ? "none" : undefined}
+          autoCorrect={f.type === "code" ? "off" : undefined}
           value={text(value)}
           onChange={(e) => onChange(orNull(e.target.value))}
         />
@@ -156,7 +170,18 @@ export function FieldControl(p: ControlProps) {
       return null; // rendered by TableGrid
     default: {
       const type = f.type === "email" ? "email" : f.type === "phone" ? "tel" : f.type === "url" ? "url" : "text";
-      return <input className="input" type={type} {...common} maxLength={f.max_length} value={text(value)} onChange={(e) => onChange(orNull(e.target.value))} />;
+      // Record data, not the user's own: keep browser/keyboard autofill of personal details out.
+      return (
+        <input
+          className="input"
+          type={type}
+          autoComplete="off"
+          {...common}
+          maxLength={f.max_length}
+          value={text(value)}
+          onChange={(e) => onChange(orNull(e.target.value))}
+        />
+      );
     }
   }
 }
@@ -180,32 +205,41 @@ function fromLocalInput(s: string): string | null {
 
 /**
  * Viewport-fixed placement under (or above) `anchor`, so the dropdown is never clipped by a
- * scrolling grid or dialog body. Follows scrolling and resizing while open.
+ * scrolling grid or dialog body, shortened to fit the visible area (the visual viewport, which
+ * excludes an on-screen keyboard). Follows scrolling and resizing while open.
  */
 function useAnchoredStyle(anchor: RefObject<HTMLElement | null>, open: boolean): CSSProperties | undefined {
   const [style, setStyle] = useState<CSSProperties>();
   useLayoutEffect(() => {
     if (!open) return;
+    const vv = window.visualViewport;
     const place = () => {
       const r = anchor.current?.getBoundingClientRect();
       if (!r) return;
       const width = Math.min(Math.max(r.width, 240), window.innerWidth - 16);
-      const below = window.innerHeight - r.bottom;
-      const above = below < 240 && r.top > below;
+      const top = vv?.offsetTop ?? 0;
+      const below = (vv ? top + vv.height : window.innerHeight) - r.bottom;
+      const above = below < 240 && r.top - top > below;
       setStyle({
         position: "fixed",
         left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
         right: "auto",
         width,
-        ...(above ? { top: "auto", bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4, bottom: "auto" }),
+        maxHeight: Math.min(280, (above ? r.top - top : below) - 12),
+        // Above: hang from the field's top edge (no viewport-height math, which a keyboard skews).
+        ...(above ? { top: r.top - 4, transform: "translateY(-100%)" } : { top: r.bottom + 4 }),
       });
     };
     place();
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
+    vv?.addEventListener("resize", place);
+    vv?.addEventListener("scroll", place);
     return () => {
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
+      vv?.removeEventListener("resize", place);
+      vv?.removeEventListener("scroll", place);
     };
   }, [anchor, open]);
   return open ? style : undefined;
@@ -493,6 +527,8 @@ function JsonInput({ value, onChange, id, disabled, invalid, describedBy, compac
         aria-invalid={invalid || !!error || undefined}
         aria-describedby={describedBy}
         aria-label={compact ? label : undefined}
+        autoCapitalize="none"
+        autoCorrect="off"
         spellCheck={false}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -541,6 +577,13 @@ export function CellValue({
       ) : (
         <span className="sr-only">No</span>
       );
+    case "secret": // write-only: `true` when saved, or a new value typed in this form; never shown
+      return (
+        <>
+          <span aria-hidden="true">••••••••</span>
+          <span className="sr-only">Set</span>
+        </>
+      );
     default:
       return <>{formatValue(field as Field, value, { currencyPrecision })}</>;
   }
@@ -562,6 +605,18 @@ function newRow(fields: Field[]): Doc {
   const row: Doc = { _key: newKey() };
   for (const f of fields) if (f.default !== undefined && f.type !== "table") row[f.name] = f.default;
   return row;
+}
+
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
 }
 
 export function TableGrid({
@@ -589,6 +644,8 @@ export function TableGrid({
   recordId?: string;
 }) {
   const gridId = useId();
+  // Phones get one card per row (same breakpoint as records.css) and edit in the row dialog.
+  const phone = useMediaQuery("(max-width: 720px)");
   const [editing, setEditing] = useState<number | null>(null);
   const visible = child.fields.filter((f) => f.can_read === true && !f.hidden && f.type !== "table");
   const listed = visible.filter((f) => f.in_list);
@@ -614,7 +671,8 @@ export function TableGrid({
     const next = [...rows];
     next.splice(at, 0, newRow(child.fields));
     onChange(next);
-    focusCell(at);
+    if (phone) setEditing(at);
+    else focusCell(at);
   };
   const remove = (i: number) => onChange(rows.filter((_, j) => j !== i));
   const move = (i: number, d: number, focusField?: string) => {
@@ -641,117 +699,172 @@ export function TableGrid({
   return (
     <div>
       <div className="grid-wrap">
-        <table className="grid" aria-label={child.label}>
-          <thead>
-            <tr>
-              <th className="grid-idx" scope="col">
-                #
-              </th>
-              {cols.map((f) => (
-                <th key={f.name} scope="col" className={NUMERIC_TYPES.has(f.type) ? "num" : undefined}>
-                  {f.label}
-                  {f.required && (
-                    <span className="req" aria-hidden="true">
-                      *
-                    </span>
-                  )}
-                </th>
-              ))}
-              <th scope="col">
-                <span className="sr-only">Row actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => {
-              const errs = errors.filter((e) => e.row?.[1] === i);
-              const other = errs.filter((e) => !cols.some((c) => c.name === e.field));
-              const scope = { doc: r, parent, user };
-              return (
-                <Fragment key={rowKey(r, i)}>
-                  <tr onKeyDown={onRowKey(i)}>
-                    <td className="grid-idx">{i + 1}</td>
-                    {cols.map((f) => {
-                      const st = fieldState(f, scope, locked);
-                      const err = errs.find((e) => e.field === f.name);
-                      return (
-                        <td key={f.name}>
-                          {st.visible ? (
-                            <>
-                              <FieldControl
-                                field={f}
-                                id={cellId(i, f.name)}
-                                compact
-                                label={`${f.label}, row ${i + 1}`}
-                                value={r[f.name]}
-                                title={r._titles?.[f.name]}
-                                disabled={st.disabled}
-                                required={st.required}
-                                invalid={!!err}
-                                currencyPrecision={precisionOf(f, r)}
-                                entity={entity}
-                                recordId={recordId}
-                                onChange={(v, t) => update(i, f.name, v, t)}
-                              />
-                              {err && <div className="cell-error">{err.message}</div>}
-                            </>
-                          ) : (
-                            <span className="faint">—</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="grid-actions">
-                      <button type="button" className="icon-btn icon-btn-sm" aria-label={`Show all fields of row ${i + 1}`} title="All fields" onClick={() => setEditing(i)}>
-                        <Icon name="expand" size={14} />
-                      </button>
+        {phone ? (
+          rows.length ? (
+            // List semantics stated explicitly: Safari drops them for unstyled lists.
+            <ol className="grid-cards" role="list" aria-label={child.label}>
+              {rows.map((r, i) => {
+                const errs = errors.filter((e) => e.row?.[1] === i);
+                const errId = `${gridId}-${i}-errors`;
+                return (
+                  <li key={rowKey(r, i)} className="grid-card">
+                    <span className="grid-card-idx">{i + 1}</span>
+                    <dl>
+                      {cols.slice(0, 3).map(
+                        (f) =>
+                          fieldState(f, { doc: r, parent, user }, locked).visible && (
+                            <div key={f.name}>
+                              <dt>{f.label}</dt>
+                              <dd>
+                                <CellValue field={f} value={r[f.name]} title={r._titles?.[f.name]} currencyPrecision={precisionOf(f, r)} />
+                              </dd>
+                            </div>
+                          ),
+                      )}
+                    </dl>
+                    {errs.length > 0 && (
+                      <p className="field-error" id={errId}>
+                        {errs.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · ")}
+                      </p>
+                    )}
+                    <div className="grid-card-actions">
+                      <Button aria-label={`${locked ? "View" : "Edit"} row ${i + 1}`} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
+                        {locked ? "View" : "Edit"}
+                      </Button>
                       {!locked && (
                         <>
-                          <button type="button" className="icon-btn icon-btn-sm" aria-label={`Move row ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
-                            <Icon name="up" size={14} />
+                          <button type="button" className="icon-btn" aria-label={`Move row ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                            <Icon name="up" />
                           </button>
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn-sm"
-                            aria-label={`Move row ${i + 1} down`}
-                            disabled={i === rows.length - 1}
-                            onClick={() => move(i, 1)}
-                          >
-                            <Icon name="down" size={14} />
+                          <button type="button" className="icon-btn" aria-label={`Move row ${i + 1} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
+                            <Icon name="down" />
                           </button>
-                          <button type="button" className="icon-btn icon-btn-sm" aria-label={`Remove row ${i + 1}`} onClick={() => remove(i)}>
-                            <Icon name="trash" size={14} />
+                          <button type="button" className="icon-btn" aria-label={`Remove row ${i + 1}`} onClick={() => remove(i)}>
+                            <Icon name="trash" />
                           </button>
                         </>
                       )}
-                    </td>
-                  </tr>
-                  {other.length > 0 && (
-                    <tr className="row-errors">
-                      <td colSpan={cols.length + 2}>
-                        Row {i + 1}: {other.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · ")}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <p className="grid-empty">No rows yet.</p>
+          )
+        ) : (
+          <table className="grid" aria-label={child.label}>
+            <thead>
+              <tr>
+                <th className="grid-idx" scope="col">
+                  #
+                </th>
+                {cols.map((f) => (
+                  <th key={f.name} scope="col" className={NUMERIC_TYPES.has(f.type) ? "num" : undefined}>
+                    {f.label}
+                    {f.required && (
+                      <span className="req" aria-hidden="true">
+                        *
+                      </span>
+                    )}
+                  </th>
+                ))}
+                <th scope="col">
+                  <span className="sr-only">Row actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const errs = errors.filter((e) => e.row?.[1] === i);
+                const other = errs.filter((e) => !cols.some((c) => c.name === e.field));
+                const scope = { doc: r, parent, user };
+                return (
+                  <Fragment key={rowKey(r, i)}>
+                    <tr onKeyDown={onRowKey(i)}>
+                      <td className="grid-idx">{i + 1}</td>
+                      {cols.map((f) => {
+                        const st = fieldState(f, scope, locked);
+                        const err = errs.find((e) => e.field === f.name);
+                        return (
+                          <td key={f.name}>
+                            {st.visible ? (
+                              <>
+                                <FieldControl
+                                  field={f}
+                                  id={cellId(i, f.name)}
+                                  compact
+                                  label={`${f.label}, row ${i + 1}`}
+                                  value={r[f.name]}
+                                  title={r._titles?.[f.name]}
+                                  disabled={st.disabled}
+                                  required={st.required}
+                                  invalid={!!err}
+                                  currencyPrecision={precisionOf(f, r)}
+                                  entity={entity}
+                                  recordId={recordId}
+                                  onChange={(v, t) => update(i, f.name, v, t)}
+                                />
+                                {err && <div className="cell-error">{err.message}</div>}
+                              </>
+                            ) : (
+                              <span className="faint">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="grid-actions">
+                        <button type="button" className="icon-btn icon-btn-sm" aria-label={`Show all fields of row ${i + 1}`} title="All fields" onClick={() => setEditing(i)}>
+                          <Icon name="expand" size={14} />
+                        </button>
+                        {!locked && (
+                          <>
+                            <button type="button" className="icon-btn icon-btn-sm" aria-label={`Move row ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                              <Icon name="up" size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn-sm"
+                              aria-label={`Move row ${i + 1} down`}
+                              disabled={i === rows.length - 1}
+                              onClick={() => move(i, 1)}
+                            >
+                              <Icon name="down" size={14} />
+                            </button>
+                            <button type="button" className="icon-btn icon-btn-sm" aria-label={`Remove row ${i + 1}`} onClick={() => remove(i)}>
+                              <Icon name="trash" size={14} />
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-            {!rows.length && (
-              <tr>
-                <td colSpan={cols.length + 2} className="grid-empty">
-                  No rows yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                    {other.length > 0 && (
+                      <tr className="row-errors">
+                        <td colSpan={cols.length + 2}>
+                          Row {i + 1}: {other.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · ")}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+              {!rows.length && (
+                <tr>
+                  <td colSpan={cols.length + 2} className="grid-empty">
+                    No rows yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
       {!locked && (
         <div className="grid-foot">
           <Button size="sm" icon="plus" onClick={() => add()}>
             Add row
           </Button>
-          <span className="field-hint">Alt+↑/↓ moves a row · Ctrl+Enter inserts a row below</span>
+          {!phone && <span className="field-hint">Alt+↑/↓ moves a row · Ctrl+Enter inserts a row below</span>}
         </div>
       )}
       <Dialog
@@ -822,12 +935,21 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         <Badge tone="green">Saved</Badge>
         {!disabled && (
           <>
-            <button type="button" className="link-btn" onClick={() => setEditing(true)}>
+            <Button size="sm" variant="ghost" aria-label={`Replace ${f.label}`} onClick={() => setEditing(true)}>
               Replace
-            </button>
-            <button type="button" className="link-btn danger" onClick={() => onChange(null)}>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove ${f.label}`}
+              onClick={async () => {
+                // Ask: once saved, a removed secret is gone, and on a phone a tap meant for Replace can land here.
+                const ok = await confirmDialog({ title: `Remove ${f.label}?`, message: "It is deleted when you save.", confirmLabel: "Remove", danger: true });
+                if (ok) onChange(null);
+              }}
+            >
               Remove
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -840,6 +962,7 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         className="input"
         type="password"
         autoComplete="new-password"
+        autoFocus={editing}
         disabled={disabled}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
@@ -848,16 +971,16 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         onChange={(e) => onChange(e.target.value === "" ? (editing ? true : null) : e.target.value)}
       />
       {editing && (
-        <button
-          type="button"
-          className="link-btn"
+        <Button
+          size="sm"
+          variant="ghost"
           onClick={() => {
             setEditing(false);
             onChange(true);
           }}
         >
           Keep current
-        </button>
+        </Button>
       )}
     </div>
   );

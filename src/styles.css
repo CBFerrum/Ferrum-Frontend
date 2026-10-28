@@ -77,6 +77,7 @@ body {
   color: var(--text);
   font: 14px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%; /* iOS would enlarge the text in landscape */
 }
 
 body {
@@ -153,7 +154,7 @@ a:hover {
 
 .skip-link {
   position: absolute;
-  left: 8px;
+  left: max(8px, env(safe-area-inset-left));
   top: -40px;
   z-index: 100;
   padding: 8px 12px;
@@ -162,25 +163,27 @@ a:hover {
   box-shadow: var(--shadow);
 }
 .skip-link:focus {
-  top: 8px;
+  top: max(8px, env(safe-area-inset-top));
 }
 
 /* ── shell ── */
 
+/* Safe-area insets (viewport-fit=cover) are 0 except beside notches, rounded corners and home indicators. */
+
 .shell {
   display: grid;
-  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  grid-template-columns: calc(var(--sidebar-w) + env(safe-area-inset-left)) minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   background: var(--surface);
   border-right: 1px solid var(--border);
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 10px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 10px calc(24px + env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -275,29 +278,35 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: env(safe-area-inset-top, 0px) 20px 0;
+  padding: env(safe-area-inset-top, 0px) max(20px, env(safe-area-inset-right)) 0 20px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
 
-.nav-toggle {
-  display: none;
+.topbar .nav-toggle {
+  display: none; /* outranks .icon-btn's display */
 }
 
-.offline-banner {
+.offline-banner,
+.update-banner {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
   background: var(--warning-soft);
   color: var(--warning);
   font-size: 13px;
   border-bottom: 1px solid var(--border);
 }
+.update-banner {
+  flex-wrap: wrap;
+  background: var(--primary-soft);
+  color: var(--text);
+}
 
 main {
-  padding: 20px 24px calc(48px + env(safe-area-inset-bottom, 0px));
+  padding: 20px max(24px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom, 0px)) 24px;
   min-width: 0;
   flex: 1;
 }
@@ -318,6 +327,7 @@ main:focus {
     inset: 0 auto 0 0;
     width: min(84vw, 300px);
     z-index: 50;
+    overscroll-behavior: contain;
     transform: translateX(-100%);
     visibility: hidden; /* closed drawer stays out of the tab order */
     transition: transform 0.2s ease, visibility 0s linear 0.2s;
@@ -335,14 +345,18 @@ main:focus {
     z-index: 40;
     background: rgb(0 0 0 / 0.35);
   }
-  .nav-toggle {
-    display: inline-flex;
+  /* The page behind the open drawer stays put. */
+  body:has(.shell[data-nav-open="true"]) {
+    overflow: hidden;
+  }
+  .topbar .nav-toggle {
+    display: inline-grid; /* as .icon-btn, so the icon stays centered */
   }
   .topbar {
-    padding: env(safe-area-inset-top, 0px) 12px 0;
+    padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
   }
   main {
-    padding: 16px 16px 40px;
+    padding: 16px max(16px, env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left));
   }
 }
 
@@ -380,6 +394,16 @@ main:focus {
   gap: 6px;
   align-items: center;
 }
+@media (max-width: 720px) {
+  /* Phones: the actions go on their own line under the title. */
+  .page-actions {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .page-actions:empty {
+    display: none;
+  }
+}
 
 /* ── buttons ── */
 
@@ -413,6 +437,11 @@ main:focus {
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+/* A label styled as a button around a visually hidden input (Attach file) shows the input's focus. */
+.btn:has(> input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 .btn-primary {
   background: var(--primary);
@@ -652,8 +681,16 @@ input[type="color"] {
   font-size: 14.5px;
   font-weight: 650;
 }
+.card-head .check-field {
+  min-height: 0; /* no taller than the title (touch screens: 44px) */
+}
 .card-body {
   padding: 16px;
+}
+@media (max-width: 720px) {
+  .card-head {
+    flex-wrap: wrap;
+  }
 }
 
 .section {
@@ -1013,10 +1050,10 @@ input[type="color"] {
   color: var(--text);
   box-shadow: var(--shadow);
   width: min(520px, calc(100vw - 24px));
-  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
 }
 .dialog-wide {
-  width: min(860px, calc(100vw - 24px));
+  width: min(860px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
 }
 .dialog::backdrop {
   background: rgb(10 14 20 / 0.45);
@@ -1024,7 +1061,7 @@ input[type="color"] {
 .dialog-inner {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 50px);
+  max-height: calc(100dvh - 50px);
 }
 .dialog-header {
   display: flex;
@@ -1044,9 +1081,31 @@ input[type="color"] {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  /* Phones: a bottom sheet whose body scrolls. The inset pads the inner box: a tap on the <dialog> itself closes it. */
+  .dialog {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: 12px 12px 0 0;
+  }
+  .dialog-inner {
+    max-height: calc(100dvh - env(safe-area-inset-top) - 1px);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* The sheet (top layer) covers the bottom: toasts show at the top, through the backdrop.
+     :root outranks the form pages' rule that lifts them over the action bar. */
+  :root:has(.dialog[open]) .toaster {
+    top: max(16px, env(safe-area-inset-top));
+    bottom: auto;
+  }
 }
 .confirm-message {
   color: var(--muted);
@@ -1100,6 +1159,7 @@ input[type="color"] {
   z-index: 40;
   top: calc(100% + 6px);
   min-width: 220px;
+  max-width: calc(100vw - 16px);
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1138,6 +1198,7 @@ input[type="color"] {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
+  overflow-wrap: break-word; /* a long email wraps once the menu hits its max width */
 }
 
 .popover {
@@ -1152,6 +1213,16 @@ input[type="color"] {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+@media (max-width: 720px) {
+  /* Phones: a full-width panel under the top bar. */
+  .popover {
+    position: fixed;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top) + 4px);
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+  }
 }
 .notif {
   display: block;
@@ -1185,7 +1256,7 @@ input[type="color"] {
 .search-box > .icon {
   position: absolute;
   left: 10px;
-  top: 9px;
+  top: calc(50% - 8px);
   color: var(--faint);
   pointer-events: none;
 }
@@ -1204,6 +1275,15 @@ input[type="color"] {
   position: absolute;
   right: 8px;
   top: 8px;
+}
+@media (max-width: 720px) {
+  /* Phones: the search box takes all the free width of the top bar. */
+  .topbar .spacer {
+    display: none;
+  }
+  .search-box {
+    max-width: none;
+  }
 }
 .palette .listbox {
   position: static;
@@ -1346,6 +1426,15 @@ input[type="color"] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+@media (max-width: 720px) {
+  /* Phones: the title on its own line, number, status and time under it. */
+  .recent li {
+    flex-wrap: wrap;
+  }
+  .recent .title {
+    flex-basis: 100%;
+  }
+}
 
 .timeline {
   list-style: none;
@@ -1415,15 +1504,37 @@ input[type="color"] {
 .matrix th:first-child {
   text-align: left;
 }
+@media (max-width: 900px) {
+  /* Reports and the permission matrix scroll sideways under their first column. */
+  .report th:first-child,
+  .report td:first-child,
+  .matrix th:first-child,
+  .matrix td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    box-shadow: inset -1px 0 0 var(--border);
+  }
+  .report tbody td:first-child,
+  .matrix tbody td:first-child {
+    background: var(--surface);
+  }
+}
+@media (max-width: 720px) {
+  .report td:first-child {
+    white-space: normal; /* a long account name must not fill the screen */
+  }
+}
 
 .login {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 .login-card {
   width: min(400px, 100%);
+  overflow-wrap: anywhere; /* long emails, workspaces and app names */
 }
 .login-card .card-body {
   display: flex;
@@ -1434,8 +1545,8 @@ input[type="color"] {
 .toaster {
   position: fixed;
   z-index: 200;
-  right: 16px;
-  bottom: 16px;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1530,7 +1641,7 @@ pre.code {
 }
 .segmented button:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: inset 0 0 0 2px var(--primary); /* inside: the group's overflow clips anything outside */
 }
 .view-note {
   padding: 8px 16px 12px;
@@ -1719,8 +1830,15 @@ pre.code {
 @media (max-width: 720px) {
   /* Phones: the month is a compact date picker with counts; the day's records list below it. */
   .cal-day {
+    position: relative;
     min-height: 48px;
     text-align: center;
+  }
+  /* The whole day selects it, not just its number. */
+  .cal-date::after {
+    content: "";
+    position: absolute;
+    inset: 0;
   }
   .cal-items {
     display: none;
@@ -1731,8 +1849,12 @@ pre.code {
   .cal-day[data-today="true"] .cal-count {
     color: inherit;
   }
+  /* One column at a time, the next one peeking in at the edge so the board shows it scrolls. */
+  .board {
+    scroll-padding-inline: 16px; /* snapped columns keep the board's padding */
+  }
   .board-col {
-    flex-basis: 85vw;
+    flex-basis: calc(100% - 40px);
   }
   .seg-label {
     position: absolute;
@@ -1894,6 +2016,12 @@ pre.code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.person-note {
+  display: block; /* under the name: touch screens show no title tooltips */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
 }
 .avatar {
   flex: none;
@@ -2066,4 +2194,83 @@ pre.code {
 .chip[aria-pressed="true"] {
   background: var(--primary);
   color: var(--primary-text);
+}
+
+/* ── touch: 44px targets, and 16px fields (iOS zooms the page into smaller ones on focus) ── */
+
+/* Last in the file, so it wins over the components' own sizes (the board's Move menu, Add tag). */
+@media (pointer: coarse) {
+  .btn {
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0; /* min-width replaces a flex item's content-sized minimum: never squeeze the label */
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .nav-link,
+  .nav-group > summary,
+  .section > summary,
+  .menu-item,
+  .option,
+  .tab,
+  .chip,
+  .check-field,
+  .card-head .check-field {
+    min-height: 44px;
+  }
+  .option {
+    align-items: center;
+  }
+  /* A checkbox's label takes its row's full height: the row itself does not toggle it. */
+  .check-field > label {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+  .input,
+  .select {
+    height: 44px;
+  }
+  .input,
+  .select,
+  .textarea,
+  .textarea.mono {
+    font-size: 16px;
+  }
+  .toast span {
+    padding-top: 12px;
+  }
+  .segmented button {
+    min-width: 44px;
+    min-height: 42px; /* 44px with the group's border, as tall as the buttons beside it */
+    justify-content: center;
+  }
+  .mention-list button {
+    padding-block: 12px;
+  }
+  /* Keyboard shortcut hints. */
+  .search-box .kbd,
+  .keys-hint {
+    display: none;
+  }
+  /* Bare checkboxes in table cells. */
+  .cell-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding-block: 14px;
+  }
+  /* The whole row opens its record (recent documents, My Work). */
+  .recent li {
+    position: relative;
+    min-height: 44px;
+  }
+  .recent li > a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
 }

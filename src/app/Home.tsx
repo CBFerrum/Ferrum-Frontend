@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
-import { humanize, relativeTime } from "../lib/format";
+import { humanize, relativeTime, todayIso } from "../lib/format";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
 import { reportItems } from "./Shell";
@@ -46,7 +46,7 @@ export function Home() {
             {first ? `, ${first}` : ""}
           </h1>
           <p className="page-sub">
-            Pick a module or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere.
+            Pick a module<span className="keys-hint"> or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere</span>.
           </p>
         </div>
       </div>
@@ -149,7 +149,7 @@ function MyWork() {
   const q = useQuery({ queryKey: ["assignments", "mine"], queryFn: ({ signal }) => api.get<{ assignments: Assignment[] }>("/api/assignments", undefined, signal) });
   const list = q.data?.assignments ?? [];
   if (!list.length) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   return (
     <section className="card my-work" aria-labelledby="my-work">
       <div className="card-head">

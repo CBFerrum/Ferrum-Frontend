@@ -6,7 +6,7 @@ import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "r
 import { api, docPath, download, errorMessage } from "../lib/api";
 import { formatDate, relativeTime } from "../lib/format";
 import { useMe } from "../lib/meta";
-import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, PageLoading, toast } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, PageLoading, toast, useDismiss } from "../ui/kit";
 
 export interface Person {
   id: string;
@@ -76,13 +76,16 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
   const refresh = () => qc.invalidateQueries({ queryKey: ["collab", entity, id] });
 
   const [assigning, setAssigning] = useState(false);
+  // Resolves to whether `fn` succeeded, so a caller can keep what the user typed when it did not.
   const run = async (fn: () => Promise<unknown>, ok?: string) => {
     try {
       await fn();
       if (ok) toast(ok);
       await refresh();
+      return true;
     } catch (e) {
       toast(errorMessage(e), "error");
+      return false;
     }
   };
 
@@ -101,6 +104,7 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
                 <span className="person-name">
                   {a.user_name}
                   {a.due_date && <span className="faint"> · due {formatDate(a.due_date)}</span>}
+                  {a.note && <span className="person-note faint">{a.note}</span>}
                 </span>
                 {a.priority === "High" && <Badge tone="red">High</Badge>}
                 {(a.user === me?.user.id || a.assigned_by === me?.user.id || me?.user.is_admin) && (
@@ -223,10 +227,11 @@ function CommentItem({ c, canDelete, onChanged }: { c: Comment; canDelete: boole
   );
 }
 
-function Composer({ people, onPost }: { people: Person[]; onPost: (body: string, mentions: string[]) => Promise<void> }) {
+function Composer({ people, onPost }: { people: Person[]; onPost: (body: string, mentions: string[]) => Promise<boolean> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const form = useRef<HTMLFormElement>(null);
   // `@` followed by what was typed so far, at the cursor: suggest people.
   const [query, setQuery] = useState<string | null>(null);
   const matches = useMemo(() => {
@@ -234,6 +239,8 @@ function Composer({ people, onPost }: { people: Person[]; onPost: (body: string,
     const q = query.toLowerCase();
     return people.filter((p) => p.full_name.toLowerCase().includes(q) || p.email.toLowerCase().startsWith(q)).slice(0, 6);
   }, [people, query]);
+  // Escape or a press outside closes the suggestions (phone keyboards have no Escape).
+  useDismiss(form, matches.length > 0, () => setQuery(null));
 
   const onInput = (value: string) => {
     setText(value);
@@ -253,16 +260,17 @@ function Composer({ people, onPost }: { people: Person[]; onPost: (body: string,
     e?.preventDefault();
     if (!text.trim()) return;
     setBusy(true);
-    await onPost(text.trim(), mentionedIn(text, people));
+    const posted = await onPost(text.trim(), mentionedIn(text, people));
     setBusy(false);
+    if (!posted) return; // offline or refused: keep the comment to try again
     setText("");
+    setQuery(null);
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit();
-    if (e.key === "Escape") setQuery(null);
   };
   return (
-    <form className="composer" onSubmit={submit}>
+    <form ref={form} className="composer" onSubmit={submit}>
       <label htmlFor="comment-new" className="sr-only">
         Add a comment
       </label>
@@ -289,7 +297,7 @@ function Composer({ people, onPost }: { people: Person[]; onPost: (body: string,
         </ul>
       )}
       <div className="row" style={{ justifyContent: "flex-end" }}>
-        <span className="faint" style={{ fontSize: 12 }}>
+        <span className="faint keys-hint" style={{ fontSize: 12 }}>
           Ctrl/⌘ + Enter to post
         </span>
         <Button type="submit" variant="primary" size="sm" loading={busy} disabled={!text.trim()}>
@@ -300,12 +308,12 @@ function Composer({ people, onPost }: { people: Person[]; onPost: (body: string,
   );
 }
 
-function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boolean; onChange: (next: string[]) => Promise<void> }) {
+function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boolean; onChange: (next: string[]) => Promise<boolean> }) {
   const [draft, setDraft] = useState("");
   const add = () => {
     const t = draft.trim().replace(/\s+/g, " ");
     if (!t || tags.some((x) => x.toLowerCase() === t.toLowerCase())) return setDraft("");
-    void onChange([...tags, t]).then(() => setDraft(""));
+    void onChange([...tags, t]).then((ok) => ok && setDraft(""));
   };
   return (
     <div className="chips">
@@ -401,7 +409,7 @@ function AssignDialog({
   open: boolean;
   people: Person[];
   onClose: () => void;
-  onAssign: (body: { user: string; note?: string; due_date?: string; priority: string }) => Promise<void>;
+  onAssign: (body: { user: string; note?: string; due_date?: string; priority: string }) => Promise<boolean>;
 }) {
   const [user, setUser] = useState("");
   const [note, setNote] = useState("");
@@ -410,7 +418,7 @@ function AssignDialog({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    await onAssign({ user, note: note.trim() || undefined, due_date: due || undefined, priority });
+    if (!(await onAssign({ user, note: note.trim() || undefined, due_date: due || undefined, priority }))) return; // keep the form to retry
     setUser("");
     setNote("");
     setDue("");

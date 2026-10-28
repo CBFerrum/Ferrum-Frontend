@@ -15,6 +15,7 @@ import { RequireAuth } from "./app/Shell";
 import { setUnauthorizedHandler } from "./lib/api";
 import { setupPwa } from "./lib/pwa";
 import "./styles.css";
+import "./app/records.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "./ui/kit";
 
 const queryClient = new QueryClient({
@@ -33,6 +34,9 @@ function NotFound() {
     </EmptyState>
   );
 }
+
+// /app (no slash) is outside the service worker's scope, /app/ is the same page inside it.
+if (window.location.pathname === "/app") window.history.replaceState(null, "", `/app/${window.location.search}${window.location.hash}`);
 
 const router = createBrowserRouter(
   [
@@ -54,7 +58,7 @@ const router = createBrowserRouter(
       ],
     },
   ],
-  { basename: "/app" },
+  { basename: "/app/" }, // root links stay at /app/, inside the service worker's scope
 );
 
 // Any 401 (expired or revoked session) sends the user back to the login page.
