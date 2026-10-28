@@ -1,10 +1,14 @@
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const backend = "http://127.0.0.1:5150";
 
-// No React plugin: esbuild compiles TSX natively (full reload instead of Fast Refresh keeps node_modules lean).
+// No React plugin: esbuild compiles TSX natively (edits reload the page instead of Fast Refresh).
 export default defineConfig({
   base: "/app/",
+  plugins: [tailwindcss()],
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   esbuild: { jsx: "automatic" },
   server: {
     proxy: {

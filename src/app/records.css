@@ -58,7 +58,7 @@
     content: attr(data-label);
     flex: none;
     max-width: 45%;
-    color: var(--muted);
+    color: var(--muted-foreground);
     font-size: 12.5px;
     text-align: left;
   }
@@ -140,7 +140,7 @@
   }
   .grid-card dt {
     font-size: 12px;
-    color: var(--muted);
+    color: var(--muted-foreground);
   }
   .grid-card dd {
     margin: 0;
