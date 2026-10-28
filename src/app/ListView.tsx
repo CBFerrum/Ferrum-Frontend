@@ -1,5 +1,6 @@
 // Generic list: columns from `list.columns` (else `in_list` fields), filters from `in_filter`
-// fields, free-text search, sortable headers, cursor/offset pagination, CSV export.
+// fields, free-text search, sortable headers, cursor/offset pagination, CSV export — and the same
+// records as a board, calendar or timeline when the entity has fields for one (`?view=`).
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -7,6 +8,8 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, docPath, download, errorMessage } from "../lib/api";
 import { joinRange, readFilters, serializeFilters, splitRange, writeFilters } from "../lib/filters";
 import { humanize, NUMERIC_TYPES } from "../lib/format";
+import { useLiveEntity } from "../lib/live";
+import { viewOptions, type ViewKind } from "../lib/views";
 import {
   can,
   recordTitle,
@@ -19,9 +22,11 @@ import {
   type ListResponse,
 } from "../lib/meta";
 import { Button, EmptyState, ErrorState, Field as FieldWrap, Icon, PageLoading, toast, useDebounced } from "../ui/kit";
+import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue, LinkInput } from "./widgets";
 
 const PAGE = 50;
+const noop = () => {};
 const SYSTEM_TYPES: Record<string, Field["type"]> = { created_at: "datetime", updated_at: "datetime", docstatus: "int", version: "int" };
 
 export function ListView() {
@@ -79,6 +84,18 @@ function ListInner({ meta }: { meta: EntityMeta }) {
   const sort = sp.get("sort") ?? meta.list.sort ?? "created_at desc";
   const [sortField, sortDir = "asc"] = sort.split(/\s+/);
 
+  // Changes by anyone show up here: the shell refreshes this entity's lists on each event.
+  useLiveEntity(E, noop);
+  const opts = useMemo(() => viewOptions(meta.fields), [meta]);
+  const by = sp.get("by") ?? "";
+  const boardField = opts.board.find((f) => f.name === by) ?? opts.board[0];
+  const calendarField = opts.calendar.find((f) => f.name === by) ?? opts.calendar.find((f) => f.in_list) ?? opts.calendar[0];
+  const span = opts.timeline.find(([s, e]) => `${s.name}..${e.name}` === by) ?? opts.timeline[0];
+  const wanted = sp.get("view");
+  const view: ViewKind =
+    wanted === "board" && boardField ? "board" : wanted === "calendar" && calendarField ? "calendar" : wanted === "timeline" && span ? "timeline" : "list";
+  const views: ViewKind[] = ["list", ...(opts.board.length ? ["board" as const] : []), ...(opts.calendar.length ? ["calendar" as const] : []), ...(opts.timeline.length ? ["timeline" as const] : [])];
+
   const fields = useMemo(() => {
     const known = new Set([...meta.fields.filter((f) => f.type !== "table").map((f) => f.name), ...Object.keys(SYSTEM_FIELD_LABELS)]);
     const want = new Set(["id", "docstatus", ...columns.map((c) => c.name), sortField]);
@@ -97,6 +114,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
     );
 
   const [search, setSearch] = useState(q);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const debounced = useDebounced(search, 300);
   useEffect(() => setSearch(q), [q]);
   useEffect(() => {
@@ -108,6 +126,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
   }, [debounced]); // react to the debounced value only
 
   const list = useInfiniteQuery({
+    enabled: view === "list",
     queryKey: ["list", E, { q, sort, filters, fields }],
     initialPageParam: { offset: 0 } as { offset: number; cursor?: string },
     queryFn: ({ pageParam, signal }) =>
@@ -176,10 +195,42 @@ function ListInner({ meta }: { meta: EntityMeta }) {
         <div>
           <h1 className="page-title">{meta.label_plural}</h1>
           <p className="page-sub" aria-live="polite">
-            {list.isLoading ? "Loading…" : total != null ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}${filtered ? " match" : ""}` : `${rows.length} shown`}
+            {view === "board"
+              ? `Board by ${boardField!.label.toLowerCase()}`
+              : view === "calendar"
+                ? `Calendar by ${calendarField!.label.toLowerCase()}`
+                : view === "timeline"
+                  ? `Timeline from ${span![0].label.toLowerCase()} to ${span![1].label.toLowerCase()}`
+                  : list.isLoading
+                    ? "Loading…"
+                    : total != null
+                      ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}${filtered ? " match" : ""}`
+                      : `${rows.length} shown`}
           </p>
         </div>
         <div className="page-actions">
+          {views.length > 1 && (
+            <div className="segmented" role="group" aria-label="View">
+              {views.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  title={VIEW_LABELS[v]}
+                  onClick={() =>
+                    update((p) => {
+                      p.delete("by");
+                      if (v === "list") p.delete("view");
+                      else p.set("view", v);
+                    })
+                  }
+                >
+                  <Icon name={v} />
+                  <span className="seg-label">{VIEW_LABELS[v]}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {me?.user.is_admin && (
             <Link className="btn btn-ghost btn-md" to={`/customize/${E}`}>
               <Icon name="edit" />
@@ -212,9 +263,25 @@ function ListInner({ meta }: { meta: EntityMeta }) {
               onChange={(e) => setSearch(e.target.value)}
             />
           </FieldWrap>
-          {filterFields.map((f) => (
-            <FilterControl key={f.name} field={f} value={fstate[f.name] ?? ""} onChange={(v) => setFilter(f.name, v)} />
-          ))}
+          {(filterFields.length > 0 || view !== "list") && (
+            // Phones show the search box and fold the other filters behind this button.
+            <Button className="filters-toggle" icon="settings" aria-expanded={filtersOpen} aria-controls="list-filters" onClick={() => setFiltersOpen((o) => !o)}>
+              Filters{Object.keys(fstate).length ? ` (${Object.keys(fstate).length})` : ""}
+            </Button>
+          )}
+          <div id="list-filters" className="toolbar-more" data-open={filtersOpen}>
+            {filterFields.map((f) => (
+              <FilterControl key={f.name} field={f} value={fstate[f.name] ?? ""} onChange={(v) => setFilter(f.name, v)} />
+            ))}
+            {view !== "list" && (
+              <ViewFieldPicker
+                view={view}
+                opts={opts}
+                value={view === "board" ? boardField!.name : view === "calendar" ? calendarField!.name : `${span![0].name}..${span![1].name}`}
+                onChange={(v) => update((p) => void p.set("by", v))}
+              />
+            )}
+          </div>
           {filtered && (
             <Button variant="ghost" icon="x" onClick={clearFilters}>
               Clear
@@ -222,7 +289,13 @@ function ListInner({ meta }: { meta: EntityMeta }) {
           )}
         </div>
 
-        {list.error ? (
+        {view === "board" ? (
+          <BoardView meta={meta} field={boardField!} filters={filters} q={q} />
+        ) : view === "calendar" ? (
+          <CalendarView meta={meta} field={calendarField!} filters={filters} q={q} />
+        ) : view === "timeline" ? (
+          <TimelineView meta={meta} start={span![0]} end={span![1]} filters={filters} q={q} />
+        ) : list.error ? (
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : !list.isLoading && !rows.length ? (
           <EmptyState title={filtered ? "No matching records" : `No ${meta.label_plural.toLowerCase()} yet`}>
@@ -306,7 +379,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
             </table>
           </div>
         )}
-        {list.hasNextPage && (
+        {view === "list" && list.hasNextPage && (
           <div className="load-more">
             <Button onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
               Load more
@@ -315,6 +388,28 @@ function ListInner({ meta }: { meta: EntityMeta }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Which field drives the board, calendar or timeline, when there is a choice. */
+function ViewFieldPicker({ view, opts, value, onChange }: { view: ViewKind; opts: ReturnType<typeof viewOptions>; value: string; onChange: (v: string) => void }) {
+  const choices: [string, string][] =
+    view === "board"
+      ? opts.board.map((f) => [f.name, f.label])
+      : view === "calendar"
+        ? opts.calendar.map((f) => [f.name, f.label])
+        : opts.timeline.map(([s, e]) => [`${s.name}..${e.name}`, `${s.label} – ${e.label}`]);
+  if (choices.length < 2) return null;
+  return (
+    <FieldWrap label={view === "board" ? "Group by" : view === "calendar" ? "Date" : "Dates"} htmlFor="view-by">
+      <select id="view-by" className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+        {choices.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </FieldWrap>
   );
 }
 

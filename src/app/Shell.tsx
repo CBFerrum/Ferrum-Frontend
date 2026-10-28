@@ -7,6 +7,8 @@ import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "r
 import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type MetaIndex, type ReportDef } from "../lib/meta";
+import { live } from "../lib/live";
+import { useInstall, useOnline } from "../lib/pwa";
 import {
   Alert,
   Button,
@@ -40,9 +42,49 @@ export function reportItems(meta: MetaIndex | undefined, catalog: ReportDef[] | 
   return [...names].map((name) => ({ name, label: labels.get(name) ?? humanize(name) }));
 }
 
+/** Keeps lists, boards and the bell current while the app is open (see lib/live.ts). */
+function useLiveUpdates() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    // Bursts (imports, bulk actions) collapse into one refresh per entity.
+    const pending = new Set<string>();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const flush = () => {
+      for (const e of pending) {
+        void qc.invalidateQueries({ queryKey: ["list", e] });
+        void qc.invalidateQueries({ queryKey: ["view", e] });
+      }
+      pending.clear();
+      timer = undefined;
+    };
+    const offs = [
+      live.onEvent((e) => {
+        pending.add(e.entity);
+        timer ??= setTimeout(flush, 400);
+      }),
+      live.onNotification((n) => {
+        void qc.invalidateQueries({ queryKey: ["notifications"] });
+        toast(n.title, "info");
+      }),
+      live.onResync(() => {
+        void qc.invalidateQueries({ queryKey: ["list"] });
+        void qc.invalidateQueries({ queryKey: ["view"] });
+        void qc.invalidateQueries({ queryKey: ["notifications"] });
+      }),
+    ];
+    live.start();
+    return () => {
+      offs.forEach((off) => off());
+      clearTimeout(timer);
+      live.stop();
+    };
+  }, [qc]);
+}
+
 function Shell() {
   const location = useLocation();
   const meta = useMetaIndex();
+  useLiveUpdates();
   const [navOpen, setNavOpen] = useState(false);
   const [palette, setPalette] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -91,6 +133,7 @@ function Shell() {
           <Notifications />
           <UserMenu />
         </header>
+        <OfflineBanner />
         <main id="main" tabIndex={-1}>
           {meta.error ? (
             <ErrorState error={meta.error} onRetry={() => meta.refetch()} title="Could not load the application metadata" />
@@ -106,6 +149,15 @@ function Shell() {
       <Dialog open={palette} onClose={() => setPalette(false)} title="Go to…">
         <NavPicker mode="palette" onDone={() => setPalette(false)} />
       </Dialog>
+    </div>
+  );
+}
+
+function OfflineBanner() {
+  if (useOnline()) return null;
+  return (
+    <div className="offline-banner" role="status">
+      <Icon name="alert" size={14} /> You are offline. Pages you open need a connection, and nothing can be saved until it is back.
     </div>
   );
 }
@@ -424,7 +476,8 @@ function UserMenu() {
   const me = useMe().data;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [dialog, setDialog] = useState<"password" | "keys" | null>(null);
+  const [dialog, setDialog] = useState<"password" | "keys" | "ai" | null>(null);
+  const install = useInstall();
 
   const signOut = () => {
     setSession(null);
@@ -481,6 +534,24 @@ function UserMenu() {
             <MenuItem
               onSelect={() => {
                 close();
+                setDialog("ai");
+              }}
+            >
+              Connect an AI assistant
+            </MenuItem>
+            {install && (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  void install();
+                }}
+              >
+                Install the app
+              </MenuItem>
+            )}
+            <MenuItem
+              onSelect={() => {
+                close();
                 signOut();
               }}
             >
@@ -501,6 +572,9 @@ function UserMenu() {
       <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} />
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title="Your API keys" wide>
         <ApiKeys />
+      </Dialog>
+      <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title="Connect an AI assistant">
+        <ConnectAi />
       </Dialog>
     </>
   );
@@ -572,5 +646,34 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
         </div>
       </form>
     </Dialog>
+  );
+}
+
+/** Ferrum speaks MCP: assistants that support remote MCP servers sign in with OAuth and then act
+ *  with exactly this user's permissions. */
+function ConnectAi() {
+  const url = `${window.location.origin}/mcp`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Address copied");
+    } catch {
+      toast("Copy the address manually", "error");
+    }
+  };
+  return (
+    <div className="stack">
+      <p>
+        Add Ferrum as a remote MCP server (connector) in your AI assistant, then sign in when it asks. The assistant can then search, create and update records, run
+        actions and reports — with your permissions, and every change in the audit trail.
+      </p>
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <input className="input mono" readOnly value={url} aria-label="MCP server address" onFocus={(e) => e.currentTarget.select()} />
+        <Button icon="copy" onClick={() => void copy()}>
+          Copy
+        </Button>
+      </div>
+      <p className="muted">Assistants without sign-in support can use an API key instead: send it as a bearer token.</p>
+    </div>
   );
 }

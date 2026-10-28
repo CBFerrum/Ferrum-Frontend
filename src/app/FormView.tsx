@@ -7,6 +7,7 @@ import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react
 import { api, ApiError, docPath, errorMessage, newKey, openPrint, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { evaluate, evaluateValue } from "../lib/expr";
+import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import {
   can,
@@ -235,6 +236,29 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   };
 
   const invalidateLists = () => qc.invalidateQueries({ queryKey: ["list", E] });
+
+  // Someone else changed this record: refresh quietly, or warn when there are unsaved edits.
+  const latest = useRef({ dirty, id: base?.id as string | undefined, me: me.user.id, reload: async () => {} });
+  latest.current = {
+    dirty,
+    id: base?.id as string | undefined,
+    me: me.user.id,
+    reload: async () => {
+      try {
+        const fresh = await reload();
+        if (fresh) load(fresh, base ?? undefined);
+      } catch {
+        // Offline or gone: the next save reports the conflict.
+      }
+    },
+  };
+  const onLive = useCallback((e: LiveEvent) => {
+    const l = latest.current;
+    if (e.id !== l.id || e.actor === l.me || e.event.endsWith(".deleted")) return;
+    if (l.dirty) setConflict(true);
+    else void l.reload();
+  }, []);
+  useLiveEntity(isNew ? undefined : E, onLive);
 
   const fail = (e: unknown) => {
     if (e instanceof ApiError && e.status === 409) {

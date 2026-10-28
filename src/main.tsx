@@ -12,6 +12,7 @@ import { OAuthAuthorize } from "./app/OAuthAuthorize";
 import { ReportView } from "./app/ReportView";
 import { RequireAuth } from "./app/Shell";
 import { setUnauthorizedHandler } from "./lib/api";
+import { setupPwa } from "./lib/pwa";
 import "./styles.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "./ui/kit";
 
@@ -60,6 +61,8 @@ setUnauthorizedHandler(() => {
   if (here.startsWith("/login")) return;
   void router.navigate("/login", { replace: true, state: { from: here + window.location.search } }).then(() => queryClient.clear());
 });
+
+setupPwa();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

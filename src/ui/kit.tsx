@@ -42,6 +42,12 @@ const ICONS: Record<string, string> = {
   expand: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
   check: "M20 6 9 17l-5-5",
   alert: "M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
+  copy: "M9 9h11v11H9zM5 15H4V4h11v1",
+  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  board: "M3 4h5v16H3zM10 4h5v10h-5zM17 4h4v13h-4z",
+  calendar: "M3 5h18v16H3zM16 3v4M8 3v4M3 10h18",
+  timeline: "M3 6h8M7 12h10M13 18h8",
+  left: "m15 18-6-6 6-6",
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof ICONS | string; size?: number }) {
