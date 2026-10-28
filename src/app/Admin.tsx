@@ -985,11 +985,31 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
   );
 }
 
-// ── plugins (sandboxed WebAssembly hooks) ──
+// ── plugins (sandboxed WebAssembly: hooks, routes, sockets, events, schedules) ──
 
 interface Hook {
   entity: string;
   stage: string;
+}
+interface Grant {
+  entity: string;
+  read?: boolean;
+  write?: boolean;
+  create?: boolean;
+  delete?: boolean;
+  submit?: boolean;
+  cancel?: boolean;
+}
+/** What a plugin declares it does; the server enforces every part of it. */
+export interface PluginManifest {
+  hooks?: Hook[];
+  routes?: { path: string; public?: boolean }[];
+  sockets?: { path: string; public?: boolean; subprotocols?: string[] }[];
+  subscriptions?: string[];
+  schedules?: { name: string; every_seconds: number }[];
+  permissions?: Grant[];
+  http_hosts?: string[];
+  entities?: { name: string; label?: string }[];
 }
 interface Plugin {
   id: string;
@@ -997,14 +1017,15 @@ interface Plugin {
   version?: string | null;
   description?: string | null;
   sha256: string;
-  hooks: Hook[];
+  manifest?: PluginManifest | null;
+  config_keys?: string[];
   fuel_limit?: number | null;
   memory_limit_mb?: number | null;
   enabled: boolean;
   updated_at: string;
 }
 
-const STAGES = ["before_validate", "validate", "before_submit", "on_submit", "before_cancel", "on_cancel", "before_delete"];
+const VERBS = ["read", "write", "create", "delete", "submit", "cancel"] as const;
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -1018,10 +1039,76 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+/** One-line summary of what a plugin uses, for the list. */
+export function pluginUses(m: PluginManifest | null | undefined): string[] {
+  if (!m) return [];
+  const n = (count: number | undefined, one: string, many = `${one}s`) => (count ? `${count} ${count === 1 ? one : many}` : null);
+  const publicCount = [...(m.routes ?? []), ...(m.sockets ?? [])].filter((r) => r.public).length;
+  return [
+    n(m.hooks?.length, "hook"),
+    n(m.routes?.length, "route"),
+    n(m.sockets?.length, "socket"),
+    n(m.subscriptions?.length, "subscription"),
+    n(m.schedules?.length, "schedule"),
+    n(m.entities?.length, "entity", "entities"),
+    publicCount ? `${publicCount} public` : null,
+    m.http_hosts?.length ? `calls ${m.http_hosts.join(", ")}` : null,
+  ].filter((x): x is string => !!x);
+}
+
+/** Everything a manifest asks for, worded for the administrator approving it. */
+function PluginAccess({ m }: { m: PluginManifest }) {
+  const rows: [string, ReactNode][] = [];
+  if (m.permissions?.length)
+    rows.push([
+      "Records",
+      m.permissions.map((p) => (
+        <div key={p.entity}>
+          <span className="mono">{p.entity}</span>: {VERBS.filter((v) => p[v]).join(", ") || "no access"}
+        </div>
+      )),
+    ]);
+  if (m.entities?.length) rows.push(["Brings entities", m.entities.map((e) => e.label ?? e.name).join(", ")]);
+  if (m.hooks?.length) rows.push(["Runs on", m.hooks.map((h) => `${h.entity === "*" ? "every entity" : h.entity} · ${h.stage}`).join("; ")]);
+  if (m.routes?.length)
+    rows.push([
+      "HTTP routes",
+      m.routes.map((r) => (
+        <div key={r.path}>
+          <span className="mono">{r.path}</span> {r.public ? <Badge tone="amber">public</Badge> : <span className="faint">signed in</span>}
+        </div>
+      )),
+    ]);
+  if (m.sockets?.length)
+    rows.push([
+      "WebSockets",
+      m.sockets.map((s) => (
+        <div key={s.path}>
+          <span className="mono">{s.path}</span> {s.public ? <Badge tone="amber">public</Badge> : <span className="faint">signed in</span>}
+          {s.subprotocols?.length ? <span className="faint"> · {s.subprotocols.join(", ")}</span> : null}
+        </div>
+      )),
+    ]);
+  if (m.subscriptions?.length) rows.push(["Listens to", m.subscriptions.join(", ")]);
+  if (m.schedules?.length) rows.push(["Schedules", m.schedules.map((s) => `${s.name} every ${Math.round(s.every_seconds / 60)} min`).join("; ")]);
+  rows.push(["Calls out to", m.http_hosts?.length ? m.http_hosts.join(", ") : "nothing (no network access)"]);
+  return (
+    <dl className="kv">
+      {rows.map(([k, v]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function Plugins() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["admin", "plugins"], queryFn: ({ signal }) => api.get<{ plugins: Plugin[] }>("/api/admin/plugins", undefined, signal) });
-  const [editing, setEditing] = useState<Partial<Plugin> | null>(null);
+  const [installing, setInstalling] = useState<Partial<Plugin> | null>(null);
+  const [settings, setSettings] = useState<Plugin | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "plugins"] });
 
@@ -1032,8 +1119,13 @@ function Plugins() {
     setPending(null);
   };
   const remove = async (p: Plugin) => {
-    if (!(await confirmDialog({ title: `Delete plugin ${p.name}?`, message: "Its hooks stop running immediately.", confirmLabel: "Delete", danger: true }))) return;
-    if (await attempt(() => api.del(`/api/admin/plugins/${p.id}`), "Plugin deleted")) void refresh();
+    const ok = await confirmDialog({
+      title: `Delete plugin ${p.name}?`,
+      message: "It stops at once and its private data is removed. Records it created stay.",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (ok && (await attempt(() => api.del(`/api/admin/plugins/${p.id}`), "Plugin deleted"))) void refresh();
   };
 
   return (
@@ -1041,23 +1133,23 @@ function Plugins() {
       <div className="card-head">
         <h2>Plugins</h2>
         <span className="spacer" />
-        <Button variant="primary" icon="upload" onClick={() => setEditing({ hooks: [{ entity: "", stage: "validate" }] })}>
-          Upload plugin
+        <Button variant="primary" icon="upload" onClick={() => setInstalling({})}>
+          Install plugin
         </Button>
       </div>
       <Loaded q={q}>
         {(data) =>
           !data.plugins.length ? (
-            <EmptyState title="No plugins installed" icon="settings" />
+            <EmptyState title="No plugins installed" icon="settings">
+              <p className="muted">Plugins add hooks, pages, device connections and integrations without changing Ferrum.</p>
+            </EmptyState>
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
                     <th scope="col">Plugin</th>
-                    <th scope="col">Hooks</th>
-                    <th scope="col">Module</th>
-                    <th scope="col">Limits</th>
+                    <th scope="col">Uses</th>
                     <th scope="col">Updated</th>
                     <th scope="col">Enabled</th>
                     <th scope="col">
@@ -1073,23 +1165,18 @@ function Plugins() {
                           <span className="mono">{p.name}</span> {p.version && <span className="faint">v{p.version}</span>}
                         </div>
                         {p.description && <div className="muted">{p.description}</div>}
+                        <div className="mono faint" title={`SHA-256 ${p.sha256}`}>
+                          {p.sha256.slice(0, 12)}…
+                        </div>
                       </td>
                       <td>
                         <div className="chips">
-                          {p.hooks.map((h, i) => (
-                            <Badge key={i} tone="blue">
-                              {h.entity} · {h.stage}
+                          {pluginUses(p.manifest).map((u) => (
+                            <Badge key={u} tone={u.endsWith("public") ? "amber" : "blue"}>
+                              {u}
                             </Badge>
                           ))}
                         </div>
-                      </td>
-                      <td className="mono faint" title={`SHA-256 ${p.sha256}`}>
-                        {p.sha256.slice(0, 12)}…
-                      </td>
-                      <td className="nowrap faint">
-                        {p.fuel_limit != null ? `${p.fuel_limit.toLocaleString()} fuel` : "default fuel"}
-                        <br />
-                        {p.memory_limit_mb != null ? `${p.memory_limit_mb} MB` : "default memory"}
                       </td>
                       <td className="nowrap">{formatDateTime(p.updated_at)}</td>
                       <td>
@@ -1099,8 +1186,11 @@ function Plugins() {
                         </label>
                       </td>
                       <td>
-                        <div className="row">
-                          <Button size="sm" icon="upload" onClick={() => setEditing(p)}>
+                        <div className="row" style={{ flexWrap: "nowrap" }}>
+                          <Button size="sm" icon="settings" onClick={() => setSettings(p)}>
+                            Settings
+                          </Button>
+                          <Button size="sm" icon="upload" onClick={() => setInstalling(p)}>
                             New version
                           </Button>
                           <Button size="sm" variant="danger" icon="trash" aria-label={`Delete plugin ${p.name}`} onClick={() => void remove(p)} />
@@ -1114,143 +1204,237 @@ function Plugins() {
           )
         }
       </Loaded>
-      <PluginDialog value={editing} onClose={() => setEditing(null)} onDone={refresh} />
+      <PluginDialog value={installing} onClose={() => setInstalling(null)} onDone={refresh} />
+      <PluginSettings plugin={settings} onClose={() => setSettings(null)} onDone={refresh} />
     </section>
   );
 }
 
+const MANIFEST_TEMPLATE = { name: "", version: "0.1.0", description: "", hooks: [], permissions: [] };
+
+/** Parses the manifest text; returns the object or a message for the administrator. */
+export function parseManifest(text: string): { manifest?: Record<string, unknown>; error?: string } {
+  try {
+    const v: unknown = JSON.parse(text);
+    if (!v || typeof v !== "object" || Array.isArray(v)) return { error: "The manifest must be a JSON object." };
+    if (typeof (v as { name?: unknown }).name !== "string" || !(v as { name: string }).name.trim()) return { error: "The manifest needs a name." };
+    return { manifest: v as Record<string, unknown> };
+  } catch (e) {
+    return { error: `Not valid JSON: ${(e as Error).message}` };
+  }
+}
+
 function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | null; onClose: () => void; onDone: () => void }) {
-  const index = useMetaIndex().data;
-  const empty = { name: "", version: "", description: "", fuel: "", memory: "", hooks: [] as Hook[] };
-  const [form, setForm] = useState(empty);
+  const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [seen, setSeen] = useState<Partial<Plugin> | null>(null);
-  const [errors, setErrors] = useState<FieldError[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
   if (value !== seen) {
     setSeen(value);
-    setErrors([]);
     setMessage(null);
+    setFieldErrors([]);
     setFile(null);
-    if (value)
-      setForm({
-        name: value.name ?? "",
-        version: value.version ?? "",
-        description: value.description ?? "",
-        fuel: value.fuel_limit != null ? String(value.fuel_limit) : "",
-        memory: value.memory_limit_mb != null ? String(value.memory_limit_mb) : "",
-        hooks: value.hooks?.length ? value.hooks.map((h) => ({ ...h })) : [{ entity: "", stage: "validate" }],
-      });
+    // A new version starts from the installed manifest; its settings are kept unless the text adds `config`.
+    const start = value?.id
+      ? { name: value.name, version: value.version ?? "", description: value.description ?? "", fuel_limit: value.fuel_limit ?? undefined, memory_limit_mb: value.memory_limit_mb ?? undefined, ...value.manifest }
+      : MANIFEST_TEMPLATE;
+    setText(JSON.stringify(start, null, 2));
   }
-  const top = (field: string) => errors.find((e) => !e.row && e.field === field)?.message;
-  const rowErr = (i: number) => errors.filter((e) => e.row?.[0] === "hooks" && e.row[1] === i).map((e) => `${e.field}: ${e.message}`).join("; ");
-  const setHook = (i: number, patch: Partial<Hook>) => setForm((f) => ({ ...f, hooks: f.hooks.map((h, j) => (j === i ? { ...h, ...patch } : h)) }));
+  const parsed = parseManifest(text);
 
+  const loadManifest = async (f: File | undefined) => {
+    if (f) setText(await f.text());
+  };
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!parsed.manifest) return setMessage(parsed.error ?? "Check the manifest.");
+    if (value?.id && parsed.manifest.name !== value.name) return setMessage(`A new version must keep the name ${value.name}.`);
     if (!file) return setMessage("Choose the plugin module (.wasm, or .wat text).");
     if (file.size > 8 * 1024 * 1024) return setMessage("Plugin modules are limited to 8 MB.");
     setBusy(true);
-    setErrors([]);
     setMessage(null);
+    setFieldErrors([]);
     try {
-      const int = (s: string) => (s.trim() ? Number.parseInt(s, 10) : undefined);
-      await api.post("/api/admin/plugins", {
-        name: form.name.trim(),
-        version: form.version.trim() || undefined,
-        description: form.description.trim() || undefined,
-        hooks: form.hooks,
-        fuel_limit: int(form.fuel),
-        memory_limit_mb: int(form.memory),
-        wasm_base64: await fileToBase64(file),
-      });
-      toast(`Plugin ${form.name} installed`);
+      await api.post("/api/admin/plugins", { ...parsed.manifest, wasm_base64: await fileToBase64(file) });
+      toast(`Plugin ${String(parsed.manifest.name)} installed`);
       onDone();
       onClose();
     } catch (err) {
-      if (err instanceof ApiError && err.fields.length) setErrors(err.fields);
+      if (err instanceof ApiError) setFieldErrors(err.fields);
       setMessage(errorMessage(err, false));
     } finally {
       setBusy(false);
     }
   };
 
-  const entities = [...(index?.entities ?? [])].sort((a, b) => a.label.localeCompare(b.label));
   return (
-    <Dialog open={!!value} onClose={onClose} title={value?.id ? `New version of ${value.name}` : "Upload plugin"} wide>
+    <Dialog open={!!value} onClose={onClose} title={value?.id ? `New version of ${value.name}` : "Install plugin"} wide>
       <form className="stack" onSubmit={submit}>
-        {message && <Alert tone="error">{message}</Alert>}
-        <p className="muted">Plugins run sandboxed. Uploading with an existing name replaces that plugin’s module and hooks.</p>
-        <div className="form-grid" style={{ ["--cols" as string]: 3 }}>
-          <FieldWrap label="Name" htmlFor="pl-name" required error={top("name")} hint="Lower-case letters, digits, - or _">
-            <input id="pl-name" className="input mono" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          </FieldWrap>
-          <FieldWrap label="Version" htmlFor="pl-version">
-            <input id="pl-version" className="input" value={form.version} onChange={(e) => setForm({ ...form, version: e.target.value })} placeholder="0.1.0" />
-          </FieldWrap>
-          <FieldWrap label="Module" htmlFor="pl-file" required error={top("wasm") ?? top("wasm_base64")}>
+        {message && (
+          <Alert tone="error">
+            {message}
+            {fieldErrors.length > 0 && (
+              <ul>
+                {fieldErrors.map((f, i) => (
+                  <li key={i}>
+                    <span className="mono">{[f.row?.join("."), f.field].filter(Boolean).join(".")}</span>: {f.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Alert>
+        )}
+        <p className="muted">
+          A plugin is a WebAssembly module and a manifest that declares what it may do. It runs sandboxed with only the access listed below; installing again with
+          the same name upgrades it in place.
+        </p>
+        <div className="form-grid">
+          <FieldWrap label="Module" htmlFor="pl-file" required>
             <input id="pl-file" type="file" accept=".wasm,.wat,application/wasm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </FieldWrap>
+          <FieldWrap label="Manifest file" htmlFor="pl-manifest-file" hint="Optional: loads a manifest.json into the editor">
+            <input id="pl-manifest-file" type="file" accept=".json,application/json" onChange={(e) => void loadManifest(e.target.files?.[0])} />
+          </FieldWrap>
         </div>
-        <FieldWrap label="Description" htmlFor="pl-desc">
-          <input id="pl-desc" className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <FieldWrap label="Manifest" htmlFor="pl-manifest" error={parsed.error}>
+          <textarea
+            id="pl-manifest"
+            className="textarea mono"
+            rows={12}
+            spellCheck={false}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            aria-invalid={!!parsed.error}
+          />
         </FieldWrap>
-        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend className="field-label" style={{ marginBottom: 6 }}>
-            Hooks
-          </legend>
-          {top("hooks") && <p className="field-error">{top("hooks")}</p>}
-          <div className="stack" style={{ gap: 8 }}>
-            {form.hooks.map((h, i) => (
-              <div key={i}>
-                <div className="row" style={{ flexWrap: "nowrap" }}>
-                  <select className="select" aria-label={`Entity of hook ${i + 1}`} value={h.entity} onChange={(e) => setHook(i, { entity: e.target.value })} required>
-                    <option value="">Choose an entity…</option>
-                    <option value="*">Every entity (*)</option>
-                    {entities.map((x) => (
-                      <option key={x.name} value={x.name}>
-                        {x.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select className="select" aria-label={`Stage of hook ${i + 1}`} value={h.stage} onChange={(e) => setHook(i, { stage: e.target.value })}>
-                    {STAGES.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={`Remove hook ${i + 1}`}
-                    disabled={form.hooks.length === 1}
-                    onClick={() => setForm((f) => ({ ...f, hooks: f.hooks.filter((_, j) => j !== i) }))}
-                  >
-                    <Icon name="trash" />
+        {parsed.manifest && (
+          <div>
+            <h3 className="field-label">This plugin will be able to</h3>
+            <PluginAccess m={parsed.manifest as PluginManifest} />
+          </div>
+        )}
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="primary" icon="upload" loading={busy} disabled={!parsed.manifest}>
+            Install
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+interface ConfigRow {
+  key: string;
+  value: string;
+  json: boolean;
+}
+
+/** Settings and secrets: values are write-only (the server lists keys, never values). */
+function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; onClose: () => void; onDone: () => void }) {
+  const [rows, setRows] = useState<ConfigRow[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [seen, setSeen] = useState<Plugin | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (plugin !== seen) {
+    setSeen(plugin);
+    setRows([]);
+    setRemoved([]);
+    setMessage(null);
+  }
+  const setRow = (i: number, patch: Partial<ConfigRow>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!plugin) return;
+    const config: Record<string, unknown> = {};
+    for (const k of removed) config[k] = null;
+    for (const r of rows) {
+      const key = r.key.trim();
+      if (!key) continue;
+      if (r.json) {
+        try {
+          config[key] = JSON.parse(r.value);
+        } catch {
+          return setMessage(`The value of ${key} is not valid JSON.`);
+        }
+      } else config[key] = r.value;
+    }
+    if (!Object.keys(config).length) return onClose();
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.patch(`/api/admin/plugins/${plugin.id}/config`, { config });
+      toast("Settings saved");
+      onDone();
+      onClose();
+    } catch (err) {
+      setMessage(errorMessage(err, false));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const keys = (plugin?.config_keys ?? []).filter((k) => !removed.includes(k));
+  return (
+    <Dialog open={!!plugin} onClose={onClose} title={plugin ? `${plugin.name} settings` : ""} wide>
+      <form className="stack" onSubmit={save}>
+        {message && <Alert tone="error">{message}</Alert>}
+        {plugin?.manifest && (
+          <div>
+            <h3 className="field-label">Access</h3>
+            <PluginAccess m={plugin.manifest} />
+          </div>
+        )}
+        <div>
+          <h3 className="field-label">Settings</h3>
+          <p className="muted">Saved values are never shown again. Enter a key to set or replace it.</p>
+          {keys.length > 0 && (
+            <div className="chips" style={{ margin: "8px 0" }}>
+              {keys.map((k) => (
+                <span key={k} className="chip-removable">
+                  <span className="mono">{k}</span>
+                  <button type="button" className="icon-btn" aria-label={`Remove setting ${k}`} onClick={() => setRemoved((r) => [...r, k])}>
+                    <Icon name="x" size={14} />
                   </button>
-                </div>
-                {rowErr(i) && <p className="field-error">{rowErr(i)}</p>}
+                </span>
+              ))}
+            </div>
+          )}
+          {removed.length > 0 && <p className="faint">Removing on save: {removed.join(", ")}</p>}
+          <div className="stack" style={{ gap: 8 }}>
+            {rows.map((r, i) => (
+              <div key={i} className="row" style={{ flexWrap: "nowrap" }}>
+                <input className="input mono" aria-label={`Setting ${i + 1} key`} placeholder="key" value={r.key} onChange={(e) => setRow(i, { key: e.target.value })} />
+                <input
+                  className="input"
+                  aria-label={`Setting ${i + 1} value`}
+                  placeholder={r.json ? '{"json": true}' : "value"}
+                  type={r.json ? "text" : "password"}
+                  autoComplete="off"
+                  value={r.value}
+                  onChange={(e) => setRow(i, { value: e.target.value })}
+                />
+                <label className="check-field nowrap" style={{ minHeight: 0 }}>
+                  <input type="checkbox" checked={r.json} onChange={(e) => setRow(i, { json: e.target.checked })} /> JSON
+                </label>
+                <button type="button" className="icon-btn" aria-label={`Remove row ${i + 1}`} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>
+                  <Icon name="trash" />
+                </button>
               </div>
             ))}
           </div>
-          <Button size="sm" icon="plus" style={{ marginTop: 8 }} onClick={() => setForm((f) => ({ ...f, hooks: [...f.hooks, { entity: "", stage: "validate" }] }))}>
-            Add hook
+          <Button size="sm" icon="plus" style={{ marginTop: 8 }} onClick={() => setRows((rs) => [...rs, { key: "", value: "", json: false }])}>
+            Add setting
           </Button>
-        </fieldset>
-        <div className="form-grid">
-          <FieldWrap label="Fuel limit" htmlFor="pl-fuel" hint="Instructions per call; empty for the default" error={top("fuel_limit")}>
-            <input id="pl-fuel" className="input" inputMode="numeric" value={form.fuel} onChange={(e) => setForm({ ...form, fuel: e.target.value })} />
-          </FieldWrap>
-          <FieldWrap label="Memory limit (MB)" htmlFor="pl-mem" hint="Empty for the default" error={top("memory_limit_mb")}>
-            <input id="pl-mem" className="input" inputMode="numeric" value={form.memory} onChange={(e) => setForm({ ...form, memory: e.target.value })} />
-          </FieldWrap>
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary" icon="upload" loading={busy}>
-            Install plugin
+          <Button type="submit" variant="primary" loading={busy}>
+            Save
           </Button>
         </div>
       </form>
