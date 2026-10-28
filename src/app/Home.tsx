@@ -1,0 +1,133 @@
+// Home: quick links per module and the latest documents of a couple of key entities in each.
+
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router";
+import { api, docPath, errorMessage } from "../lib/api";
+import { humanize, relativeTime } from "../lib/format";
+import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
+import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
+import { reportItems } from "./Shell";
+
+export function Home() {
+  const meta = useMetaIndex().data;
+  const me = useMe().data;
+  const reports = useReports().data?.reports;
+  if (!meta) return null;
+
+  const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
+  const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
+  const modules = [...meta.modules]
+    .sort((a, b) => a.order - b.order)
+    .map((m) => {
+      const links = m.items.flatMap((item) => {
+        if (item.startsWith("report:")) {
+          const name = item.slice(7);
+          return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
+        }
+        const e = readable.get(item);
+        return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
+      });
+      const entities = m.items.flatMap((i) => readable.get(i) ?? []);
+      const documents = entities.filter((e) => e.kind === "document");
+      return { m, links, key: (documents.length ? documents : entities).slice(0, 2) };
+    })
+    .filter((x) => x.links.length);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const first = me?.user.full_name?.split(" ")[0];
+
+  return (
+    <div>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">
+            {greeting}
+            {first ? `, ${first}` : ""}
+          </h1>
+          <p className="page-sub">
+            Pick a module or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere.
+          </p>
+        </div>
+      </div>
+      {!modules.length ? (
+        <EmptyState title="Nothing to show yet">
+          <p className="muted">You do not have access to any module. Ask an administrator for a role.</p>
+        </EmptyState>
+      ) : (
+        <div className="home-grid">
+          {modules.map(({ m, links, key }) => (
+            <section key={m.name} className="card" aria-labelledby={`mod-${m.name}`}>
+              <div className="card-head">
+                <h2 id={`mod-${m.name}`}>{m.label}</h2>
+              </div>
+              <div className="card-body stack">
+                <div className="chips">
+                  {links.map((l) => (
+                    <Link key={l.to} className="chip" to={l.to}>
+                      <Icon name={l.icon} size={14} />
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+                {key.map((e) => (
+                  <RecentDocs key={e.name} entity={e} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecentDocs({ entity }: { entity: EntitySummary }) {
+  const meta = useEntityMeta(entity.name).data;
+  const q = useQuery({
+    // Under the entity's "list" key so saving a document refreshes it.
+    queryKey: ["list", entity.name, "recent"],
+    queryFn: ({ signal }) =>
+      api.get<ListResponse>(
+        docPath(entity.name),
+        { limit: 5, sort: "updated_at desc", fields: ["id", "number", "docstatus", "updated_at", ...(meta?.title_field ? [meta.title_field] : [])].join(",") },
+        signal,
+      ),
+    enabled: !!meta,
+  });
+  const rows = q.data?.rows ?? [];
+  return (
+    <div>
+      <h3 className="field-label" style={{ marginBottom: 4 }}>
+        Recent {entity.label_plural.toLowerCase()}
+      </h3>
+      {q.isLoading || !meta ? (
+        <div className="stack" style={{ gap: 8 }}>
+          <div className="skeleton" />
+          <div className="skeleton" style={{ width: "70%" }} />
+        </div>
+      ) : q.error ? (
+        <p className="muted">{errorMessage(q.error)}</p>
+      ) : !rows.length ? (
+        <p className="faint">Nothing yet.</p>
+      ) : (
+        <ul className="recent">
+          {rows.map((r) => {
+            const title = recordTitle(meta, r);
+            const ds = Number(r.docstatus ?? 0);
+            return (
+              <li key={String(r.id)}>
+                <Link className="title" to={`/e/${entity.name}/${r.id}`}>
+                  {title}
+                </Link>
+                {r.number && r.number !== title ? <span className="faint nowrap">{String(r.number)}</span> : null}
+                {entity.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[ds])}>{DOCSTATUS_LABEL[ds] ?? ds}</Badge>}
+                {typeof r.updated_at === "string" && <span className="faint nowrap">{relativeTime(r.updated_at)}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

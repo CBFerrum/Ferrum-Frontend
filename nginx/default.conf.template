@@ -1,0 +1,50 @@
+# Rendered at container start (envsubst): ${FERRUM_API_URL} is the Ferrum server, e.g. http://ferrum:5150.
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 8080;
+    server_tokens off;
+    client_max_body_size 30m;
+    root /usr/share/nginx/html;
+
+    location = / {
+        include /etc/nginx/snippets/security-headers.conf;
+        return 302 /app/;
+    }
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Content-hashed bundles never change.
+    location /app/assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # The single-page app: unknown paths under /app fall back to index.html.
+    location /app/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /app/index.html;
+    }
+
+    # API, downloads, AI agents (MCP) and realtime go to the Ferrum server.
+    location ~ ^/(api|files|mcp|ws|_ping|_health)(/|$) {
+        proxy_pass ${FERRUM_API_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 300s;
+        proxy_buffering off;
+    }
+}
