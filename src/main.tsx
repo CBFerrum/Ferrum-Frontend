@@ -8,6 +8,7 @@ import { FormView } from "./app/FormView";
 import { Home } from "./app/Home";
 import { ListView } from "./app/ListView";
 import { Login } from "./app/Login";
+import { OAuthAuthorize } from "./app/OAuthAuthorize";
 import { ReportView } from "./app/ReportView";
 import { RequireAuth } from "./app/Shell";
 import { setUnauthorizedHandler } from "./lib/api";
@@ -34,6 +35,7 @@ function NotFound() {
 const router = createBrowserRouter(
   [
     { path: "/login", element: <Login />, errorElement: <RouteError /> },
+    { path: "/oauth/authorize", element: <OAuthAuthorize />, errorElement: <RouteError /> },
     {
       path: "/",
       element: <RequireAuth />,
