@@ -50,6 +50,7 @@ export function Home() {
           </p>
         </div>
       </div>
+      <MyWork />
       {!modules.length ? (
         <EmptyState title="Nothing to show yet">
           <p className="muted">You do not have access to any module. Ask an administrator for a role.</p>
@@ -129,5 +130,44 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
         </ul>
       )}
     </div>
+  );
+}
+
+interface Assignment {
+  id: string;
+  entity: string;
+  entity_label?: string;
+  record_id: string;
+  title?: string;
+  note?: string | null;
+  due_date?: string | null;
+  priority: string;
+}
+
+/** Records assigned to the signed-in user: the to-do list. */
+function MyWork() {
+  const q = useQuery({ queryKey: ["assignments", "mine"], queryFn: ({ signal }) => api.get<{ assignments: Assignment[] }>("/api/assignments", undefined, signal) });
+  const list = q.data?.assignments ?? [];
+  if (!list.length) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <section className="card my-work" aria-labelledby="my-work">
+      <div className="card-head">
+        <h2 id="my-work">Assigned to you</h2>
+        <span className="faint">{list.length}</span>
+      </div>
+      <ul className="recent">
+        {list.slice(0, 8).map((a) => (
+          <li key={a.id}>
+            <Link to={`/e/${a.entity}/${a.record_id}`}>
+              <span className="cell-title">{a.title}</span> <span className="faint">{a.entity_label}</span>
+            </Link>
+            {a.note && <div className="muted">{a.note}</div>}
+            {a.due_date && <Badge tone={a.due_date < today ? "red" : "neutral"}>due {a.due_date}</Badge>}
+            {a.priority === "High" && <Badge tone="red">High</Badge>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
