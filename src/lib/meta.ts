@@ -8,7 +8,7 @@ import { humanize, shortId } from "./format";
 
 export type FieldType =
   | "data" | "text" | "markdown" | "code" | "int" | "decimal" | "currency" | "percent" | "date" | "datetime"
-  | "check" | "select" | "link" | "table" | "json" | "email" | "phone" | "url" | "attach" | "color";
+  | "check" | "select" | "link" | "table" | "json" | "email" | "phone" | "url" | "attach" | "color" | "secret";
 
 /** Flags the server sends as `false` are omitted, so absent means false (including can_read/can_write). */
 export interface Field {
