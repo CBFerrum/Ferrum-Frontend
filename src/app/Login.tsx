@@ -72,6 +72,8 @@ export function Login() {
               onChange={(e) => setTenant(e.target.value)}
               autoComplete="organization"
               autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
               autoFocus={!tenant}
             />
@@ -84,6 +86,8 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               required
               autoFocus={!!tenant}
             />

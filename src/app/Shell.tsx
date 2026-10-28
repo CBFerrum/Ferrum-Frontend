@@ -113,7 +113,8 @@ function Shell() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <aside className="sidebar" aria-label="Sidebar">
+      {/* Any link closes the drawer, the current page's too (its path does not change). */}
+      <aside className="sidebar" aria-label="Sidebar" onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
             Fe

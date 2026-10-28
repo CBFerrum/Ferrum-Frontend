@@ -12,6 +12,7 @@ import { useLiveEntity } from "../lib/live";
 import { viewOptions, type ViewKind } from "../lib/views";
 import {
   can,
+  fieldLabel,
   recordTitle,
   SYSTEM_FIELD_LABELS,
   useCurrencyPrecision,
@@ -158,6 +159,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
   const total = list.data?.pages[0]?.total;
   const filtered = !!q || Object.keys(fstate).length > 0;
   const canCreate = can(meta.permissions, "create") && meta.kind !== "ledger";
+  const sortable = columns.filter((c) => c.sortable);
 
   const setFilter = (name: string, value: string) => update((p) => writeFilters(p, { ...readFilters(p), [name]: value }));
   const clearFilters = () => {
@@ -208,7 +210,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
                       : `${rows.length} shown`}
           </p>
         </div>
-        <div className="page-actions">
+        <div className="page-actions list-actions">
           {views.length > 1 && (
             <div className="segmented" role="group" aria-label="View">
               {views.map((v) => (
@@ -260,6 +262,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
               type="search"
               placeholder={`Search ${meta.label_plural.toLowerCase()}…`}
               value={search}
+              autoComplete="off"
               onChange={(e) => setSearch(e.target.value)}
             />
           </FieldWrap>
@@ -268,6 +271,26 @@ function ListInner({ meta }: { meta: EntityMeta }) {
             <Button className="filters-toggle" icon="settings" aria-expanded={filtersOpen} aria-controls="list-filters" onClick={() => setFiltersOpen((o) => !o)}>
               Filters{Object.keys(fstate).length ? ` (${Object.keys(fstate).length})` : ""}
             </Button>
+          )}
+          {/* Phones: this replaces the column headers' sort buttons, which the card layout hides. */}
+          {view === "list" && sortable.length > 0 && (
+            <FieldWrap label="Sort" htmlFor="list-sort" className="list-sort">
+              <select id="list-sort" className="select" value={`${sortField} ${sortDir}`} onChange={(e) => update((p) => p.set("sort", e.target.value))}>
+                {!sortable.some((c) => c.name === sortField) && (
+                  <option value={`${sortField} ${sortDir}`}>
+                    {fieldLabel(meta, sortField)} {sortDir === "desc" ? "↓" : "↑"}
+                  </option>
+                )}
+                {sortable.flatMap((c) => [
+                  <option key={`${c.name} asc`} value={`${c.name} asc`}>
+                    {c.label} ↑
+                  </option>,
+                  <option key={`${c.name} desc`} value={`${c.name} desc`}>
+                    {c.label} ↓
+                  </option>,
+                ])}
+              </select>
+            </FieldWrap>
           )}
           <div id="list-filters" className="toolbar-more" data-open={filtersOpen}>
             {filterFields.map((f) => (
@@ -312,15 +335,17 @@ function ListInner({ meta }: { meta: EntityMeta }) {
           </EmptyState>
         ) : (
           <div className="table-wrap">
-            <table className="table">
-              <caption className="sr-only">{meta.label_plural}</caption>
-              <thead>
-                <tr>
+            {/* Explicit roles: the phone card layout changes `display`, which drops native table semantics. */}
+            <table className="table list-table" role="table">
+              <caption className="sr-only" role="caption">{meta.label_plural}</caption>
+              <thead role="rowgroup">
+                <tr role="row">
                   {columns.map((c) => {
                     const active = sortField === c.name;
                     return (
                       <th
                         key={c.name}
+                        role="columnheader"
                         scope="col"
                         className={NUMERIC_TYPES.has(c.field.type) ? "num" : undefined}
                         aria-sort={active ? (sortDir === "desc" ? "descending" : "ascending") : undefined}
@@ -338,12 +363,12 @@ function ListInner({ meta }: { meta: EntityMeta }) {
                   })}
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {list.isLoading
                   ? Array.from({ length: 6 }, (_, i) => (
-                      <tr key={i}>
+                      <tr key={i} role="row">
                         {columns.map((c) => (
-                          <td key={c.name}>
+                          <td key={c.name} role="cell" data-label={c.label}>
                             <div className="skeleton" />
                           </td>
                         ))}
@@ -352,6 +377,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
                   : rows.map((r) => (
                       <tr
                         key={String(r.id)}
+                        role="row"
                         className="row-link"
                         onClick={(e) => {
                           if (!(e.target as HTMLElement).closest("a,button")) navigate(`/e/${E}/${r.id}`);
@@ -362,7 +388,7 @@ function ListInner({ meta }: { meta: EntityMeta }) {
                             c.field.type === "currency" && c.field.currency && !c.field.currency.includes(".") ? precisionOf(r[c.field.currency]) : undefined;
                           const cell = <CellValue field={c.field} value={r[c.name]} title={r._titles?.[c.name]} currencyPrecision={precision} />;
                           return (
-                            <td key={c.name} className={NUMERIC_TYPES.has(c.field.type) && c.name !== "docstatus" ? "num" : undefined}>
+                            <td key={c.name} role="cell" data-label={c.label} className={NUMERIC_TYPES.has(c.field.type) && c.name !== "docstatus" ? "num" : undefined}>
                               {i === 0 ? (
                                 <Link className="cell-title" to={`/e/${E}/${r.id}`}>
                                   {r[c.name] === null || r[c.name] === undefined || r[c.name] === "" ? recordTitle(meta, r) : cell}

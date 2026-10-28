@@ -622,7 +622,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             ) : null}
           </div>
         </div>
-        <div className="page-actions">
+        <div className="page-actions doc-actions">
           {!locked && (
             <Button variant={dirty ? "primary" : "default"} onClick={() => void save()} loading={busy === "save"} disabled={busyAny || !dirty} title="Save (Ctrl+S)">
               {isNew ? "Create" : "Save"}
