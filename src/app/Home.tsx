@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
-import { humanize, relativeTime } from "../lib/format";
+import { humanize, relativeTime, todayIso } from "../lib/format";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
 import { reportItems } from "./Shell";
@@ -149,7 +149,7 @@ function MyWork() {
   const q = useQuery({ queryKey: ["assignments", "mine"], queryFn: ({ signal }) => api.get<{ assignments: Assignment[] }>("/api/assignments", undefined, signal) });
   const list = q.data?.assignments ?? [];
   if (!list.length) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   return (
     <section className="card my-work" aria-labelledby="my-work">
       <div className="card-head">

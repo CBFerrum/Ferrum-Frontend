@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { compareDecimal, formatDate, formatDecimal, formatValue, humanize } from "./format";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { compareDecimal, formatDate, formatDecimal, formatValue, humanize, setTimeZone, todayIso } from "./format";
 
 describe("formatDecimal", () => {
   it("groups digits and keeps the value's own precision by default", () => {
@@ -60,5 +60,28 @@ describe("humanize", () => {
   it("mirrors the server label fallback", () => {
     expect(humanize("x_gst_number")).toBe("Gst Number");
     expect(humanize("trial_balance")).toBe("Trial Balance");
+  });
+});
+
+describe("todayIso", () => {
+  afterEach(() => {
+    setTimeZone(undefined);
+    vi.useRealTimers();
+  });
+
+  it("is the workspace's calendar day, not UTC's", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-28T20:00:00Z")); // 01:30 on the 29th in India
+    setTimeZone("Asia/Kolkata");
+    expect(todayIso()).toBe("2026-10-29");
+    setTimeZone("UTC");
+    expect(todayIso()).toBe("2026-10-28");
+    setTimeZone("America/Los_Angeles");
+    expect(todayIso()).toBe("2026-10-28");
+  });
+
+  it("falls back to the browser's day for a zone it does not know", () => {
+    setTimeZone("Not/A_Zone");
+    expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

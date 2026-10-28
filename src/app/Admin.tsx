@@ -1,4 +1,4 @@
-// Administration: users, roles & permissions, packages, webhooks, automations, API keys.
+// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, workspace settings.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -30,6 +30,7 @@ const TABS = [
   { id: "automations", label: "Automations" },
   { id: "plugins", label: "Plugins" },
   { id: "keys", label: "API keys" },
+  { id: "workspace", label: "Workspace" },
 ];
 
 export function AdminPage() {
@@ -58,6 +59,7 @@ export function AdminPage() {
         {tab === "automations" && <Automations />}
         {tab === "plugins" && <Plugins />}
         {tab === "keys" && <ApiKeys />}
+        {tab === "workspace" && <Workspace />}
       </TabPanel>
     </div>
   );
@@ -80,6 +82,88 @@ async function attempt(fn: () => Promise<unknown>, success?: string): Promise<bo
     toast(errorMessage(e), "error");
     return false;
   }
+}
+
+// ── workspace settings ──
+
+interface WorkspaceSettings {
+  timezone: string;
+  fiscal_year_start_month: number;
+}
+
+const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" }));
+
+function Workspace() {
+  const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
+  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}`} initial={s} />}</Loaded>;
+}
+
+function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState(initial);
+  const [errors, setErrors] = useState<FieldError[]>([]);
+  const [busy, setBusy] = useState(false);
+  // The browser's list may lack the saved zone (an alias such as Asia/Kolkata), so it is always offered.
+  const zones = [...new Set(["UTC", initial.timezone, ...Intl.supportedValuesOf("timeZone")])].sort();
+  const fyChanged = form.fiscal_year_start_month !== initial.fiscal_year_start_month;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (
+      fyChanged &&
+      !(await confirmDialog({
+        title: "Change when the fiscal year starts?",
+        message: "Number series that include the fiscal year, and fiscal-year report periods, use the new start from now on. Existing documents keep their numbers.",
+        confirmLabel: "Change",
+      }))
+    )
+      return;
+    setBusy(true);
+    setErrors([]);
+    try {
+      await api.put("/api/admin/settings", form);
+      toast("Workspace settings saved");
+      // `me` carries the zone that today's date follows (lib/format todayIso).
+      await Promise.all(["admin", "me"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+    } catch (err) {
+      if (err instanceof ApiError && err.fields.length) setErrors(err.fields);
+      else toast(errorMessage(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fieldError = (name: string) => errors.find((f) => f.field === name)?.message;
+  return (
+    <form className="card card-pad stack" style={{ maxWidth: 560 }} onSubmit={submit}>
+      <FieldWrap
+        label="Time zone"
+        htmlFor="ws-tz"
+        error={fieldError("timezone")}
+        hint={`Today's date, date-based number series and report periods follow it. This device uses ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`}
+      >
+        <select id="ws-tz" className="select" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
+          {zones.map((z) => (
+            <option key={z} value={z}>
+              {z}
+            </option>
+          ))}
+        </select>
+      </FieldWrap>
+      <FieldWrap label="Fiscal year starts in" htmlFor="ws-fy" error={fieldError("fiscal_year_start_month")}>
+        <select id="ws-fy" className="select" value={form.fiscal_year_start_month} onChange={(e) => setForm({ ...form, fiscal_year_start_month: Number(e.target.value) })}>
+          {MONTHS.map((m, i) => (
+            <option key={m} value={i + 1}>
+              {m}
+            </option>
+          ))}
+        </select>
+      </FieldWrap>
+      <div className="row" style={{ justifyContent: "flex-end" }}>
+        <Button type="submit" variant="primary" loading={busy} disabled={!fyChanged && form.timezone === initial.timezone}>
+          Save
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 function SecretDialog({ secret, title, note, onClose }: { secret: string | null; title: string; note: string; onClose: () => void }) {
@@ -1429,13 +1513,25 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
           <div className="stack" style={{ gap: 8 }}>
             {rows.map((r, i) => (
               <div key={i} className="row" style={{ flexWrap: "nowrap" }}>
-                <input className="input mono" aria-label={`Setting ${i + 1} key`} placeholder="key" value={r.key} onChange={(e) => setRow(i, { key: e.target.value })} />
+                <input
+                  className="input mono"
+                  aria-label={`Setting ${i + 1} key`}
+                  placeholder="key"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={r.key}
+                  onChange={(e) => setRow(i, { key: e.target.value })}
+                />
                 <input
                   className="input"
                   aria-label={`Setting ${i + 1} value`}
                   placeholder={r.json ? '{"json": true}' : "value"}
                   type={r.json ? "text" : "password"}
                   autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={r.value}
                   onChange={(e) => setRow(i, { value: e.target.value })}
                 />

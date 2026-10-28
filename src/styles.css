@@ -438,6 +438,11 @@ main:focus {
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* A label styled as a button around a visually hidden input (Attach file) shows the input's focus. */
+.btn:has(> input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .btn-primary {
   background: var(--primary);
   border-color: var(--primary);
@@ -1593,76 +1598,6 @@ pre.code {
   overflow: auto;
 }
 
-/* ── touch: 44px targets, and 16px fields (iOS zooms the page into smaller ones on focus) ── */
-
-@media (pointer: coarse) {
-  .btn {
-    min-width: 44px;
-    min-height: 44px;
-    flex-shrink: 0; /* min-width replaces a flex item's content-sized minimum: never squeeze the label */
-  }
-  .icon-btn {
-    width: 44px;
-    height: 44px;
-  }
-  .nav-link,
-  .nav-group > summary,
-  .section > summary,
-  .menu-item,
-  .option,
-  .tab,
-  .chip,
-  .check-field,
-  .card-head .check-field {
-    min-height: 44px;
-  }
-  .option {
-    align-items: center;
-  }
-  /* A checkbox's label takes its row's full height: the row itself does not toggle it. */
-  .check-field > label {
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-  }
-  .input,
-  .select {
-    height: 44px;
-  }
-  .input,
-  .select,
-  .textarea,
-  .textarea.mono {
-    font-size: 16px;
-  }
-  .toast span {
-    padding-top: 12px;
-  }
-  /* Keyboard shortcut hints. */
-  .search-box .kbd,
-  .keys-hint {
-    display: none;
-  }
-  /* Bare checkboxes in table cells. */
-  .cell-check {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
-    padding-block: 14px;
-  }
-  /* The whole recent-document row opens it. */
-  .recent li {
-    position: relative;
-    min-height: 44px;
-  }
-  .recent .title::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1706,7 +1641,7 @@ pre.code {
 }
 .segmented button:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: inset 0 0 0 2px var(--primary); /* inside: the group's overflow clips anything outside */
 }
 .view-note {
   padding: 8px 16px 12px;
@@ -1895,8 +1830,15 @@ pre.code {
 @media (max-width: 720px) {
   /* Phones: the month is a compact date picker with counts; the day's records list below it. */
   .cal-day {
+    position: relative;
     min-height: 48px;
     text-align: center;
+  }
+  /* The whole day selects it, not just its number. */
+  .cal-date::after {
+    content: "";
+    position: absolute;
+    inset: 0;
   }
   .cal-items {
     display: none;
@@ -1907,8 +1849,12 @@ pre.code {
   .cal-day[data-today="true"] .cal-count {
     color: inherit;
   }
+  /* One column at a time, the next one peeking in at the edge so the board shows it scrolls. */
+  .board {
+    scroll-padding-inline: 16px; /* snapped columns keep the board's padding */
+  }
   .board-col {
-    flex-basis: 85vw;
+    flex-basis: calc(100% - 40px);
   }
   .seg-label {
     position: absolute;
@@ -2070,6 +2016,12 @@ pre.code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.person-note {
+  display: block; /* under the name: touch screens show no title tooltips */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
 }
 .avatar {
   flex: none;
@@ -2242,4 +2194,83 @@ pre.code {
 .chip[aria-pressed="true"] {
   background: var(--primary);
   color: var(--primary-text);
+}
+
+/* ── touch: 44px targets, and 16px fields (iOS zooms the page into smaller ones on focus) ── */
+
+/* Last in the file, so it wins over the components' own sizes (the board's Move menu, Add tag). */
+@media (pointer: coarse) {
+  .btn {
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0; /* min-width replaces a flex item's content-sized minimum: never squeeze the label */
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .nav-link,
+  .nav-group > summary,
+  .section > summary,
+  .menu-item,
+  .option,
+  .tab,
+  .chip,
+  .check-field,
+  .card-head .check-field {
+    min-height: 44px;
+  }
+  .option {
+    align-items: center;
+  }
+  /* A checkbox's label takes its row's full height: the row itself does not toggle it. */
+  .check-field > label {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+  }
+  .input,
+  .select {
+    height: 44px;
+  }
+  .input,
+  .select,
+  .textarea,
+  .textarea.mono {
+    font-size: 16px;
+  }
+  .toast span {
+    padding-top: 12px;
+  }
+  .segmented button {
+    min-width: 44px;
+    min-height: 42px; /* 44px with the group's border, as tall as the buttons beside it */
+    justify-content: center;
+  }
+  .mention-list button {
+    padding-block: 12px;
+  }
+  /* Keyboard shortcut hints. */
+  .search-box .kbd,
+  .keys-hint {
+    display: none;
+  }
+  /* Bare checkboxes in table cells. */
+  .cell-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding-block: 14px;
+  }
+  /* The whole row opens its record (recent documents, My Work). */
+  .recent li {
+    position: relative;
+    min-height: 44px;
+  }
+  .recent li > a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
 }

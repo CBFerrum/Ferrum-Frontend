@@ -62,7 +62,8 @@ docker run -p 8080:8080 -e FERRUM_API_URL=http://host.docker.internal:5150 ferru
 ```
 
 For a single-binary setup the Ferrum server can also serve a build directly: point
-`FERRUM_WEB_DIR` at `dist/`.
+`FERRUM_WEB_DIR` at `dist/` and `FERRUM_WEB_INDEX` (served for every other path under `/app/`) at
+`dist/index.html`.
 
 ## Structure
 
