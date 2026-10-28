@@ -1996,3 +1996,74 @@ pre.code {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ── apps ── */
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+  padding: 12px 0;
+}
+.app-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+.app-card-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+.app-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.app-icon-letter {
+  display: inline-grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.app-name {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-name .link-btn {
+  font: inherit;
+}
+.app-meta {
+  font-size: 12.5px;
+}
+.app-summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.app-actions {
+  align-items: center;
+  margin-top: 4px;
+}
+.app-installed {
+  width: 100%;
+  font-size: 12px;
+}
+.chip[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--primary-text);
+}

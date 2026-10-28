@@ -48,6 +48,7 @@ const ICONS: Record<string, string> = {
   calendar: "M3 5h18v16H3zM16 3v4M8 3v4M3 10h18",
   timeline: "M3 6h8M7 12h10M13 18h8",
   left: "m15 18-6-6 6-6",
+  apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof ICONS | string; size?: number }) {
@@ -379,6 +380,7 @@ interface ConfirmRequest {
   title: string;
   message?: ReactNode;
   confirmLabel?: string;
+  cancelLabel?: string;
   danger?: boolean;
   resolve: (ok: boolean) => void;
 }
@@ -403,7 +405,7 @@ export function ConfirmHost() {
       title={req?.title ?? ""}
       footer={
         <>
-          <Button onClick={() => close(false)}>Cancel</Button>
+          <Button onClick={() => close(false)}>{req?.cancelLabel ?? "Cancel"}</Button>
           <Button variant={req?.danger ? "danger" : "primary"} data-autofocus onClick={() => close(true)}>
             {req?.confirmLabel ?? "Confirm"}
           </Button>
