@@ -46,7 +46,7 @@ export function layoutOf(meta: Meta): LayoutSection[] {
   });
 }
 
-/** Fields no section places; the form shows them last, under "Additional fields". */
+/** Fields no section places; the form shows them under "Additional fields" at the end of the first tab. */
 export function unplaced(layout: LayoutSection[], meta: Pick<Meta, "fields">): string[] {
   const placed = new Set(layout.flatMap((s) => s.fields));
   return meta.fields.filter((f) => !placed.has(f.name)).map((f) => f.name);
@@ -69,7 +69,7 @@ export function moveField(layout: LayoutSection[], field: string, to: string, in
   });
 }
 
-/** Takes `field` off the form layout (it then shows under "Additional fields"). */
+/** Takes `field` off the form layout (it then shows under "Additional fields", at the end of the first tab). */
 export function removeField(layout: LayoutSection[], field: string): LayoutSection[] {
   return layout.map((s) => (s.fields.includes(field) ? { ...s, fields: s.fields.filter((f) => f !== field) } : s));
 }
