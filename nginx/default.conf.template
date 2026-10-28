@@ -29,10 +29,18 @@ server {
     }
 
     # The single-page app: unknown paths under /app fall back to index.html.
+    # no-cache also covers sw.js, so browsers see a new version on their next update check.
     location /app/ {
         include /etc/nginx/snippets/security-headers.conf;
         add_header Cache-Control "no-cache" always;
         try_files $uri /app/index.html;
+    }
+
+    # nginx's MIME map may not know .webmanifest.
+    location = /app/manifest.webmanifest {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        default_type application/manifest+json;
     }
 
     # API, downloads, AI agents (MCP, OAuth and its discovery documents) and realtime go to the server.

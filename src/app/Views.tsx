@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type DragEvent } from "react";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
+import { todayIso } from "../lib/format";
 import { can, recordTitle, type Doc, type EntityMeta, type Field, type ListResponse } from "../lib/meta";
 import { addDays, bar, dayOf, dayRangeFilters, monthGrid, weekStart } from "../lib/views";
 import { Badge, Button, EmptyState, ErrorState, Icon, PageLoading, statusTone, toast } from "../ui/kit";
@@ -185,7 +186,7 @@ export function BoardView({ meta, field, ...rest }: ViewProps & { field: Field }
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Field }) {
-  const today = dayOf(new Date().toISOString())!;
+  const today = todayIso();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selected, setSelected] = useState(today);
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -310,7 +311,7 @@ export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Fiel
 const WEEKS = 6;
 
 export function TimelineView({ meta, start, end, ...rest }: ViewProps & { start: Field; end: Field }) {
-  const today = dayOf(new Date().toISOString())!;
+  const today = todayIso();
   const [from, setFrom] = useState(() => addDays(weekStart(today), -7));
   const days = WEEKS * 7;
   const to = addDays(from, days - 1);

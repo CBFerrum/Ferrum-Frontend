@@ -224,6 +224,15 @@ export function Tabs({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  // Narrow screens scroll the strip sideways: bring the selected tab into view (a link to a later tab).
+  useEffect(() => {
+    const s = strip.current;
+    const t = s?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!s || !t) return;
+    const [sr, tr] = [s.getBoundingClientRect(), t.getBoundingClientRect()];
+    if (tr.left < sr.left || tr.right > sr.right) s.scrollLeft += tr.left - sr.left - 16;
+  }, [value]);
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.findIndex((t) => t.id === value);
     const next = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
@@ -234,7 +243,7 @@ export function Tabs({
     document.getElementById(`${id}-tab-${t.id}`)?.focus();
   };
   return (
-    <div role="tablist" className="tabs" onKeyDown={onKeyDown}>
+    <div role="tablist" className="tabs" ref={strip} onKeyDown={onKeyDown}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -419,22 +428,27 @@ export function ConfirmHost() {
 
 // ── hooks ──
 
-/** Calls `onDismiss` on a click outside `ref` or on Escape. */
+/** Calls `onDismiss` on a press outside `ref` or on Escape. */
 export function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, onDismiss: () => void) {
   const cb = useRef(onDismiss);
   cb.current = onDismiss;
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    // Pointer, not mouse, events: iOS Safari sends no mousedown for a tap on a non-interactive element.
+    // A mouse dismisses on press; touch and pen on release, as a drag that scrolls ends in pointercancel instead.
+    const onPointer = (e: PointerEvent) => {
+      if ((e.pointerType === "mouse") !== (e.type === "pointerdown")) return;
       if (ref.current && !ref.current.contains(e.target as Node)) cb.current();
     };
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") cb.current();
     };
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("pointerup", onPointer);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("pointerup", onPointer);
       document.removeEventListener("keydown", onKey);
     };
   }, [open, ref]);
