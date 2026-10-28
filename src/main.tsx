@@ -14,8 +14,7 @@ import { ReportView } from "./app/ReportView";
 import { RequireAuth } from "./app/Shell";
 import { setUnauthorizedHandler } from "./lib/api";
 import { setupPwa } from "./lib/pwa";
-import "./styles.css";
-import "./app/records.css";
+import "./index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "./ui/kit";
 
 const queryClient = new QueryClient({

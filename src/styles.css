@@ -1,68 +1,6 @@
-/* Ferrum design system: tokens, layout and components. Light/dark follow prefers-color-scheme. */
+/* Ferrum's hand-written layout and component styles (the `legacy` layer, see index.css). */
 
-:root {
-  color-scheme: light dark;
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --surface-3: #e6e9ee;
-  --border: #d9dee5;
-  --border-strong: #c3cad4;
-  --text: #17191d;
-  --muted: #5b6472;
-  --faint: #8a93a0;
-  --primary: #2f5bea;
-  --primary-hover: #2449c4;
-  --primary-soft: #e7edfd;
-  --primary-text: #ffffff;
-  --danger: #c62828;
-  --danger-hover: #a61f1f;
-  --danger-soft: #fdecec;
-  --success: #1c7a43;
-  --success-soft: #e3f4ea;
-  --warning: #8a5a00;
-  --warning-soft: #fff3d6;
-  --purple: #6b3fc4;
-  --purple-soft: #f0e9fc;
-  --ring: 0 0 0 3px rgb(47 91 234 / 0.35);
-  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
-  --shadow: 0 8px 28px rgb(16 24 40 / 0.14), 0 2px 6px rgb(16 24 40 / 0.06);
-  --radius: 8px;
-  --radius-sm: 6px;
-  --sidebar-w: 248px;
-  --topbar-h: 56px;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1116;
-    --surface: #161a21;
-    --surface-2: #1d222b;
-    --surface-3: #262c37;
-    --border: #2c333f;
-    --border-strong: #3b4452;
-    --text: #e8ebf0;
-    --muted: #a0a9b8;
-    --faint: #737d8c;
-    --primary: #6d8ff5;
-    --primary-hover: #8aa5f8;
-    --primary-soft: #1e2a4d;
-    --primary-text: #0b1020;
-    --danger: #f07070;
-    --danger-hover: #f48d8d;
-    --danger-soft: #3a1b1d;
-    --success: #5ccf8b;
-    --success-soft: #16301f;
-    --warning: #f0c04d;
-    --warning-soft: #352a10;
-    --purple: #b597f2;
-    --purple-soft: #2a2140;
-    --ring: 0 0 0 3px rgb(109 143 245 / 0.45);
-    --shadow: 0 10px 30px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.4);
-  }
-}
+/* Tokens (colors, radii, fonts, shadows) are defined in index.css; this file uses them. */
 
 *,
 *::before,
@@ -118,7 +56,7 @@ a:hover {
 }
 
 .muted {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .faint {
   color: var(--faint);
@@ -257,7 +195,7 @@ a:hover {
   font-weight: 600;
 }
 .nav-link .icon {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .nav-link.active .icon {
   color: var(--primary);
@@ -376,7 +314,7 @@ main:focus {
   overflow-wrap: anywhere;
 }
 .page-sub {
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin-top: 2px;
 }
 .page-actions {
@@ -388,7 +326,7 @@ main:focus {
 }
 .crumbs {
   font-size: 12.5px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   margin-bottom: 4px;
   display: flex;
   gap: 6px;
@@ -472,7 +410,7 @@ main:focus {
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--muted);
+  color: var(--muted-foreground);
   cursor: pointer;
   position: relative;
   flex: none;
@@ -535,7 +473,7 @@ main:focus {
 .textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: var(--ring);
+  box-shadow: var(--focus-ring);
 }
 .input:disabled,
 .select:disabled,
@@ -579,7 +517,7 @@ input[type="color"] {
 .field-label {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .req {
   color: var(--danger);
@@ -655,7 +593,7 @@ input[type="color"] {
 }
 .option-empty {
   padding: 8px 9px;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 
 /* ── cards, sections ── */
@@ -717,7 +655,7 @@ input[type="color"] {
 }
 .section > summary .icon {
   transition: transform 0.15s;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .section[open] > summary .icon {
   transform: rotate(90deg);
@@ -764,7 +702,7 @@ input[type="color"] {
   background: var(--surface-2);
   font-size: 12px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--muted-foreground);
   white-space: nowrap;
 }
 .table th.num,
@@ -837,7 +775,7 @@ input[type="color"] {
   background: var(--surface-2);
   font-size: 12px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--muted-foreground);
   white-space: nowrap;
   padding: 7px 8px;
 }
@@ -880,7 +818,7 @@ input[type="color"] {
 }
 .grid-empty {
   padding: 14px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   text-align: center;
 }
 .grid-foot {
@@ -904,7 +842,7 @@ input[type="color"] {
   font-weight: 600;
   white-space: nowrap;
   background: var(--surface-3);
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .badge-blue {
   background: var(--primary-soft);
@@ -995,7 +933,7 @@ input[type="color"] {
   height: 52px;
   border-radius: 50%;
   background: var(--surface-2);
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .state-icon-error {
   background: var(--danger-soft);
@@ -1108,7 +1046,7 @@ input[type="color"] {
   }
 }
 .confirm-message {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .secret {
   display: flex;
@@ -1136,7 +1074,7 @@ input[type="color"] {
   padding: 9px 14px;
   font: inherit;
   font-weight: 550;
-  color: var(--muted);
+  color: var(--muted-foreground);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
@@ -1268,7 +1206,7 @@ input[type="color"] {
   border-radius: 4px;
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   background: var(--surface);
 }
 .search-box .kbd {
@@ -1376,7 +1314,7 @@ input[type="color"] {
   gap: 12px;
 }
 .kv dt {
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .kv dd {
   margin: 0;
@@ -1489,7 +1427,7 @@ input[type="color"] {
 }
 .summary dt {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .summary dd {
   margin: 2px 0 0;
@@ -1628,7 +1566,7 @@ pre.code {
   padding: 0 10px;
   border: 0;
   background: none;
-  color: var(--muted);
+  color: var(--muted-foreground);
   font: inherit;
   cursor: pointer;
 }
@@ -1753,7 +1691,7 @@ pre.code {
 .cal-weekday {
   padding: 6px 8px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
 }
 .cal-day {
@@ -1815,7 +1753,7 @@ pre.code {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .cal-agenda {
   display: grid;
@@ -1911,7 +1849,7 @@ pre.code {
 }
 .tl-week {
   padding-left: 6px;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .tl-bar {
   position: absolute;

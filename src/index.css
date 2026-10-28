@@ -1,0 +1,185 @@
+/* The app's stylesheet: design tokens, Tailwind (base reset, utilities) for the components in
+   src/components/ui, and the hand-written styles of screens not yet built from those components.
+   The hand-written styles sit in the `legacy` layer: above Tailwind's reset, below its utilities, so a
+   utility class always wins and legacy element rules (a, button, h2...) never leak into components. */
+
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles.css" layer(legacy);
+@import "./app/records.css" layer(legacy);
+
+/* `dark:` follows the effective theme, which lib/theme.ts always writes to <html data-theme>. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ── tokens ──
+   Each color is defined once with light-dark(): the page follows the system until lib/theme.ts sets
+   data-theme, which pins color-scheme. Brand overrides (lib/theme.ts) set --primary* inline. */
+
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#f5f6f8, #0e1116);
+  --surface: light-dark(#ffffff, #161a21);
+  --surface-2: light-dark(#f0f2f5, #1d222b);
+  --surface-3: light-dark(#e6e9ee, #262c37);
+  --border: light-dark(#d9dee5, #2c333f);
+  --border-strong: light-dark(#c3cad4, #3b4452);
+  --text: light-dark(#17191d, #e8ebf0);
+  --muted-foreground: light-dark(#5b6472, #a0a9b8);
+  --faint: light-dark(#8a93a0, #737d8c);
+  --primary: light-dark(#2f5bea, #6d8ff5);
+  --primary-hover: light-dark(#2449c4, #8aa5f8);
+  --primary-soft: light-dark(#e7edfd, #1e2a4d);
+  --primary-text: light-dark(#ffffff, #0b1020);
+  --danger: light-dark(#c62828, #f07070);
+  --danger-hover: light-dark(#a61f1f, #f48d8d);
+  --danger-soft: light-dark(#fdecec, #3a1b1d);
+  --success: light-dark(#1c7a43, #5ccf8b);
+  --success-soft: light-dark(#e3f4ea, #16301f);
+  --warning: light-dark(#8a5a00, #f0c04d);
+  --warning-soft: light-dark(#fff3d6, #352a10);
+  --purple: light-dark(#6b3fc4, #b597f2);
+  --purple-soft: light-dark(#f0e9fc, #2a2140);
+  --focus-ring: 0 0 0 3px light-dark(rgb(47 91 234 / 0.35), rgb(109 143 245 / 0.45));
+  --shadow-sm: 0 1px 2px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.3));
+  --shadow: 0 8px 28px light-dark(rgb(16 24 40 / 0.14), rgb(0 0 0 / 0.5)), 0 2px 6px light-dark(rgb(16 24 40 / 0.06), rgb(0 0 0 / 0.4));
+  --radius: 8px;
+  --radius-sm: 6px;
+  --sidebar-w: 248px;
+  --topbar-h: 56px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Chart series: distinct in hue and lightness, at least 3:1 against the card in both themes. */
+  --chart-1: light-dark(#2f5bea, #6d8ff5);
+  --chart-2: light-dark(#0f8f80, #2dd4bf);
+  --chart-3: light-dark(#b7791f, #fbbf24);
+  --chart-4: light-dark(#7c4ddb, #a78bfa);
+  --chart-5: light-dark(#d23f45, #f87171);
+  --chart-6: light-dark(#2f8a42, #4ade80);
+  --chart-7: light-dark(#d55a06, #fb923c);
+  --chart-8: light-dark(#5b6b80, #94a3b8);
+
+  /* Control height: comfortable by default, compact on request, 44px on touch screens whatever the density. */
+  --control-h: 2.25rem;
+  --cell-py: 0.5rem;
+
+  /* The same tokens under the names shadcn/ui components use. */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: var(--primary-text);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-2);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--primary);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-text);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* High contrast (the user's choice, or the system's when they left it to the system). */
+:root[data-contrast="more"] {
+  --text: light-dark(#000000, #ffffff);
+  --muted-foreground: light-dark(#2e343c, #dde2ea);
+  --faint: light-dark(#454c57, #c2c9d4);
+  --border: light-dark(#6f7886, #8d97a7);
+  --border-strong: light-dark(#454c57, #b3bcca);
+  --focus-ring: 0 0 0 3px light-dark(#1d3fb8, #b4c6fb);
+}
+
+:root[data-density="compact"] {
+  --control-h: 2rem;
+  --cell-py: 0.25rem;
+}
+@media (pointer: coarse) {
+  :root,
+  :root[data-density] {
+    --control-h: 2.75rem;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-purple: var(--purple);
+  --color-purple-soft: var(--purple-soft);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+  --spacing-control: var(--control-h);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
