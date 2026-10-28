@@ -1,4 +1,5 @@
-// Installable app: service worker registration, the browser's install prompt, online state.
+// Installable app: service worker registration, the browser's install prompt, online state and
+// whether a newer version has been deployed since this page loaded.
 
 import { useSyncExternalStore } from "react";
 
@@ -8,6 +9,7 @@ interface InstallPrompt extends Event {
 }
 
 let deferred: InstallPrompt | null = null;
+let outdated = false;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 const subscribe = (l: () => void) => {
@@ -19,6 +21,25 @@ export function setupPwa(): void {
   // Development serves modules unbundled; caching them would only get in the way.
   if (import.meta.env.PROD && "serviceWorker" in navigator) {
     void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {});
+  }
+  if (import.meta.env.PROD) {
+    // Tabs stay open for days: look for a new deployment hourly and whenever the tab is shown again.
+    const bundle = document.querySelector<HTMLScriptElement>("script[type=module][src]")?.getAttribute("src");
+    const check = () =>
+      fetch(import.meta.env.BASE_URL, { cache: "no-cache" })
+        .then(async (res) => {
+          const html = res.ok ? await res.text() : "";
+          // Another bundle, not just another page (an error or captive-portal page answers 200 too).
+          if (bundle && html.includes(`${import.meta.env.BASE_URL}assets/`) && !html.includes(bundle)) {
+            outdated = true;
+            notify();
+          }
+        })
+        .catch(() => {}); // offline or the server is down: next time
+    setInterval(check, 60 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void check();
+    });
   }
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault(); // offered from the account menu instead of the browser's banner
@@ -47,4 +68,9 @@ export function useInstall(): (() => Promise<void>) | null {
 
 export function useOnline(): boolean {
   return useSyncExternalStore(subscribe, () => navigator.onLine);
+}
+
+/** True once a newer version of the app is deployed than the one this page runs. */
+export function useOutdated(): boolean {
+  return useSyncExternalStore(subscribe, () => outdated);
 }

@@ -8,7 +8,7 @@ import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type MetaIndex, type ReportDef } from "../lib/meta";
 import { live } from "../lib/live";
-import { useInstall, useOnline } from "../lib/pwa";
+import { useInstall, useOnline, useOutdated } from "../lib/pwa";
 import {
   Alert,
   Button,
@@ -135,6 +135,7 @@ function Shell() {
           <UserMenu />
         </header>
         <OfflineBanner />
+        <UpdateBanner />
         <main id="main" tabIndex={-1}>
           {meta.error ? (
             <ErrorState error={meta.error} onRetry={() => meta.refetch()} title="Could not load the application metadata" />
@@ -159,6 +160,31 @@ function OfflineBanner() {
   return (
     <div className="offline-banner" role="status">
       <Icon name="alert" size={14} /> You are offline. Pages you open need a connection, and nothing can be saved until it is back.
+    </div>
+  );
+}
+
+function UpdateBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (!useOutdated() || dismissed) return null;
+  const reload = async () => {
+    // A form with unsaved edits objects to unloading (FormView); ask here, as iOS never shows that prompt.
+    if (!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))) {
+      const ok = await confirmDialog({ title: "Discard your changes?", message: "Reloading discards your unsaved edits.", confirmLabel: "Reload", danger: true });
+      if (!ok) return;
+      window.addEventListener("beforeunload", (e) => e.stopImmediatePropagation(), { capture: true }); // asked already
+    }
+    window.location.reload();
+  };
+  return (
+    <div className="update-banner" role="status">
+      <Icon name="refresh" size={14} /> A new version of Ferrum is available.
+      <Button size="sm" variant="primary" onClick={() => void reload()}>
+        Reload
+      </Button>
+      <button type="button" className="icon-btn icon-btn-sm" aria-label="Dismiss" onClick={() => setDismissed(true)}>
+        <Icon name="x" size={14} />
+      </button>
     </div>
   );
 }

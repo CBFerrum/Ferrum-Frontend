@@ -29,6 +29,26 @@ npm run build      # type-check + production bundle in dist/
 
 The app is built with `base: "/app/"`.
 
+## Phones and installing as an app
+
+Every screen works on phones: lists turn into cards with a Sort select, forms keep their actions in a
+bar at the bottom, child tables show one card per row (tap to edit), dialogs open as bottom sheets,
+and touch screens get 44px targets and 16px inputs (no zoom on iOS). Layouts respect the notch and
+home indicator.
+
+Ferrum is also an installable app (PWA): *Install the app* in the account menu (Chrome, Edge,
+Android) or *Share → Add to Home Screen* in Safari on iOS. The service worker (`public/sw.js`,
+registered by production builds only) caches the app shell and its content-hashed bundles, at
+install and on every online page load, so the app opens offline. API calls, file downloads, MCP,
+OAuth and WebSockets always go to the network and are never cached: they are authenticated tenant
+data, and devices may be shared. Pages load from the network first, so a deploy or a rollback shows
+on the next load; open tabs look for a new deployment hourly and whenever they are shown again, and
+offer to reload (a form with unsaved changes asks first). To try it locally:
+
+```sh
+npm run build && npx vite preview   # http://localhost:4173/app/, proxies the API like the dev server
+```
+
 ## Deploy
 
 The image (`ghcr.io/cbferrum/ferrum-frontend`) is unprivileged nginx on port 8080 serving the app at
@@ -59,6 +79,7 @@ src/
     format.ts         exact decimal formatting/comparison (money stays a string), dates
     filters.ts        list filter state ⇄ URL ⇄ API `filters` JSON
     doc.ts            create/patch bodies, merging `_calc` previews into the edited document
+    pwa.ts            service worker registration, install prompt, online state, new-deployment check
     *.test.ts         unit tests
   ui/kit.tsx          design system: Button, Field, Dialog (native <dialog>), Tabs, Badge,
                       Menu, toasts, confirm dialog, states, error boundary, icons
@@ -69,7 +90,8 @@ src/
     ListView.tsx      /e/:entity — columns, filters, search, sort, pagination, CSV export
     FormView.tsx      /e/:entity/:id — sections, live totals, save/If-Match, 409/422 handling,
                       submit/cancel/amend/delete, custom actions, workflow, print, audit trail
-    widgets.tsx       field widgets, link autocomplete, child-table grid, attachments
+    widgets.tsx       field widgets, link autocomplete, child-table grid (cards on phones), attachments
+    records.css       phone layouts of lists, forms and child tables
     ReportView.tsx    /r/:name — parameter form, tree/bold rows, totals, CSV download
     Customize.tsx     /customize/:entity — fields, custom fields, properties, rules, change sets
     Admin.tsx         /admin — users, roles matrix, packages, webhooks, automations, plugins, API keys

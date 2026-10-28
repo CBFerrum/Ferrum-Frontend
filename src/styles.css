@@ -288,15 +288,21 @@ a:hover {
   display: none; /* outranks .icon-btn's display */
 }
 
-.offline-banner {
+.offline-banner,
+.update-banner {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
   background: var(--warning-soft);
   color: var(--warning);
   font-size: 13px;
   border-bottom: 1px solid var(--border);
+}
+.update-banner {
+  flex-wrap: wrap;
+  background: var(--primary-soft);
+  color: var(--text);
 }
 
 main {
