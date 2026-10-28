@@ -19,6 +19,7 @@
 
   .toolbar .list-sort {
     display: flex;
+    flex: 1 1 auto; /* the rest of the line beside Filters, so long column names fit */
   }
 
   /* Rows become cards: the first cell is the title, the others label/value pairs (empty ones hidden). */

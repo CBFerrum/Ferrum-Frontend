@@ -224,6 +224,15 @@ export function Tabs({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const strip = useRef<HTMLDivElement>(null);
+  // Narrow screens scroll the strip sideways: bring the selected tab into view (a link to a later tab).
+  useEffect(() => {
+    const s = strip.current;
+    const t = s?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!s || !t) return;
+    const [sr, tr] = [s.getBoundingClientRect(), t.getBoundingClientRect()];
+    if (tr.left < sr.left || tr.right > sr.right) s.scrollLeft += tr.left - sr.left - 16;
+  }, [value]);
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.findIndex((t) => t.id === value);
     const next = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
@@ -234,7 +243,7 @@ export function Tabs({
     document.getElementById(`${id}-tab-${t.id}`)?.focus();
   };
   return (
-    <div role="tablist" className="tabs" onKeyDown={onKeyDown}>
+    <div role="tablist" className="tabs" ref={strip} onKeyDown={onKeyDown}>
       {tabs.map((t) => (
         <button
           key={t.id}
