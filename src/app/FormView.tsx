@@ -44,6 +44,7 @@ import {
   Tabs,
   toast,
 } from "../ui/kit";
+import { CollabPanel } from "./Collab";
 import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
 
 export function FormView() {
@@ -252,12 +253,18 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       }
     },
   };
-  const onLive = useCallback((e: LiveEvent) => {
-    const l = latest.current;
-    if (e.id !== l.id || e.actor === l.me || e.event.endsWith(".deleted")) return;
-    if (l.dirty) setConflict(true);
-    else void l.reload();
-  }, []);
+  const onLive = useCallback(
+    (e: LiveEvent) => {
+      const l = latest.current;
+      if (e.id !== l.id) return;
+      // Comments, assignments and tags refresh the discussion, not the record.
+      if (/\.(commented|assigned|tagged)$/.test(e.event)) return void qc.invalidateQueries({ queryKey: ["collab", E, l.id] });
+      if (e.actor === l.me || e.event.endsWith(".deleted")) return;
+      if (l.dirty) setConflict(true);
+      else void l.reload();
+    },
+    [qc, E],
+  );
   useLiveEntity(isNew ? undefined : E, onLive);
 
   const fail = (e: unknown) => {
@@ -719,11 +726,18 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             onChange={setTab}
             tabs={[
               { id: "details", label: "Details" },
+              { id: "discussion", label: "Discussion" },
               { id: "activity", label: "Activity" },
             ]}
           />
           <TabPanel id="doc" tab={tab}>
-            {tab === "details" ? details : <AuditPanel meta={meta} id={String(id)} />}
+            {tab === "details" ? (
+              details
+            ) : tab === "discussion" ? (
+              <CollabPanel entity={E} id={String(id)} canWrite={can(meta.permissions, "write")} />
+            ) : (
+              <AuditPanel meta={meta} id={String(id)} />
+            )}
           </TabPanel>
         </>
       )}
