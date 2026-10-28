@@ -150,6 +150,8 @@ export function FieldControl(p: ControlProps) {
         </div>
       );
     }
+    case "secret":
+      return <SecretInput {...p} />;
     case "table":
       return null; // rendered by TableGrid
     default: {
@@ -803,6 +805,60 @@ export function TableGrid({
           </div>
         )}
       </Dialog>
+    </div>
+  );
+}
+
+/** Write-only secrets: the server only says whether one is set (`true`). Text sets it, `null`
+ *  removes it, and leaving it alone keeps it. */
+function SecretInput({ field: f, value, onChange, disabled, id, invalid, describedBy }: ControlProps) {
+  const [editing, setEditing] = useState(false);
+  if (value === true && !editing) {
+    return (
+      <div className="row" style={{ flexWrap: "nowrap", minHeight: 34 }}>
+        <span className="mono faint" aria-label={`${f.label} is set`}>
+          ••••••••
+        </span>
+        <Badge tone="green">Saved</Badge>
+        {!disabled && (
+          <>
+            <button type="button" className="link-btn" onClick={() => setEditing(true)}>
+              Replace
+            </button>
+            <button type="button" className="link-btn danger" onClick={() => onChange(null)}>
+              Remove
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="row" style={{ flexWrap: "nowrap" }}>
+      <input
+        id={id}
+        className="input"
+        type="password"
+        autoComplete="new-password"
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        placeholder={value === null && !editing ? "Not set" : "Enter a new value"}
+        value={typeof value === "string" ? value : ""}
+        onChange={(e) => onChange(e.target.value === "" ? (editing ? true : null) : e.target.value)}
+      />
+      {editing && (
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            setEditing(false);
+            onChange(true);
+          }}
+        >
+          Keep current
+        </button>
+      )}
     </div>
   );
 }
