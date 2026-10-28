@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, RouterProvider, useRouteError } from "react-router";
 import { AdminPage } from "./app/Admin";
+import { AppsPage } from "./app/Apps";
 import { CustomizePage } from "./app/Customize";
 import { FormView } from "./app/FormView";
 import { Home } from "./app/Home";
@@ -48,6 +49,7 @@ const router = createBrowserRouter(
         { path: "r/:name", element: <ReportView /> },
         { path: "customize/:entity?", element: <CustomizePage /> },
         { path: "admin", element: <AdminPage /> },
+        { path: "apps", element: <AppsPage /> },
         { path: "*", element: <NotFound /> },
       ],
     },

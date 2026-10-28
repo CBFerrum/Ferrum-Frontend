@@ -218,6 +218,10 @@ function Sidebar() {
             <Icon name="chevronRight" size={12} />
             Administration
           </summary>
+          <NavLink to="/apps" className="nav-link">
+            <Icon name="apps" />
+            Apps
+          </NavLink>
           <NavLink to="/admin" className="nav-link">
             <Icon name="settings" />
             Admin
@@ -255,7 +259,8 @@ function useNavTargets(): NavTarget[] {
       if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: `New ${e.label}`, hint, to: `/e/${e.name}/new` });
     }
     for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: "Report", to: `/r/${r.name}` });
-    if (me?.user.is_admin) out.push({ label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
+    if (me?.user.is_admin)
+      out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;
   }, [meta, reports, me]);
 }
