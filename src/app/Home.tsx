@@ -46,7 +46,7 @@ export function Home() {
             {first ? `, ${first}` : ""}
           </h1>
           <p className="page-sub">
-            Pick a module or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere.
+            Pick a module<span className="keys-hint"> or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere</span>.
           </p>
         </div>
       </div>

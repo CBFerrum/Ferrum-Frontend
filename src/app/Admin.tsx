@@ -539,13 +539,15 @@ function Roles() {
                           const k = `can_${a}` as const;
                           return (
                             <td key={a}>
-                              <input
-                                type="checkbox"
-                                aria-label={`${a} ${label(p.entity)}`}
-                                checked={p[k]}
-                                disabled={saving === key}
-                                onChange={(e) => void put({ ...p, [k]: e.target.checked }, key)}
-                              />
+                              <label className="cell-check">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${a} ${label(p.entity)}`}
+                                  checked={p[k]}
+                                  disabled={saving === key}
+                                  onChange={(e) => void put({ ...p, [k]: e.target.checked }, key)}
+                                />
+                              </label>
                             </td>
                           );
                         })}
@@ -957,10 +959,27 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
           </FieldWrap>
         </div>
         <FieldWrap label="Condition (CEL, optional)" htmlFor="au-cond" hint="Runs only when true, e.g. doc.grand_total > 100000.0">
-          <input id="au-cond" className="input mono" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} />
+          <input
+            id="au-cond"
+            className="input mono"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={form.condition}
+            onChange={(e) => setForm({ ...form, condition: e.target.value })}
+          />
         </FieldWrap>
         <FieldWrap label="Actions (JSON)" htmlFor="au-actions" hint="Values are CEL expressions: quote literal text, e.g. &quot;'Approved'&quot;.">
-          <textarea id="au-actions" className="textarea mono" rows={10} spellCheck={false} value={form.actions} onChange={(e) => setForm({ ...form, actions: e.target.value })} />
+          <textarea
+            id="au-actions"
+            className="textarea mono"
+            rows={10}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            value={form.actions}
+            onChange={(e) => setForm({ ...form, actions: e.target.value })}
+          />
         </FieldWrap>
         <div className="row">
           <span className="muted">Insert template:</span>
@@ -1180,7 +1199,7 @@ function Plugins() {
                       </td>
                       <td className="nowrap">{formatDateTime(p.updated_at)}</td>
                       <td>
-                        <label className="check-field" style={{ minHeight: 0 }}>
+                        <label className="check-field cell-check" style={{ minHeight: 0 }}>
                           <input type="checkbox" checked={p.enabled} disabled={pending === p.id} onChange={() => void toggle(p)} />
                           <span className="sr-only">{p.enabled ? "Disable" : "Enable"} {p.name}</span>
                         </label>
@@ -1303,6 +1322,8 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
             id="pl-manifest"
             className="textarea mono"
             rows={12}
+            autoCapitalize="none"
+            autoCorrect="off"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}

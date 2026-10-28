@@ -415,7 +415,17 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
         <input id="ar-name" className="input mono" value={r.name} onChange={(e) => set("name", e.target.value)} required placeholder="e.g. reference_required" />
       </FieldWrap>
       <FieldWrap label="Check (CEL, must be true)" htmlFor="ar-check" required hint="Variables: doc, old, user, today, now">
-        <textarea id="ar-check" className="textarea mono" value={r.check} onChange={(e) => set("check", e.target.value)} required placeholder="e.g. doc.status != 'Closed' || doc.remarks != ''" />
+        <textarea
+          id="ar-check"
+          className="textarea mono"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={r.check}
+          onChange={(e) => set("check", e.target.value)}
+          required
+          placeholder="e.g. doc.status != 'Closed' || doc.remarks != ''"
+        />
       </FieldWrap>
       <FieldWrap label="Message" htmlFor="ar-message" required>
         <input id="ar-message" className="input" value={r.message} onChange={(e) => set("message", e.target.value)} required />
@@ -521,7 +531,15 @@ function PropertyDialog({ meta, field, onClose }: { meta: EntityMeta; field: Fie
             hint={expr ? "CEL over doc (and parent in child rows), e.g. doc.status == 'Paid'. Empty clears it." : "Empty clears it."}
           >
             {expr ? (
-              <textarea id="pd-value" className="textarea mono" value={raw} onChange={(e) => setRaw(e.target.value)} />
+              <textarea
+                id="pd-value"
+                className="textarea mono"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={raw}
+                onChange={(e) => setRaw(e.target.value)}
+              />
             ) : (
               <input
                 id="pd-value"
@@ -596,7 +614,7 @@ function ChangesCard({ entity }: { entity: string }) {
       <div className="card-head">
         <h2 id="cz-changes">Customizations</h2>
         <span className="spacer" />
-        <label className="check-field" style={{ minHeight: 0 }}>
+        <label className="check-field">
           <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
           All entities
         </label>
@@ -629,7 +647,7 @@ function ChangesCard({ entity }: { entity: string }) {
                   <td>{c.note}</td>
                   <td className="nowrap">{formatDateTime(c.created_at)}</td>
                   <td>
-                    <label className="check-field" style={{ minHeight: 0 }}>
+                    <label className="check-field cell-check" style={{ minHeight: 0 }}>
                       <input type="checkbox" checked={c.is_active} disabled={pending === c.id} onChange={() => void toggle(c)} />
                       <span className="sr-only">{c.is_active ? "Turn off" : "Turn on"} customization {c.seq}</span>
                     </label>

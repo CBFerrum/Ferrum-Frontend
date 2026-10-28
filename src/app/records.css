@@ -1,0 +1,171 @@
+/* Record screens on phones and touch devices: list cards, the form action bar, child-table cards. */
+
+/* Desktop sorts with the column headers; the Sort select is for the phone card layout. */
+.toolbar .list-sort {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* ── list ── */
+
+  /* Header: the other actions share a line, New gets the next one (DOM order, so focus order matches). */
+  .list-actions > * {
+    flex: 1;
+  }
+  .list-actions > .btn-primary {
+    flex-basis: 100%;
+  }
+
+  .toolbar .list-sort {
+    display: flex;
+  }
+
+  /* Rows become cards: the first cell is the title, the others label/value pairs (empty ones hidden). */
+  .list-table,
+  .list-table tbody,
+  .list-table tr,
+  .list-table td {
+    display: block;
+  }
+  .list-table thead {
+    display: none; /* the Sort select replaces its buttons; each cell carries its label */
+  }
+  .list-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .list-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .list-table .row-link:hover {
+    background: var(--surface-2);
+  }
+  .list-table td {
+    padding: 2px 16px;
+    border: 0;
+    overflow-wrap: anywhere;
+  }
+  .list-table td + td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    text-align: right;
+  }
+  .list-table td + td::before {
+    content: attr(data-label);
+    flex: none;
+    max-width: 45%;
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align: left;
+  }
+  .list-table td:empty {
+    display: none;
+  }
+  .list-table .cell-title {
+    font-size: 15px;
+    white-space: normal;
+  }
+  .list-table .skeleton {
+    width: 50%;
+  }
+
+  /* ── form ── */
+
+  /* Actions become a bottom bar, scrolling sideways when crowded. */
+  .doc-actions {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 10; /* under the top bar's menus, the nav drawer and its scrim */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  /* Fixed, so the scrolling bar cannot clip it: opens upward from the bar's end. */
+  .doc-actions .menu-list {
+    position: fixed;
+    top: auto;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(60px + max(8px, env(safe-area-inset-bottom)));
+  }
+  main:has(.doc-actions:not(:empty)) {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  body:has(.doc-actions:not(:empty)) .toaster {
+    bottom: calc(68px + max(8px, env(safe-area-inset-bottom))); /* above the bar, counting its inset once */
+  }
+  /* The More menu opens over the toasts' spot: they go under the bar while it is open. */
+  body:has(.doc-actions .menu-list) .toaster {
+    z-index: 5;
+  }
+
+  /* ── child tables (TableGrid renders these cards instead of the grid on phones) ── */
+
+  .grid-cards {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .grid-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .grid-card:last-child {
+    border-bottom: 0;
+  }
+  .grid-card > :not(.grid-card-idx) {
+    grid-column: 2;
+  }
+  .grid-card-idx {
+    min-width: 16px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .grid-card dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .grid-card dt {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .grid-card dd {
+    margin: 0;
+    display: -webkit-box; /* long text (descriptions) clamped to keep cards compact */
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .grid-card dd:empty::before {
+    content: "—";
+    color: var(--faint);
+  }
+  .grid-card-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .grid-card-actions .btn {
+    margin-right: auto; /* Edit apart from move/remove */
+  }
+}
+
+@media (pointer: coarse) {
+  /* Link fields: room in the input for both 44px clear/open buttons. */
+  .combo .input {
+    padding-right: 94px;
+  }
+  .grid td:has(> .combo) {
+    min-width: 200px; /* the dense grid (tablets) keeps some room for the text */
+  }
+}

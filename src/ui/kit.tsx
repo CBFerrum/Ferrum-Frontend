@@ -419,22 +419,27 @@ export function ConfirmHost() {
 
 // ── hooks ──
 
-/** Calls `onDismiss` on a click outside `ref` or on Escape. */
+/** Calls `onDismiss` on a press outside `ref` or on Escape. */
 export function useDismiss(ref: RefObject<HTMLElement | null>, open: boolean, onDismiss: () => void) {
   const cb = useRef(onDismiss);
   cb.current = onDismiss;
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    // Pointer, not mouse, events: iOS Safari sends no mousedown for a tap on a non-interactive element.
+    // A mouse dismisses on press; touch and pen on release, as a drag that scrolls ends in pointercancel instead.
+    const onPointer = (e: PointerEvent) => {
+      if ((e.pointerType === "mouse") !== (e.type === "pointerdown")) return;
       if (ref.current && !ref.current.contains(e.target as Node)) cb.current();
     };
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") cb.current();
     };
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("pointerup", onPointer);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("pointerup", onPointer);
       document.removeEventListener("keydown", onKey);
     };
   }, [open, ref]);
