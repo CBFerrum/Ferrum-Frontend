@@ -35,8 +35,8 @@ server {
         try_files $uri /app/index.html;
     }
 
-    # API, downloads, AI agents (MCP) and realtime go to the Ferrum server.
-    location ~ ^/(api|files|mcp|ws|_ping|_health)(/|$) {
+    # API, downloads, AI agents (MCP, OAuth and its discovery documents) and realtime go to the server.
+    location ~ ^/(api|files|mcp|ws|oauth|_ping|_health)(/|$)|^/\.well-known/oauth- {
         proxy_pass ${FERRUM_API_URL};
         proxy_http_version 1.1;
         proxy_set_header Host $host;

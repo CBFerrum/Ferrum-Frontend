@@ -1431,3 +1431,6 @@ pre.code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* OAuth consent */
+.oauth-scope { margin: 12px 0; padding-left: 18px; display: grid; gap: 6px; }
