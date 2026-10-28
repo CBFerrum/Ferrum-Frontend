@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { evaluate } from "./expr";
-import { humanize, shortId } from "./format";
+import { humanize, setTimeZone, shortId } from "./format";
 
 export type FieldType =
   | "data" | "text" | "markdown" | "code" | "int" | "decimal" | "currency" | "percent" | "date" | "datetime"
@@ -135,6 +135,8 @@ export interface Me {
   default_company: string | null;
   scopes: Record<string, unknown>;
   fiscal_year_start_month: number;
+  /** IANA name of the workspace's time zone; dates such as `today` follow it. */
+  timezone?: string;
   packages: string[];
 }
 
@@ -183,7 +185,15 @@ export const useEntityMeta = (name: string | undefined) =>
   });
 
 export const useMe = () =>
-  useQuery({ queryKey: ["me"], queryFn: ({ signal }) => api.get<Me>("/api/auth/me", undefined, signal), staleTime: LONG });
+  useQuery({
+    queryKey: ["me"],
+    queryFn: async ({ signal }) => {
+      const me = await api.get<Me>("/api/auth/me", undefined, signal);
+      setTimeZone(me.timezone); // `today` in defaults and conditions follows the workspace, like the server
+      return me;
+    },
+    staleTime: LONG,
+  });
 
 export const useReports = () =>
   useQuery({

@@ -12,8 +12,9 @@ self.addEventListener("install", (e) => {
       .then(async (res) => {
         if (!res.ok) return;
         const html = await res.clone().text();
-        await keepShell(res);
+        // Bundles first: if they fail, the previous shell and its bundles stay, still opening offline.
         await (await caches.open(CACHE)).addAll(html.match(BUNDLES) ?? []);
+        await keepShell(res);
       })
       .catch(() => {}), // the next online navigation fills the cache instead
   );

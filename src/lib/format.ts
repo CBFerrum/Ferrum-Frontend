@@ -147,7 +147,22 @@ export function shortId(id: unknown): string {
   return typeof id === "string" ? id.slice(-8) : "";
 }
 
-/** Today's date (UTC, like the server's `today`) as `YYYY-MM-DD`. */
+let timeZone: string | undefined; // the workspace's, once /api/auth/me is known; until then the browser's
+
+/** Makes `todayIso` follow the workspace's time zone, as the server's `today` does. */
+export function setTimeZone(zone: string | undefined): void {
+  timeZone = zone;
+}
+
+/** Today's date in the workspace's time zone as `YYYY-MM-DD`. */
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat("en", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    return `${part("year")}-${part("month")}-${part("day")}`;
+  } catch {
+    // A zone this browser does not know: its own calendar day.
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
 }

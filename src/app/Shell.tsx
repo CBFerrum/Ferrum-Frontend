@@ -164,6 +164,11 @@ function OfflineBanner() {
   );
 }
 
+// Once the user agreed to discard unsaved edits, the forms' beforeunload guards stay quiet. Added at startup,
+// before any guard, so it runs first even in engines that call a target's listeners in the order added.
+let discarding = false;
+window.addEventListener("beforeunload", (e) => discarding && e.stopImmediatePropagation(), { capture: true });
+
 function UpdateBanner() {
   const [dismissed, setDismissed] = useState(false);
   if (!useOutdated() || dismissed) return null;
@@ -172,7 +177,7 @@ function UpdateBanner() {
     if (!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))) {
       const ok = await confirmDialog({ title: "Discard your changes?", message: "Reloading discards your unsaved edits.", confirmLabel: "Reload", danger: true });
       if (!ok) return;
-      window.addEventListener("beforeunload", (e) => e.stopImmediatePropagation(), { capture: true }); // asked already
+      discarding = true; // asked already
     }
     window.location.reload();
   };

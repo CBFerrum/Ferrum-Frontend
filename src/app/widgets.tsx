@@ -28,7 +28,7 @@ import {
   type Field,
   type ListResponse,
 } from "../lib/meta";
-import { Badge, Button, Dialog, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
 
 export interface ControlProps {
   field: Field;
@@ -577,6 +577,13 @@ export function CellValue({
       ) : (
         <span className="sr-only">No</span>
       );
+    case "secret": // write-only: `true` when saved, or a new value typed in this form; never shown
+      return (
+        <>
+          <span aria-hidden="true">••••••••</span>
+          <span className="sr-only">Set</span>
+        </>
+      );
     default:
       return <>{formatValue(field as Field, value, { currencyPrecision })}</>;
   }
@@ -928,12 +935,21 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         <Badge tone="green">Saved</Badge>
         {!disabled && (
           <>
-            <button type="button" className="link-btn" onClick={() => setEditing(true)}>
+            <Button size="sm" variant="ghost" aria-label={`Replace ${f.label}`} onClick={() => setEditing(true)}>
               Replace
-            </button>
-            <button type="button" className="link-btn danger" onClick={() => onChange(null)}>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove ${f.label}`}
+              onClick={async () => {
+                // Ask: once saved, a removed secret is gone, and on a phone a tap meant for Replace can land here.
+                const ok = await confirmDialog({ title: `Remove ${f.label}?`, message: "It is deleted when you save.", confirmLabel: "Remove", danger: true });
+                if (ok) onChange(null);
+              }}
+            >
               Remove
-            </button>
+            </Button>
           </>
         )}
       </div>
@@ -946,6 +962,7 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         className="input"
         type="password"
         autoComplete="new-password"
+        autoFocus={editing}
         disabled={disabled}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
@@ -954,16 +971,16 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         onChange={(e) => onChange(e.target.value === "" ? (editing ? true : null) : e.target.value)}
       />
       {editing && (
-        <button
-          type="button"
-          className="link-btn"
+        <Button
+          size="sm"
+          variant="ghost"
           onClick={() => {
             setEditing(false);
             onChange(true);
           }}
         >
           Keep current
-        </button>
+        </Button>
       )}
     </div>
   );

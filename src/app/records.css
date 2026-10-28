@@ -8,9 +8,10 @@
 @media (max-width: 720px) {
   /* ── list ── */
 
-  /* Header: the other actions share a line, New gets the next one (DOM order, so focus order matches). */
-  .list-actions > * {
-    flex: 1;
+  /* Header: the buttons widen to fill their line and wrap rather than squeeze their labels (the view switcher
+     keeps its size); New gets a line of its own (DOM order, so focus order matches). */
+  .list-actions > .btn {
+    flex: 1 0 auto;
   }
   .list-actions > .btn-primary {
     flex-basis: 100%;
