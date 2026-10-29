@@ -3,10 +3,11 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { useMe } from "../lib/meta";
+import { useContributions } from "../lib/screens";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
 
 export interface AppSummary {
@@ -21,6 +22,22 @@ export interface AppSummary {
   icon_url?: string | null;
   source?: string;
   private?: boolean;
+  /** The app this one is an add-on of. */
+  parent?: string | null;
+}
+
+/** Apps in order with their add-ons under them (`parent`), and how deep each sits. */
+export function byParent<T extends { id: string; parent?: string | null }>(apps: T[]): { app: T; depth: number }[] {
+  const ids = new Set(apps.map((a) => a.id));
+  const out: { app: T; depth: number }[] = [];
+  const walk = (parent: string | null, depth: number) => {
+    for (const a of apps.filter((x) => (x.parent && ids.has(x.parent) ? x.parent : null) === parent)) {
+      out.push({ app: a, depth });
+      if (depth < 4) walk(a.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
 }
 interface Installed extends AppSummary {
   enabled: boolean;
@@ -99,9 +116,9 @@ function AppIcon({ app }: { app: AppSummary }) {
   );
 }
 
-function AppCard({ app, children, onOpen }: { app: AppSummary; children?: ReactNode; onOpen?: () => void }) {
+function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; children?: ReactNode; onOpen?: () => void; addonOf?: string }) {
   return (
-    <article className="app-card">
+    <article className={addonOf ? "app-card app-addon" : "app-card"}>
       <div className="app-card-head">
         <AppIcon app={app} />
         <div style={{ minWidth: 0 }}>
@@ -126,6 +143,7 @@ function AppCard({ app, children, onOpen }: { app: AppSummary; children?: ReactN
           </div>
         </div>
       </div>
+      {addonOf && <div className="faint app-meta">Add-on of {addonOf}</div>}
       <p className="muted app-summary">{app.summary}</p>
       <div className="chips">
         <Badge tone={app.runtime === "native" ? "purple" : app.runtime === "wasm" ? "green" : "neutral"}>{RUNTIME_LABEL[app.runtime]}</Badge>
@@ -189,7 +207,9 @@ export function AppsPage() {
 function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string; upgrade?: boolean }) => void }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
-  const refresh = () => Promise.all([qc.invalidateQueries({ queryKey: ["apps"] }), qc.invalidateQueries({ queryKey: ["meta"] })]);
+  const settings = new Set((useContributions("ui.settings").data ?? []).map((c) => c.app));
+  const refresh = () =>
+    Promise.all([qc.invalidateQueries({ queryKey: ["apps"] }), qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["contributions"] })]);
   const toggle = async (a: Installed) => {
     setBusy(a.id);
     try {
@@ -237,12 +257,17 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   }
   return (
     <div className="app-grid">
-      {data.installed.map((a) => (
-        <AppCard key={a.id} app={a}>
+      {byParent(data.installed).map(({ app: a, depth }) => (
+        <AppCard key={a.id} app={a} addonOf={depth ? (data.installed.find((p) => p.id === a.parent)?.name ?? a.parent ?? undefined) : undefined}>
           <label className="check-field" style={{ minHeight: 0 }}>
             <input type="checkbox" checked={a.enabled} disabled={busy === a.id} onChange={() => void toggle(a)} /> Enabled
           </label>
           <span className="spacer" />
+          {a.enabled && settings.has(a.id) && (
+            <Link className="btn btn-default btn-sm" to={`/apps/${a.id}/settings`}>
+              Settings
+            </Link>
+          )}
           {a.update && (
             <Button size="sm" variant="primary" icon="upload" onClick={() => onInstall({ id: a.id, version: a.update!.version, upgrade: true })}>
               Update to {a.update.version}
