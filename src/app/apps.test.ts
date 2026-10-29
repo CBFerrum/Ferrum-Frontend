@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { permissionLines, sectionLabel } from "./Apps";
+import { byParent, permissionLines, sectionLabel } from "./Apps";
+
+describe("add-ons", () => {
+  it("follow the app they extend, at any depth", () => {
+    const apps = [
+      { id: "editor-x", parent: "office" },
+      { id: "crm", parent: null },
+      { id: "office" },
+      { id: "x-plugin", parent: "editor-x" },
+      { id: "orphan", parent: "not-installed" },
+    ];
+    expect(byParent(apps).map(({ app, depth }) => `${app.id}:${depth}`)).toEqual(["crm:0", "office:0", "editor-x:1", "x-plugin:2", "orphan:0"]);
+  });
+});
 
 describe("permission summaries", () => {
   it("labels sections", () => {

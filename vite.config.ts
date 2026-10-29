@@ -2,7 +2,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
-const backend = "http://127.0.0.1:5150";
+// FERRUM_API points the dev server at another backend (a second checkout on another port).
+const backend = process.env.FERRUM_API ?? "http://127.0.0.1:5150";
 
 // No React plugin: esbuild compiles TSX natively (edits reload the page instead of Fast Refresh).
 export default defineConfig({

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, RouterProvider, useRouteError } from "react-router";
 import { AdminPage } from "./app/Admin";
 import { AppsPage } from "./app/Apps";
+import { AppSettingsPage, ScreenPage } from "./app/Screen";
 import { CustomizePage } from "./app/Customize";
 import { FormView } from "./app/FormView";
 import { Home } from "./app/Home";
@@ -66,6 +67,8 @@ const router = createBrowserRouter(
         ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
         { path: "apps", element: <AppsPage /> },
+        { path: "apps/:app/settings", element: <AppSettingsPage /> },
+        { path: "x/:app/:page", element: <ScreenPage /> },
         { path: "*", element: <NotFound /> },
       ],
     },

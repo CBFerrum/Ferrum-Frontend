@@ -7,6 +7,7 @@ import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "r
 import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
+import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
 import {
@@ -238,6 +239,7 @@ function Sidebar() {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
   const me = useMe().data;
+  const pages = useContributions("ui.page").data ?? [];
   const groups = useMemo(() => {
     if (!meta) return [];
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
@@ -268,6 +270,20 @@ function Sidebar() {
           ))}
         </details>
       ))}
+      {pages.length > 0 && (
+        <details className="nav-group" open>
+          <summary>
+            <Icon name="chevronRight" size={12} />
+            Add-ons
+          </summary>
+          {pages.map((p) => (
+            <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
+              <Icon name={p.icon ?? "apps"} />
+              {p.title}
+            </NavLink>
+          ))}
+        </details>
+      )}
       {me?.user.is_admin && (
         <details className="nav-group" open>
           <summary>

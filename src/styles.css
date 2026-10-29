@@ -2265,3 +2265,30 @@ pre.code {
 main:has(> [data-fullbleed]) {
   padding: 0;
 }
+
+/* ── apps' screens (app/Screen.tsx) ── */
+.screen-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+.screen-page,
+.screen-frame.fill {
+  height: calc(100dvh - 120px);
+  min-height: 420px;
+}
+.screen-widgets {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 760px) {
+  .screen-widgets > * {
+    grid-column: span 12 !important;
+  }
+}
+.app-addon {
+  border-left: 3px solid var(--primary-soft);
+}
