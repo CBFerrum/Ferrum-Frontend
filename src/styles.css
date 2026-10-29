@@ -1496,6 +1496,20 @@ input[type="color"] {
   gap: 14px;
 }
 
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+.login-or::before,
+.login-or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
 /* two-factor sign-in: the QR code stays light (scanners want dark on light) */
 .qr {
   align-self: center;

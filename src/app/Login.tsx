@@ -1,11 +1,28 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { api, errorMessage, setSession } from "../lib/api";
-import { Alert, Button, Field } from "../ui/kit";
+import { api, errorMessage, request, setSession } from "../lib/api";
+import { Alert, Button, Field, useDebounced } from "../ui/kit";
+import { ssoRedirectUri } from "../lib/sso";
 import { CodeInput, TwoFactorSetup } from "./TwoFactor";
 
 const TENANT_KEY = "ferrum.tenant";
+/** A single sign-on in progress in this tab: the secret that binds it to this browser. */
+const SSO_KEY = "ferrum.sso";
+
+interface SsoOption {
+  id: string;
+  label: string;
+}
+interface SsoPending {
+  binding: string;
+  tenant: string;
+  from?: string;
+}
+
+function randomToken(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /** What the password step answers: a session, a ticket for the second step, or a session that may
  *  only set up two-factor sign-in. */
@@ -37,18 +54,82 @@ export function Login() {
   const [setupToken, setSetupToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [recovery, setRecovery] = useState(false);
+  const [providers, setProviders] = useState<SsoOption[]>([]);
   const from = (location.state as { from?: string } | null)?.from;
+  const workspace = useDebounced(tenant.trim().toLowerCase(), 300);
 
-  const finish = (token: string) => {
-    const t = tenant.trim();
-    setSession({ token, tenant: t, email: email.trim() });
+  const finish = (token: string, t = tenant.trim(), who = email.trim(), back = from) => {
+    setSession({ token, tenant: t, email: who });
     try {
       localStorage.setItem(TENANT_KEY, t);
     } catch {
       // convenience only
     }
     qc.clear();
-    navigate(from && !from.startsWith("/login") ? from : "/", { replace: true });
+    navigate(back && !back.startsWith("/login") ? back : "/", { replace: true });
+  };
+
+  // The workspace's single sign-on buttons.
+  useEffect(() => {
+    if (!workspace) return setProviders([]);
+    let live = true;
+    api
+      .get<{ providers: SsoOption[] }>("/api/auth/sso", { tenant: workspace })
+      .then((r) => live && setProviders(r.providers))
+      .catch(() => live && setProviders([]));
+    return () => {
+      live = false;
+    };
+  }, [workspace]);
+
+  // Back from the provider: finish the sign-in this tab started.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const [code, state, refused] = [q.get("code"), q.get("state"), q.get("error")];
+    if (!code && !refused) return;
+    navigate({ pathname: location.pathname, search: "" }, { replace: true, state: location.state });
+    let pending: SsoPending | null = null;
+    try {
+      pending = JSON.parse(sessionStorage.getItem(SSO_KEY) ?? "null") as SsoPending | null;
+      sessionStorage.removeItem(SSO_KEY);
+    } catch {
+      // no storage: the sign-in cannot be finished here
+    }
+    if (refused) return setError(q.get("error_description") || "The sign-in was cancelled or refused at the provider.");
+    if (!pending || !state || !code) return setError("That sign-in was started in another tab or browser; start it again here.");
+    const p = pending;
+    setTenant(p.tenant);
+    setBusy(true);
+    (async () => {
+      try {
+        const res = await api.post<{ token: string }>("/api/auth/sso/finish", { state, code, binding: p.binding }, { noAuthRedirect: true });
+        const me = await request<{ user: { email: string } }>("/api/auth/me", { token: res.token, noAuthRedirect: true });
+        finish(res.token, p.tenant, me.user.email, p.from);
+      } catch (err) {
+        setError(errorMessage(err, false));
+        setBusy(false);
+      }
+    })();
+    // Runs once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startSso = async (provider: SsoOption) => {
+    setBusy(true);
+    setError(null);
+    const pending: SsoPending = { binding: randomToken(), tenant: tenant.trim(), from };
+    try {
+      sessionStorage.setItem(SSO_KEY, JSON.stringify(pending));
+      const res = await api.post<{ url: string }>(
+        "/api/auth/sso/start",
+        { tenant: pending.tenant, provider: provider.id, redirect_uri: ssoRedirectUri(), binding: pending.binding },
+        { noAuthRedirect: true },
+      );
+      window.location.assign(res.url);
+    } catch (err) {
+      setError(errorMessage(err, false));
+      setBusy(false);
+    }
   };
   const restart = (message: string | null) => {
     setTicket(null);
@@ -209,6 +290,18 @@ export function Login() {
           <Button type="submit" variant="primary" loading={busy}>
             Sign in
           </Button>
+          {providers.length > 0 && (
+            <>
+              <div className="login-or" role="separator">
+                or
+              </div>
+              {providers.map((p) => (
+                <Button key={p.id} disabled={busy} onClick={() => void startSso(p)}>
+                  Continue with {p.label}
+                </Button>
+              ))}
+            </>
+          )}
         </div>
       </form>
     </div>

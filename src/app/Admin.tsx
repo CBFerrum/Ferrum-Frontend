@@ -1,10 +1,11 @@
-// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, workspace settings.
+// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, personal data, workspace settings.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
+import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
@@ -31,6 +32,7 @@ const TABS = [
   { id: "automations", label: "Automations" },
   { id: "plugins", label: "Plugins" },
   { id: "keys", label: "API keys" },
+  { id: "sso", label: "Single sign-on" },
   { id: "privacy", label: "Personal data" },
   { id: "workspace", label: "Workspace" },
 ];
@@ -61,6 +63,7 @@ export function AdminPage() {
         {tab === "automations" && <Automations />}
         {tab === "plugins" && <Plugins />}
         {tab === "keys" && <ApiKeys />}
+        {tab === "sso" && <SingleSignOn />}
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
       </TabPanel>
@@ -238,13 +241,14 @@ interface WorkspaceSettings {
   timezone: string;
   fiscal_year_start_month: number;
   require_two_factor: boolean;
+  require_sso: boolean;
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" }));
 
 function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
-  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}|${s.require_two_factor}`} initial={s} />}</Loaded>;
+  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>;
 }
 
 function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
@@ -317,12 +321,25 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
           Require it of everyone
         </label>
       </FieldWrap>
+      <FieldWrap
+        label="Single sign-on"
+        htmlFor="ws-sso"
+        error={fieldError("require_sso")}
+        hint="Everyone but administrators signs in through a single sign-on provider; administrators keep their passwords for when the provider is down."
+      >
+        <label className="row" style={{ gap: 8 }}>
+          <input id="ws-sso" type="checkbox" checked={form.require_sso} onChange={(e) => setForm({ ...form, require_sso: e.target.checked })} />
+          Require it
+        </label>
+      </FieldWrap>
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <Button
           type="submit"
           variant="primary"
           loading={busy}
-          disabled={!fyChanged && form.timezone === initial.timezone && form.require_two_factor === initial.require_two_factor}
+          disabled={
+            !fyChanged && form.timezone === initial.timezone && form.require_two_factor === initial.require_two_factor && form.require_sso === initial.require_sso
+          }
         >
           Save
         </Button>
@@ -377,6 +394,8 @@ interface User {
   is_admin: boolean;
   locked: boolean;
   two_factor: boolean;
+  /** Linked to an identity at a single sign-on provider. */
+  sso: boolean;
   last_login_at?: string | null;
   roles: string[];
 }
@@ -458,6 +477,14 @@ function Users() {
     });
     if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/two-factor/reset`), "Two-factor sign-in reset"))) void refresh();
   };
+  const unlinkSso = async (u: User) => {
+    const ok = await confirmDialog({
+      title: `Unlink ${u.full_name} from single sign-on?`,
+      message: "For an identity that changed at the provider, or an account handed to someone else: their next single sign-on links the identity it brings.",
+      confirmLabel: "Unlink",
+    });
+    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/sso/unlink`), "Unlinked"))) void refresh();
+  };
 
   return (
     <section className="card">
@@ -502,6 +529,7 @@ function Users() {
                         <Badge tone={u.is_active ? "green" : "red"}>{u.is_active ? "active" : "inactive"}</Badge>
                         {u.locked && <Badge tone="red">locked</Badge>}
                         {u.two_factor && <Badge tone="blue">2FA</Badge>}
+                        {u.sso && <Badge tone="purple">SSO</Badge>}
                       </div>
                     </td>
                     <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">never</span>}</td>
@@ -516,6 +544,11 @@ function Users() {
                         {u.two_factor && (
                           <Button size="sm" onClick={() => void resetTwoFactor(u)}>
                             Reset 2FA
+                          </Button>
+                        )}
+                        {u.sso && (
+                          <Button size="sm" onClick={() => void unlinkSso(u)}>
+                            Unlink SSO
                           </Button>
                         )}
                         <Button size="sm" variant={u.is_active ? "danger" : "default"} disabled={u.id === me?.user.id} onClick={() => void toggleActive(u)}>
@@ -1168,6 +1201,258 @@ function Webhooks() {
         onClose={() => setSecret(null)}
       />
     </section>
+  );
+}
+
+// ── single sign-on ──
+
+interface SsoProvider {
+  id: string;
+  label: string;
+  issuer: string;
+  client_id: string;
+  has_secret: boolean;
+  domains: string[];
+  auto_create: boolean;
+  default_roles: string[];
+  enabled: boolean;
+  linked_users: number;
+}
+
+function SingleSignOn() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "sso"], queryFn: ({ signal }) => api.get<{ providers: SsoProvider[] }>("/api/admin/sso", undefined, signal) });
+  const roles = useRoles();
+  const [editing, setEditing] = useState<SsoProvider | "new" | null>(null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "sso"] });
+  const remove = async (p: SsoProvider) => {
+    const ok = await confirmDialog({
+      title: `Remove ${p.label}?`,
+      message: `Its button leaves the sign-in page and ${p.linked_users} linked account${p.linked_users === 1 ? " is" : "s are"} unlinked. The accounts stay.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (ok && (await attempt(() => api.del(`/api/admin/sso/${p.id}`), "Provider removed"))) void refresh();
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(ssoRedirectUri());
+      toast("Redirect URI copied");
+    } catch {
+      toast("Copy the address manually", "error");
+    }
+  };
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Single sign-on</h2>
+        <span className="spacer" />
+        <Button variant="primary" icon="plus" onClick={() => setEditing("new")}>
+          New provider
+        </Button>
+      </div>
+      <div className="card-pad stack">
+        <p className="muted">
+          People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a
+          web application with this redirect URI, then add the provider here with the client ID and secret it gives you.
+        </p>
+        <div className="row" style={{ flexWrap: "nowrap" }}>
+          <input className="input mono" readOnly value={ssoRedirectUri()} aria-label="Redirect URI" onFocus={(e) => e.currentTarget.select()} />
+          <Button icon="copy" onClick={() => void copy()}>
+            Copy
+          </Button>
+        </div>
+      </div>
+      <Loaded q={q}>
+        {(data) =>
+          !data.providers.length ? (
+            <EmptyState title="No providers yet" icon="user" />
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Issuer</th>
+                    <th scope="col">Email domains</th>
+                    <th scope="col">New people</th>
+                    <th scope="col" className="num">
+                      Linked
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.providers.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        {p.label} {!p.enabled && <Badge tone="red">disabled</Badge>}
+                      </td>
+                      <td className="mono" style={{ overflowWrap: "anywhere" }}>
+                        {p.issuer}
+                      </td>
+                      <td>
+                        <div className="chips">{p.domains.length ? p.domains.map((d) => <Badge key={d}>{d}</Badge>) : <span className="faint">any it verifies</span>}</div>
+                      </td>
+                      <td>
+                        {p.auto_create ? (
+                          <span>get an account{p.default_roles.length ? ` (${p.default_roles.join(", ")})` : ""}</span>
+                        ) : (
+                          <span className="faint">need an account first</span>
+                        )}
+                      </td>
+                      <td className="num">{p.linked_users}</td>
+                      <td>
+                        <div className="row">
+                          <Button size="sm" onClick={() => setEditing(p)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(p)} aria-label={`Remove ${p.label}`} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+      </Loaded>
+      {editing && (
+        <SsoProviderDialog
+          provider={editing === "new" ? null : editing}
+          roles={(roles.data?.roles ?? []).map((r) => r.name)}
+          onClose={() => setEditing(null)}
+          onDone={() => {
+            setEditing(null);
+            void refresh();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function SsoProviderDialog({ provider, roles, onClose, onDone }: { provider: SsoProvider | null; roles: string[]; onClose: () => void; onDone: () => void }) {
+  const [form, setForm] = useState({
+    label: provider?.label ?? "",
+    issuer: provider?.issuer ?? "",
+    client_id: provider?.client_id ?? "",
+    secret: "",
+    noSecret: provider ? !provider.has_secret : false,
+    domains: (provider?.domains ?? []).join(", "),
+    auto_create: provider?.auto_create ?? false,
+    default_roles: provider?.default_roles ?? [],
+    enabled: provider?.enabled ?? true,
+  });
+  const [errors, setErrors] = useState<FieldError[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fieldError = (name: string) => errors.find((f) => f.field === name)?.message;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErrors([]);
+    setError(null);
+    const body = {
+      label: form.label.trim(),
+      issuer: form.issuer.trim(),
+      client_id: form.client_id.trim(),
+      // Left empty, an existing secret stays as it is.
+      client_secret: form.noSecret ? "" : form.secret ? form.secret : undefined,
+      domains: form.domains.split(/[\s,]+/).filter(Boolean),
+      auto_create: form.auto_create,
+      default_roles: form.auto_create ? form.default_roles : [],
+      enabled: form.enabled,
+    };
+    try {
+      if (provider) await api.put(`/api/admin/sso/${provider.id}`, body);
+      else await api.post("/api/admin/sso", body);
+      toast(provider ? "Provider saved" : "Provider added");
+      onDone();
+    } catch (err) {
+      if (err instanceof ApiError && err.fields.length) setErrors(err.fields);
+      else setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open onClose={onClose} title={provider ? `Edit ${provider.label}` : "New single sign-on provider"} wide>
+      <form className="stack" onSubmit={submit}>
+        {error && <Alert tone="error">{error}</Alert>}
+        <FieldWrap label="Name" htmlFor="sso-label" required error={fieldError("label")} hint="On the sign-in button: “Continue with …”.">
+          <input id="sso-label" className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} maxLength={60} required />
+        </FieldWrap>
+        <FieldWrap label="Issuer URL" htmlFor="sso-issuer" required error={fieldError("issuer")} hint="Its discovery document is read from here, e.g. https://login.microsoftonline.com/<tenant>/v2.0 or https://acme.okta.com.">
+          <input
+            id="sso-issuer"
+            className="input mono"
+            type="url"
+            value={form.issuer}
+            onChange={(e) => setForm({ ...form, issuer: e.target.value })}
+            placeholder="https://"
+            required
+          />
+        </FieldWrap>
+        <div className="form-grid">
+          <FieldWrap label="Client ID" htmlFor="sso-client" required error={fieldError("client_id")}>
+            <input id="sso-client" className="input mono" value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} required />
+          </FieldWrap>
+          <FieldWrap
+            label="Client secret"
+            htmlFor="sso-secret"
+            error={fieldError("client_secret")}
+            hint={provider?.has_secret && !form.noSecret ? "Stored; leave empty to keep it." : "Sealed on the server and never shown again."}
+          >
+            <input
+              id="sso-secret"
+              className="input mono"
+              type="password"
+              autoComplete="off"
+              value={form.secret}
+              disabled={form.noSecret}
+              onChange={(e) => setForm({ ...form, secret: e.target.value })}
+            />
+          </FieldWrap>
+        </div>
+        <label className="check-field">
+          <input type="checkbox" checked={form.noSecret} onChange={(e) => setForm({ ...form, noSecret: e.target.checked, secret: "" })} />
+          No client secret (a public client: PKCE only)
+        </label>
+        <FieldWrap
+          label="Email domains"
+          htmlFor="sso-domains"
+          error={fieldError("domains")}
+          hint="Separated by commas. Only these addresses sign in through it; leave empty to accept any address the provider has verified. Providers that do not say whether they verified an address (Microsoft Entra ID) need the domains listed."
+        >
+          <input id="sso-domains" className="input mono" value={form.domains} onChange={(e) => setForm({ ...form, domains: e.target.value })} placeholder="example.com" />
+        </FieldWrap>
+        <label className="check-field">
+          <input type="checkbox" checked={form.auto_create} onChange={(e) => setForm({ ...form, auto_create: e.target.checked })} />
+          Create an account for someone signing in who has none
+        </label>
+        {form.auto_create && (
+          <div>
+            <RoleChecks roles={roles} value={form.default_roles} onChange={(v) => setForm({ ...form, default_roles: v })} />
+            {fieldError("default_roles") && <p className="field-error">{fieldError("default_roles")}</p>}
+          </div>
+        )}
+        <label className="check-field">
+          <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
+          Enabled (its button shows on the sign-in page)
+        </label>
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" variant="primary" loading={busy}>
+            {provider ? "Save" : "Add provider"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
