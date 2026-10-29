@@ -4,32 +4,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
-import { api, ApiError, docPath, errorMessage, newKey, openPrint, type FieldError } from "../lib/api";
+import { api, ApiError, docPath, download, errorMessage, newKey, openPrint, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
 import { formDesignerLink } from "../lib/formLayout";
-import {
-  can,
-  DOCSTATUS_LABEL,
-  fieldLabel,
-  fieldState,
-  recordTitle,
-  SYSTEM_FIELD_LABELS,
-  useCurrencyPrecision,
-  useEntityMeta,
-  useMe,
-  userScope,
-  type ActionDef,
-  type Doc,
-  type EntityMeta,
-  type Field,
-  type FieldState,
-  type Me,
-  type PermKey,
-} from "../lib/meta";
+import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
 import {
   Alert,
   Badge,
@@ -125,6 +107,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const [sp] = useSearchParams();
   const isNew = !initial;
   const E = meta.name;
+  const pdf = useServerInfo().data?.pdf === true;
   const user = useMemo(() => userScope(me), [me]);
   const [base, setBase] = useState<Doc | null>(initial);
   const [doc, setDoc] = useState<Doc>(() => initial ?? prefill(meta, sp, user));
@@ -666,6 +649,11 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           {!isNew && (
             <Button icon="printer" onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))}>
               Print
+            </Button>
+          )}
+          {!isNew && pdf && (
+            <Button icon="download" onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))}>
+              PDF
             </Button>
           )}
           {(canDelete || me.user.is_admin) && (

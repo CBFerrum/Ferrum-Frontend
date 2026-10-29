@@ -16,6 +16,11 @@ export interface LiveNotification {
   entity?: string | null;
   record_id?: string | null;
 }
+/** A package's own message (chat, calendar...): ids only, refetch through its API. */
+export interface LivePush {
+  kind: string;
+  data: Record<string, unknown>;
+}
 
 type Handler<T> = (v: T) => void;
 
@@ -24,6 +29,7 @@ class LiveClient {
   private counts = new Map<string, number>();
   private events = new Set<Handler<LiveEvent>>();
   private notifications = new Set<Handler<LiveNotification>>();
+  private pushes = new Set<Handler<LivePush>>();
   private resyncs = new Set<() => void>();
   private retry = 0;
   private everConnected = false;
@@ -66,6 +72,9 @@ class LiveClient {
         this.everConnected = true;
       } else if (msg.notification) {
         this.notifications.forEach((h) => h(msg.notification as LiveNotification));
+      } else if (msg.push && typeof (msg.push as LivePush).kind === "string") {
+        const p = msg.push as LivePush;
+        this.pushes.forEach((h) => h({ kind: p.kind, data: (p.data ?? {}) as Record<string, unknown> }));
       } else if (typeof msg.entity === "string" && typeof msg.id === "string") {
         this.events.forEach((h) => h(msg as unknown as LiveEvent));
       }
@@ -107,6 +116,11 @@ class LiveClient {
     return () => void this.notifications.delete(h);
   }
 
+  onPush(h: Handler<LivePush>): () => void {
+    this.pushes.add(h);
+    return () => void this.pushes.delete(h);
+  }
+
   onResync(h: () => void): () => void {
     this.resyncs.add(h);
     return () => void this.resyncs.delete(h);
@@ -128,4 +142,18 @@ export function useLiveEntity(entity: string | undefined, handler: Handler<LiveE
       unsubscribe();
     };
   }, [entity, handler]);
+}
+
+/** Calls `handler` for a package's pushes of `kind` (and after a reconnect, with no data, to refetch). */
+export function useLivePush(kind: string, handler: (data: Record<string, unknown> | null) => void) {
+  useEffect(() => {
+    const off = live.onPush((p) => {
+      if (p.kind === kind) handler(p.data);
+    });
+    const offResync = live.onResync(() => handler(null));
+    return () => {
+      off();
+      offResync();
+    };
+  }, [kind, handler]);
 }

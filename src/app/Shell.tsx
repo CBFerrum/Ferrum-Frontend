@@ -40,6 +40,10 @@ export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav]
 export const POS = "pos";
 export const registerNav: NavItem = { label: "Register", to: "/pos", icon: "store" };
 
+/** The Mail app's team chat, first in its module (its API checks who may chat). */
+export const COMMS_MODULE = "communication";
+export const chatNav: NavItem = { label: "Chat", to: "/chat", icon: "chat" };
+
 /** A module's links (sidebar group, home card): its readable entities and reports. */
 export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>): NavItem[] {
   if (m.name === STUDIO) return studioNav;
@@ -51,7 +55,9 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
     const e = readable.get(item);
     return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
   });
-  return m.name === POS && readable.has("PosInvoice") ? [registerNav, ...links] : links;
+  if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
+  if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, ...links];
+  return links;
 }
 
 export function RequireAuth() {
@@ -310,6 +316,7 @@ function useNavTargets(): NavTarget[] {
     if (meta.packages.includes(STUDIO)) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
     if (meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
       out.push({ label: "POS Register", hint: "POS", to: registerNav.to });
+    if (meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read"))) out.push({ label: "Chat", hint: "Communication", to: chatNav.to });
     if (me?.user.is_admin)
       out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;
