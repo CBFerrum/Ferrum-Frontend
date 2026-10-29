@@ -40,6 +40,8 @@ interface ResultTableProps {
   onSort?: (sort: Sort[]) => void;
   editor?: ColumnEditor;
   subtotals?: boolean;
+  /** The server's subtotal rows (exact), when the query asked for them. */
+  subtotalRows?: ResultRow[];
   options: CellOptions;
   /** Record reports: each row opens its record. */
   entity?: string;
@@ -61,7 +63,7 @@ export function defaultWidth(c: ResultColumn): number {
 /** Pivot cells and previous-period columns are not columns the server can sort by. */
 const sortable = (c: ResultColumn) => c.role !== "pivot" && c.role !== "previous";
 
-export function ResultTable({ columns, rows, totals, sort, onSort, editor, subtotals, options, entity, caption, className }: ResultTableProps) {
+export function ResultTable({ columns, rows, totals, sort, onSort, editor, subtotals, subtotalRows, options, entity, caption, className }: ResultTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [sizing, setSizing] = useState<ColumnSizingState>({});
   const byName = useMemo(() => new Map(columns.map((c) => [c.name, c])), [columns]);
@@ -72,12 +74,12 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
     if (!groupBy) return rows.map((row, i) => ({ kind: "row", row, n: i + 1 }));
     const out: DisplayRow[] = [];
     let n = 0;
-    for (const g of groupRows({ columns, rows }, groupBy, options)) {
+    for (const g of groupRows({ columns, rows, subtotals: subtotalRows }, groupBy, options)) {
       for (const row of g.rows) out.push({ kind: "row", row, n: ++n });
       out.push({ kind: "subtotal", label: `${g.label} total`, totals: g.totals });
     }
     return out;
-  }, [rows, columns, groupBy, options]);
+  }, [rows, columns, groupBy, options, subtotalRows]);
 
   // The largest magnitude of each data-bar column, for the bars' lengths (plotting only).
   const barMax = useMemo(() => {

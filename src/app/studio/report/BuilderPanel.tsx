@@ -27,6 +27,7 @@ import {
   type CatalogField,
   type CompareKind,
   type FieldCatalog,
+  type FormulaSel,
   type Issue,
   type ReportKind,
   type ResultColumn,
@@ -141,6 +142,7 @@ export function BuilderPanel(p: BuilderPanelProps) {
             />
           </PanelSection>
           <PeriodSection d={d} setDraft={setDraft} fields={fields} issues={issues} fyStartMonth={p.fyStartMonth} />
+          {d.kind !== "pivot" && <FormulasSection d={d} setDraft={setDraft} columns={p.columns} issues={issues} />}
           <SortSection d={d} setDraft={setDraft} columns={p.columns} fieldLabel={fieldLabel} issues={issues} />
         </>
       ) : null}
@@ -248,6 +250,54 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
       <div>
         <FieldPicker add="Add group" label="Add group" fields={groupable} onChange={(c) => setDraft((x) => ({ ...x, group_by: [...x.group_by, pick(c)] }))} />
       </div>
+    </PanelSection>
+  );
+}
+
+/** Calculated columns: arithmetic over the report's columns, by their names in brackets. */
+function FormulasSection({ d, setDraft, columns, issues }: Omit<SectionProps, "fields"> & { columns: ResultColumn[] }) {
+  const id = useId();
+  const named = columns.filter((c) => c.role !== "formula");
+  const set = (i: number, patch: Partial<FormulaSel>) => setDraft((x) => ({ ...x, formulas: x.formulas.map((f, j) => (j === i ? { ...f, ...patch } : f)) }), `formula${i}`);
+  return (
+    <PanelSection
+      title="Calculated columns"
+      hint={
+        named.length ? (
+          <span>
+            Refer to columns in brackets: {named.slice(0, 4).map((c) => `[${c.label}]`).join(", ")}. + − × ÷, round, abs, min, max and coalesce work.
+          </span>
+        ) : undefined
+      }
+    >
+      {d.formulas.map((f, i) => (
+        <div key={i} className="grid gap-1 rounded-md border p-2">
+          <div className="flex min-w-0 gap-1">
+            <Input aria-label={`Calculated column ${i + 1}: name`} placeholder="Name, e.g. Margin" value={f.label} maxLength={100} onChange={(e) => set(i, { label: e.target.value })} />
+            <Button variant="ghost" size="icon" aria-label={`Remove calculated column ${f.label || i + 1}`} onClick={() => setDraft((x) => ({ ...x, formulas: x.formulas.filter((_, j) => j !== i) }))}>
+              <X />
+            </Button>
+          </div>
+          <Input
+            id={`${id}-${i}`}
+            aria-label={`Calculated column ${i + 1}: formula`}
+            placeholder="[Revenue] - [Cost]"
+            className="font-mono text-xs"
+            value={f.expr}
+            maxLength={500}
+            onChange={(e) => set(i, { expr: e.target.value })}
+          />
+          <Issues messages={issuesAt(issues, `formulas[${i}]`)} />
+        </div>
+      ))}
+      <Issues messages={exact(issues, "formulas")} />
+      {d.formulas.length < 10 && (
+        <div>
+          <Button variant="outline" size="sm" onClick={() => setDraft((x) => ({ ...x, formulas: [...x.formulas, { label: "", expr: "" }] }))}>
+            <Plus /> Add calculated column
+          </Button>
+        </div>
+      )}
     </PanelSection>
   );
 }

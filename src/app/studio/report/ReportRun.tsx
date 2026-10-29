@@ -251,6 +251,8 @@ export function ReportRun({ id }: { id: string }) {
               totals={data.totals}
               sort={runtime.sort ?? []}
               onSort={(sort) => setRt({ ...rt, sort: sort.length ? sort : undefined })}
+              subtotals={!!data.subtotals}
+              subtotalRows={data.subtotals}
               options={options}
               entity={report?.kind === "table" ? (entity ?? undefined) : undefined}
               title={report?.label ?? "Report"}
