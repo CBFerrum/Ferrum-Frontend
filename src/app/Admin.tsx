@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
+import { api, ApiError, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import { LinkInput, LinkTitle } from "./widgets";
@@ -31,6 +31,7 @@ const TABS = [
   { id: "automations", label: "Automations" },
   { id: "plugins", label: "Plugins" },
   { id: "keys", label: "API keys" },
+  { id: "privacy", label: "Personal data" },
   { id: "workspace", label: "Workspace" },
 ];
 
@@ -60,9 +61,155 @@ export function AdminPage() {
         {tab === "automations" && <Automations />}
         {tab === "plugins" && <Plugins />}
         {tab === "keys" && <ApiKeys />}
+        {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
       </TabPanel>
     </div>
+  );
+}
+
+// ── personal data ──
+
+interface PersonRecord {
+  entity: string;
+  label: string;
+  id: string;
+  number?: string | null;
+  /** Fields erasure blanks. */
+  erases: string[];
+  data: Record<string, unknown>;
+}
+
+interface PersonData {
+  email: string;
+  records: PersonRecord[];
+  account: { id: string; email: string; full_name: string; is_active: boolean; is_admin: boolean; roles: string[]; created_at: string; last_login_at?: string | null } | null;
+}
+
+/** Field names of an entity as their labels, in a list. */
+function FieldLabels({ entity, names }: { entity: string; names: string[] }) {
+  const fields = useEntityMeta(entity).data?.fields;
+  return <>{names.map((n) => fields?.find((f) => f.name === n)?.label ?? n).join(", ")}</>;
+}
+
+/** Personal-data requests: what is kept about a person (by email), a copy for them, and its erasure. */
+function PersonalData() {
+  const [email, setEmail] = useState("");
+  const [found, setFound] = useState<PersonData | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState<"find" | "erase" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const find = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy("find");
+    setError(null);
+    setFound(null);
+    try {
+      setFound(await api.get<PersonData>("/api/admin/personal-data", { email: email.trim() }));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const download = () => found && saveBlob(new Blob([JSON.stringify(found, null, 2)], { type: "application/json" }), `personal-data-${found.email}.json`);
+  const erase = async () => {
+    if (!found) return;
+    const what = `${found.records.length} ${found.records.length === 1 ? "record" : "records"}${found.account ? " and the login account" : ""}`;
+    if (!(await confirmDialog({ title: `Erase ${found.email}?`, message: `The person's details leave ${what}, and their history. This cannot be undone.`, confirmLabel: "Erase", danger: true })))
+      return;
+    setBusy("erase");
+    setError(null);
+    try {
+      const res = await api.post<{ erased: unknown[]; account_erased: boolean; audit_events_redacted: number }>("/api/admin/personal-data/erase", { email: found.email, reason: reason.trim() });
+      toast(`Erased ${res.erased.length} ${res.erased.length === 1 ? "record" : "records"}${res.account_erased ? " and the login account" : ""}; ${res.audit_events_redacted} history entries redacted`);
+      setFound(null);
+      setReason("");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const nothing = found && !found.records.length && !found.account;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Personal data</h2>
+      </div>
+      <div className="card-pad stack">
+        <p className="muted">
+          Find what is kept about a person by their email address, give them a copy, or erase it. Erasure blanks their details on the records listed and in those
+          records&apos; history, and closes their login account; submitted documents keep the names they carry, as bookkeeping law requires.
+        </p>
+        <form className="row" onSubmit={find}>
+          <FieldWrap label="Email" htmlFor="pd-email">
+            <input id="pd-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </FieldWrap>
+          <Button type="submit" variant="primary" icon="search" loading={busy === "find"} disabled={!email.trim()}>
+            Find
+          </Button>
+        </form>
+        {error && <Alert tone="error">{error}</Alert>}
+        {nothing && <p className="muted">Nothing is kept about {found.email}.</p>}
+        {found && !nothing && (
+          <>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Kind</th>
+                    <th scope="col">Record</th>
+                    <th scope="col">Erasure blanks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {found.records.map((r) => (
+                    <tr key={`${r.entity}/${r.id}`}>
+                      <td>{r.label}</td>
+                      <td>
+                        <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.number || r.id.slice(0, 8)}</a>
+                      </td>
+                      <td className="muted">
+                        <FieldLabels entity={r.entity} names={r.erases} />
+                      </td>
+                    </tr>
+                  ))}
+                  {found.account && (
+                    <tr>
+                      <td>Login account</td>
+                      <td>
+                        {found.account.full_name || found.account.email} {found.account.is_admin && <Badge tone="amber">administrator</Badge>}
+                      </td>
+                      <td className="muted">name, email, password and roles; the account is closed</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="row">
+              <Button icon="download" onClick={download}>
+                Download a copy (JSON)
+              </Button>
+            </div>
+            <form
+              className="row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void erase();
+              }}
+            >
+              <FieldWrap label="Reason" htmlFor="pd-reason" hint="Kept with the erasure, e.g. the request's reference">
+                <input id="pd-reason" className="input" required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+              </FieldWrap>
+              <Button type="submit" variant="danger" icon="trash" loading={busy === "erase"} disabled={!reason.trim() || !!found.account?.is_admin}>
+                Erase
+              </Button>
+            </form>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
