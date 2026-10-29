@@ -192,7 +192,6 @@ function Editor({ record }: { record?: ReportRecord }) {
   const chart = state.chart ?? defaultChart(shown);
   const entityLabel = entityInfo?.label_plural ?? sources.data?.entities.find((e) => e.name === d.entity)?.label ?? d.entity;
   const title = rec?.label ?? (d.entity ? `New report on ${entityLabel}` : "New report");
-  const [subtotals, setSubtotals] = useState(false);
 
   // ── choosing what to report on: the list's columns or a count by status, in one undo step ──
   const picks = useRef(0);
@@ -494,7 +493,8 @@ function Editor({ record }: { record?: ReportRecord }) {
               sort={d.sort}
               onSort={(sort) => update((s) => ({ ...s, draft: { ...s.draft, sort } }))}
               editor={editor}
-              subtotals={subtotals}
+              subtotals={d.subtotals}
+              subtotalRows={result.subtotals}
               options={options}
               entity={d.kind === "table" ? d.entity : undefined}
               title={title}
@@ -655,7 +655,7 @@ function Editor({ record }: { record?: ReportRecord }) {
             {d.entity && <ViewToggle value={state.view} onChange={setView} chartable={grouped} />}
             {state.view === "table" && dims.length >= 2 && (
               <Label className="h-9 gap-2 rounded-md border border-input px-2.5 font-normal">
-                <Switch checked={subtotals} onCheckedChange={setSubtotals} />
+                <Switch checked={d.subtotals} onCheckedChange={(on) => update((s) => ({ ...s, draft: { ...s.draft, subtotals: on } }))} />
                 Subtotals by {dims[0].label}
               </Label>
             )}

@@ -95,6 +95,7 @@ export interface ResultViewProps {
   onSort?: (s: Sort[]) => void;
   editor?: ColumnEditor;
   subtotals?: boolean;
+  subtotalRows?: ResultRow[];
   options: CellOptions;
   entity?: string;
   title: string;
@@ -107,7 +108,21 @@ export function ResultView(p: ResultViewProps) {
         <ResultChart result={{ columns: p.columns, rows: p.rows, totals: p.totals }} settings={p.chart} options={p.options} title={p.title} />
       </div>
     );
-  return <ResultTable columns={p.columns} rows={p.rows} totals={p.totals} sort={p.sort} onSort={p.onSort} editor={p.editor} subtotals={p.subtotals} options={p.options} entity={p.entity} caption={p.title} />;
+  return (
+    <ResultTable
+      columns={p.columns}
+      rows={p.rows}
+      totals={p.totals}
+      sort={p.sort}
+      onSort={p.onSort}
+      editor={p.editor}
+      subtotals={p.subtotals}
+      subtotalRows={p.subtotalRows}
+      options={p.options}
+      entity={p.entity}
+      caption={p.title}
+    />
+  );
 }
 
 /** The setting of a column, if any (pivot cells are configured through their measure). */

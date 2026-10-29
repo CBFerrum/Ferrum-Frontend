@@ -106,11 +106,20 @@ export interface Spec {
   date_range?: DateRange;
   /** Needs a period with both ends; not with a pivot. */
   compare?: CompareKind;
+  /** Calculated columns: `[Revenue] - [Cost]` over the result's columns (not with a pivot). */
+  formulas?: FormulaSel[];
+  /** With two or more groupings: the measures per value of the first (not with a pivot or comparison). */
+  subtotals?: boolean;
+}
+
+export interface FormulaSel {
+  label: string;
+  expr: string;
 }
 
 // ───────────────────────────── results (run.rs) ─────────────────────────────
 
-export type ColumnRole = "dimension" | "measure" | "pivot" | "previous" | "field";
+export type ColumnRole = "dimension" | "measure" | "pivot" | "previous" | "field" | "formula";
 
 export interface ResultColumn {
   name: string;
@@ -159,6 +168,8 @@ export interface QueryResult {
   rows: ResultRow[];
   /** Measures over every matching row (table reports: sums of number columns); null when there are none. */
   totals: Record<string, unknown> | null;
+  /** `subtotals` specs: the measures per value of the first dimension. */
+  subtotals?: ResultRow[];
   meta: ResultMeta;
 }
 
@@ -177,6 +188,8 @@ export interface ResultLike {
   columns: ResultColumn[];
   rows: ResultRow[];
   totals?: Record<string, unknown> | null;
+  /** The server's subtotals by the first dimension, exact for every measure. */
+  subtotals?: ResultRow[];
 }
 
 // ───────────────────────────── field catalog and sources ─────────────────────────────
@@ -796,6 +809,10 @@ export interface SpecDraft {
   period: { field: string; from: string; to: string } | null;
   /** Grouped kinds except pivot. */
   compare: CompareKind | null;
+  /** Calculated columns (not pivots). */
+  formulas: FormulaSel[];
+  /** Group-by reports with two or more groupings. */
+  subtotals: boolean;
 }
 
 export function emptyDraft(entity = "", kind: ReportKind = "table"): SpecDraft {
@@ -813,6 +830,8 @@ export function emptyDraft(entity = "", kind: ReportKind = "table"): SpecDraft {
     time: null,
     period: null,
     compare: null,
+    formulas: [],
+    subtotals: false,
   };
 }
 
@@ -848,6 +867,10 @@ export function buildSpec(d: SpecDraft): Spec {
   if (grouped && d.time) spec.time_series = { field: d.time.field.trim(), bucket: d.time.bucket, ...ends, ...(d.time.fill_zero ? { fill_zero: true } : {}) };
   else if (d.period && (from || to)) spec.date_range = { field: d.period.field.trim(), ...ends };
   if (grouped && d.kind !== "pivot" && d.compare) spec.compare = d.compare;
+  if (d.kind !== "pivot" && d.formulas.length) spec.formulas = d.formulas.map((f) => ({ label: f.label.trim(), expr: f.expr.trim() }));
+  // Exact subtotals from the server where it can (two groupings or more, no comparison); the table
+  // adds up what it can otherwise.
+  if (d.kind === "group_by" && d.subtotals && !d.compare && d.group_by.length + (d.time ? 1 : 0) >= 2) spec.subtotals = true;
   if (d.sort.length) spec.sort = d.sort.map((s) => ({ by: s.by.trim(), dir: s.dir ?? "asc" }));
   if (d.limit != null) spec.limit = d.limit;
   return spec;
@@ -881,6 +904,8 @@ export function draftFromSpec(spec: Spec, kind?: ReportKind): SpecDraft {
     time: ts ? { field: ts.field, bucket: ts.bucket, fill_zero: !!ts.fill_zero } : null,
     period: range && (range.from || range.to) ? { field: range.field, from: range.from ?? "", to: range.to ?? "" } : null,
     compare: spec.compare ?? null,
+    formulas: spec.formulas ?? [],
+    subtotals: !!spec.subtotals,
   };
 }
 
@@ -927,6 +952,10 @@ export function specIssues(spec: Spec, catalog?: FieldCatalog): Issue[] {
   }
   const range = spec.time_series ?? spec.date_range;
   if (spec.compare && !(range?.from && range.to)) add("compare", "Comparing needs a period with a start and an end");
+  spec.formulas?.forEach((f, i) => {
+    if (!f.label) add(`formulas[${i}].label`, "Name the column");
+    if (!f.expr) add(`formulas[${i}].expr`, "Write the formula, e.g. [Revenue] - [Cost]");
+  });
   spec.sort?.forEach((s, i) => s.by || add(`sort[${i}].by`, "Choose a column"));
   if (Array.isArray(spec.filters)) spec.filters.forEach((f, i) => f[0] || add(`filters[${i}]`, "Choose a field"));
   return out;
@@ -1129,8 +1158,13 @@ export function groupRows(result: ResultLike, dim: string, o: CellOptions = {}):
     if (!g) groups.set(key, (g = { value: r[dim] ?? null, label: col ? formatCell(col, r[dim], r, o) : String(r[dim] ?? ""), rows: [], totals: {} }));
     g.rows.push(r);
   }
+  // The server's subtotals when it sent them (every measure, exactly; the group is labelled here),
+  // else what adds up here.
+  const exact = new Map(
+    (result.subtotals ?? []).map((s) => [JSON.stringify(s[dim] ?? null), Object.fromEntries(Object.entries(s).filter(([k]) => k !== dim && k !== "_titles"))]),
+  );
   const out = [...groups.values()];
-  for (const g of out) g.totals = subtotal(result.columns, g.rows);
+  for (const g of out) g.totals = exact.get(JSON.stringify(g.value)) ?? subtotal(result.columns, g.rows);
   return out;
 }
 

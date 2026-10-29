@@ -131,6 +131,9 @@ export function sanitizeSpec(v: unknown): Spec | null {
   else if (isObj(v.date_range) && typeof v.date_range.field === "string") s.date_range = { field: v.date_range.field, ...ends(v.date_range) };
   const compare = pick(v.compare, COMPARES);
   if (compare) s.compare = compare;
+  const formulas = each(v.formulas, (f) => (typeof f.label === "string" && typeof f.expr === "string" ? { label: f.label, expr: f.expr } : undefined)).slice(0, 10);
+  if (formulas.length) s.formulas = formulas;
+  if (v.subtotals === true) s.subtotals = true;
   return s;
 }
 
@@ -211,6 +214,7 @@ export function specColumns(s: Spec): { name: string; role: ColumnRole }[] {
   for (const g of s.group_by ?? []) out.push({ name: dimName(g.field, g.bucket), role: "dimension" });
   for (const m of s.measures ?? []) out.push({ name: measureName(m), role: "measure" });
   if (s.compare && !s.pivot) for (const m of s.measures ?? []) out.push({ name: `previous(${measureName(m)})`, role: "previous" });
+  if (!s.pivot) (s.formulas ?? []).forEach((_, i) => out.push({ name: `calc${i + 1}`, role: "formula" }));
   return out;
 }
 

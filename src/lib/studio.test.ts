@@ -316,6 +316,20 @@ describe("totals", () => {
     expect(groups[0].totals).toEqual({ count: 5, "sum(amount)": "10.3", "max(amount)": "6", "min(day)": "2026-09-30" });
   });
 
+  it("takes the server's exact subtotals when it sent them", () => {
+    const columns = [
+      { name: "region", label: "Region", role: "dimension", type: "data" },
+      { name: "status", label: "Status", role: "dimension", type: "select" },
+      { name: "avg(amount)", label: "Avg", role: "measure", type: "currency", fn: "avg" },
+    ] as ResultColumn[];
+    const rows = [
+      { region: "North", status: "Paid", "avg(amount)": "5" },
+      { region: "North", status: "Draft", "avg(amount)": "1" },
+    ];
+    const [north] = groupRows({ columns, rows, subtotals: [{ region: "North", "avg(amount)": "2.6", calc1: "5.2" }] }, "region");
+    expect(north.totals).toEqual({ "avg(amount)": "2.6", calc1: "5.2" });
+  });
+
   it("formats the totals line with a caption", () => {
     expect(totalsLine(byCustomer, en)).toEqual(["Total", "4", "23,277.28", "7,759.09"]);
     expect(totalsLine({ ...byCustomer, totals: null })).toBeNull();
