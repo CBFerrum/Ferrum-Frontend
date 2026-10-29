@@ -126,6 +126,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const layout = useMemo(() => formSections(meta), [meta]);
 
   const rev = useRef(0); // bumps on every edit; stale `_calc` responses are dropped
+  const lastServer = useRef<Doc | null>(initial); // what the server said last: the loaded document or a `_calc` result
   const docRef = useRef(doc);
   docRef.current = doc;
   const allowNav = useRef(false);
@@ -165,7 +166,11 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       const res = await api.post<Doc>(docPath(E, "_calc"), calcBody(meta, current), { signal: ctl.signal });
       if (ctl.signal.aborted) return;
       setCalc({ pending: false });
-      if (rev.current === sent) setDoc((d) => mergeCalc(meta, d, res));
+      if (rev.current === sent) {
+        const prev = lastServer.current ?? undefined;
+        lastServer.current = res;
+        setDoc((d) => mergeCalc(meta, d, res, prev));
+      }
     } catch (e) {
       if (!ctl.signal.aborted) setCalc({ pending: false, error: errorMessage(e) });
     }
@@ -207,6 +212,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const load = (d: Doc, prev?: Doc) => {
     const next = prev ? carryTitles(meta, d, prev) : d;
     rev.current++;
+    lastServer.current = next;
     setBase(next);
     setDoc(next);
     setTouched(false);

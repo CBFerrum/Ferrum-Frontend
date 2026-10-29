@@ -87,6 +87,15 @@ describe("mergeCalc", () => {
     expect(out._titles).toEqual({ customer: "Beta" });
   });
 
+  it("moves editable values the server set, not ones the user changed since", () => {
+    const prev = { po_no: "auto-1", items: [{ id: "r1", item: "i1", qty: "3" }] };
+    const server = { po_no: "auto-2", items: [{ id: "r1", item: "i1", qty: "36" }] };
+    const out = mergeCalc(meta, { po_no: "auto-1", items: [{ id: "r1", item: "i1", qty: "3" }] }, server, prev);
+    expect(out).toMatchObject({ po_no: "auto-2", items: [{ qty: "36" }] });
+    const typed = mergeCalc(meta, { po_no: "mine", items: [{ id: "r1", item: "i1", qty: "4" }] }, server, prev);
+    expect(typed).toMatchObject({ po_no: "mine", items: [{ qty: "4" }] });
+  });
+
   it("returns the same object when nothing changed and skips tables whose rows changed", () => {
     const local = { customer_name: "A", items: [{ item: "i1" }] };
     expect(mergeCalc(meta, local, { customer_name: "A", items: [{ item: "i1" }] })).toBe(local);
