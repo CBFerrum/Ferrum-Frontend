@@ -5,7 +5,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
-import { useMe, useMetaIndex } from "../lib/meta";
+import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
+import { LinkInput, LinkTitle } from "./widgets";
 import {
   Alert,
   Badge,
@@ -227,6 +228,9 @@ interface Permission {
   if_owner: boolean;
   read_groups: string[];
   write_groups: string[];
+  /** Only records whose fields hold these values (`where`). */
+  match_rule?: Record<string, unknown> | null;
+  rule_key?: string;
 }
 interface Role {
   name: string;
@@ -490,6 +494,85 @@ function ResetPasswordDialog({ user, onClose }: { user: User | null; onClose: ()
 
 const ACTIONS = ["read", "write", "create", "delete", "submit", "cancel", "export", "import"] as const;
 
+/** Field types a rule's condition may test (the server checks the same list). */
+const CONDITION_TYPES = new Set(["data", "select", "check", "link", "email", "int"]);
+
+/** Values typed for a condition, as the field's JSON type. */
+export function conditionValues(type: string | undefined, typed: string): unknown[] {
+  const parts = typed
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  if (type === "check") return parts.map((v) => v.toLowerCase() === "true" || v === "1");
+  if (type === "int") return parts.map((v) => Number(v)).filter((n) => Number.isInteger(n));
+  return parts;
+}
+
+/** A stored condition in words (`Customer Type is Individual or Company`), links by title. */
+function ConditionText({ entity, cond }: { entity: string; cond: Record<string, unknown> }) {
+  const fields = useEntityMeta(entity).data?.fields;
+  return (
+    <span>
+      {Object.entries(cond).map(([k, v], i) => {
+        const f = fields?.find((x) => x.name === k);
+        return (
+          <span key={k}>
+            {i > 0 && "; "}
+            {f?.label ?? k} is{" "}
+            {(Array.isArray(v) ? v : [v]).map(String).map((x, j) => (
+              <span key={x}>
+                {j > 0 && " or "}
+                {f?.type === "link" && f.to ? <LinkTitle to={f.to} id={x} /> : x}
+              </span>
+            ))}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** The values a rule's condition accepts, in the input that suits the field. */
+function ConditionInput({ field, value, onChange }: { field: Field; value: string; onChange: (v: string) => void }) {
+  if (field.type === "link" && field.to) {
+    return (
+      <FieldWrap label="is" htmlFor="perm-values">
+        <LinkInput id="perm-values" to={field.to} linkFilters={field.link_filters} value={value || null} required onChange={(id) => onChange(id ?? "")} />
+      </FieldWrap>
+    );
+  }
+  if (field.type === "check") {
+    return (
+      <FieldWrap label="is" htmlFor="perm-values">
+        <select id="perm-values" className="select" value={value || "true"} onChange={(e) => onChange(e.target.value)}>
+          <option value="true">Ticked</option>
+          <option value="false">Not ticked</option>
+        </select>
+      </FieldWrap>
+    );
+  }
+  if (field.type === "select" && field.options?.length) {
+    const options = field.options;
+    const picked = new Set(value.split(",").filter(Boolean));
+    const toggle = (o: string) => onChange(options.filter((x) => (x === o ? !picked.has(o) : picked.has(x))).join(","));
+    return (
+      <fieldset className="row" style={{ border: 0, padding: 0, margin: 0, gap: 12 }}>
+        <legend className="field-label">is one of</legend>
+        {options.map((o) => (
+          <label key={o} className="check-field">
+            <input type="checkbox" checked={picked.has(o)} onChange={() => toggle(o)} /> {o}
+          </label>
+        ))}
+      </fieldset>
+    );
+  }
+  return (
+    <FieldWrap label="is one of" htmlFor="perm-values" hint="Comma-separated">
+      <input id="perm-values" className="input" required value={value} onChange={(e) => onChange(e.target.value)} />
+    </FieldWrap>
+  );
+}
+
 function Roles() {
   const roles = useRoles();
   const index = useMetaIndex().data;
@@ -500,6 +583,11 @@ function Roles() {
   const [saving, setSaving] = useState<string | null>(null);
   const [addEntity, setAddEntity] = useState("");
   const [addOwner, setAddOwner] = useState(false);
+  const [addField, setAddField] = useState("");
+  const [addValues, setAddValues] = useState("");
+  const addMeta = useEntityMeta(addEntity && addEntity !== "*" ? addEntity : undefined).data;
+  const conditionFields = (addMeta?.fields ?? []).filter((f) => CONDITION_TYPES.has(f.type));
+  const conditionField = conditionFields.find((f) => f.name === addField);
 
   const all = roles.data?.roles ?? [];
   const names = [...all.map((r) => r.name), ...extraRoles.filter((n) => !all.some((r) => r.name === n))];
@@ -522,6 +610,7 @@ function Roles() {
       if_owner: p.if_owner,
       read_groups: p.read_groups ?? [],
       write_groups: p.write_groups ?? [],
+      where: p.match_rule ?? undefined,
     };
     const ok = await attempt(() => api.put(`/api/admin/roles/${encodeURIComponent(current)}/permissions`, body));
     if (ok) await qc.invalidateQueries({ queryKey: ["admin", "roles"] });
@@ -546,6 +635,7 @@ function Roles() {
         if_owner: addOwner,
         read_groups: [],
         write_groups: [],
+        match_rule: conditionField ? { [conditionField.name]: conditionValues(conditionField.type, conditionField.type === "check" ? addValues || "true" : addValues) } : null,
       },
       "add",
     );
@@ -553,6 +643,8 @@ function Roles() {
       toast(`${addEntity} added to ${current}`);
       setAddEntity("");
       setAddOwner(false);
+      setAddField("");
+      setAddValues("");
     }
   };
 
@@ -603,7 +695,7 @@ function Roles() {
                         {a}
                       </th>
                     ))}
-                    <th scope="col">Own records only</th>
+                    <th scope="col">Applies to</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -615,7 +707,7 @@ function Roles() {
                     </tr>
                   )}
                   {perms.map((p) => {
-                    const key = `${p.entity}|${p.if_owner}`;
+                    const key = `${p.entity}|${p.if_owner}|${p.rule_key ?? ""}`;
                     return (
                       <tr key={key}>
                         <td>{label(p.entity)}</td>
@@ -635,7 +727,14 @@ function Roles() {
                             </td>
                           );
                         })}
-                        <td>{p.if_owner ? <Badge tone="amber">own only</Badge> : <span className="faint">all</span>}</td>
+                        <td>
+                          {p.if_owner && <Badge tone="amber">own only</Badge>}{" "}
+                          {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
+                            <ConditionText entity={p.entity} cond={p.match_rule} />
+                          ) : (
+                            !p.if_owner && <span className="faint">all</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -658,7 +757,30 @@ function Roles() {
                 <input type="checkbox" checked={addOwner} onChange={(e) => setAddOwner(e.target.checked)} />
                 Own records only
               </label>
-              <Button type="submit" icon="plus" disabled={!addEntity || !current} loading={saving === "add"}>
+              {conditionFields.length > 0 && (
+                <>
+                  <FieldWrap label="Only where" htmlFor="perm-field" hint="Optional: records whose field holds one of the values">
+                    <select
+                      id="perm-field"
+                      className="select"
+                      value={addField}
+                      onChange={(e) => {
+                        setAddField(e.target.value);
+                        setAddValues("");
+                      }}
+                    >
+                      <option value="">Any record</option>
+                      {conditionFields.map((f) => (
+                        <option key={f.name} value={f.name}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldWrap>
+                  {conditionField && <ConditionInput field={conditionField} value={addValues} onChange={setAddValues} />}
+                </>
+              )}
+              <Button type="submit" icon="plus" disabled={!addEntity || !current || (!!conditionField && conditionField.type !== "check" && !addValues)} loading={saving === "add"}>
                 Add
               </Button>
             </form>
