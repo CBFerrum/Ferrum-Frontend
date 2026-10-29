@@ -173,6 +173,14 @@ export interface ListResponse {
 
 const LONG = 5 * 60_000;
 
+/** What this server offers (`/api/version`): PDFs, upload limits, installed packages. */
+export const useServerInfo = () =>
+  useQuery({
+    queryKey: ["version"],
+    queryFn: ({ signal }) => api.get<{ version: string; pdf?: boolean; packages: { name: string; version: string }[] }>("/api/version", undefined, signal),
+    staleTime: LONG,
+  });
+
 export const useMetaIndex = () =>
   useQuery({ queryKey: ["meta"], queryFn: ({ signal }) => api.get<MetaIndex>("/api/meta", undefined, signal), staleTime: LONG });
 
