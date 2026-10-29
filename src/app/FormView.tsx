@@ -10,6 +10,7 @@ import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
+import { formDesignerLink } from "../lib/formLayout";
 import {
   can,
   DOCSTATUS_LABEL,
@@ -679,6 +680,16 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                       }}
                     >
                       Customize {meta.label}
+                    </MenuItem>
+                  )}
+                  {me.user.is_admin && (
+                    <MenuItem
+                      onSelect={() => {
+                        close();
+                        navigate(formDesignerLink(E));
+                      }}
+                    >
+                      Design form layout
                     </MenuItem>
                   )}
                   {canDelete && (

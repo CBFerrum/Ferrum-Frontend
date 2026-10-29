@@ -3,10 +3,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
-import { humanize, relativeTime, todayIso } from "../lib/format";
+import { relativeTime, todayIso } from "../lib/format";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
+import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
-import { reportItems } from "./Shell";
+import { moduleLinks, reportItems, STUDIO } from "./Shell";
+import { PATHS } from "./studio/space/model";
+
+/** The module's Space when the viewer may open one: the first by the server's order, as `useModuleSpace`
+ *  picks it, from one list shared by every module card. */
+function SpaceChip({ module }: { module: string }) {
+  const space = useStudioList("spaces").data?.find((s) => s.module === module);
+  if (!space) return null;
+  return (
+    <Link className="chip" to={PATHS.space(space.id)}>
+      <Icon name="space" size={14} />
+      {space.label || "Space"}
+    </Link>
+  );
+}
 
 export function Home() {
   const meta = useMetaIndex().data;
@@ -14,20 +29,15 @@ export function Home() {
   const reports = useReports().data?.reports;
   if (!meta) return null;
 
+  const studio = meta.packages.includes(STUDIO);
   const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
   const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
   const modules = [...meta.modules]
     .sort((a, b) => a.order - b.order)
     .map((m) => {
-      const links = m.items.flatMap((item) => {
-        if (item.startsWith("report:")) {
-          const name = item.slice(7);
-          return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
-        }
-        const e = readable.get(item);
-        return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
-      });
-      const entities = m.items.flatMap((i) => readable.get(i) ?? []);
+      const links = moduleLinks(m, readable, reportLabel);
+      // Studio records open in their builders, not in the generic form the recent lists link to.
+      const entities = m.name === STUDIO ? [] : m.items.flatMap((i) => readable.get(i) ?? []);
       const documents = entities.filter((e) => e.kind === "document");
       return { m, links, key: (documents.length ? documents : entities).slice(0, 2) };
     })
@@ -46,7 +56,8 @@ export function Home() {
             {first ? `, ${first}` : ""}
           </h1>
           <p className="page-sub">
-            Pick a module<span className="keys-hint"> or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere</span>.
+            Pick a module{studio && <>, open your <Link to="/studio/dashboards">dashboards</Link></>}
+            <span className="keys-hint"> or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere</span>.
           </p>
         </div>
       </div>
@@ -64,6 +75,7 @@ export function Home() {
               </div>
               <div className="card-body stack">
                 <div className="chips">
+                  {studio && <SpaceChip module={m.name} />}
                   {links.map((l) => (
                     <Link key={l.to} className="chip" to={l.to}>
                       <Icon name={l.icon} size={14} />

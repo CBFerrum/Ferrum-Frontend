@@ -21,8 +21,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       onwarn(warning, warn) {
-        // react-query ships "use client" directives for React Server Components; meaningless in an SPA.
+        // react-query and the shadcn components ship "use client" directives for React Server Components; meaningless
+        // in an SPA. Rollup cannot map a directive at 1:0 through esbuild's sourcemap and reports that too.
         if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
+        if (warning.code === "SOURCEMAP_ERROR" && warning.loc?.line === 1 && warning.loc.column === 0) return;
         warn(warning);
       },
     },

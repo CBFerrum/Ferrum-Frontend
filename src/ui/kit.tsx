@@ -49,6 +49,8 @@ const ICONS: Record<string, string> = {
   timeline: "M3 6h8M7 12h10M13 18h8",
   left: "m15 18-6-6 6-6",
   apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  dashboard: "M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z",
+  space: "M3 3h18v18H3zM3 9h18M9 21V9",
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof ICONS | string; size?: number }) {
