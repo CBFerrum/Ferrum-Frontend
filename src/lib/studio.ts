@@ -661,9 +661,9 @@ export const studio = {
   /** A 409 when a dashboard or space still shows it. */
   remove: (kind: StudioKind, id: string, version?: number) => api.del(docPath(STUDIO_ENTITY[kind], id), { ifMatch: version }),
   runReport: (id: string, rt: Runtime = {}, signal?: AbortSignal) => api.post<ReportRun>(`${BASE}/reports/${enc(id)}/run`, rt, { signal }),
-  /** Downloads every row (up to 10000) as CSV; needs export permission on the report's entity. */
-  exportReport: (id: string, rt: Runtime = {}, fileName = "report.csv") =>
-    download(`${BASE}/reports/${enc(id)}/export`, fileName, { format: "csv", ...runtimeQuery(rt) }),
+  /** Downloads every row (up to 10000) as CSV or an Excel workbook; needs export permission on the report's entity. */
+  exportReport: (id: string, rt: Runtime = {}, fileName = "report.csv", format: "csv" | "xlsx" = "csv") =>
+    download(`${BASE}/reports/${enc(id)}/export`, fileName, { format, ...runtimeQuery(rt) }),
   chartData: (id: string, req: WidgetRequest = {}, signal?: AbortSignal) => api.post<ChartWidgetData>(`${BASE}/charts/${enc(id)}/data`, req, { signal }),
   cardData: (id: string, req: WidgetRequest = {}, signal?: AbortSignal) => api.post<CardWidgetData>(`${BASE}/cards/${enc(id)}/data`, req, { signal }),
   previewChart: (req: PreviewRequest<ChartRecord>, signal?: AbortSignal) => api.post<ChartWidgetData>(`${BASE}/charts/preview`, req, { signal }),
