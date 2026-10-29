@@ -1,4 +1,4 @@
-// Generic document form: layout from `form` sections, widgets per field type, conditional rules,
+// Generic document form: layout from `form` sections (in tabs, shown on conditions), widgets per field type, conditional rules,
 // live `_calc` totals, optimistic concurrency, lifecycle, custom actions, workflow, print, audit.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,11 @@ import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, 
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
+import { formSections } from "../lib/formTabs";
 import {
   can,
   DOCSTATUS_LABEL,
+  fieldLabel,
   fieldState,
   recordTitle,
   SYSTEM_FIELD_LABELS,
@@ -97,31 +99,21 @@ function prefill(meta: EntityMeta, sp: URLSearchParams, user: unknown): Doc {
   return doc;
 }
 
-interface SectionView {
-  key: string;
-  label: string | null;
-  columns: number;
-  collapsible: boolean;
-  fields: Field[];
-}
+/** A section tab's id; the untitled first tab keeps "details". */
+const tabId = (tab: string | null) => (tab === null ? "details" : `tab:${tab}`);
 
-/** Sections from metadata; fields no section mentions (package or tenant additions) get their own. */
-function buildSections(meta: EntityMeta): SectionView[] {
-  const byName = new Map(meta.fields.map((f) => [f.name, f]));
-  const defs = meta.form.length ? meta.form : [{ label: null, fields: meta.fields.map((f) => f.name) }];
-  const used = new Set<string>();
-  const out: SectionView[] = defs.map((s, i) => {
-    const fields = s.fields.flatMap((n) => {
-      const f = byName.get(n);
-      if (!f || used.has(n)) return [];
-      used.add(n);
-      return [f];
-    });
-    return { key: `s${i}`, label: s.label ?? null, columns: s.columns ?? 2, collapsible: !!s.collapsible, fields };
-  });
-  const rest = meta.fields.filter((f) => !used.has(f.name));
-  if (rest.length) out.push({ key: "rest", label: "Additional fields", columns: 2, collapsible: false, fields: rest });
-  return out;
+/** A tab's label with how many errors its fields have. */
+function tabLabel(label: string, errors: number): ReactNode {
+  if (!errors) return label;
+  return (
+    <>
+      {label}
+      <span className="tab-errors" aria-hidden="true">
+        {errors}
+      </span>
+      <span className="sr-only">, {errors === 1 ? "1 error" : `${errors} errors`}</span>
+    </>
+  );
 }
 
 const WIDE = new Set(["text", "markdown", "code", "json"]);
@@ -144,7 +136,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const [tab, setTab] = useState("details");
   const [focusError, setFocusError] = useState(0);
   const precisionOf = useCurrencyPrecision();
-  const sections = useMemo(() => buildSections(meta), [meta]);
+  const layout = useMemo(() => formSections(meta), [meta]);
 
   const rev = useRef(0); // bumps on every edit; stale `_calc` responses are dropped
   const docRef = useRef(doc);
@@ -275,7 +267,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     if (e instanceof ApiError && e.fields.length) {
       setErrors(e.fields);
       setBanner(e.message);
-      setTab("details");
+      // The first tab with a failing field (the banner lists those no tab shows).
+      setTab(e.fields.map((f) => tabOf.get(f.row ? f.row[0] : f.field)).find(Boolean) ?? tabs[0]?.id ?? "details");
       setFocusError((n) => n + 1);
       return;
     }
@@ -484,7 +477,27 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const scope = { doc, user };
   const topErrors = new Map(errors.filter((e) => !e.row).map((e) => [e.field, e.message]));
   const states = new Map<string, FieldState>(meta.fields.map((f) => [f.name, fieldState(f, scope, locked)]));
-  const unplaced = errors.filter((e) => !e.row && !states.get(e.field)?.visible);
+  // Sections shown now (their condition holds and a field is visible), and the tabs that have one.
+  const shown = layout.sections.flatMap((s) => {
+    if (s.visibleIf && evaluate(s.visibleIf, scope) === false) return [];
+    const items = s.fields.flatMap((f) => {
+      const st = states.get(f.name);
+      return st?.visible ? [{ f, st }] : [];
+    });
+    return items.length ? [{ s, items }] : [];
+  });
+  const tabOf = new Map(shown.flatMap(({ s, items }) => items.map(({ f }) => [f.name, tabId(s.tab)] as const)));
+  const unplaced = errors.filter((e) => !tabOf.has(e.row ? e.row[0] : e.field));
+  const tabs = [
+    ...layout.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((t) => ({ id: tabId(t), label: t ?? "Details" })),
+    ...(isNew
+      ? []
+      : [
+          { id: "discussion", label: "Discussion" },
+          { id: "activity", label: "Activity" },
+        ]),
+  ];
+  const active = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "details");
   const currencyPrecision = (f: Field, row: Doc, parent?: Doc) =>
     f.type === "currency" && f.currency
       ? precisionOf(f.currency.startsWith("parent.") ? parent?.[f.currency.slice(7)] : row[f.currency])
@@ -566,14 +579,10 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     );
   };
 
-  const details = (
+  const details = (tab: string) => (
     <>
-      {sections.map((s) => {
-        const items = s.fields.flatMap((f) => {
-          const st = states.get(f.name);
-          return st?.visible ? [{ f, st }] : [];
-        });
-        if (!items.length) return null;
+      {shown.map(({ s, items }) => {
+        if (tabId(s.tab) !== tab) return null;
         const hasError = items.some(({ f }) => topErrors.has(f.name) || errors.some((e) => e.row?.[0] === f.name));
         return (
           <FormSection key={s.key} label={s.label} collapsible={s.collapsible} forceOpen={hasError}>
@@ -701,9 +710,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           {banner}
           {unplaced.length > 0 && (
             <ul>
-              {unplaced.map((e) => (
-                <li key={e.field}>
-                  {meta.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field)}: {e.message}
+              {unplaced.map((e, i) => (
+                <li key={i}>
+                  {e.row
+                    ? `${fieldLabel(meta, e.row[0])} row ${e.row[1] + 1}, ${meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field)}`
+                    : fieldLabel(meta, e.field)}
+                  : {e.message}
                 </li>
               ))}
             </ul>
@@ -716,30 +728,26 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       {!isNew && docstatus === 2 && <Alert tone="warning">This document is cancelled.{canAmend ? " Amend it to create a corrected draft." : ""}</Alert>}
       {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">You cannot edit documents in the “{wfState}” state.</Alert>}
 
-      {isNew ? (
-        details
-      ) : (
+      {tabs.length > 1 ? (
         <>
           <Tabs
             id="doc"
-            value={tab}
+            value={active}
             onChange={setTab}
-            tabs={[
-              { id: "details", label: "Details" },
-              { id: "discussion", label: "Discussion" },
-              { id: "activity", label: "Activity" },
-            ]}
+            tabs={tabs.map((t) => ({ id: t.id, label: tabLabel(t.label, errors.filter((e) => tabOf.get(e.row ? e.row[0] : e.field) === t.id).length) }))}
           />
-          <TabPanel id="doc" tab={tab}>
-            {tab === "details" ? (
-              details
-            ) : tab === "discussion" ? (
+          <TabPanel id="doc" tab={active}>
+            {active === "discussion" ? (
               <CollabPanel entity={E} id={String(id)} canWrite={can(meta.permissions, "write")} />
-            ) : (
+            ) : active === "activity" ? (
               <AuditPanel meta={meta} id={String(id)} />
+            ) : (
+              details(active)
             )}
           </TabPanel>
         </>
+      ) : (
+        details(active)
       )}
     </div>
   );
