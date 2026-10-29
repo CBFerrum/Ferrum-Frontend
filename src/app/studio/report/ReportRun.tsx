@@ -85,10 +85,10 @@ export function ReportRun({ id }: { id: string }) {
   }, [applied]);
 
   const [exporting, setExporting] = useState(false);
-  const exportCsv = async () => {
+  const exportAs = async (format: "csv" | "xlsx") => {
     setExporting(true);
     try {
-      await studio.exportReport(id, runtime, `${fileStem(report?.label ?? "report")}-${todayIso()}.csv`);
+      await studio.exportReport(id, runtime, `${fileStem(report?.label ?? "report")}-${todayIso()}.${format}`, format);
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -154,9 +154,19 @@ export function ReportRun({ id }: { id: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canExport && (
-            <Button variant="outline" disabled={exporting || !data?.rows.length} onClick={() => void exportCsv()} title="Every row (up to 10,000) as CSV, with the filters applied">
-              {exporting ? <Spinner /> : <Download />} CSV
-            </Button>
+            <>
+              <Button variant="outline" disabled={exporting || !data?.rows.length} onClick={() => void exportAs("csv")} title="Every row (up to 10,000) as CSV, with the filters applied">
+                {exporting ? <Spinner /> : <Download />} CSV
+              </Button>
+              <Button
+                variant="outline"
+                disabled={exporting || !data?.rows.length}
+                onClick={() => void exportAs("xlsx")}
+                title="Every row (up to 10,000) as an Excel workbook, with the filters applied"
+              >
+                {exporting ? <Spinner /> : <Download />} Excel
+              </Button>
+            </>
           )}
           {canEdit && (
             <Button asChild>
