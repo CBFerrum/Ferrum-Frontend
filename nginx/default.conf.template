@@ -1,4 +1,10 @@
 # Rendered at container start (envsubst): ${FERRUM_API_URL} is the Ferrum server, e.g. http://ferrum:5150.
+# ${FERRUM_OFFICE_ORIGIN}: the editor server for online editing (e.g. https://office.example.com),
+# which pages may frame and post to; empty when there is none.
+map $host $office_origin {
+    default "${FERRUM_OFFICE_ORIGIN}";
+}
+
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;

@@ -16,4 +16,6 @@ COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /web/dist /usr/share/nginx/html/app
 ENV FERRUM_API_URL=http://ferrum:5150
+# The editor server for online editing (empty: none); see nginx/default.conf.template.
+ENV FERRUM_OFFICE_ORIGIN=""
 EXPOSE 8080

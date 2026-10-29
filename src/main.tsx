@@ -67,6 +67,8 @@ const router = createBrowserRouter(
         ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
         { path: "apps", element: <AppsPage /> },
+        { path: "drive/:folder?", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.DrivePage })) },
+        { path: "edit/:file", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.EditPage })) },
         { path: "apps/:app/settings", element: <AppSettingsPage /> },
         { path: "x/:app/:page", element: <ScreenPage /> },
         { path: "*", element: <NotFound /> },

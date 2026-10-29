@@ -256,6 +256,12 @@ function Sidebar() {
         <Icon name="home" />
         Home
       </NavLink>
+      {meta?.packages.includes("drive") && (
+        <NavLink to="/drive" className="nav-link">
+          <Icon name="file" />
+          Files
+        </NavLink>
+      )}
       {groups.map((g) => (
         <details key={g.name} className="nav-group" open>
           <summary>

@@ -159,7 +159,7 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   if (o.ifMatch !== undefined) headers["if-match"] = `"v${o.ifMatch}"`;
   if (o.idempotencyKey) headers["idempotency-key"] = o.idempotencyKey;
   let body: BodyInit | undefined;
-  if (o.body instanceof FormData) body = o.body;
+  if (o.body instanceof FormData || o.body instanceof Blob) body = o.body;
   else if (o.body !== undefined) {
     headers["content-type"] = "application/json";
     body = JSON.stringify(o.body);
