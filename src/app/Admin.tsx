@@ -237,13 +237,14 @@ async function attempt(fn: () => Promise<unknown>, success?: string): Promise<bo
 interface WorkspaceSettings {
   timezone: string;
   fiscal_year_start_month: number;
+  require_two_factor: boolean;
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" }));
 
 function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
-  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}`} initial={s} />}</Loaded>;
+  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}|${s.require_two_factor}`} initial={s} />}</Loaded>;
 }
 
 function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
@@ -305,8 +306,24 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
           ))}
         </select>
       </FieldWrap>
+      <FieldWrap
+        label="Two-factor sign-in"
+        htmlFor="ws-2fa"
+        error={fieldError("require_two_factor")}
+        hint="Everyone signs in with a code from an authenticator app too; those without one set it up at their next sign-in."
+      >
+        <label className="row" style={{ gap: 8 }}>
+          <input id="ws-2fa" type="checkbox" checked={form.require_two_factor} onChange={(e) => setForm({ ...form, require_two_factor: e.target.checked })} />
+          Require it of everyone
+        </label>
+      </FieldWrap>
       <div className="row" style={{ justifyContent: "flex-end" }}>
-        <Button type="submit" variant="primary" loading={busy} disabled={!fyChanged && form.timezone === initial.timezone}>
+        <Button
+          type="submit"
+          variant="primary"
+          loading={busy}
+          disabled={!fyChanged && form.timezone === initial.timezone && form.require_two_factor === initial.require_two_factor}
+        >
           Save
         </Button>
       </div>
@@ -359,6 +376,7 @@ interface User {
   is_active: boolean;
   is_admin: boolean;
   locked: boolean;
+  two_factor: boolean;
   last_login_at?: string | null;
   roles: string[];
 }
@@ -431,6 +449,15 @@ function Users() {
     if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/active`, { active: !u.is_active }), u.is_active ? "User deactivated" : "User activated")))
       void refresh();
   };
+  const resetTwoFactor = async (u: User) => {
+    const ok = await confirmDialog({
+      title: `Reset two-factor sign-in for ${u.full_name}?`,
+      message: "For a lost phone: it turns their two-factor sign-in off, lifts a lockout and signs them out everywhere. If the workspace requires it, they set it up again at their next sign-in.",
+      confirmLabel: "Reset",
+      danger: true,
+    });
+    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/two-factor/reset`), "Two-factor sign-in reset"))) void refresh();
+  };
 
   return (
     <section className="card">
@@ -474,6 +501,7 @@ function Users() {
                       <div className="chips">
                         <Badge tone={u.is_active ? "green" : "red"}>{u.is_active ? "active" : "inactive"}</Badge>
                         {u.locked && <Badge tone="red">locked</Badge>}
+                        {u.two_factor && <Badge tone="blue">2FA</Badge>}
                       </div>
                     </td>
                     <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">never</span>}</td>
@@ -485,6 +513,11 @@ function Users() {
                         <Button size="sm" onClick={() => setResetting(u)}>
                           Reset password
                         </Button>
+                        {u.two_factor && (
+                          <Button size="sm" onClick={() => void resetTwoFactor(u)}>
+                            Reset 2FA
+                          </Button>
+                        )}
                         <Button size="sm" variant={u.is_active ? "danger" : "default"} disabled={u.id === me?.user.id} onClick={() => void toggleActive(u)}>
                           {u.is_active ? "Deactivate" : "Activate"}
                         </Button>

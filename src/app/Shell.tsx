@@ -26,6 +26,7 @@ import {
   useDismiss,
 } from "../ui/kit";
 import { ApiKeys } from "./Admin";
+import { TwoFactorSettings } from "./TwoFactor";
 import { dashboardNav } from "./studio/Dashboards";
 import { reportNav } from "./studio/ReportList";
 import { spaceNav } from "./studio/Spaces";
@@ -541,7 +542,7 @@ function UserMenu() {
   const me = useMe().data;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [dialog, setDialog] = useState<"password" | "keys" | "ai" | null>(null);
+  const [dialog, setDialog] = useState<"password" | "2fa" | "keys" | "ai" | null>(null);
   const install = useInstall();
 
   const signOut = () => {
@@ -591,6 +592,14 @@ function UserMenu() {
             <MenuItem
               onSelect={() => {
                 close();
+                setDialog("2fa");
+              }}
+            >
+              Two-factor sign-in
+            </MenuItem>
+            <MenuItem
+              onSelect={() => {
+                close();
                 setDialog("keys");
               }}
             >
@@ -634,7 +643,10 @@ function UserMenu() {
           </>
         )}
       </Menu>
-      <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} />
+      <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
+      <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title="Two-factor sign-in">
+        {dialog === "2fa" && <TwoFactorSettings />}
+      </Dialog>
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title="Your API keys" wide>
         <ApiKeys />
       </Dialog>
@@ -645,7 +657,7 @@ function UserMenu() {
   );
 }
 
-function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boolean; onClose: () => void; onSignedOut: () => void }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -668,11 +680,22 @@ function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () =>
     setErrors({});
     try {
       await api.post("/api/auth/password", { current_password: current, new_password: next }, { noAuthRedirect: true });
-      // Changing the password revokes every session, this one included: sign in again with it.
+      // Changing the password revokes every session, this one included: sign in again with it
+      // (with two-factor sign-in, or one still to set up, through the sign-in page).
       const s = getSession();
       if (s) {
-        const res = await api.post<{ token: string }>("/api/auth/login", { tenant: s.tenant, email: s.email, password: next }, { noAuthRedirect: true });
-        setSession({ ...s, token: res.token });
+        const res = await api.post<{ token?: string; second_factor?: boolean; two_factor_setup?: boolean }>(
+          "/api/auth/login",
+          { tenant: s.tenant, email: s.email, password: next },
+          { noAuthRedirect: true },
+        );
+        if (res.token && !res.two_factor_setup) setSession({ ...s, token: res.token });
+        else {
+          toast("Password changed; sign in again");
+          close();
+          onSignedOut();
+          return;
+        }
       }
       toast("Password changed");
       close();
