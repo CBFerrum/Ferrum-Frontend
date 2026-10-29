@@ -63,6 +63,21 @@ export interface ActionDef {
   permission: string;
   confirm?: string | null;
   condition?: string | null;
+  /** Only reads (a lookup, a download): the record does not change. */
+  read_only?: boolean;
+  /** What the action asks for first. */
+  params?: ActionParam[];
+  /** Actions of one group show under one menu. */
+  group?: string | null;
+}
+
+export interface ActionParam {
+  name: string;
+  label: string;
+  type: "data" | "text" | "select" | "int" | "date";
+  options?: string[];
+  required?: boolean;
+  description?: string | null;
 }
 
 export interface Workflow {

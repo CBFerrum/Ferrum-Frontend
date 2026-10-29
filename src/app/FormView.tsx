@@ -4,7 +4,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
-import { api, ApiError, docPath, download, errorMessage, newKey, openPrint, type FieldError } from "../lib/api";
+import { api, ApiError, docPath, download, errorMessage, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
@@ -31,6 +31,7 @@ import {
 } from "../ui/kit";
 import { CollabPanel } from "./Collab";
 import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
+import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 
 export function FormView() {
@@ -406,18 +407,28 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           (!a.condition || evaluate(a.condition, { doc, user }) !== false),
       );
 
+  const [asking, setAsking] = useState<ActionDef | null>(null);
+  /** An action's result: a record it made opens, a file it made downloads, otherwise the record reloads. */
+  const afterAction = async (a: ActionDef, res: unknown) => {
+    const r = (res && typeof res === "object" ? res : {}) as { entity?: unknown; id?: unknown; file?: { name?: unknown; type?: unknown; content?: unknown } };
+    if (r.file && typeof r.file.content === "string") {
+      const type = typeof r.file.type === "string" ? r.file.type : "application/octet-stream";
+      saveBlob(new Blob([r.file.content], { type }), typeof r.file.name === "string" ? r.file.name : `${a.name}.txt`);
+    }
+    toast(`${a.label}: done`);
+    if (typeof r.entity === "string" && typeof r.id === "string") navigate(`/e/${r.entity}/${r.id}`);
+    else if (!a.read_only) {
+      const fresh = await reload();
+      if (fresh) load(fresh);
+    }
+  };
   const runAction = async (a: ActionDef) => {
     if (a.confirm && !(await confirmDialog({ title: a.label, message: a.confirm, confirmLabel: a.label }))) return;
-    await operate(`action:${a.name}`, async () => {
-      const res = await api.post<unknown>(docPath(E, String(id), "actions", a.name), {});
-      const r = (res && typeof res === "object" ? res : {}) as { entity?: unknown; id?: unknown };
-      toast(`${a.label}: done`);
-      if (typeof r.entity === "string" && typeof r.id === "string") navigate(`/e/${r.entity}/${r.id}`);
-      else {
-        const fresh = await reload();
-        if (fresh) load(fresh);
-      }
-    });
+    if (a.params?.length) {
+      setAsking(a);
+      return;
+    }
+    await operate(`action:${a.name}`, async () => afterAction(a, await api.post<unknown>(docPath(E, String(id), "actions", a.name), {})));
   };
 
   const reloadLatest = async () => {
@@ -650,10 +661,31 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               {t.action}
             </Button>
           ))}
-          {actions.map((a) => (
-            <Button key={a.name} onClick={() => void runAction(a)} loading={busy === `action:${a.name}`} disabled={busyAny}>
-              {a.label}
-            </Button>
+          {actions
+            .filter((a) => !a.group)
+            .map((a) => (
+              <Button key={a.name} onClick={() => void runAction(a)} loading={busy === `action:${a.name}`} disabled={busyAny}>
+                {a.label}
+              </Button>
+            ))}
+          {[...new Set(actions.map((a) => a.group).filter((g): g is string => !!g))].map((group) => (
+            <Menu key={group} label={group}>
+              {(close) =>
+                actions
+                  .filter((a) => a.group === group)
+                  .map((a) => (
+                    <MenuItem
+                      key={a.name}
+                      onSelect={() => {
+                        close();
+                        if (!busyAny) void runAction(a);
+                      }}
+                    >
+                      {a.label}
+                    </MenuItem>
+                  ))
+              }
+            </Menu>
           ))}
           {!isNew && (
             <Button icon="printer" onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))}>
@@ -669,6 +701,18 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <Button icon="mail" onClick={() => setEmailing(true)}>
               Email
             </Button>
+          )}
+          {asking && (
+            <ActionDialog
+              action={asking}
+              doc={doc}
+              path={docPath(E, String(id), "actions", asking.name)}
+              onClose={() => setAsking(null)}
+              onDone={(res) => {
+                setAsking(null);
+                void afterAction(asking, res);
+              }}
+            />
           )}
           {emailing && (
             <EmailDocDialog
