@@ -139,7 +139,7 @@ export function CalendarPage() {
       ) : (
         <>
           {view === "week" ? (
-            <WeekGrid week={week} list={list} today={today} onOpen={setOpen} onMove={(id, start) => void move(id, start)} />
+            <WeekGrid week={week} list={list} loading={events.isLoading} today={today} onOpen={setOpen} onMove={(id, start) => void move(id, start)} />
           ) : (
             /* Month grid: tablets and up. */
             <div className="hidden overflow-hidden rounded-lg border bg-card md:block">
@@ -215,7 +215,21 @@ export function CalendarPage() {
 }
 
 /** A week of hours (tablets and up): all-day events on top, timed ones placed by their times. */
-function WeekGrid({ week, list, today, onOpen, onMove }: { week: Date[]; list: Occurrence[]; today: string; onOpen: (o: Occurrence) => void; onMove: (id: string, start: Date) => void }) {
+function WeekGrid({
+  week,
+  list,
+  loading,
+  today,
+  onOpen,
+  onMove,
+}: {
+  week: Date[];
+  list: Occurrence[];
+  loading: boolean;
+  today: string;
+  onOpen: (o: Occurrence) => void;
+  onMove: (id: string, start: Date) => void;
+}) {
   const navigate = useNavigate();
   const scroller = useRef<HTMLDivElement>(null);
   // Minutes between the dragged event's start and where it was picked up, so it lands where it is dropped.
@@ -233,7 +247,7 @@ function WeekGrid({ week, list, today, onOpen, onMove }: { week: Date[]; list: O
   };
   const now = new Date();
   return (
-    <div className="hidden overflow-hidden rounded-lg border bg-card md:block">
+    <div className="hidden overflow-hidden rounded-lg border bg-card md:block" aria-busy={loading || undefined}>
       <div className={cn(cols, "border-b text-xs font-medium text-muted-foreground")}>
         <div />
         {week.map((d) => (
@@ -244,22 +258,28 @@ function WeekGrid({ week, list, today, onOpen, onMove }: { week: Date[]; list: O
       </div>
       <div className={cn(cols, "border-b")}>
         <div className="px-1 py-1.5 text-[10px] text-muted-foreground">All day</div>
-        {week.map((d) => (
-          <ul
-            key={isoDay(d)}
-            className="grid min-h-8 min-w-0 grid-cols-1 content-start gap-0.5 border-l p-0.5"
-            {...dropTarget((id) => {
-              const o = list.find((x) => x.id === id);
-              if (o) onMove(id, o.all_day ? d : sameTimeOn(o, d));
-            })}
-          >
-            {(allDay.get(isoDay(d)) ?? []).map((o) => (
-              <li key={o.id}>
-                <OccurrenceChip o={o} onOpen={() => onOpen(o)} />
-              </li>
-            ))}
-          </ul>
-        ))}
+        {week.map((d) =>
+          loading ? (
+            <div key={isoDay(d)} className="border-l p-1">
+              <Skeleton className="h-4" />
+            </div>
+          ) : (
+            <ul
+              key={isoDay(d)}
+              className="grid min-h-8 min-w-0 grid-cols-1 content-start gap-0.5 border-l p-0.5"
+              {...dropTarget((id) => {
+                const o = list.find((x) => x.id === id);
+                if (o) onMove(id, o.all_day ? d : sameTimeOn(o, d));
+              })}
+            >
+              {(allDay.get(isoDay(d)) ?? []).map((o) => (
+                <li key={o.id}>
+                  <OccurrenceChip o={o} onOpen={() => onOpen(o)} />
+                </li>
+              ))}
+            </ul>
+          ),
+        )}
       </div>
       <div ref={scroller} className="max-h-[65vh] overflow-y-auto">
         <div className={cols} style={{ height: 24 * HOUR }}>
