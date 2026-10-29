@@ -981,6 +981,8 @@ input[type="color"] {
 /* ── dialog ── */
 
 .dialog {
+  margin: auto; /* centred: Tailwind's reset zeroes the browser's own margin */
+  pointer-events: auto; /* clickable even over a Radix panel, which turns pointer events off on <body> */
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 12px;

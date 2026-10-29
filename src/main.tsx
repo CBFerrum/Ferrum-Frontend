@@ -12,6 +12,9 @@ import { Login } from "./app/Login";
 import { OAuthAuthorize } from "./app/OAuthAuthorize";
 import { ReportView } from "./app/ReportView";
 import { RequireAuth } from "./app/Shell";
+import { ReportList } from "./app/studio/ReportList";
+import { dashboardRoutes } from "./app/studio/Dashboards";
+import { spaceRoutes } from "./app/studio/Spaces";
 import { setUnauthorizedHandler } from "./lib/api";
 import { setupPwa } from "./lib/pwa";
 import "./index.css";
@@ -51,6 +54,13 @@ const router = createBrowserRouter(
         { path: "e/:entity/:id", element: <FormView /> },
         { path: "r/:name", element: <ReportView /> },
         { path: "customize/:entity?", element: <CustomizePage /> },
+        // The form designer and the report builder (with the charting library) load on first use.
+        { path: "customize/:entity/form", lazy: () => import("./app/FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
+        { path: "studio/reports", element: <ReportList /> },
+        { path: "studio/reports/new", lazy: () => import("./app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
+        { path: "studio/reports/:id", lazy: () => import("./app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
+        ...dashboardRoutes,
+        ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
         { path: "apps", element: <AppsPage /> },
         { path: "*", element: <NotFound /> },

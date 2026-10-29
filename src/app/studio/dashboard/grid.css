@@ -1,0 +1,68 @@
+/* Dashboard grid. Viewing: a CSS grid sized by its container — 12 columns at the saved positions
+   from 1024px, widgets twice as wide in reading order from 640px, two columns on phones (small
+   widgets pair up). Editing: react-grid-layout, themed. */
+
+.dash-grid {
+  container-type: inline-size;
+}
+.dash-cells {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 36px;
+  gap: 12px;
+}
+.dash-cell {
+  min-width: 0;
+  grid-column: span var(--phone);
+  grid-row: span var(--h);
+}
+@container (min-width: 640px) {
+  .dash-cells {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .dash-cell {
+    grid-column: span var(--tablet);
+  }
+}
+@container (min-width: 1024px) {
+  .dash-cell {
+    grid-column: var(--x) / span var(--w);
+    grid-row: var(--y) / span var(--h);
+  }
+}
+
+.dash-edit .react-grid-item.react-grid-placeholder {
+  background: var(--primary);
+  opacity: 0.15;
+  border-radius: 12px;
+}
+.dash-edit .react-grid-item > .react-resizable-handle {
+  opacity: 1;
+  width: 24px;
+  height: 24px;
+  z-index: 2;
+}
+.dash-edit .react-grid-item > .react-resizable-handle::after {
+  right: 6px;
+  bottom: 6px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted-foreground);
+  border-bottom: 2px solid var(--muted-foreground);
+}
+@media (pointer: coarse) {
+  .dash-edit .react-grid-item > .react-resizable-handle {
+    width: 40px;
+    height: 40px;
+  }
+}
+.dash-edit .react-grid-item.react-draggable-dragging > *,
+.dash-edit .react-grid-item.resizing > * {
+  box-shadow: var(--shadow);
+}
+@media (prefers-reduced-motion: reduce) {
+  .react-grid-layout,
+  .react-grid-item {
+    transition: none !important;
+  }
+}

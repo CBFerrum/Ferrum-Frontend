@@ -7,6 +7,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { api, errorMessage, saveBlob } from "../lib/api";
 import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
+import { formDesignerLink } from "../lib/formLayout";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 
 interface Customization {
@@ -83,6 +84,11 @@ export function CustomizePage() {
             ))}
             {entity && !entities.some((e) => e.name === entity) && <option value={entity}>{entity}</option>}
           </select>
+          {entity && (
+            <Link className="btn" to={formDesignerLink(entity)}>
+              Design form
+            </Link>
+          )}
           <ChangeSet />
         </div>
       </div>

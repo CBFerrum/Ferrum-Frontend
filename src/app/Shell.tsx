@@ -6,7 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type Keybo
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
 import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { humanize, relativeTime } from "../lib/format";
-import { can, useMe, useMetaIndex, useReports, type MetaIndex, type ReportDef } from "../lib/meta";
+import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
 import {
@@ -26,6 +26,28 @@ import {
   useDismiss,
 } from "../ui/kit";
 import { ApiKeys } from "./Admin";
+import { dashboardNav } from "./studio/Dashboards";
+import { reportNav } from "./studio/ReportList";
+import { spaceNav } from "./studio/Spaces";
+
+type NavItem = { label: string; to: string; icon: string };
+
+/** The Studio app (package and module): its records open in their builders, not the generic list and form. */
+export const STUDIO = "studio";
+export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav];
+
+/** A module's links (sidebar group, home card): its readable entities and reports. */
+export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>): NavItem[] {
+  if (m.name === STUDIO) return studioNav;
+  return m.items.flatMap((item) => {
+    if (item.startsWith("report:")) {
+      const name = item.slice(7);
+      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
+    }
+    const e = readable.get(item);
+    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
+  });
+}
 
 export function RequireAuth() {
   const location = useLocation();
@@ -209,18 +231,7 @@ function Sidebar() {
     const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
     return [...meta.modules]
       .sort((a, b) => a.order - b.order)
-      .map((m) => ({
-        name: m.name,
-        label: m.label,
-        items: m.items.flatMap((item) => {
-          if (item.startsWith("report:")) {
-            const name = item.slice(7);
-            return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
-          }
-          const e = readable.get(item);
-          return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
-        }),
-      }))
+      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel) }))
       .filter((g) => g.items.length);
   }, [meta, reports]);
 
@@ -285,12 +296,13 @@ function useNavTargets(): NavTarget[] {
     const modLabel = new Map(meta.modules.map((m) => [m.name, m.label]));
     const out: NavTarget[] = [{ label: "Home", hint: "Page", to: "/" }];
     for (const e of meta.entities) {
-      if (!can(e.permissions, "read")) continue;
+      if (!can(e.permissions, "read") || e.module === STUDIO) continue;
       const hint = (e.module && modLabel.get(e.module)) || "Entity";
       out.push({ label: e.label_plural, hint, to: `/e/${e.name}` });
       if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: `New ${e.label}`, hint, to: `/e/${e.name}/new` });
     }
     for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: "Report", to: `/r/${r.name}` });
+    if (meta.packages.includes(STUDIO)) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
     if (me?.user.is_admin)
       out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;

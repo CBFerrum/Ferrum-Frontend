@@ -155,3 +155,6 @@ export const layoutOp = (layout: LayoutSection[]) => ({ op: "set_entity_property
 
 /** Whether two layouts save to the same form (for "unsaved changes"). */
 export const sameLayout = (a: LayoutSection[], b: LayoutSection[]) => JSON.stringify(toForm(a)) === JSON.stringify(toForm(b));
+
+/** Where the form designer for an entity opens (the designer itself loads on first use). */
+export const formDesignerLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/form`;

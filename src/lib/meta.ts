@@ -176,6 +176,12 @@ const LONG = 5 * 60_000;
 export const useMetaIndex = () =>
   useQuery({ queryKey: ["meta"], queryFn: ({ signal }) => api.get<MetaIndex>("/api/meta", undefined, signal), staleTime: LONG });
 
+/** Looks up an entity's plural label ("Sales Invoices"); the name itself until the metadata has loaded. */
+export function useEntityPlural() {
+  const { data } = useMetaIndex();
+  return (name: string) => data?.entities.find((e) => e.name === name)?.label_plural ?? name;
+}
+
 export const useEntityMeta = (name: string | undefined) =>
   useQuery({
     queryKey: ["meta", name],
