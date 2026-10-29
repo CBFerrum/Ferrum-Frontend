@@ -65,6 +65,74 @@ export function byDay(list: Occurrence[]): Map<string, Occurrence[]> {
   return out;
 }
 
+/** The week (Monday first) holding `day`. */
+export function weekOf(day: Date): Date[] {
+  const back = (day.getDay() + 6) % 7;
+  return Array.from({ length: 7 }, (_, i) => new Date(day.getFullYear(), day.getMonth(), day.getDate() - back + i));
+}
+
+/** A timed occurrence on one day of the week grid: minutes from midnight, and its lane among overlaps. */
+export interface Placed {
+  o: Occurrence;
+  from: number;
+  to: number;
+  lane: number;
+  lanes: number;
+}
+
+/** Lays out the timed occurrences touching a local day; overlapping ones share the width in lanes. */
+export function placeDay(list: Occurrence[], day: Date): Placed[] {
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const end = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime();
+  const minutes = (t: number) => Math.round((Math.min(Math.max(t, start), end) - start) / 60_000);
+  const items = list
+    .filter((o) => !o.all_day && new Date(o.start).getTime() < end && new Date(o.end).getTime() > start)
+    .map((o) => {
+      const from = minutes(new Date(o.start).getTime());
+      return { o, from, to: Math.min(1440, Math.max(minutes(new Date(o.end).getTime()), from + 15)) };
+    })
+    .sort((a, b) => a.from - b.from || b.to - a.to);
+  const out: Placed[] = [];
+  let cluster: Placed[] = [];
+  let laneEnds: number[] = [];
+  let clusterEnd = -1;
+  for (const it of items) {
+    if (it.from >= clusterEnd) {
+      for (const p of cluster) p.lanes = laneEnds.length;
+      cluster = [];
+      laneEnds = [];
+    }
+    let lane = laneEnds.findIndex((e) => e <= it.from);
+    if (lane < 0) lane = laneEnds.push(it.to) - 1;
+    else laneEnds[lane] = it.to;
+    const p = { ...it, lane, lanes: 1 };
+    cluster.push(p);
+    out.push(p);
+    clusterEnd = Math.max(clusterEnd, it.to);
+  }
+  for (const p of cluster) p.lanes = laneEnds.length;
+  return out;
+}
+
+/** Whether the user may move an occurrence by dragging it: their own event, not repeating, not cancelled. */
+export const movable = (o: Occurrence) => !!o.is_organizer && !o.recurring && o.status !== "Cancelled";
+
+/**
+ * Where an occurrence goes when it now starts at `start`, its length kept. All-day events move by
+ * whole days (to `start`'s local date, kept as UTC midnights).
+ */
+export function moved(o: Occurrence, start: Date): { starts_at: string; ends_at: string } {
+  const length = new Date(o.end).getTime() - new Date(o.start).getTime();
+  const at = o.all_day ? Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) : start.getTime();
+  return { starts_at: new Date(at).toISOString(), ends_at: new Date(at + length).toISOString() };
+}
+
+/** `day` at the local time of day `o` starts at: a timed event dropped on another day keeps its hour. */
+export function sameTimeOn(o: Occurrence, day: Date): Date {
+  const s = new Date(o.start);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), s.getHours(), s.getMinutes());
+}
+
 /** Only colors that cannot smuggle anything into a style: `#rgb`, `#rrggbb` or `#rrggbbaa`. */
 export function safeColor(c: string | null | undefined): string | undefined {
   return c && /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c.trim()) ? c.trim() : undefined;
