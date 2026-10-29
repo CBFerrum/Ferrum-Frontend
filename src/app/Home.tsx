@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
 import { relativeTime, todayIso } from "../lib/format";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
+import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
 import { moduleLinks, reportItems, STUDIO } from "./Shell";
@@ -62,6 +63,7 @@ export function Home() {
         </div>
       </div>
       <MyWork />
+      <ScreenWidgets />
       {!modules.length ? (
         <EmptyState title="Nothing to show yet">
           <p className="muted">You do not have access to any module. Ask an administrator for a role.</p>
