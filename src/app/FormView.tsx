@@ -31,6 +31,7 @@ import {
 } from "../ui/kit";
 import { CollabPanel } from "./Collab";
 import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
+import { EmailDocDialog } from "./EmailDoc";
 
 export function FormView() {
   const { entity = "", id = "" } = useParams();
@@ -107,7 +108,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const [sp] = useSearchParams();
   const isNew = !initial;
   const E = meta.name;
-  const pdf = useServerInfo().data?.pdf === true;
+  const server = useServerInfo().data;
+  const pdf = server?.pdf === true;
+  const [emailing, setEmailing] = useState(false);
   const user = useMemo(() => userScope(me), [me]);
   const [base, setBase] = useState<Doc | null>(initial);
   const [doc, setDoc] = useState<Doc>(() => initial ?? prefill(meta, sp, user));
@@ -655,6 +658,21 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <Button icon="download" onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))}>
               PDF
             </Button>
+          )}
+          {!isNew && server?.mail === true && can(meta.permissions, "export") && (
+            <Button icon="mail" onClick={() => setEmailing(true)}>
+              Email
+            </Button>
+          )}
+          {emailing && (
+            <EmailDocDialog
+              entity={E}
+              id={String(id)}
+              title={`${meta.label} ${typeof doc.number === "string" ? doc.number : ""}`.trim()}
+              defaultTo={meta.fields.filter((f) => f.type === "email").map((f) => doc[f.name]).find((v): v is string => typeof v === "string" && v.includes("@"))}
+              pdf={pdf && server?.mail_attachments === true}
+              onClose={() => setEmailing(false)}
+            />
           )}
           {(canDelete || me.user.is_admin) && (
             <Menu ariaLabel="More actions" icon="chevronDown">
