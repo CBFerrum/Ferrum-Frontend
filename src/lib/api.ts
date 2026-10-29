@@ -126,6 +126,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Do not treat a 401 as an expired session (login, password checks). */
   noAuthRedirect?: boolean;
+  /** A bearer token instead of the session's (the steps of signing in). */
+  token?: string;
 }
 
 export function queryString(query?: Record<string, QueryValue>): string {
@@ -150,7 +152,8 @@ const RETRY_STATUS = new Set([429, 502, 503, 504]);
 async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   const method = o.method ?? "GET";
   const headers: Record<string, string> = { accept: "application/json" };
-  if (session) headers.authorization = `Bearer ${session.token}`;
+  const token = o.token ?? session?.token;
+  if (token) headers.authorization = `Bearer ${token}`;
   if (o.ifMatch !== undefined) headers["if-match"] = `"v${o.ifMatch}"`;
   if (o.idempotencyKey) headers["idempotency-key"] = o.idempotencyKey;
   let body: BodyInit | undefined;
