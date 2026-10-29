@@ -5,6 +5,9 @@ export const CHAT = "/api/app/comms/chat";
 /** Bodies are Markdown of at most this many bytes. */
 export const MAX_BODY = 4096;
 
+/** Files one message may carry. */
+export const MAX_FILES = 20;
+
 export interface ChannelSummary {
   id: string;
   name: string;
@@ -37,6 +40,32 @@ export interface Message {
   edited_at?: string | null;
   reply_count?: number;
   last_reply_at?: string | null;
+}
+
+/** A file on a message, as the server lists it. */
+export interface Attachment {
+  id: string;
+  file_name: string;
+  content_type?: string;
+  size?: number;
+}
+
+/** Where a message's file downloads from (for the channel's members). */
+export const attachmentPath = (id: string) => `/api/app/comms/attachments/${encodeURIComponent(id)}`;
+
+/** A message's files; anything that is not a listed file is left out. */
+export function attachmentsOf(m: Pick<Message, "attachments">): Attachment[] {
+  if (!Array.isArray(m.attachments)) return [];
+  return m.attachments.filter(
+    (a): a is Attachment => typeof a === "object" && a !== null && typeof (a as Attachment).id === "string" && typeof (a as Attachment).file_name === "string",
+  );
+}
+
+/** `840 B`, `12 KB`, `3.4 MB`. */
+export function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 }
 
 export interface Person {

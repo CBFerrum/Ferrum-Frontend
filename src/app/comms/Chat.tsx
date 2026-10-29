@@ -3,7 +3,7 @@
 // screen refetches through the API, which enforces membership).
 
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, AtSign, Hash, Lock, MessageSquare, MessagesSquare, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, AtSign, Hash, Lock, MessageSquare, MessagesSquare, Paperclip, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { api, errorMessage } from "@/lib/api";
-import { CHAT, bodyTooLong, continues, mentionsIn, showMentions, splitChannels, startsDay, timeline, type Channel, type ChannelSummary, type Message, type Person } from "@/lib/chat";
+import { api, download, errorMessage, fetchBlob, newKey } from "@/lib/api";
+import {
+  CHAT,
+  MAX_FILES,
+  attachmentPath,
+  attachmentsOf,
+  bodyTooLong,
+  continues,
+  fileSize,
+  mentionsIn,
+  showMentions,
+  splitChannels,
+  startsDay,
+  timeline,
+  type Attachment,
+  type Channel,
+  type ChannelSummary,
+  type Message,
+  type Person,
+} from "@/lib/chat";
+import { uploadFile, type StoredFile } from "@/lib/files";
 import { relativeTime } from "@/lib/format";
 import { useLivePush } from "@/lib/live";
 import { useMe } from "@/lib/meta";
@@ -333,7 +352,10 @@ function MessageRow({ m, compact, people, mine, canModerate, onThread }: { m: Me
         ) : editing ? (
           <EditBox m={m} onDone={() => setEditing(false)} />
         ) : (
-          <Markdown source={showMentions(m.body, people)} />
+          <>
+            {m.body && <Markdown source={showMentions(m.body, people)} />}
+            <Attachments files={attachmentsOf(m)} />
+          </>
         )}
         {((m.edited_at && !m.deleted) || (onThread && (m.reply_count ?? 0) > 0)) && (
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
@@ -367,6 +389,56 @@ function MessageRow({ m, compact, people, mine, canModerate, onThread }: { m: Me
         </div>
       )}
     </article>
+  );
+}
+
+/** A message's files: images shown, others as chips; a click downloads either. */
+function Attachments({ files }: { files: Attachment[] }) {
+  if (!files.length) return null;
+  return (
+    <ul className="mt-1 flex flex-wrap gap-2" aria-label="Attachments">
+      {files.map((a) => (
+        <li key={a.id} className="min-w-0 max-w-full">
+          {a.content_type?.startsWith("image/") ? <AttachedImage a={a} /> : <FileChip a={a} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const saveFile = (a: Attachment) => download(attachmentPath(a.id), a.file_name).catch((e: unknown) => toast(errorMessage(e), "error"));
+
+function FileChip({ a }: { a: Attachment }) {
+  return (
+    <button
+      type="button"
+      onClick={() => void saveFile(a)}
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs hover:bg-accent pointer-coarse:min-h-11"
+      aria-label={`Download ${a.file_name}`}
+    >
+      <Paperclip className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">{a.file_name}</span>
+      {a.size != null && <span className="shrink-0 text-muted-foreground">{fileSize(a.size)}</span>}
+    </button>
+  );
+}
+
+/** An image file, fetched with the session (an <img> cannot send it); a chip if it will not load. */
+function AttachedImage({ a }: { a: Attachment }) {
+  const q = useQuery({ queryKey: ["chat", "file", a.id], queryFn: ({ signal }) => fetchBlob(attachmentPath(a.id), signal), staleTime: Infinity, retry: 1 });
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!q.data) return;
+    const u = URL.createObjectURL(q.data);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [q.data]);
+  if (q.isError) return <FileChip a={a} />;
+  if (!url) return <Skeleton className="h-32 w-48" />;
+  return (
+    <button type="button" onClick={() => void saveFile(a)} className="block overflow-hidden rounded-md border" aria-label={`Download ${a.file_name}`}>
+      <img src={url} alt={a.file_name} className="max-h-48 max-w-full object-contain sm:max-w-xs" />
+    </button>
   );
 }
 
@@ -415,21 +487,49 @@ function EditBox({ m, onDone }: { m: Message; onDone: () => void }) {
   );
 }
 
+/** A file picked for the next message: uploading, uploaded (`stored`) or refused (`error`). */
+interface Pending {
+  key: string;
+  name: string;
+  size: number;
+  stored?: StoredFile;
+  error?: string;
+}
+
 function Composer({ channel, parent, people, placeholder }: { channel: string; parent?: string; people: Person[]; placeholder: string }) {
   const qc = useQueryClient();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [mentioning, setMentioning] = useState(false);
+  const [files, setFiles] = useState<Pending[]>([]);
   const box = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const tooLong = bodyTooLong(body);
+  const uploading = files.some((f) => !f.stored && !f.error);
+  const ready = files.filter((f) => f.stored);
+  const addFiles = (list: FileList | null) => {
+    const picked = Array.from(list ?? []);
+    const room = Math.max(0, MAX_FILES - files.length);
+    if (picked.length > room) toast(`A message carries at most ${MAX_FILES} files.`, "error");
+    for (const file of picked.slice(0, room)) {
+      const key = newKey();
+      setFiles((fs) => [...fs, { key, name: file.name, size: file.size }]);
+      uploadFile(file).then(
+        (stored) => setFiles((fs) => fs.map((f) => (f.key === key ? { ...f, stored } : f))),
+        (e: unknown) => setFiles((fs) => fs.map((f) => (f.key === key ? { ...f, error: errorMessage(e) } : f))),
+      );
+    }
+  };
   const send = async (e?: FormEvent) => {
     e?.preventDefault();
     const text = body.trim();
-    if (!text || tooLong || busy) return;
+    if ((!text && !ready.length) || tooLong || busy || uploading) return;
     setBusy(true);
     try {
-      await api.post(`${CHAT}/channels/${channel}/messages`, { body: text, parent, mentions: mentionsIn(text) });
+      const attachments = ready.map((f) => ({ id: f.stored!.id }));
+      await api.post(`${CHAT}/channels/${channel}/messages`, { body: text, parent, mentions: mentionsIn(text), attachments });
       setBody("");
+      setFiles([]);
       void qc.invalidateQueries({ queryKey: parent ? keys.thread(parent) : keys.messages(channel) });
       if (parent) void qc.invalidateQueries({ queryKey: keys.messages(channel) });
     } catch (err) {
@@ -451,23 +551,64 @@ function Composer({ channel, parent, people, placeholder }: { channel: string; p
     box.current?.focus();
   };
   return (
-    <form onSubmit={send} className="grid gap-1.5">
+    <form
+      onSubmit={send}
+      className="grid gap-1.5"
+      onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files.length) return;
+        e.preventDefault();
+        addFiles(e.dataTransfer.files);
+      }}
+    >
+      {files.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Files to send">
+          {files.map((f) => (
+            <li key={f.key} className={cn("flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs", f.error && "border-destructive text-destructive")}>
+              <Paperclip className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">{f.name}</span>
+              <span className="shrink-0 text-muted-foreground">{f.error ? f.error : f.stored ? fileSize(f.size) : "Uploading…"}</span>
+              <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${f.name}`} onClick={() => setFiles((fs) => fs.filter((x) => x.key !== f.key))}>
+                <X />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="flex items-end gap-2">
         <Textarea
           ref={box}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={onKey}
+          onPaste={(e) => {
+            if (!e.clipboardData.files.length) return;
+            e.preventDefault();
+            addFiles(e.clipboardData.files);
+          }}
           placeholder={placeholder}
           aria-label={placeholder}
           aria-invalid={tooLong || undefined}
           rows={1}
           className="max-h-40 min-h-10 flex-1 resize-none"
         />
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+        <Button type="button" variant="outline" size="icon" aria-label="Attach files" onClick={() => picker.current?.click()}>
+          <Paperclip />
+        </Button>
         <Button type="button" variant="outline" size="icon" aria-label="Mention someone" onClick={() => setMentioning((v) => !v)}>
           <AtSign />
         </Button>
-        <Button type="submit" disabled={busy || !body.trim() || tooLong}>
+        <Button type="submit" disabled={busy || uploading || (!body.trim() && !ready.length) || tooLong}>
           Send
         </Button>
       </div>

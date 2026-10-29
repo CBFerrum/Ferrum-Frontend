@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { bodyTooLong, continues, mentionsIn, showMentions, splitChannels, startsDay, timeline, type ChannelSummary, type Message } from "./chat";
+import { attachmentsOf, bodyTooLong, continues, fileSize, mentionsIn, showMentions, splitChannels, startsDay, timeline, type ChannelSummary, type Message } from "./chat";
 
 const msg = (id: string, at: string, sender = "a@x.test", extra: Partial<Message> = {}): Message => ({ id, channel: "c", sender, body: id, posted_at: at, ...extra });
 
 describe("chat", () => {
+  it("reads a message's files and sizes them", () => {
+    const files = [{ id: "f1", file_name: "plan.pdf", size: 2048 }, { id: 7 }, "x", null, { id: "f2", file_name: "a.png", content_type: "image/png" }];
+    expect(attachmentsOf({ attachments: files }).map((a) => a.id)).toEqual(["f1", "f2"]);
+    expect(attachmentsOf({ attachments: "nope" })).toEqual([]);
+    expect([fileSize(840), fileSize(12_400), fileSize(3_565_158)]).toEqual(["840 B", "12 KB", "3.4 MB"]);
+  });
+
   it("finds and shows mentions", () => {
     const body = "Hi <@Ana@x.test> and <@bo@x.test>, also <@ana@x.test>";
     expect(mentionsIn(body)).toEqual(["ana@x.test", "bo@x.test"]);

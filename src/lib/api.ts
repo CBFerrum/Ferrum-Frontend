@@ -237,6 +237,11 @@ function fileNameFrom(disposition: string | null): string | undefined {
   return m ? m[1] : undefined;
 }
 
+/** An authenticated resource as a blob (an image preview: an <img> cannot send the session). */
+export async function fetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  return (await send(path, { signal })).blob();
+}
+
 /** Downloads an authenticated resource (CSV export, attachment) as a file. */
 export async function download(path: string, fallbackName: string, query?: Record<string, QueryValue>): Promise<void> {
   const res = await send(path, { query });
