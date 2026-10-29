@@ -36,10 +36,14 @@ type NavItem = { label: string; to: string; icon: string };
 export const STUDIO = "studio";
 export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav];
 
+/** The POS app's till, first in its module. */
+export const POS = "pos";
+export const registerNav: NavItem = { label: "Register", to: "/pos", icon: "store" };
+
 /** A module's links (sidebar group, home card): its readable entities and reports. */
 export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>): NavItem[] {
   if (m.name === STUDIO) return studioNav;
-  return m.items.flatMap((item) => {
+  const links = m.items.flatMap((item) => {
     if (item.startsWith("report:")) {
       const name = item.slice(7);
       return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
@@ -47,6 +51,7 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
     const e = readable.get(item);
     return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
   });
+  return m.name === POS && readable.has("PosInvoice") ? [registerNav, ...links] : links;
 }
 
 export function RequireAuth() {
@@ -303,6 +308,8 @@ function useNavTargets(): NavTarget[] {
     }
     for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: "Report", to: `/r/${r.name}` });
     if (meta.packages.includes(STUDIO)) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
+    if (meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
+      out.push({ label: "POS Register", hint: "POS", to: registerNav.to });
     if (me?.user.is_admin)
       out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;
