@@ -18,6 +18,7 @@ import {
 import { Link } from "react-router";
 import { api, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { formatValue, humanize, NUMERIC_TYPES, shortId } from "../lib/format";
+import { uploadFile } from "../lib/files";
 import {
   DOCSTATUS_LABEL,
   fieldState,
@@ -444,14 +445,9 @@ function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId 
   const v = typeof value === "string" ? value : "";
 
   const upload = async (file: File) => {
-    if (file.size > 25 * 1024 * 1024) return toast("Files must be 25 MB or smaller.", "error");
-    const fd = new FormData();
-    fd.append("file", file);
-    if (entity) fd.append("entity", entity);
-    if (recordId) fd.append("record_id", recordId);
     setBusy(true);
     try {
-      const r = await api.post<{ url: string; file_name: string }>("/api/files", fd);
+      const r = await uploadFile(file, entity && recordId ? { entity, id: recordId } : undefined);
       setName(r.file_name);
       onChange(r.url);
     } catch (e) {

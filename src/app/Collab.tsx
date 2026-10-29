@@ -6,6 +6,7 @@ import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "r
 import { api, docPath, download, errorMessage } from "../lib/api";
 import { formatDate, relativeTime } from "../lib/format";
 import { useMe } from "../lib/meta";
+import { uploadFile } from "../lib/files";
 import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, PageLoading, toast, useDismiss } from "../ui/kit";
 
 export interface Person {
@@ -353,14 +354,9 @@ function Attachments({ entity, id, files, onChanged }: { entity: string; id: str
   const [busy, setBusy] = useState(false);
   const upload = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) return toast("Files must be 25 MB or smaller.", "error");
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("entity", entity);
-    fd.append("record_id", id);
     setBusy(true);
     try {
-      await api.post("/api/files", fd);
+      await uploadFile(file, { entity, id });
       onChanged();
     } catch (e) {
       toast(errorMessage(e), "error");
