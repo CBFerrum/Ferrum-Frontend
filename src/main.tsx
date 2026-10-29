@@ -61,6 +61,7 @@ const router = createBrowserRouter(
         { path: "studio/reports/:id", lazy: () => import("./app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
         { path: "pos", lazy: () => import("./app/pos/Register").then((m) => ({ Component: m.RegisterPage })) },
         { path: "chat/:channel?", lazy: () => import("./app/comms/Chat").then((m) => ({ Component: m.ChatPage })) },
+        { path: "calendar", lazy: () => import("./app/comms/Calendar").then((m) => ({ Component: m.CalendarPage })) },
         ...dashboardRoutes,
         ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
