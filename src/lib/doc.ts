@@ -55,14 +55,17 @@ export function calcBody(meta: EntityMeta, doc: Doc): Doc {
 
 /**
  * Takes what the server computed without clobbering what the user typed: server-managed fields
- * (read-only, computed, not writable) always follow the server; editable fields only fill blanks.
+ * (read-only, computed, not writable) always follow the server; editable fields fill blanks, and
+ * follow the server while they still hold what it said last (`prev`): a price the server set
+ * moves with the unit, a price the user typed stays.
  */
-function mergeFields(fields: Field[], local: Doc, server: Doc): Doc {
+function mergeFields(fields: Field[], local: Doc, server: Doc, prev?: Doc): Doc {
   let out = local;
   let titles = local._titles;
   for (const f of fields) {
     if (f.type === "table" || !(f.name in server)) continue;
-    if (!isServerManaged(f) && !isBlank(local[f.name])) continue;
+    const untouched = isBlank(local[f.name]) || (!!prev && f.name in prev && sameValue(prev[f.name], local[f.name]));
+    if (!isServerManaged(f) && !untouched) continue;
     if (sameValue(server[f.name], local[f.name])) continue;
     if (out === local) out = { ...local };
     out[f.name] = server[f.name];
@@ -75,9 +78,12 @@ function mergeFields(fields: Field[], local: Doc, server: Doc): Doc {
   return out;
 }
 
-/** Merges a `_calc` result into the working document (returns `local` itself when nothing changed). */
-export function mergeCalc(meta: EntityMeta, local: Doc, server: Doc): Doc {
-  let out = mergeFields(meta.fields, local, server);
+/**
+ * Merges a `_calc` result into the working document (returns `local` itself when nothing changed).
+ * `prev` is what the server said before (the last result, or the document as loaded).
+ */
+export function mergeCalc(meta: EntityMeta, local: Doc, server: Doc, prev?: Doc): Doc {
+  let out = mergeFields(meta.fields, local, server, prev);
   for (const [table, child] of Object.entries(meta.children)) {
     const mine = asRows(local[table]);
     const theirs = asRows(server[table]);
@@ -92,7 +98,8 @@ export function mergeCalc(meta: EntityMeta, local: Doc, server: Doc): Doc {
       }
       continue;
     }
-    const rows = mine.map((r, i) => mergeFields(child.fields, r, theirs[i]));
+    const before = prev ? asRows(prev[table]) : [];
+    const rows = mine.map((r, i) => mergeFields(child.fields, r, theirs[i], before.length === mine.length ? before[i] : undefined));
     if (rows.some((r, i) => r !== mine[i])) {
       if (out === local) out = { ...local };
       out[table] = rows;
