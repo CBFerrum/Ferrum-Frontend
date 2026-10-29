@@ -177,7 +177,7 @@ const LONG = 5 * 60_000;
 export const useServerInfo = () =>
   useQuery({
     queryKey: ["version"],
-    queryFn: ({ signal }) => api.get<{ version: string; pdf?: boolean; packages: { name: string; version: string }[] }>("/api/version", undefined, signal),
+    queryFn: ({ signal }) => api.get<{ version: string; pdf?: boolean; mail?: boolean; mail_attachments?: boolean; packages: { name: string; version: string }[] }>("/api/version", undefined, signal),
     staleTime: LONG,
   });
 
