@@ -10,75 +10,45 @@ No component kit, no grid library.
 
 ## Develop
 
+Ferrum's server answers every page: Home, the store, administration, the account and records
+(`apps/shell`), and ERP (`apps/erp`), built here into `dist-apps/` and registered when the server
+starts. With Ferrum's checkout beside this one (`ferrum/web` is this repository):
+
 ```sh
 npm install
-npm run dev        # http://localhost:5173/app/  (proxies /api and /files to http://127.0.0.1:5150)
+npm run build:apps                                              # dist-apps/shell, dist-apps/erp
+cd ../server && FERRUM_UI_DIR=../web/dist-apps cargo run -- start   # http://127.0.0.1:5150/
 ```
 
-Sign in with a tenant (workspace), email and password. There is no React plugin (to keep
-`node_modules` small), so edits trigger a full page reload instead of Fast Refresh; add
-`@vitejs/plugin-react` to `vite.config.ts` if you want Fast Refresh.
+Rebuild and restart the server to see a change. There is no React plugin (to keep `node_modules`
+small).
 
 ## Build, check, test
 
 ```sh
 npm run typecheck  # tsc --noEmit (strict)
 npm test           # vitest: expression evaluator, API errors, decimal formatting, filters, document diff/merge
-npm run build      # type-check + production bundle in dist/
+npm run build      # type-check + the interfaces in dist-apps/
 ```
 
-The app is built with `base: "/app/"`.
-
-## Phones and installing as an app
+## Phones
 
 Every screen works on phones: lists turn into cards with a Sort select, forms keep their actions in a
 bar at the bottom, child tables show one card per row (tap to edit), dialogs open as bottom sheets,
 and touch screens get 44px targets and 16px inputs (no zoom on iOS). Layouts respect the notch and
 home indicator.
 
-Ferrum is also an installable app (PWA): *Install the app* in the account menu (Chrome, Edge,
-Android) or *Share → Add to Home Screen* in Safari on iOS. The service worker (`public/sw.js`,
-registered by production builds only) caches the app shell and its content-hashed bundles, at
-install and on every online page load, so the app opens offline. API calls, file downloads, MCP,
-OAuth and WebSockets always go to the network and are never cached: they are authenticated tenant
-data, and devices may be shared. Pages load from the network first, so a deploy or a rollback shows
-on the next load; open tabs look for a new deployment hourly and whenever they are shown again, and
-offer to reload (a form with unsaved changes asks first). To try it locally:
-
-```sh
-npm run build && npx vite preview   # http://localhost:4173/app/, proxies the API like the dev server
-```
-
 ## Deploy
 
-The image (`ghcr.io/cbferrum/ferrum-frontend`) is unprivileged nginx on port 8080 serving the app at
-`/app/` and proxying `/api`, `/files`, `/mcp` and `/ws` to the Ferrum server named by
-`FERRUM_API_URL` (default `http://ferrum:5150`), so browsers talk to a single origin and no CORS
-setup is needed. It keeps no state; run as many replicas as you like. Health check: `GET /healthz`.
-
-```sh
-docker build -t ferrum-frontend .
-docker run -p 8080:8080 -e FERRUM_API_URL=http://host.docker.internal:5150 ferrum-frontend
-```
-
-Other settings:
-* `FERRUM_MAX_UPLOAD` (default `32m`): the largest request body passed to the API.
-* `FERRUM_OFFICE_ORIGIN`: Drive's online editor server (Collabora or ONLYOFFICE), which pages
-  may frame and post to.
-* `FERRUM_EDITORS_URL`: the server of Drive's browser editors, which pages may frame (Ferrum's
-  `deploy/editors`, docs/operations.md "Browser editors").
-* `FERRUM_MEET_URL`: the LiveKit server of video meetings (`wss://…`), which pages may connect to
-  (docs/operations.md "Meetings").
-
-For a single-binary setup the Ferrum server can also serve a build directly: point
-`FERRUM_WEB_DIR` at `dist/` and `FERRUM_WEB_INDEX` (served for every other path under `/app/`) at
-`dist/index.html`.
+Nothing to deploy from here: Ferrum's server image builds the interfaces from this repository at
+the commit its Dockerfile pins (`FRONTEND_REV`), or from another checkout
+(`docker build --build-context frontend=<this checkout> <ferrum checkout>`). This repository's CI
+does the latter and runs Ferrum's `deploy/smoke.sh` against the result.
 
 ## Structure
 
 ```
 src/
-  main.tsx            router (basename /app), query client, global 401 → login
   styles.css          design tokens (light/dark via prefers-color-scheme), layout, components
   lib/
     api.ts            fetch wrapper: bearer token (memory + sessionStorage), error parsing,
@@ -89,7 +59,7 @@ src/
     format.ts         exact decimal formatting/comparison (money stays a string), dates
     filters.ts        list filter state ⇄ URL ⇄ API `filters` JSON
     doc.ts            create/patch bodies, merging `_calc` previews into the edited document
-    pwa.ts            service worker registration, install prompt, online state, new-deployment check
+    pwa.ts            install prompt, online state
     *.test.ts         unit tests
   ui/kit.tsx          design system: Button, Field, Dialog (native <dialog>), Tabs, Badge,
                       Menu, toasts, confirm dialog, states, error boundary, icons

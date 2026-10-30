@@ -48,7 +48,6 @@ export interface Bootstrap {
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
-  legacy?: string;
   /** On a public page: which of the app's public pages (`drive/s`). */
   public?: string;
 }
