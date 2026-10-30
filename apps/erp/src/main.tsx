@@ -22,7 +22,7 @@ import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
 
 /** ERP's packages: the sidebar shows their modules. */
-const ERP_PACKAGES = ["core", "accounting", "selling", "buying", "inventory", "manufacturing", "india"];
+const ERP_PACKAGES = ["core", "parties", "products", "accounting", "selling", "buying", "inventory", "manufacturing", "india"];
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } },
