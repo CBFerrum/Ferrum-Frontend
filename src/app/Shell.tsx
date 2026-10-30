@@ -9,8 +9,6 @@ import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
-import { useMailSession } from "../lib/mail";
-import { useMeetAvailable } from "../lib/meet";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
@@ -281,9 +279,10 @@ function Sidebar() {
   const reports = useReports().data?.reports;
   const me = useMe().data;
   const pages = useContributions("ui.page").data ?? [];
-  // A hosted mailbox, when hosted mail is on and the person has one.
-  const mail = useMailSession(!!meta?.packages.includes("comms"));
-  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
+  // Mail, Chat, Calendar and Meet are Comms' own pages now (their links lead there): shown with
+  // Comms, which says itself when hosted mail or meetings are not set up.
+  const comms = !!meta?.packages.includes("comms") && !!meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read"));
+  const meet = comms;
   const groups = useMemo(() => {
     if (!meta) return [];
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
@@ -302,7 +301,7 @@ function Sidebar() {
         Home
       </NavLink>
       {/* Under the platform's bar, other apps are in its launcher. */}
-      {frameMode === "classic" && mail.data && (
+      {frameMode === "classic" && comms && (
         <NavLink to="/mail" className="nav-link">
           <Icon name="mail" />
           Mail
@@ -394,7 +393,7 @@ function useNavTargets(): NavTarget[] {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
   const me = useMe().data;
-  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
+  const meet = !!meta?.packages.includes("comms");
   return useMemo(() => {
     if (!meta) return [];
     const modLabel = new Map(meta.modules.map((m) => [m.name, m.label]));

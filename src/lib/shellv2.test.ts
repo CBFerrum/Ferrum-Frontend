@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newHome } from "./shellv2";
+import { movedApp, newHome } from "./shellv2";
 
 describe("today's addresses in a workspace on the shell", () => {
   it("go to their new homes", () => {
@@ -17,8 +17,37 @@ describe("today's addresses in a workspace on the shell", () => {
   });
 
   it("stay where they have no other home yet", () => {
-    for (const p of ["/mail", "/drive/f1", "/doc/1", "/docs", "/chat/c", "/calendar", "/meet", "/pos", "/edit/1", "/s/t/l", "/login", "/e/A/1/x"]) {
+    for (const p of ["/pos", "/login", "/e/A/1/x"]) {
       expect(newHome(p), p).toBeNull();
     }
+  });
+});
+
+describe("the pages of apps that left the web app", () => {
+  it("are those apps' pages, for every workspace", () => {
+    expect(movedApp("/mail")).toBe("/mail/");
+    expect(movedApp("/mail/inbox/M1")).toBe("/mail/inbox/M1");
+    expect(movedApp("/chat/c1")).toBe("/chat/c1");
+    expect(movedApp("/calendar")).toBe("/calendar/");
+    expect(movedApp("/meet/channel/c1")).toBe("/meet/channel/c1");
+    expect(movedApp("/drive", "?item=f1")).toBe("/drive/?item=f1");
+    expect(movedApp("/drive/d1")).toBe("/drive/d1");
+    expect(movedApp("/edit/f1")).toBe("/drive/edit/f1");
+    expect(movedApp("/edit/f1/sheets")).toBe("/drive/edit/f1/sheets");
+    expect(movedApp("/doc/f1")).toBe("/docs/d/f1");
+    expect(movedApp("/docs", "?view=shared")).toBe("/docs/?view=shared");
+    expect(newHome("/drive/d1"), "on the shell too").toBe("/drive/d1");
+  });
+
+  it("include the pages people open by link, signed in or not", () => {
+    expect(movedApp("/s/acme/tok-1")).toBe("/drive/s/acme/tok-1");
+    expect(movedApp("/meet/guest/acme/e.x.y.z")).toBe("/meet/guest/acme/e.x.y.z");
+    // Odd characters stay encoded once; a bad escape is kept as text.
+    expect(movedApp("/s/acme/a%2Fb")).toBe("/drive/s/acme/a%2Fb");
+    expect(movedApp("/drive/%E0%A4")).toBe("/drive/%25E0%25A4");
+  });
+
+  it("leave the rest of the web app alone", () => {
+    for (const p of ["/", "/e/Customer", "/r/x", "/apps", "/admin", "/pos", "/login", "/studio/reports", "/x/a/b"]) expect(movedApp(p), p).toBeNull();
   });
 });
