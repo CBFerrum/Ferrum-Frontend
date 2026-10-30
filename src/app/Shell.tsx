@@ -29,7 +29,7 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
-import { ApiKeys } from "./Admin";
+import { ApiKeys, CalendarApps } from "./Admin";
 import { TwoFactorSettings } from "./TwoFactor";
 import { dashboardNav } from "./studio/Dashboards";
 import { reportNav } from "./studio/ReportList";
@@ -580,7 +580,8 @@ function UserMenu() {
   const me = useMe().data;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [dialog, setDialog] = useState<"password" | "2fa" | "keys" | "ai" | null>(null);
+  const [dialog, setDialog] = useState<"password" | "2fa" | "keys" | "cal" | "ai" | null>(null);
+  const comms = !!useMetaIndex().data?.packages.includes("comms");
   const install = useInstall();
 
   const signOut = () => {
@@ -635,6 +636,16 @@ function UserMenu() {
             >
               Two-factor sign-in
             </MenuItem>
+            {comms && (
+              <MenuItem
+                onSelect={() => {
+                  close();
+                  setDialog("cal");
+                }}
+              >
+                Calendar and contacts apps
+              </MenuItem>
+            )}
             <MenuItem
               onSelect={() => {
                 close();
@@ -687,6 +698,9 @@ function UserMenu() {
       </Dialog>
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title="Your API keys" wide>
         <ApiKeys />
+      </Dialog>
+      <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title="Calendar and contacts apps" wide>
+        {dialog === "cal" && <CalendarApps email={me?.user.email ?? ""} />}
       </Dialog>
       <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title="Connect an AI assistant">
         <ConnectAi />

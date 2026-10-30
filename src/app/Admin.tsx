@@ -2156,11 +2156,15 @@ interface ApiKey {
   expires_at?: string | null;
   revoked_at?: string | null;
   last_used_at?: string | null;
+  /** `dav`: an app password for calendar and contacts apps; none: a key to the whole API. */
+  scope?: string | null;
 }
 
-export function ApiKeys() {
+/** Your keys to the API, or (`scope="dav"`) your app passwords for calendar and contacts apps. */
+export function ApiKeys({ scope }: { scope?: "dav" }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["api-keys"], queryFn: ({ signal }) => api.get<{ keys: ApiKey[] }>("/api/auth/api_keys", undefined, signal) });
+  const app = scope === "dav";
   const [name, setName] = useState("");
   const [expires, setExpires] = useState("");
   const [busy, setBusy] = useState(false);
@@ -2176,6 +2180,7 @@ export function ApiKeys() {
       const res = await api.post<{ id: string; key: string }>("/api/auth/api_keys", {
         name: name.trim(),
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : undefined,
+        scope,
       });
       setCreated(res.key);
       setName("");
@@ -2188,21 +2193,30 @@ export function ApiKeys() {
     }
   };
   const revoke = async (k: ApiKey) => {
-    if (!(await confirmDialog({ title: `Revoke ${k.name}?`, message: "Integrations using this key stop working immediately.", confirmLabel: "Revoke", danger: true }))) return;
-    if (await attempt(() => api.del(`/api/auth/api_keys/${k.id}`), "API key revoked")) void refresh();
+    const message = app ? "Apps using this password stop syncing immediately." : "Integrations using this key stop working immediately.";
+    if (!(await confirmDialog({ title: `Revoke ${k.name}?`, message, confirmLabel: "Revoke", danger: true }))) return;
+    if (await attempt(() => api.del(`/api/auth/api_keys/${k.id}`), app ? "App password revoked" : "API key revoked")) void refresh();
   };
 
   return (
     <section className="card">
-      <form className="toolbar" onSubmit={create} aria-label="Create an API key">
-        <FieldWrap label="Key name" htmlFor="key-name" className="field-wide">
-          <input id="key-name" className="input" value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} placeholder="e.g. Warehouse scanner" />
+      <form className="toolbar" onSubmit={create} aria-label={app ? "Create an app password" : "Create an API key"}>
+        <FieldWrap label={app ? "App or device" : "Key name"} htmlFor="key-name" className="field-wide">
+          <input
+            id="key-name"
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            maxLength={100}
+            placeholder={app ? "e.g. iPhone" : "e.g. Warehouse scanner"}
+          />
         </FieldWrap>
         <FieldWrap label="Expires (optional)" htmlFor="key-exp">
           <input id="key-exp" className="input" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </FieldWrap>
         <Button type="submit" variant="primary" icon="plus" loading={busy}>
-          Create key
+          {app ? "Create app password" : "Create key"}
         </Button>
       </form>
       {error && (
@@ -2211,9 +2225,10 @@ export function ApiKeys() {
         </div>
       )}
       <Loaded q={q}>
-        {(data) =>
-          !data.keys.length ? (
-            <EmptyState title="No API keys" icon="settings" />
+        {(all) => {
+          const data = { keys: all.keys.filter((k) => (k.scope ?? undefined) === scope) };
+          return !data.keys.length ? (
+            <EmptyState title={app ? "No app passwords" : "No API keys"} icon="settings" />
           ) : (
             <div className="table-wrap">
               <table className="table">
@@ -2251,15 +2266,46 @@ export function ApiKeys() {
                 </tbody>
               </table>
             </div>
-          )
-        }
+          );
+        }}
       </Loaded>
       <SecretDialog
         secret={created}
-        title="Your new API key"
-        note="Store this key now: it cannot be shown again. Send it as Authorization: Bearer <key>."
+        title={app ? "Your new app password" : "Your new API key"}
+        note={
+          app
+            ? "Enter it in the app as the password, with your email as the user name. It cannot be shown again."
+            : "Store this key now: it cannot be shown again. Send it as Authorization: Bearer <key>."
+        }
         onClose={() => setCreated(null)}
       />
     </section>
+  );
+}
+
+/** Calendar and contacts apps (CalDAV and CardDAV): what to enter in them, and their app passwords. */
+export function CalendarApps({ email }: { email: string }) {
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <p>
+        Add your Ferrum calendar and contacts to Apple Calendar and Contacts, Thunderbird, DAVx⁵ on Android or Outlook with a CalDAV add-in. In the app,
+        add a CalDAV account (and a CardDAV one for contacts) with:
+      </p>
+      <dl className="drive-facts">
+        <dt>Server</dt>
+        <dd className="mono">{location.origin}</dd>
+        <dt>Full address</dt>
+        <dd className="mono">{location.origin}/api/dav/comms/</dd>
+        <dt>User name</dt>
+        <dd className="mono">{email}</dd>
+        <dt>Password</dt>
+        <dd>an app password, made below for each app</dd>
+      </dl>
+      <p className="faint">
+        Your calendar holds the events you organize and those you are invited to. Answering or deleting an invitation in the app answers it here. The
+        address books Colleagues and Contacts are read-only.
+      </p>
+      <ApiKeys scope="dav" />
+    </div>
   );
 }
