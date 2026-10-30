@@ -1,0 +1,10 @@
+{
+  "name": "@ferrum/build",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Builds, checks and tests an app's own interface (ui/ in its repository) with this checkout's packages",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "bin": { "ferrum-ui": "./cli.mjs" },
+  "exports": { "./vite": "./vite.mjs" }
+}
