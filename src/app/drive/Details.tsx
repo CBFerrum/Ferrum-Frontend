@@ -2,14 +2,15 @@
 // open now, comments with @mentions, versions to download or restore, and what happened to it.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { Link } from "react-router";
 import { api, download, errorMessage } from "../../lib/api";
 import { formatDateTime, relativeTime } from "../../lib/format";
 import { Badge, Button, Spinner, TabPanel, Tabs, confirmDialog, toast } from "../../ui/kit";
 import { Composer, usePeople } from "../Collab";
 import { isLiveDoc } from "../../lib/livedocs";
-import { sizeLabel } from "./Drive";
-import { presenceLabel, useFilesPresence } from "./presence";
+import { defaultEditor, editorsFor, shared, sizeLabel, useEditors } from "./Drive";
+import { joinable, presenceLabel, useFilesPresence } from "./presence";
 import { type Shareable, roleLabel } from "./Share";
 
 export interface ItemInfo extends Shareable {
@@ -51,10 +52,27 @@ interface Activity {
 const LEVELS = ["View", "Comment", "Edit", "Manage"];
 export const allows = (permission: string, needed: string) => LEVELS.indexOf(permission) >= LEVELS.indexOf(needed);
 
-export function DetailsPanel({ id, space, onClose, onShare }: { id: string; space: string; onClose: () => void; onShare: (item: Shareable) => void }) {
+/** `tab`: the tab to show first. `inEditor`: shown beside the file's own editor (no "Join them"). */
+export function DetailsPanel({
+  id,
+  space,
+  onClose,
+  onShare,
+  tab: first = "comments",
+  inEditor = false,
+}: {
+  id: string;
+  space: string;
+  onClose: () => void;
+  onShare: (item: Shareable) => void;
+  tab?: string;
+  inEditor?: boolean;
+}) {
   const qc = useQueryClient();
   const tabsId = useId();
-  const [tab, setTab] = useState("comments");
+  const [tab, setTab] = useState(first);
+  useEffect(() => setTab(first), [first]);
+  const editors = useEditors();
   const act = (action: string, params: Record<string, unknown>) => api.post(`/api/v1/DriveSpace/${space}/actions/${action}`, params);
   const info = useQuery({ queryKey: ["drive", "item", id], queryFn: ({ signal }) => api.get<ItemInfo>("/api/app/drive/item_info", { item: id }, signal) });
   const item = info.data;
@@ -86,6 +104,10 @@ export function DetailsPanel({ id, space, onClose, onShare }: { id: string; spac
     { id: "activity", label: "Activity" },
   ];
   const shown = tabs.some((t) => t.id === tab) ? tab : tabs[0].id;
+  // Others editing in an editor people share: join them there (C2).
+  const narrow = typeof matchMedia === "function" && matchMedia("(max-width: 640px)").matches;
+  const open = isFile && !inEditor ? defaultEditor(editorsFor({ id: item.id, name: item.name, size: item.size ?? null }, editors), narrow) : undefined;
+  const join = open && shared(open.key) && joinable(present) ? open : undefined;
   return (
     <aside className="drive-details" aria-label={`Details of ${item.name}`}>
       <div className="drive-details-head">
@@ -120,6 +142,11 @@ export function DetailsPanel({ id, space, onClose, onShare }: { id: string; spac
       {present.length > 0 && (
         <p className="drive-present" role="status">
           <Badge tone="green">Now</Badge> {presenceLabel(present)}
+          {join && (
+            <Link className="btn btn-primary btn-sm" to={join.to}>
+              Join them
+            </Link>
+          )}
         </p>
       )}
       {item.locked_by && <p className="faint">Checked out by {item.locked_by}.</p>}

@@ -6,10 +6,10 @@
 // the editor), make new files instead; conflicts ask first.
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, download, errorMessage, fetchBlob, getSession, request } from "../../lib/api";
 import { Alert, Badge, Button, Dialog, EmptyState, Spinner, confirmDialog, toast } from "../../ui/kit";
-import { useEditors } from "./Drive";
+import { editable, useEditors } from "./Drive";
 import { presenceLabel, usePresence } from "./presence";
 
 interface Session {
@@ -298,6 +298,11 @@ export function BrowserEditPage() {
               <Button size="sm" onClick={() => void takeOver()}>
                 Edit here instead
               </Button>
+            ) : session.held_in === "browser" && editors.online && editable(session.name) ? (
+              // Browser editors are one person's at a time: others may read it in the online editor.
+              <Link className="btn btn-default btn-sm" to={`/edit/${file}`}>
+                Open in the online editor (read only)
+              </Link>
             ) : undefined
           }
         >

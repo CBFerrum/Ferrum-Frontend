@@ -9,11 +9,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, download, errorMessage, request } from "../../lib/api";
-import { formatDateTime } from "../../lib/format";
+import { formatDateTime, initials } from "../../lib/format";
 import { Badge, Button, Dialog, EmptyState, Field, Icon, Menu, MenuItem, Spinner, Tabs, confirmDialog, toast } from "../../ui/kit";
 import { isLiveDoc } from "../../lib/livedocs";
+import { type EditorView, applyViews, hostMessage, inkOn, othersOf, parseMessage } from "../../lib/wopi";
 import { DetailsPanel, type ItemInfo, allows } from "./Details";
-import { presenceLabel, useFilesPresence, usePresence } from "./presence";
+import { joinable, presenceLabel, useFilesPresence, usePresence } from "./presence";
 import { type Shareable, ShareDialog } from "./Share";
 
 interface Item {
@@ -90,6 +91,9 @@ export interface EditorChoice {
   /** Why it cannot open this file. */
   unavailable?: string;
 }
+
+/** Editors several people use at once on one file (browser editors are one person's at a time). */
+export const shared = (key: string) => key === "online" || key === "live";
 
 /** The editor "Open" uses: the first that can take the file. On narrow screens browser editors,
  *  made for a mouse and keyboard, are offered under "Open with" only. */
@@ -363,6 +367,9 @@ export function DrivePage() {
                 const choices = it.kind === "file" && view !== "trash" ? editorsFor(it, editors) : [];
                 const open = defaultEditor(choices, narrow);
                 const here = present[it.id] ?? [];
+                // Others editing where people edit together: join them there (C2).
+                const editing = here.filter((p) => p.mode === "edit");
+                const joins = !!open && shared(open.key) && joinable(here);
                 return (
                   <tr key={it.id} className={it.id === selected ? "row-selected" : undefined}>
                     <td>
@@ -399,8 +406,12 @@ export function DrivePage() {
                     </td>
                     <td className="drive-actions">
                       {open && (
-                        <Link className="btn btn-default btn-sm" to={open.to}>
-                          {allows(it.permission, "Edit") ? "Edit online" : "Open"}
+                        <Link
+                          className={joins ? "btn btn-primary btn-sm" : "btn btn-default btn-sm"}
+                          to={open.to}
+                          aria-label={joins ? `Join ${presenceLabel(editing).replace(/ (is|are) editing$/, "")} in ${it.name}` : undefined}
+                        >
+                          {joins ? "Join" : open.key === "live" || !allows(it.permission, "Edit") || editing.length > 0 ? "Open" : "Edit online"}
                         </Link>
                       )}{" "}
                       {choices.length > (open ? 1 : 0) && (
@@ -417,6 +428,9 @@ export function DrivePage() {
                               >
                                 {c.label}
                                 {c.unavailable && <span className="faint"> ({c.unavailable})</span>}
+                                {!c.unavailable && editing.length > 0 && (
+                                  <span className="faint"> ({shared(c.key) && joinable(here) ? `join ${editing.map((p) => p.name).join(", ")}` : "read only while others edit"})</span>
+                                )}
                               </MenuItem>
                             ))
                           }
@@ -517,8 +531,19 @@ export function EditPage() {
   const { file } = useParams();
   const navigate = useNavigate();
   const form = useRef<HTMLFormElement>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
   const [launch, setLaunch] = useState<Launch | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What the editor tells: who is in the file (null until it says), unsaved changes.
+  const [views, setViews] = useState<EditorView[] | null>(null);
+  const [modified, setModified] = useState<boolean | null>(null);
+  const [panel, setPanel] = useState<"comments" | "versions" | null>(null);
+  const [sharing, setSharing] = useState<Shareable | null>(null);
+  const space = useQuery({
+    queryKey: ["drive", "space"],
+    queryFn: ({ signal }) => api.get<{ id: string; root_folder: string }>("/api/app/drive/space", undefined, signal),
+  });
+  const leave = () => ((window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate("/drive"));
 
   useEffect(() => {
     let live = true;
@@ -533,8 +558,52 @@ export function EditPage() {
   useEffect(() => {
     if (launch) form.current?.submit();
   }, [launch]);
-  // Others in the same document co-edit with this person; the page reports them both.
-  const others = usePresence(file, launch ? (launch.action === "edit" ? "edit" : "view") : null);
+  // The editor's messages (Ferrum docs/plan/collaboration.md, C2): only from its own frame and origin.
+  useEffect(() => {
+    if (!launch || !file) return;
+    const origin = new URL(launch.url, location.href).origin;
+    const post = (id: string) => frame.current?.contentWindow?.postMessage(hostMessage(id), origin);
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== origin || e.source !== frame.current?.contentWindow) return;
+      const m = parseMessage(e.data);
+      if (!m) return;
+      switch (m.id) {
+        case "App_LoadingStatus": {
+          const status = (m.values as { Status?: string } | null)?.Status;
+          if (status === "Frame_Ready") post("Host_PostmessageReady");
+          if (status === "Document_Loaded") post("Get_Views");
+          break;
+        }
+        case "View_Added":
+        case "View_Removed":
+        case "Get_Views_Resp":
+        case "Views_List":
+          setViews((v) => applyViews(v, m));
+          break;
+        case "Doc_ModifiedStatus":
+          setModified((m.values as { Modified?: unknown } | null)?.Modified === true);
+          break;
+        // Its Share and version history buttons open Drive's own.
+        case "UI_Share":
+        case "UI_Sharing":
+          setSharing({ id: file, name: launch.name, kind: "file" });
+          break;
+        case "UI_FileVersions":
+          setPanel("versions");
+          break;
+        case "UI_Close":
+          leave();
+          break;
+      }
+    };
+    addEventListener("message", onMessage);
+    return () => removeEventListener("message", onMessage);
+  }, [launch, file]);
+  // Drive's lists show who has the file open; the editor names who is in it, when it says.
+  const present = usePresence(file, launch ? (launch.action === "edit" ? "edit" : "view") : null);
+  const others = views ? othersOf(views) : null;
+  // Whoever edits it in a browser editor holds it, and the editor here only shows it meanwhile.
+  const elsewhere = present.filter((p) => p.editor === "browser");
 
   if (error) {
     return (
@@ -544,23 +613,54 @@ export function EditPage() {
       </EmptyState>
     );
   }
-  if (!launch) return <Spinner label="Opening the editor" />;
+  if (!launch || !file) return <Spinner label="Opening the editor" />;
   return (
     <div className="editor-page">
       <div className="editor-bar">
-        <Button size="sm" icon="left" onClick={() => navigate(-1)}>
+        <Button size="sm" icon="left" onClick={leave}>
           Back
         </Button>
         <strong>{launch.name}</strong>
         {launch.action === "view" && <Badge>Read only</Badge>}
-        {others.length > 0 && <Badge tone="green">{presenceLabel(others)}</Badge>}
-        <span className="faint">Changes are saved as new versions in Drive.</span>
+        {others ? (
+          others.length > 0 && (
+            <span className="editor-people" role="group" aria-label={`Also in the file: ${others.map((v) => v.name + (v.readOnly ? " (viewing)" : "")).join(", ")}`}>
+              {others.slice(0, 6).map((v) => (
+                <span key={v.id} className="editor-person" style={{ background: v.color, color: inkOn(v.color) }} title={v.readOnly ? `${v.name} (viewing)` : v.name} aria-hidden>
+                  {initials(v.name)}
+                </span>
+              ))}
+              {others.length > 6 && (
+                <span className="editor-person editor-person-more" aria-hidden>
+                  +{others.length - 6}
+                </span>
+              )}
+            </span>
+          )
+        ) : (
+          present.length > 0 && <Badge tone="green">{presenceLabel(present)}</Badge>
+        )}
+        {others && elsewhere.length > 0 && <Badge tone="amber">{presenceLabel(elsewhere)} in a browser editor</Badge>}
+        {launch.action === "edit" && (
+          <span className="faint" role="status">
+            {modified === true ? "Unsaved changes" : modified === false ? "All changes saved" : "Changes are saved as new versions in Drive."}
+          </span>
+        )}
+        <span className="editor-bar-end">
+          <Button size="sm" aria-pressed={!!panel} onClick={() => setPanel(panel ? null : "comments")}>
+            Comments and history
+          </Button>
+        </span>
       </div>
       <form ref={form} action={launch.url} method="post" target="office-editor" hidden>
         <input type="hidden" name="access_token" value={launch.access_token} />
         <input type="hidden" name="access_token_ttl" value={String(launch.access_token_ttl)} />
       </form>
-      <iframe name="office-editor" title={`${launch.name} in the editor`} className="editor-frame" allow="clipboard-read; clipboard-write; fullscreen" />
+      <div className={panel ? "editor-main editor-main-details" : "editor-main"}>
+        <iframe ref={frame} name="office-editor" title={`${launch.name} in the editor`} className="editor-frame" allow="clipboard-read; clipboard-write; fullscreen" />
+        {panel && space.data && <DetailsPanel id={file} space={space.data.id} tab={panel} inEditor onClose={() => setPanel(null)} onShare={setSharing} />}
+      </div>
+      {sharing && space.data && <ShareDialog item={sharing} space={space.data.id} onClose={() => setSharing(null)} />}
     </div>
   );
 }

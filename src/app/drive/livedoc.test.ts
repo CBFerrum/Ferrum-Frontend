@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { defaultEditor, editorsFor } from "./Drive";
 import { docTitle, snippetParts } from "../../lib/livedocs";
-import { cleanHref, initials, statusText } from "./LiveDoc";
+import { initials } from "../../lib/format";
+import { cleanHref, statusText } from "./LiveDoc";
 
 describe("live documents", () => {
   it("open in the document editor, on phones too", () => {
