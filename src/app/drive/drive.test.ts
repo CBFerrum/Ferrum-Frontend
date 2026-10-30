@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { notificationPath } from "../../lib/links";
 import { copyName, readOnlyReason } from "./BrowserEdit";
 import { allows } from "./Details";
-import { presenceLabel } from "./presence";
+import { joinable, presenceLabel } from "./presence";
 import { roleLabel } from "./Share";
 import { type BrowserEditor, defaultEditor, editable, editorsFor, extension, sizeLabel } from "./Drive";
 
@@ -63,6 +63,13 @@ describe("drive", () => {
     expect(presenceLabel([{ name: "Ana", mode: "edit" }])).toBe("Ana is editing");
     expect(presenceLabel([{ name: "Ana", mode: "view" }, { name: "Ben", mode: "view" }])).toBe("Ana and Ben are viewing");
     expect(presenceLabel([{ name: "Ana", mode: "edit" }, { name: "Ben", mode: "view" }, { name: "Cy", mode: "view" }])).toBe("Ana and 2 others are here, editing");
+  });
+
+  it("offers to join people editing together, not someone in a browser editor", () => {
+    expect(joinable([{ name: "Ana", mode: "edit" }, { name: "Ben", mode: "view" }])).toBe(true);
+    expect(joinable([{ name: "Ana", mode: "edit", editor: "browser" }, { name: "Ben", mode: "view" }])).toBe(false);
+    expect(joinable([{ name: "Ben", mode: "view" }])).toBe(false);
+    expect(joinable([])).toBe(false);
   });
 
   it("knows what each role may do, and its name", () => {

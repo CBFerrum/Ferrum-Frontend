@@ -39,6 +39,7 @@ import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-rou
 import { api, download, errorMessage, getSession, openPrint } from "../../lib/api";
 import { can, useMetaIndex } from "../../lib/meta";
 import { CoeditSession, type CoeditState, othersIn, socketUrl } from "../../lib/coedit";
+import { initials } from "../../lib/format";
 import { docTitle } from "../../lib/livedocs";
 import { Alert, Badge, Button, Dialog, EmptyState, Field, Menu, MenuItem, Spinner, confirmDialog, toast } from "../../ui/kit";
 import { type ItemInfo, DetailsPanel, allows } from "./Details";
@@ -52,11 +53,6 @@ export function statusText(s: Pick<CoeditState, "online" | "loaded" | "unsaved" 
   if (!s.loaded) return "Opening…";
   if (!s.online) return s.unsaved ? "Offline: your changes are kept in this tab until the connection is back" : "Reconnecting…";
   return s.unsaved ? "Saving…" : "Saved";
-}
-
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "?") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
 export function LiveDocPage() {

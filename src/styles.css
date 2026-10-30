@@ -2468,3 +2468,46 @@ main:has(> [data-fullbleed]) {
   display: grid;
   gap: 8px;
 }
+
+/* Who else is in the online editor (app/drive/Drive.tsx, C2), and its panel beside the editor. */
+.editor-bar-end {
+  margin-left: auto;
+}
+.editor-people {
+  display: inline-flex;
+  padding-left: 6px;
+}
+.editor-person {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.editor-person-more {
+  color: #fff;
+  background: var(--faint);
+}
+.editor-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+.editor-main-details {
+  grid-template-columns: minmax(0, 1fr) 360px;
+}
+.editor-main .editor-frame {
+  height: 100%;
+  min-height: 480px;
+}
+@media (max-width: 1000px) {
+  .editor-main-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -9,7 +9,12 @@ import { api, getSession } from "../../lib/api";
 export interface Present {
   name: string;
   mode: "view" | "edit";
+  /** "browser" when they edit in a browser editor, which is one person's at a time. */
+  editor?: "browser";
 }
+
+/** Whether others are editing where one can join them: not in a browser editor (C2). */
+export const joinable = (people: Present[]) => people.some((p) => p.mode === "edit") && !people.some((p) => p.editor === "browser");
 
 const EVERY = 30_000;
 /** At most this many files per question: their ids go in the address. */
