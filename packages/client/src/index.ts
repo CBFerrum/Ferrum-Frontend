@@ -39,6 +39,8 @@ export interface Bootstrap {
     entry: string;
     title: string;
     compact: boolean;
+    /** The shell's records of an app without an interface of its own (`/data/{app}/`). */
+    scope?: { app: string; title: string; packages: string[] } | null;
   } | null;
   host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test"; shell: string };
   api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none" };
