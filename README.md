@@ -61,6 +61,13 @@ docker build -t ferrum-frontend .
 docker run -p 8080:8080 -e FERRUM_API_URL=http://host.docker.internal:5150 ferrum-frontend
 ```
 
+Other settings:
+* `FERRUM_MAX_UPLOAD` (default `32m`): the largest request body passed to the API.
+* `FERRUM_OFFICE_ORIGIN`: Drive's online editor server (Collabora or ONLYOFFICE), which pages
+  may frame and post to.
+* `FERRUM_EDITORS_URL`: the server of Drive's browser editors, which pages may frame (Ferrum's
+  `deploy/editors`, docs/operations.md "Browser editors").
+
 For a single-binary setup the Ferrum server can also serve a build directly: point
 `FERRUM_WEB_DIR` at `dist/` and `FERRUM_WEB_INDEX` (served for every other path under `/app/`) at
 `dist/index.html`.
