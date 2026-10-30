@@ -63,6 +63,7 @@ const router = createBrowserRouter(
         { path: "pos", lazy: () => import("./app/pos/Register").then((m) => ({ Component: m.RegisterPage })) },
         { path: "chat/:channel?", lazy: () => import("./app/comms/Chat").then((m) => ({ Component: m.ChatPage })) },
         { path: "calendar", lazy: () => import("./app/comms/Calendar").then((m) => ({ Component: m.CalendarPage })) },
+        { path: "mail/:mailbox?/:email?", lazy: () => import("./app/comms/Mail").then((m) => ({ Component: m.MailPage })) },
         ...dashboardRoutes,
         ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
