@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { copyName, readOnlyReason } from "./BrowserEdit";
-import { type BrowserEditor, editable, editorsFor, extension, sizeLabel } from "./Drive";
+import { type BrowserEditor, defaultEditor, editable, editorsFor, extension, sizeLabel } from "./Drive";
 
 describe("drive", () => {
   it("knows which files the editor opens", () => {
@@ -31,6 +31,14 @@ describe("drive", () => {
     expect(big).toEqual([{ key: "sheets", label: "Spreadsheet (GridCraft)", to: "/edit/f1/sheets", unavailable: "larger than 50 MB" }]);
     expect(editorsFor(file("budget.xlsx", 60 * 1024 * 1024), { online: true, browser: [sheets] }).map((c) => c.key)).toEqual(["online", "sheets"]);
     expect(editorsFor(file("huge.pdf", 5e9), { online: false, browser: [pdf] })[0].unavailable).toBeUndefined();
+  });
+
+  it("opens with the first editor that can, and not a browser editor on a phone", () => {
+    const sheet = editorsFor(file("budget.xlsx"), { online: false, browser: [sheets] });
+    expect(defaultEditor(sheet, false)?.key).toBe("sheets");
+    expect(defaultEditor(sheet, true)).toBeUndefined();
+    expect(defaultEditor(editorsFor(file("budget.xlsx"), { online: true, browser: [sheets] }), true)?.key).toBe("online");
+    expect(defaultEditor(editorsFor(file("budget.xlsx", 60 * 1024 * 1024), { online: false, browser: [sheets] }), false)).toBeUndefined();
   });
 
   it("reads extensions and names copies", () => {

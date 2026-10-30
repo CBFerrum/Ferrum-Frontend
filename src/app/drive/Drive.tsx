@@ -81,6 +81,12 @@ export interface EditorChoice {
   unavailable?: string;
 }
 
+/** The editor "Open" uses: the first that can take the file. On narrow screens browser editors,
+ *  made for a mouse and keyboard, are offered under "Open with" only. */
+export function defaultEditor(choices: EditorChoice[], narrow: boolean): EditorChoice | undefined {
+  return choices.find((c) => !c.unavailable && (c.key === "online" || !narrow));
+}
+
 /** The editors that open a file, the default first: the online editor for office files, then the
  *  browser editors for its type. */
 export function editorsFor(file: { id: string; name: string; size: number | null }, e: { online: boolean; browser: BrowserEditor[] }): EditorChoice[] {
@@ -127,6 +133,7 @@ export function DrivePage() {
   });
   const id = folder ?? space.data?.root_folder;
   const editors = useEditors();
+  const narrow = typeof matchMedia === "function" && matchMedia("(max-width: 640px)").matches;
   const list = useQuery({
     queryKey: ["drive", "folder", id],
     queryFn: ({ signal }) => api.get<Listing>("/api/app/drive/list_folder", { folder: id, limit: 500 }, signal),
@@ -219,7 +226,7 @@ export function DrivePage() {
           <tbody>
             {items.map((it) => {
               const choices = it.kind === "file" ? editorsFor(it, editors) : [];
-              const open = choices.find((c) => !c.unavailable);
+              const open = defaultEditor(choices, narrow);
               return (
                 <tr key={it.id}>
                   <td>
@@ -249,7 +256,7 @@ export function DrivePage() {
                         {["Edit", "Manage"].includes(it.permission) ? "Edit online" : "Open"}
                       </Link>
                     )}{" "}
-                    {choices.length > 1 && (
+                    {choices.length > (open ? 1 : 0) && (
                       <Menu label="Open with" ariaLabel={`Open ${it.name} with`} buttonClass="btn btn-default btn-sm">
                         {(close) =>
                           choices.map((c) => (
