@@ -239,11 +239,30 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
     });
     setBusy(a.id);
     try {
-      await api.del(`/api/admin/apps/${a.id}${deleteData ? "?delete_data=true" : ""}`);
+      const r = await api.del<{ leftovers?: string[] }>(`/api/admin/apps/${a.id}${deleteData ? "?delete_data=true" : ""}`);
       toast(`${a.name} removed`);
+      // What it brought in (a suite's members) and nothing else needs: offered for removal too.
+      const left = r?.leftovers ?? [];
+      const name = (id: string) => data.installed.find((x) => x.id === id)?.name ?? id;
+      if (
+        left.length &&
+        (await confirmDialog({
+          title: `Also remove what ${a.name} brought in?`,
+          message: `Nothing else needs ${left.map(name).join(", ")}. Their records are kept.`,
+          confirmLabel: "Remove them",
+          cancelLabel: "Keep them",
+          danger: true,
+        }))
+      ) {
+        for (const id of left) {
+          await api.del(`/api/admin/apps/${id}`);
+        }
+        toast(`${left.map(name).join(", ")} removed`);
+      }
       await refresh();
     } catch (e) {
       toast(errorMessage(e), "error");
+      await refresh();
     } finally {
       setBusy(null);
     }
