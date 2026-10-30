@@ -2,6 +2,7 @@
 // widgets apps contribute. Each app's own home is in the app.
 
 import { useQuery } from "@tanstack/react-query";
+import { FirstRun } from "@/app/FirstRun";
 import { MyWork } from "@/app/Home";
 import { ScreenWidgets } from "@/app/Screen";
 import { api, errorMessage } from "@/lib/api";
@@ -48,6 +49,7 @@ export function ShellHome() {
           <p className="page-sub">{info.data?.workspace.name}</p>
         </div>
       </div>
+      <FirstRun />
       {info.error ? (
         <EmptyState title="Your apps cannot be shown">
           <p className="muted">{errorMessage(info.error)}</p>

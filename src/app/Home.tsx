@@ -6,6 +6,7 @@ import { api, docPath, errorMessage } from "../lib/api";
 import { relativeTime, todayIso } from "../lib/format";
 import { useMeetAvailable } from "../lib/meet";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
+import { FirstRun } from "./FirstRun";
 import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
@@ -65,6 +66,7 @@ export function Home() {
           </p>
         </div>
       </div>
+      <FirstRun />
       <MyWork />
       <ScreenWidgets />
       {!modules.length ? (
