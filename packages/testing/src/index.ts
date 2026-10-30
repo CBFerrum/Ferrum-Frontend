@@ -100,6 +100,8 @@ export function installFakeShell(
       on: () => noop,
     },
     family: async () => o.family ?? null,
+    // The assistant opens as the side panel of that name.
+    assistant: async (context) => (calls.panels.push({ id: "assistant", context }), true),
     apps: async () => o.apps ?? [],
     on: noop,
   };
