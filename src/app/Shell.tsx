@@ -9,6 +9,7 @@ import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useMailSession } from "../lib/mail";
+import { useMeetAvailable } from "../lib/meet";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
@@ -48,9 +49,11 @@ export const registerNav: NavItem = { label: "Register", to: "/pos", icon: "stor
 export const COMMS_MODULE = "communication";
 export const chatNav: NavItem = { label: "Chat", to: "/chat", icon: "chat" };
 export const calendarNav: NavItem = { label: "Calendar", to: "/calendar", icon: "calendar" };
+export const meetNav: NavItem = { label: "Meet", to: "/meet", icon: "video" };
 
-/** A module's links (sidebar group, home card): its readable entities and reports. */
-export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>): NavItem[] {
+/** A module's links (sidebar group, home card): its readable entities and reports; `meet` when
+ *  video meetings are set up. */
+export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false): NavItem[] {
   if (m.name === STUDIO) return studioNav;
   const links = m.items.flatMap((item) => {
     if (item.startsWith("report:")) {
@@ -61,7 +64,7 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
     return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
   });
   if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
-  if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...links];
+  if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
   return links;
 }
 
@@ -244,15 +247,16 @@ function Sidebar() {
   const pages = useContributions("ui.page").data ?? [];
   // A hosted mailbox, when hosted mail is on and the person has one.
   const mail = useMailSession(!!meta?.packages.includes("comms"));
+  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
   const groups = useMemo(() => {
     if (!meta) return [];
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
     const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
     return [...meta.modules]
       .sort((a, b) => a.order - b.order)
-      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel) }))
+      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet) }))
       .filter((g) => g.items.length);
-  }, [meta, reports]);
+  }, [meta, reports, meet]);
 
   return (
     <nav aria-label="Main">
@@ -336,6 +340,7 @@ function useNavTargets(): NavTarget[] {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
   const me = useMe().data;
+  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
   return useMemo(() => {
     if (!meta) return [];
     const modLabel = new Map(meta.modules.map((m) => [m.name, m.label]));
@@ -352,10 +357,11 @@ function useNavTargets(): NavTarget[] {
       out.push({ label: "POS Register", hint: "POS", to: registerNav.to });
     if (meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
       out.push({ label: "Chat", hint: "Communication", to: chatNav.to }, { label: "Calendar", hint: "Communication", to: calendarNav.to });
+    if (meet) out.push({ label: "Meet", hint: "Communication", to: meetNav.to });
     if (me?.user.is_admin)
       out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;
-  }, [meta, reports, me]);
+  }, [meta, reports, me, meet]);
 }
 
 function matchTargets(targets: NavTarget[], q: string): NavTarget[] {

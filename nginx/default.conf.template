@@ -2,13 +2,23 @@
 # ${FERRUM_OFFICE_ORIGIN}: the editor server for online editing (e.g. https://office.example.com),
 # which pages may frame and post to; empty when there is none. ${FERRUM_EDITORS_URL}: the editor
 # server for browser editors (e.g. https://editors.example.com), which pages may frame; empty when
-# there is none. ${FERRUM_MAX_UPLOAD}: the largest request body passed to the API (e.g. 32m); the
-# server holds each route to its own limit.
+# there is none. ${FERRUM_MEET_URL}: the LiveKit server of video meetings (e.g.
+# wss://meet.example.com), which pages may connect to over WebSocket and HTTPS (the client checks a
+# refused connection's reason there); empty when there is none. ${FERRUM_MAX_UPLOAD}: the largest
+# request body passed to the API (e.g. 32m); the server holds each route to its own limit.
 map $host $office_origin {
     default "${FERRUM_OFFICE_ORIGIN}";
 }
 map $host $editors_origin {
     default "${FERRUM_EDITORS_URL}";
+}
+map "${FERRUM_MEET_URL}" $meet_origin {
+    "~^(wss?://[^/]+)" $1;
+    default "";
+}
+map "${FERRUM_MEET_URL}" $meet_http_origin {
+    "~^ws(s?)://([^/]+)" http$1://$2;
+    default "";
 }
 
 map $http_upgrade $connection_upgrade {

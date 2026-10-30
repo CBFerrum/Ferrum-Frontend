@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, docPath, errorMessage } from "@/lib/api";
+import { meetLink, meetPath, useMeetAvailable } from "@/lib/meet";
 import { byDay, CALENDAR, isoDay, monthGrid, movable, moved, placeDay, safeColor, safeLink, sameTimeOn, weekOf, type Occurrence } from "@/lib/calendar";
 import { useLiveEntity } from "@/lib/live";
 import { cn } from "@/lib/utils";
@@ -383,7 +384,25 @@ function OccurrenceDialog({ o, onClose, onChanged }: { o: Occurrence; onClose: (
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [response, setResponse] = useState(o.my_response ?? null);
-  const link = safeLink(o.meeting_link);
+  const [meetingLink, setMeetingLink] = useState(o.meeting_link);
+  const meet = useMeetAvailable().data === true;
+  const link = safeLink(meetingLink);
+  // A meeting of this app opens here; any other link (another service's meeting) in a new tab.
+  const meeting = meetPath(link);
+  const cancelled = o.status === "Cancelled";
+  const addMeeting = async () => {
+    setBusy(true);
+    try {
+      const href = meetLink("event", o.event);
+      await api.patch(docPath("CalendarEvent", o.event), { meeting_link: href });
+      setMeetingLink(href);
+      onChanged();
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   const when = o.all_day
     ? new Date(o.start).toLocaleDateString([], { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" })
     : `${new Date(o.start).toLocaleString([], { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} – ${timeOf(o.end)}`;
@@ -422,13 +441,29 @@ function OccurrenceDialog({ o, onClose, onChanged }: { o: Occurrence; onClose: (
               <MapPin className="size-4 text-muted-foreground" aria-hidden="true" /> {o.location}
             </p>
           )}
-          {link && (
-            <p className="flex items-center gap-1.5">
-              <Video className="size-4 text-muted-foreground" aria-hidden="true" />
-              <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
-                Join the meeting
-              </a>
-            </p>
+          {meeting ? (
+            !cancelled && (
+              <p className="flex items-center gap-1.5">
+                <Video className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Link to={meeting} className="text-primary underline underline-offset-2">
+                  Join video meeting
+                </Link>
+              </p>
+            )
+          ) : (
+            link && (
+              <p className="flex items-center gap-1.5">
+                <Video className="size-4 text-muted-foreground" aria-hidden="true" />
+                <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">
+                  Join the meeting
+                </a>
+              </p>
+            )
+          )}
+          {!link && o.is_organizer && meet && !cancelled && (
+            <Button size="sm" variant="outline" className="justify-self-start" disabled={busy} onClick={() => void addMeeting()}>
+              <Video /> Add video meeting
+            </Button>
           )}
           {o.description && <p className="whitespace-pre-line text-muted-foreground">{o.description}</p>}
           {o.owner && !o.is_organizer && <p className="text-xs text-muted-foreground">Organized by {o.owner}</p>}
