@@ -45,7 +45,7 @@ interface Installed extends AppSummary {
   update?: { version: string } | null;
   settings_url?: string | null;
 }
-interface AppsResponse {
+export interface AppsResponse {
   installed: Installed[];
   available: AppSummary[];
   uploads: "off" | "private" | "cluster";
@@ -116,7 +116,7 @@ function AppIcon({ app }: { app: AppSummary }) {
   );
 }
 
-function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; children?: ReactNode; onOpen?: () => void; addonOf?: string }) {
+export function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; children?: ReactNode; onOpen?: () => void; addonOf?: string }) {
   return (
     <article className={addonOf ? "app-card app-addon" : "app-card"}>
       <div className="app-card-head">
@@ -281,7 +281,26 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   );
 }
 
-const CATEGORIES = ["sales", "crm", "support", "hr", "finance", "inventory", "projects", "commerce", "pos", "communication", "productivity", "marketing", "integrations", "localization", "energy", "industry"];
+const CATEGORIES = [
+  "suite",
+  "sales",
+  "crm",
+  "support",
+  "hr",
+  "finance",
+  "inventory",
+  "projects",
+  "commerce",
+  "pos",
+  "communication",
+  "productivity",
+  "marketing",
+  "integrations",
+  "connector",
+  "localization",
+  "energy",
+  "industry",
+];
 
 function Store({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string }) => void }) {
   const [text, setText] = useState("");
@@ -389,7 +408,15 @@ function Upload({ data, onUploaded }: { data: AppsResponse; onUploaded: (id: str
   );
 }
 
-function InstallDialog({ request, onClose }: { request: { id: string; version?: string; upgrade?: boolean } | null; onClose: () => void }) {
+export function InstallDialog({
+  request,
+  onClose,
+  onInstalled,
+}: {
+  request: { id: string; version?: string; upgrade?: boolean } | null;
+  onClose: () => void;
+  onInstalled?: () => void;
+}) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -413,6 +440,7 @@ function InstallDialog({ request, onClose }: { request: { id: string; version?: 
       toast(`${plan.data.app.name} ${request.upgrade ? "updated" : "installed"}`);
       await Promise.all([qc.invalidateQueries({ queryKey: ["apps"] }), qc.invalidateQueries({ queryKey: ["meta"] })]);
       close();
+      onInstalled?.();
     } catch (e) {
       setError(errorMessage(e, false));
     } finally {
