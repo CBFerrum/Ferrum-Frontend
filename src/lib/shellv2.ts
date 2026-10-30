@@ -4,11 +4,55 @@
 
 import { api, getSession, setSession } from "./api";
 
-/** The new address of a path of today's web app (relative to /app/), or null where it stays. */
-export function newHome(path: string, search = ""): string | null {
+const enc = (s: string) => {
+  try {
+    return encodeURIComponent(decodeURIComponent(s));
+  } catch {
+    return encodeURIComponent(s);
+  }
+};
+
+/**
+ * The page an app that left this web app has for a path of it (relative to /app/), or null: Mail,
+ * Chat, Calendar and Meet are Comms' pages, files Drive's, documents Docs', and the pages people
+ * outside the workspace open by link are those apps' public pages (docs/plan/apps-ui.md §14). These
+ * move for every workspace, on the shell or not: this web app has no such pages any more.
+ */
+export function movedApp(path: string, search = ""): string | null {
   const p = path.replace(/^\/+/, "/").replace(/\/+$/, "") || "/";
   const seg = p.split("/").filter(Boolean);
-  const enc = (s: string) => encodeURIComponent(decodeURIComponent(s));
+  const rest = seg.slice(1).map(enc).join("/");
+  const under = (base: string) => `${base}${rest ? `${rest}` : ""}${search}`;
+  switch (seg[0]) {
+    case "mail":
+      return under("/mail/");
+    case "chat":
+      return under("/chat/");
+    case "calendar":
+      return `/calendar/${search}`;
+    case "meet":
+      return under("/meet/");
+    case "drive":
+      return under("/drive/");
+    case "edit":
+      return under("/drive/edit/");
+    case "doc":
+      return seg.length === 2 ? `/docs/d/${enc(seg[1])}${search}` : `/docs/${search}`;
+    case "docs":
+      return `/docs/${search}`;
+    case "s":
+      return under("/drive/s/");
+    default:
+      return null;
+  }
+}
+
+/** The new address of a path of today's web app (relative to /app/), or null where it stays. */
+export function newHome(path: string, search = ""): string | null {
+  const moved = movedApp(path, search);
+  if (moved) return moved;
+  const p = path.replace(/^\/+/, "/").replace(/\/+$/, "") || "/";
+  const seg = p.split("/").filter(Boolean);
   switch (seg[0]) {
     case undefined:
       return "/";

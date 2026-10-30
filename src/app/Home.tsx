@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
 import { relativeTime, todayIso } from "../lib/format";
-import { useMeetAvailable } from "../lib/meet";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
 import { FirstRun } from "./FirstRun";
 import { ScreenWidgets } from "./Screen";
@@ -30,7 +29,8 @@ export function Home() {
   const meta = useMetaIndex().data;
   const me = useMe().data;
   const reports = useReports().data?.reports;
-  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
+  // Meetings are Comms' pages, which say themselves when meetings are not set up.
+  const meet = !!meta?.packages.includes("comms");
   if (!meta) return null;
 
   const studio = meta.packages.includes(STUDIO);

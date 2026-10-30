@@ -18,7 +18,7 @@ import { dashboardRoutes } from "./app/studio/Dashboards";
 import { spaceRoutes } from "./app/studio/Spaces";
 import { setUnauthorizedHandler } from "./lib/api";
 import { setupPwa } from "./lib/pwa";
-import { adoptBrowserSession, followShell } from "./lib/shellv2";
+import { adoptBrowserSession, followShell, movedApp } from "./lib/shellv2";
 import "./index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "./ui/kit";
 
@@ -29,6 +29,13 @@ const queryClient = new QueryClient({
 
 function RouteError() {
   return <ErrorState error={useRouteError()} onRetry={() => window.location.reload()} />;
+}
+
+/** A page of an app that left this web app (Mail, Drive, Docs…): that app's own page. */
+function Moved() {
+  const to = movedApp(window.location.pathname.replace(/^\/app/, ""), window.location.search) ?? "/";
+  window.location.replace(to);
+  return null;
 }
 
 function NotFound() {
@@ -46,9 +53,9 @@ const router = createBrowserRouter(
   [
     { path: "/login", element: <Login />, errorElement: <RouteError /> },
     { path: "/oauth/authorize", element: <OAuthAuthorize />, errorElement: <RouteError /> },
-    // People outside the workspace, by link: a meeting, a shared file or folder.
-    { path: "/meet/guest/:tenant/:link", lazy: () => import("./app/comms/Meet").then((m) => ({ Component: m.GuestMeetPage })), errorElement: <RouteError /> },
-    { path: "/s/:tenant/:link", lazy: () => import("./app/drive/SharedLink").then((m) => ({ Component: m.SharedLinkPage })), errorElement: <RouteError /> },
+    // People outside the workspace, by link (a meeting, a shared file or folder): those apps' public pages.
+    { path: "/meet/guest/*", element: <Moved /> },
+    { path: "/s/*", element: <Moved /> },
     {
       path: "/",
       element: <RequireAuth />,
@@ -65,20 +72,12 @@ const router = createBrowserRouter(
         { path: "studio/reports/new", lazy: () => import("./app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
         { path: "studio/reports/:id", lazy: () => import("./app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
         { path: "pos", lazy: () => import("./app/pos/Register").then((m) => ({ Component: m.RegisterPage })) },
-        { path: "chat/:channel?", lazy: () => import("./app/comms/Chat").then((m) => ({ Component: m.ChatPage })) },
-        { path: "calendar", lazy: () => import("./app/comms/Calendar").then((m) => ({ Component: m.CalendarPage })) },
-        { path: "meet", lazy: () => import("./app/comms/Meet").then((m) => ({ Component: m.MeetHomePage })) },
-        { path: "meet/:kind/:id", lazy: () => import("./app/comms/Meet").then((m) => ({ Component: m.MeetPage })) },
-        { path: "mail/:mailbox?/:email?", lazy: () => import("./app/comms/Mail").then((m) => ({ Component: m.MailPage })) },
+        // Comms, Drive and Docs have pages of their own (docs/plan/apps-ui.md, U4a): links here go there.
+        ...["chat/*", "calendar/*", "meet/*", "mail/*", "drive/*", "edit/*", "doc/*", "docs/*"].map((path) => ({ path, element: <Moved /> })),
         ...dashboardRoutes,
         ...spaceRoutes,
         { path: "admin", element: <AdminPage /> },
         { path: "apps", element: <AppsPage /> },
-        { path: "drive/:folder?", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.DrivePage })) },
-        { path: "edit/:file", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.EditPage })) },
-        { path: "edit/:file/:editor", lazy: () => import("./app/drive/BrowserEdit").then((m) => ({ Component: m.BrowserEditPage })) },
-        { path: "doc/:file", lazy: () => import("./app/drive/LiveDoc").then((m) => ({ Component: m.LiveDocPage })) },
-        { path: "docs", lazy: () => import("./app/docs/Docs").then((m) => ({ Component: m.DocsPage })) },
         { path: "apps/:app/settings", element: <AppSettingsPage /> },
         { path: "x/:app/:page", element: <ScreenPage /> },
         { path: "*", element: <NotFound /> },
@@ -97,16 +96,21 @@ setUnauthorizedHandler(() => {
 
 setupPwa();
 
-// Signed in on the new pages: the same session here. A workspace on the shell: its new pages.
-await adoptBrowserSession();
-if (!(await followShell())) {
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-        <Toaster />
-        <ConfirmHost />
-      </QueryClientProvider>
-    </StrictMode>,
-  );
+// An app's page that left this web app (old bookmarks, links in mail): there, signed in or not.
+const moved = movedApp(window.location.pathname.replace(/^\/app/, ""), window.location.search);
+if (moved) window.location.replace(moved);
+else {
+  // Signed in on the new pages: the same session here. A workspace on the shell: its new pages.
+  await adoptBrowserSession();
+  if (!(await followShell())) {
+    createRoot(document.getElementById("root")!).render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+          <Toaster />
+          <ConfirmHost />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  }
 }
