@@ -29,16 +29,6 @@
 .shell-app:focus-visible {
   box-shadow: var(--focus-ring);
 }
-.shell-tile {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-}
 .shell-app-title {
   font-weight: 600;
   font-size: 0.92rem;

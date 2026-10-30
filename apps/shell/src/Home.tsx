@@ -2,6 +2,7 @@
 // widgets apps contribute. Each app's own home is in the app.
 
 import { useQuery } from "@tanstack/react-query";
+import { AppIcon } from "@ferrum/kit";
 import { FirstRun } from "@/app/FirstRun";
 import { MyWork } from "@/app/Home";
 import { ScreenWidgets } from "@/app/Screen";
@@ -14,6 +15,7 @@ interface LauncherEntry {
   app: string;
   title: string;
   description?: string | null;
+  icon?: string | null;
   color?: string | null;
   url: string;
   classic?: boolean;
@@ -25,12 +27,20 @@ interface ShellInfo {
   apps: LauncherEntry[];
 }
 
-/** A tile's colour: the app's own, else one derived from its name (as the bar's launcher does). */
+/** A tile's colour: the app's own, else one derived from its name, the bar launcher's
+ *  hsl(h 55% 42%) as #rrggbb (AppIcon takes those). */
 export function tileColour(e: Pick<LauncherEntry, "color" | "title">): string {
   if (e.color && /^#[0-9a-f]{6}$/i.test(e.color)) return e.color;
   let h = 0;
   for (const c of e.title) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return `hsl(${h} 55% 42%)`;
+  const a = 0.55 * Math.min(0.42, 1 - 0.42);
+  const channel = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return Math.round((0.42 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
 }
 
 export function ShellHome() {
@@ -60,9 +70,7 @@ export function ShellHome() {
         <nav aria-label="Apps" className="shell-apps">
           {info.data.apps.map((a) => (
             <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={a.description ?? undefined}>
-              <span className="shell-tile" style={{ background: tileColour(a) }} aria-hidden="true">
-                {a.title.slice(0, 1).toUpperCase()}
-              </span>
+              <AppIcon name={a.icon} color={tileColour(a)} title={a.title} tile size={30} />
               <span className="shell-app-title">{a.title}</span>
               {a.classic && <span className="faint shell-app-note">classic</span>}
             </a>
