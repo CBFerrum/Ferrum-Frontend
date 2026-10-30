@@ -107,6 +107,31 @@ src/
     Admin.tsx         /admin — users, roles matrix, packages, webhooks, automations, plugins, API keys
 ```
 
+## Apps' own interfaces and the packages
+
+Ferrum's apps own their interfaces (docs/plan/apps-ui.md in the Ferrum repository). This repository
+holds the shell's and ERP's (`apps/shell`, `apps/erp`, built into `dist-apps/` by `npm run
+build:apps`), and the packages every interface uses: `@ferrum/client` (the bootstrap, the shell API
+with fallbacks, requests with the browser's session, errors, formatting, uploads), `@ferrum/kit`
+(the components and the look; `@ferrum/kit/primitives` for the shadcn building blocks),
+`@ferrum/records` (lists, forms, reports, people, comments, the record picker) and
+`@ferrum/testing` (a fake bootstrap and shell).
+
+Comms, Drive and Docs keep their interfaces in their own repositories' `ui/`, built with this
+checkout as their sibling (`../../ferrum/web` from their `ui/`), until the packages are published:
+
+```
+node ../../ferrum/web/packages/build/cli.mjs build      # vite build into dist/, stamped with its sources
+node ../../ferrum/web/packages/build/cli.mjs check      # CI: dist/ was built from the sources as they are
+node ../../ferrum/web/packages/build/cli.mjs typecheck
+node ../../ferrum/web/packages/build/cli.mjs test
+```
+
+`packages/build/vite.mjs` resolves an app's libraries as this repository's, so the app and the kit
+share one React and one query client: this repository's dependencies (LiveKit, TipTap, Yjs among
+them) are the apps' too. An app never imports this repository's own modules (`@/…`); the build
+refuses it.
+
 ## Conventions
 
 - Money and decimals are strings end to end. The UI never does arithmetic on them: totals come from

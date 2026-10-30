@@ -1,7 +1,7 @@
 // @ferrum/testing (docs/plan/apps-ui.md §10.6): an app's tests run it on a fake bootstrap and a fake
 // shell, and can see what it asked the shell to do.
 
-import type { Bootstrap, Shell } from "@ferrum/client";
+import type { Bootstrap, Family, IntentRequest, LauncherEntry, Shell, UploadRequest } from "@ferrum/client";
 import { resetBootstrap } from "@ferrum/client";
 
 /** A bootstrap with sensible values; `over` replaces parts of it. */
@@ -28,14 +28,20 @@ export interface ShellCalls {
   navigations: unknown[];
   intents: { action: string; type: string; data?: unknown }[];
   toasts: string[];
+  panels: unknown[];
+  uploads: UploadRequest[];
+  /** What an intent's handler page answered. */
+  answers: unknown[];
 }
 
 /**
  * Puts a bootstrap in the document and a fake `ferrum.shell` on the global object. Intents answer
  * with `intents[action + " " + type]` (or are cancelled). Returns what the app asks for.
  */
-export function installFakeShell(o: { bootstrap?: Bootstrap; intents?: Record<string, unknown> } = {}): ShellCalls {
-  const calls: ShellCalls = { ready: 0, titles: [], navigations: [], intents: [], toasts: [] };
+export function installFakeShell(
+  o: { bootstrap?: Bootstrap; intents?: Record<string, unknown>; request?: IntentRequest; family?: Family | null; apps?: LauncherEntry[]; uploads?: (r: UploadRequest) => unknown } = {},
+): ShellCalls {
+  const calls: ShellCalls = { ready: 0, titles: [], navigations: [], intents: [], toasts: [], panels: [], uploads: [], answers: [] };
   const boot = o.bootstrap ?? fakeBootstrap();
   (globalThis as { __FERRUM_BOOTSTRAP__?: Bootstrap }).__FERRUM_BOOTSTRAP__ = boot;
   if (typeof document !== "undefined") {
@@ -57,17 +63,44 @@ export function installFakeShell(o: { bootstrap?: Bootstrap; intents?: Record<st
     title: (t) => void calls.titles.push(t),
     breadcrumbs: noop,
     badge: noop,
-    intent: async (r) => {
-      calls.intents.push(r);
-      const key = `${r.action} ${r.type}`;
-      return o.intents && key in o.intents ? { status: "done", result: o.intents[key] as never, app: "fake" } : { status: "cancelled" };
-    },
+    intent: Object.assign(
+      async (r: { action: string; type: string; data?: unknown }) => {
+        calls.intents.push(r);
+        const key = `${r.action} ${r.type}`;
+        return o.intents && key in o.intents ? { status: "done" as const, result: o.intents[key] as never, app: "fake" } : { status: "cancelled" as const };
+      },
+      {
+        request: () => (o.request ? Promise.resolve(o.request) : Promise.reject(new Error("this page was not opened for an intent"))),
+        done: (result?: unknown) => void calls.answers.push({ done: result ?? null }),
+        cancel: () => void calls.answers.push({ cancelled: true }),
+      },
+    ) as Shell["intent"],
     canIntent: async (a, t) => !!o.intents && `${a} ${t}` in o.intents,
     companion: () => null,
     toast: (m) => void calls.toasts.push(m),
     leaveGuard: () => noop,
     session: { signOut: noop, reauthenticate: noop, on: noop },
     live: { subscribe: () => noop },
+    sidepanel: {
+      open: async (p) => (calls.panels.push(p), true),
+      close: noop,
+      current: () => null,
+      context: () => null,
+      list: async () => [],
+    },
+    uploads: {
+      start: async (r) => {
+        calls.uploads.push(r);
+        return { id: `upload-${calls.uploads.length}`, done: Promise.resolve(o.uploads ? o.uploads(r) : null) };
+      },
+      cancel: async () => {},
+      retry: async () => false,
+      dismiss: async () => {},
+      list: () => [],
+      on: () => noop,
+    },
+    family: async () => o.family ?? null,
+    apps: async () => o.apps ?? [],
     on: noop,
   };
   (globalThis as { ferrum?: unknown }).ferrum = { shell: fake };

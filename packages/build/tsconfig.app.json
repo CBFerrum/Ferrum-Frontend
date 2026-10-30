@@ -1,0 +1,25 @@
+{
+  "//": "An app interface's TypeScript settings (ui/tsconfig.json extends this file): this checkout's packages and libraries. Paths are relative to this file.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [],
+    "typeRoots": ["../../node_modules/@types"],
+    "paths": {
+      "@ferrum/*": ["../*/src/index.ts"],
+      "@/*": ["../../src/*"],
+      "*": ["../../node_modules/@types/*", "../../node_modules/*"]
+    }
+  },
+  "files": ["../../node_modules/vite/client.d.ts"]
+}

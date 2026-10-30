@@ -2,7 +2,8 @@
 // also works inside sheets, the unsaved-changes guard, reduced motion and link helpers.
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Link, useBlocker, type BlockerFunction, type NavigateFunction } from "react-router";
+import { Link, useBlocker, useHref, type BlockerFunction, type NavigateFunction } from "react-router";
+import { bootstrap } from "@ferrum/client";
 import { AlertCircle, RefreshCw, type LucideIcon } from "lucide-react";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -193,9 +194,26 @@ export function SheetState({ title, onClose, children }: { title: string; onClos
   );
 }
 
-/** A link target: app paths (`/app/...`, or `/...` other than server paths) stay in the app, other addresses open in a new tab. */
+/** A link target: app paths (`/app/...`, or `/...` other than server paths) stay in the app, other addresses open in a new tab.
+ *  In an app's own interface (docs/plan/apps-ui.md §11.2) only its own routes stay in it; another app's page is a page load. */
 export function SmartLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+  const base = useHref("/");
   if (href.startsWith("/") && !href.startsWith("//") && !/^\/(api|files|mcp|ws)(\/|$)/.test(href)) {
+    const app = bootstrap()?.app;
+    if (app) {
+      const own = Object.values(app.routes).some((r) => href === r.replace(/\/$/, "") || href.startsWith(r)) && href.startsWith(base.replace(/\/$/, ""));
+      if (!own)
+        return (
+          <a href={href} className={className}>
+            {children}
+          </a>
+        );
+      return (
+        <Link to={`/${href.slice(base.length).replace(/^\/+/, "")}`} className={className}>
+          {children}
+        </Link>
+      );
+    }
     const to = href.startsWith("/app/") ? href.slice(4) : href === "/app" ? "/" : href;
     return (
       <Link to={to} className={className}>
