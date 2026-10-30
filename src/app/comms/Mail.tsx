@@ -1,4 +1,5 @@
-// Webmail on the Mail app's mail API: the person's hosted mailbox over JMAP. Folders, messages
+// Webmail on the Mail app's mail API: the person's hosted mailbox over JMAP, and the shared
+// mailboxes they are a member of (sales@: one more account in their session). Folders, messages
 // (searched, read in a sandboxed frame with remote images on request), writing with attachments,
 // replies and forwards, spam training ("Spam" / "Not spam" teach the server's filter), filing a
 // mail onto a record, and settings: the vacation reply and app passwords for mail programs.
@@ -21,11 +22,12 @@ import {
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  Users,
   FolderInput,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -55,6 +57,7 @@ import {
   type EmailSummary,
   type Mailbox,
   type Message,
+  type Session,
 } from "@/lib/mail";
 import { can, useMetaIndex } from "@/lib/meta";
 import { cn } from "@/lib/utils";
@@ -97,14 +100,26 @@ export function MailPage() {
       );
     return <ErrorState error={session.error} onRetry={() => void session.refetch()} />;
   }
-  const account = mailAccount(session.data);
-  if (!session.data || !account) return <ErrorState error={new Error("The mail server offers no mail account.")} />;
-  return <Mailroom account={account} me={session.data.username} servers={session.data.servers} />;
+  const primary = mailAccount(session.data);
+  if (!session.data || !primary) return <ErrorState error={new Error("The mail server offers no mail account.")} />;
+  return <Mailroom session={session.data} primary={primary} />;
 }
 
-function Mailroom({ account, me, servers }: { account: string; me: string; servers?: { imap: string; smtp: string } }) {
+/** The person's own mailbox first, then the shared ones by address. */
+const accountsOf = (s: Session) =>
+  Object.entries(s.accounts).sort(([, a], [, b]) => Number(b.isPersonal) - Number(a.isPersonal) || a.name.localeCompare(b.name));
+
+function Mailroom({ session, primary }: { session: Session; primary: string }) {
   const { mailbox, email } = useParams();
+  const [search] = useSearchParams();
   const navigate = useNavigate();
+  // `?account=` picks a shared mailbox; its own address is "me" there (replies leave it out).
+  const asked = search.get("account");
+  const account = asked && session.accounts[asked] ? asked : primary;
+  const me = session.accounts[account]?.name ?? session.username;
+  const accounts = accountsOf(session);
+  const suffix = account === primary ? "" : `?account=${encodeURIComponent(account)}`;
+  const switchTo = (id: string) => navigate(id === primary ? "/mail" : `/mail?account=${encodeURIComponent(id)}`);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [settings, setSettings] = useState(false);
   const boxes = useQuery({
@@ -119,7 +134,7 @@ function Mailroom({ account, me, servers }: { account: string; me: string; serve
   });
   const inbox = byRole(boxes.data, "inbox")?.id;
   const current = mailbox ?? inbox;
-  const open = (box: string, id?: string) => navigate(id ? `/mail/${box}/${id}` : `/mail/${box}`);
+  const open = (box: string, id?: string) => navigate((id ? `/mail/${box}/${id}` : `/mail/${box}`) + suffix);
 
   if (boxes.error) return <ErrorState error={boxes.error} onRetry={() => void boxes.refetch()} />;
   return (
@@ -128,13 +143,30 @@ function Mailroom({ account, me, servers }: { account: string; me: string; serve
         <Button onClick={() => setDraft({ kind: "new" })}>
           <Pencil aria-hidden="true" /> Write
         </Button>
-        <nav className="min-h-0 flex-1 overflow-y-auto">
+        {accounts.length > 1 && (
+          <ul className="grid gap-0.5 border-b pb-2" aria-label="Mailboxes">
+            {accounts.map(([id, a]) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => switchTo(id)}
+                  aria-current={id === account ? "true" : undefined}
+                  className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent pointer-coarse:min-h-11", id === account && "bg-accent font-medium")}
+                >
+                  {a.isPersonal ? <Mail className="size-4 shrink-0" aria-hidden="true" /> : <Users className="size-4 shrink-0" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <nav className="min-h-0 flex-1 overflow-y-auto" aria-label="Folders of the mailbox">
           {boxes.isLoading && <Skeleton className="h-40" />}
           <ul className="grid gap-0.5">
             {boxes.data?.map((b) => (
               <li key={b.id}>
                 <Link
-                  to={`/mail/${b.id}`}
+                  to={`/mail/${b.id}${suffix}`}
                   aria-current={b.id === current ? "page" : undefined}
                   className={cn(
                     "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent pointer-coarse:min-h-11",
@@ -159,8 +191,10 @@ function Mailroom({ account, me, servers }: { account: string; me: string; serve
       <section className={cn("min-h-0 border-r", email && "hidden md:block")} aria-label="Messages">
         {current && (
           <MessageList
-            key={current}
+            key={account + current}
             account={account}
+            accounts={accounts}
+            onAccount={switchTo}
             mailbox={boxes.data?.find((b) => b.id === current)}
             mailboxId={current}
             boxes={boxes.data ?? []}
@@ -175,7 +209,7 @@ function Mailroom({ account, me, servers }: { account: string; me: string; serve
       <section className={cn("min-h-0", !email && "hidden md:grid md:place-items-center")}>
         {email && current ? (
           <Reader
-            key={email}
+            key={account + email}
             account={account}
             id={email}
             me={me}
@@ -188,13 +222,15 @@ function Mailroom({ account, me, servers }: { account: string; me: string; serve
         )}
       </section>
       {draft && <Compose account={account} me={me} boxes={boxes.data ?? []} draft={draft} onClose={() => setDraft(null)} />}
-      {settings && <MailSettings account={account} me={me} servers={servers} onClose={() => setSettings(false)} />}
+      {settings && <MailSettings account={primary} me={session.username} servers={session.servers} onClose={() => setSettings(false)} />}
     </div>
   );
 }
 
 function MessageList(p: {
   account: string;
+  accounts: [string, Session["accounts"][string]][];
+  onAccount: (id: string) => void;
   mailbox?: Mailbox;
   mailboxId: string;
   boxes: Mailbox[];
@@ -224,6 +260,17 @@ function MessageList(p: {
   const emails = list.data?.pages.flatMap((pg) => pg.emails) ?? [];
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {p.accounts.length > 1 && (
+        <div className="border-b p-2 md:hidden">
+          <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" aria-label="Mailbox" value={p.account} onChange={(e) => p.onAccount(e.target.value)}>
+            {p.accounts.map(([id, a]) => (
+              <option key={id} value={id}>
+                {a.isPersonal ? a.name : `${a.name} (shared)`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="flex items-center gap-2 border-b p-2">
         <select
           className="h-9 rounded-md border bg-background px-2 text-sm md:hidden"
@@ -541,7 +588,9 @@ function Compose({ account, me, boxes, draft, onClose }: { account: string; me: 
     queryFn: async () => (await jmap([["Identity/get", { accountId: account }, "0"]]))["0"].list as Identity[],
     staleTime: 10 * 60_000,
   });
-  const identity = identities.data?.find((i) => i.email.toLowerCase() === me.toLowerCase()) ?? identities.data?.[0];
+  const [fromId, setFromId] = useState<string | null>(null);
+  const identity =
+    identities.data?.find((i) => i.id === fromId) ?? identities.data?.find((i) => i.email.toLowerCase() === me.toLowerCase()) ?? identities.data?.[0];
 
   const attach = async (list: FileList | null) => {
     if (!list?.length) return;
@@ -621,8 +670,22 @@ function Compose({ account, me, boxes, draft, onClose }: { account: string; me: 
         <form onSubmit={send} className="grid gap-3">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>From {identity ? (identity.name ? `${identity.name} <${identity.email}>` : identity.email) : me}</DialogDescription>
+            <DialogDescription>
+              {(identities.data?.length ?? 0) > 1 ? "Choose who it is from." : `From ${identity ? (identity.name ? `${identity.name} <${identity.email}>` : identity.email) : me}`}
+            </DialogDescription>
           </DialogHeader>
+          {(identities.data?.length ?? 0) > 1 && (
+            <div className="grid gap-1.5">
+              <Label htmlFor="mail-from">From</Label>
+              <select id="mail-from" className="h-9 rounded-md border bg-background px-2 text-sm" value={identity?.id ?? ""} onChange={(e) => setFromId(e.target.value)}>
+                {identities.data?.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name ? `${i.name} <${i.email}>` : i.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid gap-1.5">
             <Label htmlFor="mail-to">To</Label>
             <Input id="mail-to" autoFocus={!to} value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@example.com, …" autoComplete="off" />
