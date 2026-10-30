@@ -206,6 +206,9 @@ export interface Shell {
     on(event: "progress" | "done" | "failed" | "cancelled", cb: (u: Upload) => void): () => void;
   };
   family(): Promise<Family | null>;
+  /** Opens the assistant beside the page with what the person is looking at (a record, a
+   *  selection); false where there is none. */
+  assistant(context?: unknown): Promise<boolean>;
   /** The launcher's entries: the apps the person may use. */
   apps(): Promise<LauncherEntry[]>;
   /** Events: "ready", "outdated", "sidepanel" (the panel open now, or null), "panel-context"…;
@@ -262,6 +265,7 @@ const fallback: Shell = {
     on: () => noop,
   },
   family: () => Promise.resolve(null),
+  assistant: () => Promise.resolve(false),
   apps: () => Promise.resolve([]),
   on: noop,
 };
@@ -271,7 +275,7 @@ const fallback: Shell = {
 export function shell(): Shell {
   const s = (globalThis as { ferrum?: { shell?: Partial<Shell> } }).ferrum?.shell;
   if (!s) return fallback;
-  if (s.sidepanel && s.uploads && s.family && s.apps) return s as Shell;
+  if (s.sidepanel && s.uploads && s.family && s.apps && s.assistant) return s as Shell;
   return { ...fallback, ...s } as Shell;
 }
 
