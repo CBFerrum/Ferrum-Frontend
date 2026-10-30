@@ -18,4 +18,6 @@ COPY --from=build /web/dist /usr/share/nginx/html/app
 ENV FERRUM_API_URL=http://ferrum:5150
 # The editor server for online editing (empty: none); see nginx/default.conf.template.
 ENV FERRUM_OFFICE_ORIGIN=""
+# The largest upload passed to the API; match the server's FERRUM_DRIVE_MAX_FILE_MB when raising it.
+ENV FERRUM_MAX_UPLOAD=32m
 EXPOSE 8080
