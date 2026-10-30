@@ -9,7 +9,7 @@ import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, 
 import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
-import { moduleLinks, reportItems, STUDIO } from "./Shell";
+import { moduleLinks, ownModule, reportItems, STUDIO } from "./Shell";
 import { PATHS } from "./studio/space/model";
 
 /** The module's Space when the viewer may open one: the first by the server's order, as `useModuleSpace`
@@ -36,6 +36,7 @@ export function Home() {
   const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
   const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
   const modules = [...meta.modules]
+    .filter((m) => ownModule(m, meta))
     .sort((a, b) => a.order - b.order)
     .map((m) => {
       const links = moduleLinks(m, readable, reportLabel, meet);
@@ -161,7 +162,7 @@ interface Assignment {
 }
 
 /** Records assigned to the signed-in user: the to-do list. */
-function MyWork() {
+export function MyWork() {
   const q = useQuery({ queryKey: ["assignments", "mine"], queryFn: ({ signal }) => api.get<{ assignments: Assignment[] }>("/api/assignments", undefined, signal) });
   const list = q.data?.assignments ?? [];
   if (!list.length) return null;

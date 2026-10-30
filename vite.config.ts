@@ -9,7 +9,12 @@ const backend = process.env.FERRUM_API ?? "http://127.0.0.1:5150";
 export default defineConfig({
   base: "/app/",
   plugins: [tailwindcss()],
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  resolve: {
+    alias: [
+      { find: /^@ferrum\/(.*)$/, replacement: `${fileURLToPath(new URL("./packages", import.meta.url))}/$1/src/index.ts` },
+      { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
+    ],
+  },
   esbuild: { jsx: "automatic" },
   server: {
     proxy: {
@@ -20,6 +25,8 @@ export default defineConfig({
     },
   },
   build: {
+    // Top-level await (the browser's session is adopted before the first render).
+    target: "es2022",
     rollupOptions: {
       onwarn(warning, warn) {
         // react-query and the shadcn components ship "use client" directives for React Server Components; meaningless

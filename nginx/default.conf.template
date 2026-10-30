@@ -32,11 +32,6 @@ server {
     client_max_body_size ${FERRUM_MAX_UPLOAD};
     root /usr/share/nginx/html;
 
-    location = / {
-        include /etc/nginx/snippets/security-headers.conf;
-        return 302 /app/;
-    }
-
     location = /healthz {
         access_log off;
         default_type text/plain;
@@ -65,6 +60,13 @@ server {
         default_type application/manifest+json;
     }
 
+    # The shell's and ERP's built interfaces, for the server to fetch (not for browsers: the server
+    # serves them under /_ui/ once it has them).
+    location /_releases/ {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+
     # API, downloads, AI agents (MCP, OAuth and its discovery documents), calendar and contacts
     # apps (which look for /.well-known/caldav and carddav first) and realtime go to the server.
     location ~ ^/(api|files|mcp|ws|oauth|_ping|_health)(/|$)|^/\.well-known/(oauth-|caldav$|carddav$) {
@@ -77,5 +79,18 @@ server {
         proxy_set_header Connection $connection_upgrade;
         proxy_read_timeout 300s;
         proxy_buffering off;
+    }
+
+    # Everything else is the server's (docs/plan/apps-ui.md): Home at /, apps' interfaces at their
+    # routes, the shell's files (/_shell/, /_ui/), sign-in, /open/ links and the shell's pages. The
+    # server sets every header of these pages itself (their Content-Security-Policy is per release).
+    location / {
+        proxy_pass ${FERRUM_API_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
     }
 }

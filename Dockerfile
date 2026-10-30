@@ -15,6 +15,8 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /web/dist /usr/share/nginx/html/app
+# The shell's and ERP's interfaces, which the server fetches (FERRUM_UI_SOURCE=http://<this>/_releases/).
+COPY --from=build /web/dist-apps /usr/share/nginx/html/_releases
 ENV FERRUM_API_URL=http://ferrum:5150
 # The editor server for online editing (empty: none); see nginx/default.conf.template.
 ENV FERRUM_OFFICE_ORIGIN=""

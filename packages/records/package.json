@@ -1,0 +1,9 @@
+{
+  "name": "@ferrum/records",
+  "version": "0.1.0",
+  "description": "Lists, forms and reports of any entity, from its metadata",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@ferrum/client",
+  "version": "0.1.0",
+  "description": "The bootstrap, the shell API with fallbacks, and an API client for the browser's session",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" }
+}

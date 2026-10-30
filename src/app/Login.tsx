@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { api, errorMessage, request, setSession } from "../lib/api";
+import { newHome } from "../lib/shellv2";
 import { Alert, Button, Field, useDebounced } from "../ui/kit";
 import { ssoRedirectUri } from "../lib/sso";
 import { CodeInput, TwoFactorSetup } from "./TwoFactor";
@@ -66,7 +67,16 @@ export function Login() {
       // convenience only
     }
     qc.clear();
-    navigate(back && !back.startsWith("/login") ? back : "/", { replace: true });
+    const to = back && !back.startsWith("/login") ? back : "/";
+    // A workspace on the shell: its new pages, where they have a home.
+    void api
+      .get<{ shell_v2?: boolean }>("/api/auth/me")
+      .then((me) => {
+        const home = me.shell_v2 ? newHome(to.split("?")[0], to.includes("?") ? `?${to.split("?")[1]}` : "") : null;
+        if (home) window.location.replace(home);
+        else navigate(to, { replace: true });
+      })
+      .catch(() => navigate(to, { replace: true }));
   };
 
   // The workspace's single sign-on buttons.

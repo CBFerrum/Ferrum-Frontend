@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && npm run build:apps",
+    "build:apps": "vite build --config apps/shell/vite.config.ts && vite build --config apps/erp/vite.config.ts && node scripts/releases.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
