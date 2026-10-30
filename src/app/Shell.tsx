@@ -7,6 +7,7 @@ import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "r
 import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
+import { useMailSession } from "../lib/mail";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
@@ -240,6 +241,8 @@ function Sidebar() {
   const reports = useReports().data?.reports;
   const me = useMe().data;
   const pages = useContributions("ui.page").data ?? [];
+  // A hosted mailbox, when hosted mail is on and the person has one.
+  const mail = useMailSession(!!meta?.packages.includes("comms"));
   const groups = useMemo(() => {
     if (!meta) return [];
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
@@ -256,6 +259,12 @@ function Sidebar() {
         <Icon name="home" />
         Home
       </NavLink>
+      {mail.data && (
+        <NavLink to="/mail" className="nav-link">
+          <Icon name="mail" />
+          Mail
+        </NavLink>
+      )}
       {meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
           <Icon name="file" />
