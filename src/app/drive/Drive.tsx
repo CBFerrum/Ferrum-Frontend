@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, download, errorMessage, request } from "../../lib/api";
 import { formatDateTime } from "../../lib/format";
 import { Badge, Button, Dialog, EmptyState, Field, Icon, Menu, MenuItem, Spinner, Tabs, confirmDialog, toast } from "../../ui/kit";
+import { isLiveDoc } from "../../lib/livedocs";
 import { DetailsPanel, type ItemInfo, allows } from "./Details";
 import { presenceLabel, useFilesPresence, usePresence } from "./presence";
 import { type Shareable, ShareDialog } from "./Share";
@@ -96,8 +97,6 @@ export function defaultEditor(choices: EditorChoice[], narrow: boolean): EditorC
   return choices.find((c) => !c.unavailable && (c.key === "online" || c.key === "live" || !narrow));
 }
 
-/** A document edited together live (`.fdoc`, LiveDoc.tsx). */
-export const isLiveDoc = (name: string) => /\.fdoc$/i.test(name);
 
 /** The editors that open a file, the default first: the online editor for office files, then the
  *  browser editors for its type. */

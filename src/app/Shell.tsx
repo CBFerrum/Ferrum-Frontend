@@ -51,6 +51,10 @@ export const chatNav: NavItem = { label: "Chat", to: "/chat", icon: "chat" };
 export const calendarNav: NavItem = { label: "Calendar", to: "/calendar", icon: "calendar" };
 export const meetNav: NavItem = { label: "Meet", to: "/meet", icon: "video" };
 
+/** The Docs app's page, first in its module. */
+export const DOCS_MODULE = "docs";
+export const docsNav: NavItem = { label: "Documents", to: "/docs", icon: "doc" };
+
 /** A module's links (sidebar group, home card): its readable entities and reports; `meet` when
  *  video meetings are set up. */
 export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false): NavItem[] {
@@ -65,6 +69,7 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
   });
   if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
   if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
+  if (m.name === DOCS_MODULE && readable.has("DocsTemplate")) return [docsNav, ...links];
   return links;
 }
 
@@ -358,6 +363,7 @@ function useNavTargets(): NavTarget[] {
     if (meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
       out.push({ label: "Chat", hint: "Communication", to: chatNav.to }, { label: "Calendar", hint: "Communication", to: calendarNav.to });
     if (meet) out.push({ label: "Meet", hint: "Communication", to: meetNav.to });
+    if (meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read"))) out.push({ label: "Documents", hint: "Docs", to: docsNav.to });
     if (me?.user.is_admin)
       out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
     return out;

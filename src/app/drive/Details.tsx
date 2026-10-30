@@ -7,7 +7,8 @@ import { api, download, errorMessage } from "../../lib/api";
 import { formatDateTime, relativeTime } from "../../lib/format";
 import { Badge, Button, Spinner, TabPanel, Tabs, confirmDialog, toast } from "../../ui/kit";
 import { Composer, usePeople } from "../Collab";
-import { isLiveDoc, sizeLabel } from "./Drive";
+import { isLiveDoc } from "../../lib/livedocs";
+import { sizeLabel } from "./Drive";
 import { presenceLabel, useFilesPresence } from "./presence";
 import { type Shareable, roleLabel } from "./Share";
 

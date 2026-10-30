@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultEditor, editorsFor } from "./Drive";
-import { cleanHref, docTitle, initials, statusText } from "./LiveDoc";
+import { docTitle, snippetParts } from "../../lib/livedocs";
+import { cleanHref, initials, statusText } from "./LiveDoc";
 
 describe("live documents", () => {
   it("open in the document editor, on phones too", () => {
@@ -12,6 +13,16 @@ describe("live documents", () => {
   it("are named without their extension", () => {
     expect([docTitle("Q4 plan.fdoc"), docTitle("notes.FDOC"), docTitle("a.fdoc.txt")]).toEqual(["Q4 plan", "notes", "a.fdoc.txt"]);
     expect([initials("Ana Rao"), initials("  raj  "), initials("Mary Ann de la Cruz"), initials("")]).toEqual(["AR", "R", "MC", "?"]);
+  });
+
+  it("show where search found their words", () => {
+    expect(snippetParts("Risks · The «venue» may «move»")).toEqual([
+      { text: "Risks · The ", hit: false },
+      { text: "venue", hit: true },
+      { text: " may ", hit: false },
+      { text: "move", hit: true },
+    ]);
+    expect(snippetParts("no markers")).toEqual([{ text: "no markers", hit: false }]);
   });
 
   it("say whether everything typed is saved", () => {
