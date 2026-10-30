@@ -18,7 +18,8 @@ export const web = fileURLToPath(new URL("../../", import.meta.url));
 
 /** Library imports of the app's files resolve from Ferrum-Frontend; `@/…` is Ferrum-Frontend's own. */
 function resolveLikeTheKit(root) {
-  const fromWeb = join(web, "src", "main.tsx");
+  // As if a file at Ferrum-Frontend's root imported them (only its directory counts).
+  const fromWeb = join(web, "package.json");
   return {
     name: "ferrum:resolve",
     enforce: "pre",
