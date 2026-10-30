@@ -35,19 +35,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
-import { Link, useBlocker, useNavigate, useParams } from "react-router";
+import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { api, download, errorMessage, getSession, openPrint } from "../../lib/api";
+import { can, useMetaIndex } from "../../lib/meta";
 import { CoeditSession, type CoeditState, othersIn, socketUrl } from "../../lib/coedit";
+import { docTitle } from "../../lib/livedocs";
 import { Alert, Badge, Button, Dialog, EmptyState, Field, Menu, MenuItem, Spinner, confirmDialog, toast } from "../../ui/kit";
 import { type ItemInfo, DetailsPanel, allows } from "./Details";
 import { usePresence } from "./presence";
 import { type Shareable, ShareDialog } from "./Share";
 import "./livedoc.css";
-
-/** The name people see: without `.fdoc`. */
-export function docTitle(name: string): string {
-  return name.replace(/\.fdoc$/i, "");
-}
 
 /** What the bar says about the document's connection and saving. */
 export function statusText(s: Pick<CoeditState, "online" | "loaded" | "unsaved" | "closed">): string {
@@ -102,6 +99,9 @@ function LiveDoc({ file, session, info }: { file: string; session: CoeditSession
   });
   const [details, setDetails] = useState(false);
   const [sharing, setSharing] = useState<Shareable | null>(null);
+  const [templating, setTemplating] = useState(false);
+  const location = useLocation();
+  const meta = useMetaIndex().data;
   const editable = state.loaded && state.access === "write" && !state.closed;
   const title = docTitle(info.name);
 
@@ -189,13 +189,16 @@ function LiveDoc({ file, session, info }: { file: string; session: CoeditSession
     }
   };
   const canEdit = allows(info.permission, "Edit");
-  const back = info.parent ? `/drive/${info.parent}?item=${file}` : "/drive";
+  // Back where the person came from: Docs, or the document's folder in Drive.
+  const fromDocs = (location.state as { from?: string } | null)?.from === "docs";
+  const back = fromDocs ? "/docs" : info.parent ? `/drive/${info.parent}?item=${file}` : "/drive";
+  const keepsTemplates = !!meta?.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "create"));
 
   return (
     <div className="doc-page">
       <header className="doc-bar">
-        <Link className="btn btn-default btn-sm" to={back} aria-label="Back to Drive">
-          <ArrowLeft size={16} aria-hidden /> Drive
+        <Link className="btn btn-default btn-sm" to={back} aria-label={fromDocs ? "Back to Docs" : "Back to Drive"}>
+          <ArrowLeft size={16} aria-hidden /> {fromDocs ? "Docs" : "Drive"}
         </Link>
         <Title name={info.name} canRename={canEdit && !!space.data} rename={(name) => act("rename", { item: file, name }).then(() => qc.invalidateQueries({ queryKey: ["drive"] }))} />
         <span className="doc-status" role="status" aria-live="polite">
@@ -225,6 +228,7 @@ function LiveDoc({ file, session, info }: { file: string; session: CoeditSession
                   <MenuItem onSelect={item(() => exportAs("txt"))}>Download as text (.txt)</MenuItem>
                   <MenuItem onSelect={item(() => openPrint(`${content}?format=html&inline=1`).catch((e: unknown) => toast(errorMessage(e), "error")))}>Print</MenuItem>
                   {space.data && info.parent && <MenuItem onSelect={item(copy)}>Make a copy</MenuItem>}
+                  {keepsTemplates && <MenuItem onSelect={item(() => setTemplating(true))}>Save as a template</MenuItem>}
                 </>
               );
             }}
@@ -241,6 +245,7 @@ function LiveDoc({ file, session, info }: { file: string; session: CoeditSession
         {details && space.data && <DetailsPanel id={file} space={space.data.id} onClose={() => setDetails(false)} onShare={setSharing} />}
       </div>
       {sharing && space.data && <ShareDialog item={sharing} space={space.data.id} onClose={() => setSharing(null)} />}
+      {templating && <TemplateDialog file={file} title={title} unsaved={state.unsaved} onClose={() => setTemplating(false)} />}
     </div>
   );
 }
@@ -491,6 +496,58 @@ function LinkDialog({ editor, onClose }: { editor: Editor; onClose: () => void }
             onChange={(e) => setHref(e.target.value)}
             data-autofocus
           />
+        </Field>
+      </form>
+    </Dialog>
+  );
+}
+
+const CATEGORIES = ["General", "Meetings", "Projects", "Product", "Reports"];
+
+/** Docs Managers: this document as a template (its content as its editors left it). */
+function TemplateDialog({ file, title, unsaved, onClose }: { file: string; title: string; unsaved: boolean; onClose: () => void }) {
+  const [name, setName] = useState(title);
+  const [category, setCategory] = useState("General");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const qc = useQueryClient();
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post("/api/v1/DocsTemplate", { name: name.trim(), category, description: description.trim() || null, source_document: file });
+      await qc.invalidateQueries({ queryKey: ["docs", "templates"] });
+      toast(`“${name.trim()}” is a template in Docs`);
+      onClose();
+    } catch (err) {
+      toast(errorMessage(err), "error");
+      setBusy(false);
+    }
+  };
+  const footer: ReactNode = (
+    <>
+      <Button onClick={onClose}>Cancel</Button>
+      <Button variant="primary" type="submit" form="doc-template-form" loading={busy} disabled={!name.trim()}>
+        Save template
+      </Button>
+    </>
+  );
+  return (
+    <Dialog open onClose={onClose} title="Save as a template" footer={footer}>
+      <form id="doc-template-form" onSubmit={save} className="stack">
+        {unsaved && <Alert tone="warning">The last few changes are still being saved; the template takes what is saved when you press Save.</Alert>}
+        <Field label="Template name" htmlFor="doc-template-name" required>
+          <input id="doc-template-name" className="input" value={name} maxLength={140} onChange={(e) => setName(e.target.value)} data-autofocus />
+        </Field>
+        <Field label="Category" htmlFor="doc-template-category">
+          <select id="doc-template-category" className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Description" htmlFor="doc-template-description" hint="One line in the template gallery">
+          <input id="doc-template-description" className="input" value={description} maxLength={280} onChange={(e) => setDescription(e.target.value)} />
         </Field>
       </form>
     </Dialog>

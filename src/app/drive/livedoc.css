@@ -164,6 +164,47 @@ input.doc-title:focus {
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
+/* The app's reset strips headings, lists and spacing; documents need them back. */
+.doc-body p {
+  margin: 0.55em 0;
+}
+.doc-body h1,
+.doc-body h2,
+.doc-body h3,
+.doc-body h4,
+.doc-body h5,
+.doc-body h6 {
+  margin: 1.1em 0 0.4em;
+  font-weight: 650;
+}
+.doc-body h4 {
+  font-size: 1.05rem;
+}
+.doc-body h5,
+.doc-body h6 {
+  font-size: 1rem;
+}
+.doc-body ul:not([data-type="taskList"]) {
+  margin: 0.55em 0;
+  padding-left: 1.6em;
+  list-style: disc;
+}
+.doc-body ul:not([data-type="taskList"]) ul:not([data-type="taskList"]) {
+  list-style: circle;
+}
+.doc-body ol {
+  margin: 0.55em 0;
+  padding-left: 1.8em;
+  list-style: decimal;
+}
+.doc-body li > p {
+  margin: 0.15em 0;
+}
+.doc-body blockquote,
+.doc-body pre,
+.doc-body table {
+  margin: 0.8em 0;
+}
 .doc-body > :first-child {
   margin-top: 0;
 }
@@ -259,10 +300,13 @@ input.doc-title:focus {
   align-items: flex-start;
 }
 .doc-body ul[data-type="taskList"] li > label {
-  margin-top: 0.15em;
+  margin-top: 0.2em;
 }
 .doc-body ul[data-type="taskList"] li > div {
   flex: 1;
+}
+.doc-body ul[data-type="taskList"] li > div > p {
+  margin: 0.15em 0;
 }
 
 /* Everyone else's cursor, in their colour, named. */
