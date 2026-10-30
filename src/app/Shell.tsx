@@ -4,8 +4,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
-import { bootstrap } from "@ferrum/client";
-import { api, errorMessage, getSession, setSession } from "../lib/api";
+import { bootstrap, shell } from "@ferrum/client";
+import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
@@ -82,10 +82,12 @@ let frameMode: FrameMode = "classic";
 /** In app mode, the packages whose modules the sidebar shows (the app's own); null: all. */
 let framePackages: Set<string> | null = null;
 
-/** Set once, before the first render. */
+/** Set once, before the first render. An app's interface runs under the shell, which signs the
+ *  person in again when the session ends. */
 export function setFrameMode(mode: FrameMode, packages?: string[]): void {
   frameMode = mode;
   framePackages = packages ? new Set(packages) : null;
+  if (mode === "app") setUnauthorizedHandler(() => shell().session.reauthenticate());
 }
 
 /** The app's name, as the bootstrap gives it (app mode). */
