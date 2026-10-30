@@ -54,6 +54,7 @@ const ICONS: Record<string, string> = {
   store: "M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6",
   chat: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
   mail: "M3 5h18v14H3zM3 6l9 7 9-7",
+  video: "M16 10.5 21.2 7.4a.5.5 0 0 1 .8.4v8.4a.5.5 0 0 1-.8.4L16 13.5M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z",
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof ICONS | string; size?: number }) {

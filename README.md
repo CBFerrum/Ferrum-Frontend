@@ -67,6 +67,8 @@ Other settings:
   may frame and post to.
 * `FERRUM_EDITORS_URL`: the server of Drive's browser editors, which pages may frame (Ferrum's
   `deploy/editors`, docs/operations.md "Browser editors").
+* `FERRUM_MEET_URL`: the LiveKit server of video meetings (`wss://…`), which pages may connect to
+  (docs/operations.md "Meetings").
 
 For a single-binary setup the Ferrum server can also serve a build directly: point
 `FERRUM_WEB_DIR` at `dist/` and `FERRUM_WEB_INDEX` (served for every other path under `/app/`) at

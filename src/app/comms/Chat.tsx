@@ -3,7 +3,7 @@
 // screen refetches through the API, which enforces membership).
 
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, AtSign, Hash, Lock, MessageSquare, MessagesSquare, Paperclip, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, AtSign, Hash, Lock, MessageSquare, MessagesSquare, Paperclip, Pencil, Plus, Search, Trash2, Video, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ import {
 } from "@/lib/chat";
 import { uploadFile, type StoredFile } from "@/lib/files";
 import { relativeTime } from "@/lib/format";
+import { useMeetAvailable } from "@/lib/meet";
 import { useLivePush } from "@/lib/live";
 import { useMe } from "@/lib/meta";
 import { cn } from "@/lib/utils";
@@ -180,6 +181,7 @@ function Conversation({ id, summary }: { id: string; summary?: ChannelSummary })
   const list = useMemo(() => timeline((messages.data?.pages ?? []).map((p) => p.messages)), [messages.data]);
   const member = !!(channel.data?.role ?? summary?.role);
   const owner = (channel.data?.role ?? summary?.role) === "Owner";
+  const meet = useMeetAvailable().data === true;
   const latest = list[list.length - 1]?.id;
 
   // Read up to the newest message while the conversation is open and visible.
@@ -222,6 +224,13 @@ function Conversation({ id, summary }: { id: string; summary?: ChannelSummary })
           <span className="text-xs text-muted-foreground">
             {c.members.length} {c.members.length === 1 ? "member" : "members"}
           </span>
+        )}
+        {c && meet && !c.archived && (
+          <Button asChild variant="ghost" size="icon-sm" aria-label="Call" title="Start or join this conversation's call">
+            <Link to={`/meet/channel/${id}`}>
+              <Video />
+            </Link>
+          </Button>
         )}
       </header>
       <MessageList

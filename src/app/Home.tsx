@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
 import { relativeTime, todayIso } from "../lib/format";
+import { useMeetAvailable } from "../lib/meet";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
 import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
@@ -28,6 +29,7 @@ export function Home() {
   const meta = useMetaIndex().data;
   const me = useMe().data;
   const reports = useReports().data?.reports;
+  const meet = useMeetAvailable(!!meta?.packages.includes("comms")).data === true;
   if (!meta) return null;
 
   const studio = meta.packages.includes(STUDIO);
@@ -36,7 +38,7 @@ export function Home() {
   const modules = [...meta.modules]
     .sort((a, b) => a.order - b.order)
     .map((m) => {
-      const links = moduleLinks(m, readable, reportLabel);
+      const links = moduleLinks(m, readable, reportLabel, meet);
       // Studio records open in their builders, not in the generic form the recent lists link to.
       const entities = m.name === STUDIO ? [] : m.items.flatMap((i) => readable.get(i) ?? []);
       const documents = entities.filter((e) => e.kind === "document");
