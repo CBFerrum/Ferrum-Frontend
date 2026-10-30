@@ -7,7 +7,7 @@ import { api, download, errorMessage } from "../../lib/api";
 import { formatDateTime, relativeTime } from "../../lib/format";
 import { Badge, Button, Spinner, TabPanel, Tabs, confirmDialog, toast } from "../../ui/kit";
 import { Composer, usePeople } from "../Collab";
-import { sizeLabel } from "./Drive";
+import { isLiveDoc, sizeLabel } from "./Drive";
 import { presenceLabel, useFilesPresence } from "./presence";
 import { type Shareable, roleLabel } from "./Share";
 
@@ -198,12 +198,14 @@ function Versions({ item, act, onRestored }: { item: ItemInfo; act: Act; onResto
     queryKey: ["drive", "versions", item.id],
     queryFn: ({ signal }) => api.get<{ versions: Version[] }>("/api/app/drive/list_versions", { file: item.id }, signal).then((r) => r.versions),
   });
+  // A live document's editors hold its content: an old version comes back as a document of its own.
+  const live = isLiveDoc(item.name);
   const restore = async (v: Version) => {
-    if (!(await confirmDialog({ title: `Restore version ${v.version}?`, message: "It becomes the newest version; the others stay in the history.", confirmLabel: "Restore" })))
-      return;
+    const message = live ? "A copy of it is made beside this document, which stays as it is." : "It becomes the newest version; the others stay in the history.";
+    if (!(await confirmDialog({ title: `Restore version ${v.version}?`, message, confirmLabel: "Restore" }))) return;
     try {
-      await act("restore_version", { file: item.id, version: v.version });
-      toast(`Version ${v.version} restored`);
+      const made = await act("restore_version", { file: item.id, version: v.version });
+      toast(live ? `Version ${v.version} is now “${(made as { name?: string }).name ?? "a copy"}”` : `Version ${v.version} restored`);
       await qc.invalidateQueries({ queryKey: ["drive"] });
       await onRestored();
     } catch (e) {
@@ -230,8 +232,14 @@ function Versions({ item, act, onRestored }: { item: ItemInfo; act: Act; onResto
               size="sm"
               variant="ghost"
               icon="download"
-              aria-label={`Download version ${v.version}`}
-              onClick={() => void download(`/api/app/drive/files/${item.id}/content`, item.name, { version: v.version }).catch((e) => toast(errorMessage(e), "error"))}
+              aria-label={live ? `Download version ${v.version} as a web page` : `Download version ${v.version}`}
+              onClick={() =>
+                void (
+                  live
+                    ? download(`/api/app/drive/files/${item.id}/content`, item.name.replace(/\.fdoc$/i, ".html"), { version: v.version, format: "html" })
+                    : download(`/api/app/drive/files/${item.id}/content`, item.name, { version: v.version })
+                ).catch((e) => toast(errorMessage(e), "error"))
+              }
             />
             {v.version !== item.version && allows(item.permission, "Edit") && (
               <Button size="sm" onClick={() => void restore(v)}>

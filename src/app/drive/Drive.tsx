@@ -93,12 +93,16 @@ export interface EditorChoice {
 /** The editor "Open" uses: the first that can take the file. On narrow screens browser editors,
  *  made for a mouse and keyboard, are offered under "Open with" only. */
 export function defaultEditor(choices: EditorChoice[], narrow: boolean): EditorChoice | undefined {
-  return choices.find((c) => !c.unavailable && (c.key === "online" || !narrow));
+  return choices.find((c) => !c.unavailable && (c.key === "online" || c.key === "live" || !narrow));
 }
+
+/** A document edited together live (`.fdoc`, LiveDoc.tsx). */
+export const isLiveDoc = (name: string) => /\.fdoc$/i.test(name);
 
 /** The editors that open a file, the default first: the online editor for office files, then the
  *  browser editors for its type. */
 export function editorsFor(file: { id: string; name: string; size: number | null }, e: { online: boolean; browser: BrowserEditor[] }): EditorChoice[] {
+  if (isLiveDoc(file.name)) return [{ key: "live", label: "Document editor", to: `/doc/${file.id}` }];
   const out: EditorChoice[] = [];
   if (e.online && editable(file.name)) out.push({ key: "online", label: "Online editor", to: `/edit/${file.id}` });
   const ext = extension(file.name);
@@ -122,8 +126,10 @@ export function sizeLabel(bytes: number | null): string {
   return `${n < 10 ? n.toFixed(1) : Math.round(n)} ${units[i]}`;
 }
 
+/** New files: a live document always; office files open in the online or a browser editor. */
 const NEW = [
-  { kind: "docx", label: "Document" },
+  { kind: "fdoc", label: "Document" },
+  { kind: "docx", label: "Word document" },
   { kind: "xlsx", label: "Spreadsheet" },
   { kind: "pptx", label: "Presentation" },
 ] as const;
@@ -232,7 +238,7 @@ export function DrivePage() {
     if (!id) return;
     try {
       const made = await api.post<{ id: string }>("/api/app/drive/new", undefined, { query: { kind, folder: id } });
-      navigate(`/edit/${made.id}`);
+      navigate(kind === "fdoc" ? `/doc/${made.id}` : `/edit/${made.id}`);
     } catch (e) {
       toast(errorMessage(e), "error");
     }
@@ -281,14 +287,31 @@ export function DrivePage() {
           </div>
           {canAdd && (
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              {NEW.map((n) => (
-                <Button key={n.kind} size="sm" icon="plus" onClick={() => void create(n.kind)}>
-                  {n.label}
-                </Button>
-              ))}
-              <Button size="sm" icon="plus" onClick={newFolder}>
-                Folder
-              </Button>
+              <Menu label="New" icon="plus" ariaLabel="New document or folder" buttonClass="btn btn-default btn-sm">
+                {(close) => (
+                  <>
+                    {NEW.map((n) => (
+                      <MenuItem
+                        key={n.kind}
+                        onSelect={() => {
+                          close();
+                          void create(n.kind);
+                        }}
+                      >
+                        {n.label}
+                      </MenuItem>
+                    ))}
+                    <MenuItem
+                      onSelect={() => {
+                        close();
+                        newFolder();
+                      }}
+                    >
+                      Folder
+                    </MenuItem>
+                  </>
+                )}
+              </Menu>
               <Button size="sm" variant="primary" icon="upload" loading={busy} onClick={() => picker.current?.click()}>
                 Upload
               </Button>

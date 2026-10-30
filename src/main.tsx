@@ -76,6 +76,7 @@ const router = createBrowserRouter(
         { path: "drive/:folder?", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.DrivePage })) },
         { path: "edit/:file", lazy: () => import("./app/drive/Drive").then((m) => ({ Component: m.EditPage })) },
         { path: "edit/:file/:editor", lazy: () => import("./app/drive/BrowserEdit").then((m) => ({ Component: m.BrowserEditPage })) },
+        { path: "doc/:file", lazy: () => import("./app/drive/LiveDoc").then((m) => ({ Component: m.LiveDocPage })) },
         { path: "apps/:app/settings", element: <AppSettingsPage /> },
         { path: "x/:app/:page", element: <ScreenPage /> },
         { path: "*", element: <NotFound /> },

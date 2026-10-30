@@ -47,7 +47,11 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-const previewable = (e: Entry) => !!e.content_type && (e.content_type.startsWith("image/") || e.content_type === "application/pdf");
+/** A document edited live in Drive: guests read it as a page. */
+const live = (e: Entry) => e.content_type === "application/vnd.ferrum.doc";
+const previewable = (e: Entry) => !!e.content_type && (e.content_type.startsWith("image/") || e.content_type === "application/pdf" || live(e));
+/** What a download is saved as: a live document arrives as a page. */
+const savedAs = (e: Entry) => (live(e) ? e.name.replace(/\.fdoc$/i, ".html") : e.name);
 
 export function SharedLinkPage() {
   const { tenant = "", link = "" } = useParams();
@@ -168,7 +172,7 @@ function SharedItem({ s, content }: { s: Shared; content: (file: string, inline:
       )}
       {download && (
         <Button asChild variant="outline" size="sm">
-          <a href={content(e.id, false)} download={e.name} aria-label={`Download ${e.name}`}>
+          <a href={content(e.id, false)} download={savedAs(e)} aria-label={`Download ${e.name}`}>
             <Download /> Download
           </a>
         </Button>
@@ -182,7 +186,7 @@ function SharedItem({ s, content }: { s: Shared; content: (file: string, inline:
         <div className="flex flex-wrap items-center gap-3">
           <File className="size-5 text-muted-foreground" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold">{s.item.name}</h1>
+            <h1 className="truncate text-lg font-semibold">{live(s.item) ? s.item.name.replace(/\.fdoc$/i, "") : s.item.name}</h1>
             <p className="text-sm text-muted-foreground">
               {sizeLabel(s.item.size ?? null)}
               {s.item.modified_at ? ` · changed ${formatDateTime(s.item.modified_at)}` : ""}
@@ -191,6 +195,7 @@ function SharedItem({ s, content }: { s: Shared; content: (file: string, inline:
           {actions(s.item)}
         </div>
         {s.item.content_type?.startsWith("image/") && <img src={content(s.item.id, true)} alt={s.item.name} className="max-h-[70vh] w-auto rounded border object-contain" />}
+        {live(s.item) && <iframe src={content(s.item.id, true)} title={s.item.name} sandbox="" className="h-[70vh] w-full rounded border bg-white" />}
         {!download && !previewable(s.item) && <p className="text-sm text-muted-foreground">This link lets you see the file's details; it does not allow downloading.</p>}
         {footer.length > 0 && <p className="text-xs text-muted-foreground">{footer.join(" ")}</p>}
       </section>
