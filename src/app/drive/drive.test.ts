@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { notificationPath } from "../../lib/links";
 import { copyName, readOnlyReason } from "./BrowserEdit";
+import { allows } from "./Details";
+import { presenceLabel } from "./presence";
+import { roleLabel } from "./Share";
 import { type BrowserEditor, defaultEditor, editable, editorsFor, extension, sizeLabel } from "./Drive";
 
 describe("drive", () => {
@@ -52,5 +56,24 @@ describe("drive", () => {
     expect(readOnlyReason({ held_by: null, held_in: "online" }, "me@acme.test")).toBe("Someone is editing this file in the online editor.");
     expect(readOnlyReason({ held_by: "ana@acme.test", held_in: "checkout" }, "me@acme.test")).toBe("ana@acme.test has checked this file out.");
     expect(readOnlyReason({ held_by: null, held_in: null }, "me@acme.test")).toBe("You can view this file but not change it.");
+  });
+
+  it("says who has a file open", () => {
+    expect(presenceLabel([])).toBe("");
+    expect(presenceLabel([{ name: "Ana", mode: "edit" }])).toBe("Ana is editing");
+    expect(presenceLabel([{ name: "Ana", mode: "view" }, { name: "Ben", mode: "view" }])).toBe("Ana and Ben are viewing");
+    expect(presenceLabel([{ name: "Ana", mode: "edit" }, { name: "Ben", mode: "view" }, { name: "Cy", mode: "view" }])).toBe("Ana and 2 others are here, editing");
+  });
+
+  it("knows what each role may do, and its name", () => {
+    expect(allows("Comment", "View") && allows("Comment", "Comment") && !allows("Comment", "Edit")).toBe(true);
+    expect(allows("Manage", "Edit") && !allows("View", "Comment")).toBe(true);
+    expect(["View", "Comment", "Edit", "Manage", "Other"].map(roleLabel)).toEqual(["Viewer", "Commenter", "Editor", "Manager", "Other"]);
+  });
+
+  it("opens Drive's notifications in Drive", () => {
+    expect(notificationPath("DriveFile", "f1")).toBe("/drive?item=f1");
+    expect(notificationPath("DriveFolder", "d1")).toBe("/drive/d1");
+    expect(notificationPath("SalesInvoice", "s1")).toBe("/e/SalesInvoice/s1");
   });
 });
