@@ -2,13 +2,14 @@
 // offers on `drive.editor`, served by the operator's editor server and framed through its relay.
 // The page downloads the file and hands it over; each save the editor sends back becomes a new
 // version, under the session's editor lock and from the version the page opened. Read-only
-// sessions and saves in another format make new files instead; conflicts ask first.
+// sessions, and saves under another name (Save As, an export, a file the person opened inside
+// the editor), make new files instead; conflicts ask first.
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ApiError, download, errorMessage, fetchBlob, getSession, request } from "../../lib/api";
 import { Alert, Badge, Button, Dialog, EmptyState, Spinner, confirmDialog, toast } from "../../ui/kit";
-import { extension, useEditors } from "./Drive";
+import { useEditors } from "./Drive";
 
 interface Session {
   kind: "browser";
@@ -72,6 +73,9 @@ export function BrowserEditPage() {
   const [conflict, setConflict] = useState<{ name: string; bytes: ArrayBuffer; message: string } | null>(null);
   const [unsaved, setUnsaved] = useState<{ name: string; bytes: ArrayBuffer } | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
+  // This page's own key: launching again (React mounts twice in development) gets its lock back,
+  // while another tab of the same person opens read-only.
+  const pageKey = useRef(Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join(""));
   const port = useRef<MessagePort | null>(null);
   // What the port's handler needs, current at every message.
   const live = useRef({ session, lost, base: 0, version: "" });
@@ -83,7 +87,7 @@ export function BrowserEditPage() {
   useEffect(() => {
     if (!editor) return;
     let alive = true;
-    request<Session>(`/api/app/drive/editor/${file}`, { method: "POST", query: { kind: "browser" } }).then(
+    request<Session>(`/api/app/drive/editor/${file}`, { method: "POST", query: { kind: "browser", session: pageKey.current } }).then(
       (s) => {
         if (!alive) return;
         if (editor.max_mb && s.size > editor.max_mb * 1024 * 1024) {
@@ -98,7 +102,8 @@ export function BrowserEditPage() {
     return () => {
       alive = false;
     };
-  }, [file, editor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per file and editor
+  }, [file, editor?.id]);
 
   // Keep the lock while the editor is open; give it back when leaving.
   const lock = session?.action === "edit" && !lost ? session.lock : null;
@@ -160,7 +165,9 @@ export function BrowserEditPage() {
     setStatus("saving");
     setConflict(null);
     try {
-      if (extension(name) !== extension(s.name)) {
+      // Only the opened file's own name is a new version of it; editors that offer Open and New
+      // inside them can hand back other files too.
+      if (name.toLowerCase() !== s.name.toLowerCase()) {
         const made = await saveCopy(name, bytes);
         toast(`Saved ${made.name} next to ${s.name}`);
       } else if (how !== "copy" && s.action === "edit" && s.lock && !gone) {
@@ -216,7 +223,7 @@ export function BrowserEditPage() {
 
   const takeOver = async () => {
     try {
-      const s = await request<Session>(`/api/app/drive/editor/${file}`, { method: "POST", query: { kind: "browser", take_over: "true" } });
+      const s = await request<Session>(`/api/app/drive/editor/${file}`, { method: "POST", query: { kind: "browser", take_over: "true", session: pageKey.current } });
       if (s.action !== "edit") {
         toast(readOnlyReason(s, me), "error");
         return;
