@@ -114,6 +114,21 @@ a:hover {
   min-height: 100vh;
 }
 
+/* An app's interface under the platform's bar (docs/plan/apps-ui.md): the frame starts below it. */
+html[data-ferrum-host] .shell {
+  min-height: calc(100vh - var(--ferrum-bar-height, 48px));
+}
+html[data-ferrum-host] .sidebar {
+  top: var(--ferrum-bar-height, 48px);
+  height: calc(100dvh - var(--ferrum-bar-height, 48px));
+  padding-top: 12px;
+}
+html[data-ferrum-host] .topbar {
+  top: var(--ferrum-bar-height, 48px);
+  height: var(--topbar-h);
+  padding-top: 0;
+}
+
 .sidebar {
   position: sticky;
   top: 0;

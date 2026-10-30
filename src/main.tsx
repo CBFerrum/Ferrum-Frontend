@@ -18,6 +18,7 @@ import { dashboardRoutes } from "./app/studio/Dashboards";
 import { spaceRoutes } from "./app/studio/Spaces";
 import { setUnauthorizedHandler } from "./lib/api";
 import { setupPwa } from "./lib/pwa";
+import { adoptBrowserSession, followShell } from "./lib/shellv2";
 import "./index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "./ui/kit";
 
@@ -96,12 +97,16 @@ setUnauthorizedHandler(() => {
 
 setupPwa();
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster />
-      <ConfirmHost />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+// Signed in on the new pages: the same session here. A workspace on the shell: its new pages.
+await adoptBrowserSession();
+if (!(await followShell())) {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster />
+        <ConfirmHost />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}

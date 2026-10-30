@@ -125,6 +125,8 @@ export interface EntitySummary {
   module?: string | null;
   submittable: boolean;
   custom?: boolean;
+  /** The package that owns it (`tenant` for custom entities). */
+  package?: string;
   permissions: Perms;
 }
 

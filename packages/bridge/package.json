@@ -1,0 +1,9 @@
+{
+  "name": "@ferrum/bridge",
+  "version": "0.1.0",
+  "description": "Frames, slots, intents and screens between apps and their hosts",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" }
+}

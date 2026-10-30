@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["vite/client"],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": { "@/*": ["./src/*"], "@ferrum/*": ["./packages/*/src/index.ts"] }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "packages", "apps", "vite.config.ts"]
 }

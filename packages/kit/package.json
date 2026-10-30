@@ -1,0 +1,9 @@
+{
+  "name": "@ferrum/kit",
+  "version": "0.1.0",
+  "description": "Design tokens and React components of Ferrum's interfaces",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" }
+}

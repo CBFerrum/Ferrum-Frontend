@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
+import { bootstrap } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
@@ -73,9 +74,39 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
   return links;
 }
 
+/**
+ * How the frame is used: `classic`, today's web app at /app/ with its own sign-in and account
+ * menu; `app`, an app's interface under the platform's bar (docs/plan/apps-ui.md), whose session
+ * is the browser's cookie and whose account menu, launcher and other apps are the bar's.
+ */
+export type FrameMode = "classic" | "app";
+let frameMode: FrameMode = "classic";
+/** In app mode, the packages whose modules the sidebar shows (the app's own); null: all. */
+let framePackages: Set<string> | null = null;
+
+/** Set once, before the first render. */
+export function setFrameMode(mode: FrameMode, packages?: string[]): void {
+  frameMode = mode;
+  framePackages = packages ? new Set(packages) : null;
+}
+
+/** The app's name, as the bootstrap gives it (app mode). */
+function appName(): string {
+  return bootstrap()?.app?.title ?? "Ferrum";
+}
+
+/** Whether a module is the app's own: one listing entities of its packages (or custom ones). */
+export function ownModule(m: Module, meta: MetaIndex): boolean {
+  if (!framePackages || m.name === STUDIO) return true;
+  return m.items.some((i) => {
+    const pkg = meta.entities.find((e) => e.name === i)?.package;
+    return !!pkg && (framePackages!.has(pkg) || pkg === "tenant");
+  });
+}
+
 export function RequireAuth() {
   const location = useLocation();
-  if (!getSession()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  if (frameMode === "classic" && !getSession()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return <Shell />;
 }
 
@@ -163,9 +194,9 @@ function Shell() {
       <aside className="sidebar" aria-label="Sidebar" onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            Fe
+            {frameMode === "app" ? appName().slice(0, 2) : "Fe"}
           </span>
-          Ferrum
+          {frameMode === "app" ? appName() : "Ferrum"}
         </NavLink>
         <Sidebar />
       </aside>
@@ -178,7 +209,7 @@ function Shell() {
           <NavPicker mode="inline" inputRef={searchRef} />
           <span className="spacer" />
           <Notifications />
-          <UserMenu />
+          {frameMode === "classic" && <UserMenu />}
         </header>
         <OfflineBanner />
         <UpdateBanner />
@@ -258,6 +289,7 @@ function Sidebar() {
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
     const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
     return [...meta.modules]
+      .filter((m) => ownModule(m, meta))
       .sort((a, b) => a.order - b.order)
       .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet) }))
       .filter((g) => g.items.length);
@@ -269,13 +301,14 @@ function Sidebar() {
         <Icon name="home" />
         Home
       </NavLink>
-      {mail.data && (
+      {/* Under the platform's bar, other apps are in its launcher. */}
+      {frameMode === "classic" && mail.data && (
         <NavLink to="/mail" className="nav-link">
           <Icon name="mail" />
           Mail
         </NavLink>
       )}
-      {meta?.packages.includes("drive") && (
+      {frameMode === "classic" && meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
           <Icon name="file" />
           Files
@@ -315,14 +348,30 @@ function Sidebar() {
             <Icon name="chevronRight" size={12} />
             Administration
           </summary>
-          <NavLink to="/apps" className="nav-link">
-            <Icon name="apps" />
-            Apps
-          </NavLink>
-          <NavLink to="/admin" className="nav-link">
-            <Icon name="settings" />
-            Admin
-          </NavLink>
+          {frameMode === "classic" ? (
+            <>
+              <NavLink to="/apps" className="nav-link">
+                <Icon name="apps" />
+                Apps
+              </NavLink>
+              <NavLink to="/admin" className="nav-link">
+                <Icon name="settings" />
+                Admin
+              </NavLink>
+            </>
+          ) : (
+            <>
+              {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
+              <a href="/store/" className="nav-link">
+                <Icon name="apps" />
+                Apps
+              </a>
+              <a href="/admin/" className="nav-link">
+                <Icon name="settings" />
+                Admin
+              </a>
+            </>
+          )}
           <NavLink to="/customize" className="nav-link">
             <Icon name="edit" />
             Customize
@@ -591,6 +640,8 @@ function UserMenu() {
   const install = useInstall();
 
   const signOut = () => {
+    // The browser's session ends too (the cookie, and every token bound to it).
+    void api.post("/api/auth/logout", undefined, { noAuthRedirect: true }).catch(() => {});
     setSession(null);
     navigate("/login", { replace: true });
     qc.clear();
@@ -715,7 +766,7 @@ function UserMenu() {
   );
 }
 
-function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boolean; onClose: () => void; onSignedOut: () => void }) {
+export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boolean; onClose: () => void; onSignedOut: () => void }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -797,7 +848,7 @@ function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boolean; o
 
 /** Ferrum speaks MCP: assistants that support remote MCP servers sign in with OAuth and then act
  *  with exactly this user's permissions. */
-function ConnectAi() {
+export function ConnectAi() {
   const url = `${window.location.origin}/mcp`;
   const copy = async () => {
     try {
