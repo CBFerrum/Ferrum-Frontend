@@ -81,13 +81,22 @@ export type FrameMode = "classic" | "app";
 let frameMode: FrameMode = "classic";
 /** In app mode, the packages whose modules the sidebar shows (the app's own); null: all. */
 let framePackages: Set<string> | null = null;
+/** Whether the frame's routes include the records pages beyond lists, forms and reports
+ *  (`recordsRoutes`): Customize, Studio's builders and the POS till. Today's web app has them. */
+let frameHasPages = true;
 
 /** Set once, before the first render. An app's interface runs under the shell, which signs the
- *  person in again when the session ends. */
-export function setFrameMode(mode: FrameMode, packages?: string[]): void {
+ *  person in again when the session ends; `pages` when its routes are `recordsRoutes`. */
+export function setFrameMode(mode: FrameMode, packages?: string[], { pages = false }: { pages?: boolean } = {}): void {
   frameMode = mode;
   framePackages = packages ? new Set(packages) : null;
+  frameHasPages = mode === "classic" || pages;
   if (mode === "app") setUnauthorizedHandler(() => shell().session.reauthenticate());
+}
+
+/** Whether the frame shows Studio's pages: they are among its routes, and Studio is its app's. */
+function showsStudio(): boolean {
+  return frameHasPages && (!framePackages || framePackages.has(STUDIO));
 }
 
 /** The app's name, as the bootstrap gives it (app mode). */
@@ -95,9 +104,12 @@ function appName(): string {
   return bootstrap()?.app?.title ?? "Ferrum";
 }
 
-/** Whether a module is the app's own: one listing entities of its packages (or custom ones). */
+/** Whether a module is the app's own: one its packages define (from a server that does not say,
+ *  one listing entities of its packages or custom ones). */
 export function ownModule(m: Module, meta: MetaIndex): boolean {
-  if (!framePackages || m.name === STUDIO) return true;
+  if (m.name === STUDIO) return showsStudio();
+  if (!framePackages) return true;
+  if (m.package) return framePackages.has(m.package);
   return m.items.some((i) => {
     const pkg = meta.entities.find((e) => e.name === i)?.package;
     return !!pkg && (framePackages!.has(pkg) || pkg === "tenant");
@@ -374,10 +386,17 @@ function Sidebar() {
               </a>
             </>
           )}
-          <NavLink to="/customize" className="nav-link">
-            <Icon name="edit" />
-            Customize
-          </NavLink>
+          {frameHasPages ? (
+            <NavLink to="/customize" className="nav-link">
+              <Icon name="edit" />
+              Customize
+            </NavLink>
+          ) : (
+            <a href="/data/customize/" className="nav-link">
+              <Icon name="edit" />
+              Customize
+            </a>
+          )}
         </details>
       )}
     </nav>
@@ -390,6 +409,8 @@ interface NavTarget {
   label: string;
   hint: string;
   to: string;
+  /** Another page (the shell's, another app's): loaded rather than routed to. */
+  href?: string;
 }
 
 function useNavTargets(): NavTarget[] {
@@ -408,15 +429,20 @@ function useNavTargets(): NavTarget[] {
       if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: `New ${e.label}`, hint, to: `/e/${e.name}/new` });
     }
     for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: "Report", to: `/r/${r.name}` });
-    if (meta.packages.includes(STUDIO)) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
-    if (meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
+    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
+    if (frameHasPages && meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
       out.push({ label: "POS Register", hint: "POS", to: registerNav.to });
-    if (meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
+    // Under the platform's bar, Comms and Docs are apps of their own, in its launcher.
+    if (frameMode === "classic" && meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
       out.push({ label: "Chat", hint: "Communication", to: chatNav.to }, { label: "Calendar", hint: "Communication", to: calendarNav.to });
-    if (meet) out.push({ label: "Meet", hint: "Communication", to: meetNav.to });
-    if (meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read"))) out.push({ label: "Documents", hint: "Docs", to: docsNav.to });
-    if (me?.user.is_admin)
-      out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" }, { label: "Customize", hint: "Page", to: "/customize" });
+    if (frameMode === "classic" && meet) out.push({ label: "Meet", hint: "Communication", to: meetNav.to });
+    if (frameMode === "classic" && meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read")))
+      out.push({ label: "Documents", hint: "Docs", to: docsNav.to });
+    if (me?.user.is_admin) {
+      if (frameMode === "classic") out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" });
+      else out.push({ label: "Apps", hint: "Page", to: "", href: "/store/" }, { label: "Administration", hint: "Page", to: "", href: "/admin/" });
+      out.push(frameHasPages ? { label: "Customize", hint: "Page", to: "/customize" } : { label: "Customize", hint: "Page", to: "", href: "/data/customize/" });
+    }
     return out;
   }, [meta, reports, me, meet]);
 }
@@ -455,6 +481,7 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
 
   const go = (t: NavTarget | undefined) => {
     if (!t) return;
+    if (t.href) return window.location.assign(t.href);
     navigate(t.to);
     setQ("");
     setOpen(mode === "palette");

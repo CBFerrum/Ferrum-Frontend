@@ -136,6 +136,8 @@ export interface Module {
   icon?: string | null;
   order: number;
   items: string[];
+  /** The package that defines it. */
+  package?: string;
 }
 
 export interface MetaIndex {

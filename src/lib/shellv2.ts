@@ -69,6 +69,7 @@ export function newHome(path: string, search = ""): string | null {
     case "admin":
       return `/admin/${seg.slice(1).map(enc).join("/")}${search}`;
     case "customize":
+      return `/data${p}${search}`;
     case "studio":
     case "dashboards":
     case "spaces":
