@@ -1,24 +1,33 @@
-// Drive (the drive app's /api/app/drive endpoints): browse your files and team folders, upload,
-// download, start a blank document, spreadsheet or presentation, and edit files online: in the
-// editor server the operator runs (Collabora Online or ONLYOFFICE, over WOPI), or in a browser
-// editor that an add-on offers on Drive's `drive.editor` point (BrowserEdit.tsx).
+// Drive (the drive app's /api/app/drive endpoints): your files, what others shared with you, recent,
+// starred and trashed items, and search; upload, new folders and blank documents, spreadsheets or
+// presentations; sharing, comments, versions and activity in a panel beside the list
+// (Details.tsx, Share.tsx); who has a file open now (presence.ts). Files open in the editor server
+// the operator runs (Collabora Online or ONLYOFFICE, over WOPI), or in a browser editor that an
+// add-on offers on Drive's `drive.editor` point (BrowserEdit.tsx).
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, download, errorMessage, request } from "../../lib/api";
 import { formatDateTime } from "../../lib/format";
-import { Badge, Button, EmptyState, Icon, Menu, MenuItem, Spinner, toast } from "../../ui/kit";
+import { Badge, Button, Dialog, EmptyState, Field, Icon, Menu, MenuItem, Spinner, Tabs, confirmDialog, toast } from "../../ui/kit";
+import { DetailsPanel, type ItemInfo, allows } from "./Details";
+import { presenceLabel, useFilesPresence, usePresence } from "./presence";
+import { type Shareable, ShareDialog } from "./Share";
 
 interface Item {
   id: string;
   kind: "file" | "folder";
   name: string;
+  parent?: string | null;
+  owner?: string | null;
   size: number | null;
   modified_at: string;
   modified_by: string | null;
   permission: string;
   locked_by: string | null;
+  starred?: boolean;
+  trashed?: boolean;
 }
 
 interface Listing {
@@ -119,19 +128,38 @@ const NEW = [
   { kind: "pptx", label: "Presentation" },
 ] as const;
 
-/** `/drive/:folder?`: a folder of your Drive (your space's top folder by default). */
+/** Drive's views besides a folder of your own (`?view=`). */
+export const VIEWS = [
+  { id: "mine", label: "My files", action: "" },
+  { id: "shared", label: "Shared with me", action: "shared_with_me" },
+  { id: "recent", label: "Recent", action: "recent" },
+  { id: "starred", label: "Starred", action: "starred" },
+  { id: "trash", label: "Trash", action: "list_trash" },
+] as const;
+type View = (typeof VIEWS)[number]["id"];
+
+/** `/drive/:folder?`: a folder of your Drive (your space's top folder by default), or with `?view=`
+ *  another view, with `?q=` a search, and with `?item=` an item's details beside the list. */
 export function DrivePage() {
   const { folder } = useParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const tabsId = useId();
   const picker = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [sharing, setSharing] = useState<Shareable | null>(null);
+  const [naming, setNaming] = useState<{ title: string; label: string; initial: string; done: (name: string) => Promise<unknown> } | null>(null);
+  const view: View = VIEWS.find((v) => v.id === params.get("view"))?.id ?? "mine";
+  const query = params.get("q") ?? "";
+  const selected = params.get("item");
+  const [typed, setTyped] = useState(query);
   const space = useQuery({
     queryKey: ["drive", "space"],
-    queryFn: ({ signal }) => api.get<{ root_folder: string }>("/api/app/drive/space", undefined, signal),
-    enabled: !folder,
+    queryFn: ({ signal }) => api.get<{ id: string; root_folder: string }>("/api/app/drive/space", undefined, signal),
   });
-  const id = folder ?? space.data?.root_folder;
+  const inFolder = view === "mine" && !query;
+  const id = inFolder ? (folder ?? space.data?.root_folder) : undefined;
   const editors = useEditors();
   const narrow = typeof matchMedia === "function" && matchMedia("(max-width: 640px)").matches;
   const list = useQuery({
@@ -141,7 +169,47 @@ export function DrivePage() {
     // Fresh on every visit: coming back from the editor shows the version it saved.
     staleTime: 0,
   });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["drive", "folder", id] });
+  const other = useQuery({
+    queryKey: ["drive", "view", view, query],
+    queryFn: ({ signal }) =>
+      query
+        ? api.get<{ items: Item[] }>("/api/app/drive/search", { query, limit: 200 }, signal)
+        : api.get<{ items: Item[] }>(`/api/app/drive/${VIEWS.find((v) => v.id === view)!.action}`, undefined, signal),
+    enabled: !inFolder,
+    staleTime: 0,
+  });
+  // An item opened from a link or the bell: shown in its own folder.
+  const info = useQuery({
+    queryKey: ["drive", "item", selected],
+    queryFn: ({ signal }) => api.get<ItemInfo>("/api/app/drive/item_info", { item: selected }, signal),
+    enabled: !!selected,
+    retry: false,
+  });
+  useEffect(() => {
+    const parent = info.data?.kind === "folder" && !info.data.parent ? info.data.id : info.data?.parent;
+    if (selected && inFolder && !folder && parent && parent !== space.data?.root_folder) navigate(`/drive/${parent}?item=${selected}`, { replace: true });
+  }, [info.data, selected, inFolder, folder, space.data?.root_folder, navigate]);
+  const items = (inFolder ? list.data?.items : other.data?.items) ?? [];
+  const present = useFilesPresence(items.filter((i) => i.kind === "file").map((i) => i.id)).data ?? {};
+  const refresh = () => qc.invalidateQueries({ queryKey: ["drive"] });
+  const act = (action: string, body: Record<string, unknown>) => api.post(`/api/v1/DriveSpace/${space.data?.id}/actions/${action}`, body);
+  const attempt = async (work: () => Promise<unknown>, done?: string) => {
+    try {
+      await work();
+      if (done) toast(done);
+      await refresh();
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    }
+  };
+  const pick = (next: Record<string, string | null>) => {
+    const p = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    setParams(p);
+  };
 
   const upload = async (files: FileList | null) => {
     if (!files?.length || !id) return;
@@ -169,128 +237,256 @@ export function DrivePage() {
       toast(errorMessage(e), "error");
     }
   };
+  const newFolder = () =>
+    setNaming({ title: "New folder", label: "Name", initial: "", done: (name) => attempt(() => act("create_folder", { parent: id, name }), `Folder “${name}” made`) });
+  const rename = (it: Item) =>
+    setNaming({ title: `Rename “${it.name}”`, label: "New name", initial: it.name, done: (name) => attempt(() => act("rename", { item: it.id, name }), "Renamed") });
+  const trash = async (it: Item) => {
+    if (await confirmDialog({ title: `Move “${it.name}” to the trash?`, message: "You can restore it from Trash.", confirmLabel: "Move to trash", danger: true }))
+      await attempt(() => act("trash", { item: it.id }), `“${it.name}” is in the trash`);
+  };
+  const destroy = async (it: Item) => {
+    if (await confirmDialog({ title: `Delete “${it.name}” for good?`, message: "This cannot be undone.", confirmLabel: "Delete forever", danger: true }))
+      await attempt(() => act("delete_forever", { item: it.id }), `“${it.name}” is deleted`);
+  };
 
-  if (space.error || list.error) {
+  if (space.error || list.error || other.error) {
     return (
       <EmptyState title="Drive is not available" icon="file">
-        <p className="muted">{errorMessage(space.error ?? list.error)}</p>
+        <p className="muted">{errorMessage(space.error ?? list.error ?? other.error)}</p>
       </EmptyState>
     );
   }
-  if (!list.data) return <Spinner label="Loading files" />;
-  const { breadcrumbs, items, folder: current } = list.data;
-  const canAdd = ["Edit", "Manage"].includes(current.permission);
+  const ready = inFolder ? !!list.data : !!other.data;
+  const current = list.data?.folder;
+  const canAdd = inFolder && !!current && allows(current.permission, "Edit");
+  const title = query ? `Search: ${query}` : inFolder ? (current?.name ?? "My files") : VIEWS.find((v) => v.id === view)!.label;
 
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">{current.name}</h1>
-          <nav className="page-sub" aria-label="Folder path">
-            {breadcrumbs.map((b, i) => (
-              <span key={b.id}>
-                {i > 0 && " / "}
-                <Link to={`/drive/${b.id}`}>{b.name}</Link>
-              </span>
-            ))}
-          </nav>
-        </div>
-        {canAdd && (
-          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            {NEW.map((n) => (
-              <Button key={n.kind} size="sm" icon="plus" onClick={() => void create(n.kind)}>
-                {n.label}
-              </Button>
-            ))}
-            <Button size="sm" variant="primary" icon="upload" loading={busy} onClick={() => picker.current?.click()}>
-              Upload
-            </Button>
-            <input ref={picker} type="file" multiple hidden onChange={(e) => void upload(e.target.files)} />
+    <div className={selected ? "drive-layout drive-layout-details" : "drive-layout"}>
+      <div className="drive-main">
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">{title}</h1>
+            {inFolder && list.data && (
+              <nav className="page-sub" aria-label="Folder path">
+                {list.data.breadcrumbs.map((b, i) => (
+                  <span key={b.id}>
+                    {i > 0 && " / "}
+                    <Link to={`/drive/${b.id}`}>{b.name}</Link>
+                  </span>
+                ))}
+              </nav>
+            )}
           </div>
+          {canAdd && (
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              {NEW.map((n) => (
+                <Button key={n.kind} size="sm" icon="plus" onClick={() => void create(n.kind)}>
+                  {n.label}
+                </Button>
+              ))}
+              <Button size="sm" icon="plus" onClick={newFolder}>
+                Folder
+              </Button>
+              <Button size="sm" variant="primary" icon="upload" loading={busy} onClick={() => picker.current?.click()}>
+                Upload
+              </Button>
+              <input ref={picker} type="file" multiple hidden onChange={(e) => void upload(e.target.files)} />
+            </div>
+          )}
+        </div>
+        <div className="drive-bar">
+          <Tabs
+            id={tabsId}
+            tabs={VIEWS.map((v) => ({ id: v.id, label: v.label }))}
+            value={query ? "" : view}
+            onChange={(v) => {
+              setTyped("");
+              navigate(v === "mine" ? "/drive" : `/drive?view=${v}`);
+            }}
+          />
+          <form
+            role="search"
+            className="drive-search"
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              navigate(typed.trim() ? `/drive?q=${encodeURIComponent(typed.trim())}` : "/drive");
+            }}
+          >
+            <label htmlFor={`${tabsId}-q`} className="sr-only">
+              Search Drive
+            </label>
+            <input id={`${tabsId}-q`} className="input" type="search" placeholder="Search Drive" value={typed} onChange={(e) => setTyped(e.target.value)} />
+          </form>
+        </div>
+        {!ready ? (
+          <Spinner label="Loading files" />
+        ) : !items.length ? (
+          <EmptyState title={query ? "Nothing matches" : inFolder ? "This folder is empty" : `Nothing in ${title} yet`} icon="file">
+            {canAdd && <p className="muted">Upload files or start a document.</p>}
+          </EmptyState>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th className="num">Size</th>
+                <th>Modified</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => {
+                const choices = it.kind === "file" && view !== "trash" ? editorsFor(it, editors) : [];
+                const open = defaultEditor(choices, narrow);
+                const here = present[it.id] ?? [];
+                return (
+                  <tr key={it.id} className={it.id === selected ? "row-selected" : undefined}>
+                    <td>
+                      {it.kind === "folder" && view !== "trash" ? (
+                        <Link to={`/drive/${it.id}`}>
+                          <Icon name="list" size={14} /> {it.name}
+                        </Link>
+                      ) : open ? (
+                        <Link to={open.to}>
+                          <Icon name="file" size={14} /> {it.name}
+                        </Link>
+                      ) : (
+                        <span>
+                          <Icon name={it.kind === "folder" ? "list" : "file"} size={14} /> {it.name}
+                        </span>
+                      )}
+                      {it.starred && (
+                        <span className="drive-star" aria-label="Starred" title="Starred">
+                          ★
+                        </span>
+                      )}
+                      {it.locked_by && <Badge tone="amber">Checked out</Badge>}
+                      {here.length > 0 && (
+                        <Badge tone="green" title={presenceLabel(here)}>
+                          {presenceLabel(here)}
+                        </Badge>
+                      )}
+                      {!inFolder && it.owner && <div className="faint">{it.owner}</div>}
+                    </td>
+                    <td className="num">{sizeLabel(it.size)}</td>
+                    <td className="muted">
+                      {formatDateTime(it.modified_at)}
+                      {it.modified_by ? ` · ${it.modified_by}` : ""}
+                    </td>
+                    <td className="drive-actions">
+                      {open && (
+                        <Link className="btn btn-default btn-sm" to={open.to}>
+                          {allows(it.permission, "Edit") ? "Edit online" : "Open"}
+                        </Link>
+                      )}{" "}
+                      {choices.length > (open ? 1 : 0) && (
+                        <Menu label="Open with" ariaLabel={`Open ${it.name} with`} buttonClass="btn btn-default btn-sm">
+                          {(close) =>
+                            choices.map((c) => (
+                              <MenuItem
+                                key={c.key}
+                                onSelect={() => {
+                                  close();
+                                  if (c.unavailable) toast(`${c.label} cannot open ${it.name}: ${c.unavailable}`, "error");
+                                  else navigate(c.to);
+                                }}
+                              >
+                                {c.label}
+                                {c.unavailable && <span className="faint"> ({c.unavailable})</span>}
+                              </MenuItem>
+                            ))
+                          }
+                        </Menu>
+                      )}{" "}
+                      <Menu label="More" ariaLabel={`More for ${it.name}`} buttonClass="btn btn-default btn-sm">
+                        {(close) => {
+                          const item = (run: () => unknown) => () => {
+                            close();
+                            void run();
+                          };
+                          if (view === "trash")
+                            return (
+                              <>
+                                <MenuItem onSelect={item(() => attempt(() => act("restore", { item: it.id }), `“${it.name}” is restored`))}>Restore</MenuItem>
+                                {allows(it.permission, "Manage") && (
+                                  <MenuItem danger onSelect={item(() => destroy(it))}>
+                                    Delete forever
+                                  </MenuItem>
+                                )}
+                              </>
+                            );
+                          return (
+                            <>
+                              <MenuItem onSelect={item(() => pick({ item: it.id }))}>Details</MenuItem>
+                              {allows(it.permission, "Manage") && <MenuItem onSelect={item(() => setSharing(it))}>Share</MenuItem>}
+                              <MenuItem onSelect={item(() => attempt(() => act(it.starred ? "unstar" : "star", { item: it.id })))}>
+                                {it.starred ? "Remove star" : "Star"}
+                              </MenuItem>
+                              {allows(it.permission, "Edit") && <MenuItem onSelect={item(() => rename(it))}>Rename</MenuItem>}
+                              {it.kind === "file" && (
+                                <MenuItem onSelect={item(() => download(`/api/app/drive/files/${it.id}/content`, it.name).catch((e) => toast(errorMessage(e), "error")))}>
+                                  Download
+                                </MenuItem>
+                              )}
+                              {allows(it.permission, "Edit") && (
+                                <MenuItem danger onSelect={item(() => trash(it))}>
+                                  Move to trash
+                                </MenuItem>
+                              )}
+                            </>
+                          );
+                        }}
+                      </Menu>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
-      {!items.length ? (
-        <EmptyState title="This folder is empty" icon="file">
-          {canAdd && <p className="muted">Upload files or start a document.</p>}
-        </EmptyState>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th className="num">Size</th>
-              <th>Modified</th>
-              <th aria-label="Actions" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => {
-              const choices = it.kind === "file" ? editorsFor(it, editors) : [];
-              const open = defaultEditor(choices, narrow);
-              return (
-                <tr key={it.id}>
-                  <td>
-                    {it.kind === "folder" ? (
-                      <Link to={`/drive/${it.id}`}>
-                        <Icon name="list" size={14} /> {it.name}
-                      </Link>
-                    ) : open ? (
-                      <Link to={open.to}>
-                        <Icon name="file" size={14} /> {it.name}
-                      </Link>
-                    ) : (
-                      <span>
-                        <Icon name="file" size={14} /> {it.name}
-                      </span>
-                    )}
-                    {it.locked_by && <Badge tone="amber">Checked out</Badge>}
-                  </td>
-                  <td className="num">{sizeLabel(it.size)}</td>
-                  <td className="muted">
-                    {formatDateTime(it.modified_at)}
-                    {it.modified_by ? ` · ${it.modified_by}` : ""}
-                  </td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    {open && (
-                      <Link className="btn btn-default btn-sm" to={open.to}>
-                        {["Edit", "Manage"].includes(it.permission) ? "Edit online" : "Open"}
-                      </Link>
-                    )}{" "}
-                    {choices.length > (open ? 1 : 0) && (
-                      <Menu label="Open with" ariaLabel={`Open ${it.name} with`} buttonClass="btn btn-default btn-sm">
-                        {(close) =>
-                          choices.map((c) => (
-                            <MenuItem
-                              key={c.key}
-                              onSelect={() => {
-                                close();
-                                if (c.unavailable) toast(`${c.label} cannot open ${it.name}: ${c.unavailable}`, "error");
-                                else navigate(c.to);
-                              }}
-                            >
-                              {c.label}
-                              {c.unavailable && <span className="faint"> ({c.unavailable})</span>}
-                            </MenuItem>
-                          ))
-                        }
-                      </Menu>
-                    )}{" "}
-                    {it.kind === "file" && (
-                      <Button
-                        size="sm"
-                        icon="download"
-                        aria-label={`Download ${it.name}`}
-                        onClick={() => void download(`/api/app/drive/files/${it.id}/content`, it.name).catch((e) => toast(errorMessage(e), "error"))}
-                      />
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+      {selected && space.data && <DetailsPanel id={selected} space={space.data.id} onClose={() => pick({ item: null })} onShare={setSharing} />}
+      {sharing && space.data && <ShareDialog item={sharing} space={space.data.id} onClose={() => setSharing(null)} />}
+      {naming && <NameDialog {...naming} onClose={() => setNaming(null)} />}
     </div>
+  );
+}
+
+/** Asks for a name (new folder, rename). */
+function NameDialog({ title, label, initial, done, onClose }: { title: string; label: string; initial: string; done: (name: string) => Promise<unknown>; onClose: () => void }) {
+  const fieldId = useId();
+  const [name, setName] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    await done(name.trim());
+    setBusy(false);
+    onClose();
+  };
+  return (
+    <Dialog
+      open
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" loading={busy} disabled={!name.trim()} onClick={() => void submit()}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      <form onSubmit={submit}>
+        <Field label={label} htmlFor={fieldId}>
+          <input id={fieldId} className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={255} />
+        </Field>
+      </form>
+    </Dialog>
   );
 }
 
@@ -315,6 +511,8 @@ export function EditPage() {
   useEffect(() => {
     if (launch) form.current?.submit();
   }, [launch]);
+  // Others in the same document co-edit with this person; the page reports them both.
+  const others = usePresence(file, launch ? (launch.action === "edit" ? "edit" : "view") : null);
 
   if (error) {
     return (
@@ -333,6 +531,7 @@ export function EditPage() {
         </Button>
         <strong>{launch.name}</strong>
         {launch.action === "view" && <Badge>Read only</Badge>}
+        {others.length > 0 && <Badge tone="green">{presenceLabel(others)}</Badge>}
         <span className="faint">Changes are saved as new versions in Drive.</span>
       </div>
       <form ref={form} action={launch.url} method="post" target="office-editor" hidden>

@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router";
 import { ApiError, download, errorMessage, fetchBlob, getSession, request } from "../../lib/api";
 import { Alert, Badge, Button, Dialog, EmptyState, Spinner, confirmDialog, toast } from "../../ui/kit";
 import { useEditors } from "./Drive";
+import { presenceLabel, usePresence } from "./presence";
 
 interface Session {
   kind: "browser";
@@ -82,6 +83,7 @@ export function BrowserEditPage() {
   live.current.session = session;
   live.current.lost = lost;
   const me = getSession()?.email;
+  const others = usePresence(session ? file : undefined, session ? (session.action === "edit" && !lost ? "edit" : "view") : null);
 
   // The session: who may edit, and the editor lock.
   useEffect(() => {
@@ -275,6 +277,7 @@ export function BrowserEditPage() {
         </Button>
         <strong>{session.name}</strong>
         {!editing && <Badge>Read only</Badge>}
+        {others.length > 0 && <Badge tone="green">{presenceLabel(others)}</Badge>}
         {status === "starting" && <Badge>Starting</Badge>}
         {status === "saving" && <Badge tone="blue">Saving</Badge>}
         {status === "unsaved" && <Badge tone="red">Not saved</Badge>}

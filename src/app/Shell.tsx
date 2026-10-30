@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
 import { api, errorMessage, getSession, setSession } from "../lib/api";
+import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useMailSession } from "../lib/mail";
@@ -510,7 +511,7 @@ function Notifications() {
     if (!n.read_at) markRead.mutate(n.id);
     if (n.entity && n.record_id) {
       setOpen(false);
-      navigate(`/e/${n.entity}/${n.record_id}`);
+      navigate(notificationPath(n.entity, n.record_id));
     }
   };
 

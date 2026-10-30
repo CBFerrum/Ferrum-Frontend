@@ -228,7 +228,7 @@ function CommentItem({ c, canDelete, onChanged }: { c: Comment; canDelete: boole
   );
 }
 
-function Composer({ people, onPost }: { people: Person[]; onPost: (body: string, mentions: string[]) => Promise<boolean> }) {
+export function Composer({ people, onPost }: { people: Person[]; onPost: (body: string, mentions: string[]) => Promise<boolean> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
