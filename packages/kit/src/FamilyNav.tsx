@@ -4,6 +4,14 @@
 
 import { useEffect, useState } from "react";
 import { shell, type Family } from "@ferrum/client";
+import { cn } from "../../../src/lib/utils";
+import { AppIcon } from "./AppIcon";
+
+/** Whether this page is at or under an entry's address (`/sheets` and `/sheets/…` for `/sheets/`). */
+const under = (url: string) => {
+  const base = url.replace(/\/+$/, "");
+  return base !== "" && (location.pathname === base || location.pathname.startsWith(`${base}/`));
+};
 
 export function FamilyNav({ className }: { className?: string }) {
   const [family, setFamily] = useState<Family | null>(null);
@@ -19,15 +27,26 @@ export function FamilyNav({ className }: { className?: string }) {
   }, []);
   if (!family || family.entries.length < 2) return null;
   // The entry whose address is the longest match is this page's.
-  const here = family.entries.filter((e) => location.pathname.startsWith(e.url)).sort((a, b) => b.url.length - a.url.length)[0];
+  const here = family.entries.filter((e) => under(e.url)).sort((a, b) => b.url.length - a.url.length)[0];
   return (
-    <nav className={className ?? "family-nav"} aria-label={family.title}>
+    <nav aria-label={family.title} className={cn("-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pb-1", className)}>
       {family.entries.map((e) => (
-        <a key={`${e.app}.${e.id}`} href={e.url} aria-current={e === here ? "page" : undefined} onClick={(ev) => {
-          if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
-          ev.preventDefault();
-          shell().navigate(e.url);
-        }}>
+        <a
+          key={`${e.app}.${e.id}`}
+          href={e.url}
+          aria-current={e === here ? "page" : undefined}
+          className={cn(
+            "inline-flex h-8 shrink-0 items-center gap-2 rounded-md px-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground no-underline transition-colors outline-none",
+            "hover:bg-surface-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            e === here && "bg-primary-soft text-primary hover:bg-primary-soft hover:text-primary",
+          )}
+          onClick={(ev) => {
+            if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
+            ev.preventDefault();
+            shell().navigate(e.url);
+          }}
+        >
+          <AppIcon name={e.icon} color={e === here ? null : e.color} />
           {e.title}
         </a>
       ))}
