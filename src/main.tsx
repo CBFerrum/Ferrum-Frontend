@@ -45,6 +45,9 @@ const router = createBrowserRouter(
   [
     { path: "/login", element: <Login />, errorElement: <RouteError /> },
     { path: "/oauth/authorize", element: <OAuthAuthorize />, errorElement: <RouteError /> },
+    // People outside the workspace, by link: a meeting, a shared file or folder.
+    { path: "/meet/guest/:tenant/:link", lazy: () => import("./app/comms/Meet").then((m) => ({ Component: m.GuestMeetPage })), errorElement: <RouteError /> },
+    { path: "/s/:tenant/:link", lazy: () => import("./app/drive/SharedLink").then((m) => ({ Component: m.SharedLinkPage })), errorElement: <RouteError /> },
     {
       path: "/",
       element: <RequireAuth />,

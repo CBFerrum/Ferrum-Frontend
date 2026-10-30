@@ -14,6 +14,8 @@ export interface MeetPass {
   url: string;
   token: string;
   title: string;
+  /** A room's guest link (this app's path), while it has one. */
+  guest_path?: string | null;
 }
 
 /** Whether the operator set up meetings (a LiveKit server). */

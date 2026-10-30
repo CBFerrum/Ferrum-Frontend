@@ -1,6 +1,7 @@
 // Sharing a Drive item (Drive's share, unshare, list_shares and link actions): people with a role
 // (Viewer, Commenter, Editor or Manager) and an optional end date, the link people in the
-// workspace open, and public links where the workspace allows them.
+// workspace open, and public links where the workspace allows them. Someone outside the workspace
+// (a guest) gets a link of their own by email, as a Viewer.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useId, useState } from "react";
@@ -36,6 +37,9 @@ interface PublicLink {
   max_downloads?: number | null;
   download_count?: number;
   revoked?: boolean;
+  active?: boolean;
+  /** The guest it was sent to; none for a link anyone may hold. */
+  email?: string | null;
 }
 
 /** The roles Drive grants, with what each may do. */
@@ -75,8 +79,10 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
     if (!email.trim()) return;
     setBusy(true);
     try {
-      await act("share", { item: item.id, email: email.trim(), permission, expires_at: until || undefined });
-      toast(`Shared with ${email.trim()} as ${roleLabel(permission)}`);
+      const done = (await act("share", { item: item.id, email: email.trim(), permission, expires_at: until || undefined })) as { guest?: boolean; mailed?: boolean; page?: string | null };
+      if (!done.guest) toast(`Shared with ${email.trim()} as ${roleLabel(permission)}`);
+      else if (done.mailed) toast(`${email.trim()} is outside the workspace: a link was sent to them`);
+      else if (done.page) await copy(`${done.page}`, "Their link");
       setEmail("");
       setUntil("");
       await refresh();
@@ -105,8 +111,8 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
   };
   const publish = async () => {
     try {
-      const made = (await act("create_link", { item: item.id, access: "View" })) as { url: string };
-      await copy(`${location.origin}${made.url}`, "Public link");
+      const made = (await act("create_link", { item: item.id, access: "View" })) as { page: string };
+      await copy(`${location.origin}${made.page}`, "Public link");
       await refresh();
     } catch (err) {
       toast(errorMessage(err), "error");
@@ -115,7 +121,7 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
   const revoke = async (l: PublicLink) => {
     try {
       await act("revoke_link", { item: item.id, link: l.id });
-      toast("The public link no longer works");
+      toast(l.email ? `${l.email} no longer has access` : "The public link no longer works");
       await refresh();
     } catch (err) {
       toast(errorMessage(err), "error");
@@ -123,7 +129,8 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
   };
 
   const current = shares.data;
-  const live = (links.data?.links ?? []).filter((l) => !l.revoked);
+  const live = (links.data?.links ?? []).filter((l) => !l.revoked && !l.email);
+  const guests = (links.data?.links ?? []).filter((l) => l.email && !l.revoked && l.active !== false);
   return (
     <Dialog
       open
@@ -142,7 +149,7 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
       }
     >
       <form className="share-add" onSubmit={add} aria-label="Add people">
-        <Field label="Person" htmlFor={`${formId}-email`}>
+        <Field label="Person" htmlFor={`${formId}-email`} hint="Someone outside the workspace gets a link by email, as a Viewer">
           <input
             id={`${formId}-email`}
             className="input"
@@ -211,7 +218,19 @@ export function ShareDialog({ item, space, onClose }: { item: Shareable; space: 
               </Button>
             </li>
           ))}
-          {!current?.shares.length && !current?.team && <li className="faint">Nobody else yet.</li>}
+          {guests.map((l) => (
+            <li key={l.id}>
+              <span>
+                {l.email}
+                {l.expires_at && <span className="faint"> · until {formatDate(l.expires_at)}</span>}
+              </span>
+              <Badge tone="amber">Guest</Badge>
+              <Button size="sm" variant="ghost" aria-label={`Remove ${l.email}`} onClick={() => void revoke(l)}>
+                Remove
+              </Button>
+            </li>
+          ))}
+          {!current?.shares.length && !current?.team && !guests.length && <li className="faint">Nobody else yet.</li>}
         </ul>
       )}
 
