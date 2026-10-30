@@ -8,6 +8,8 @@
 @import "tw-animate-css";
 @import "./styles.css" layer(legacy);
 @import "./app/records.css" layer(legacy);
+/* The kit's own components (web/packages), for the apps that build with this stylesheet. */
+@source "../packages";
 
 /* `dark:` follows the effective theme, which lib/theme.ts always writes to <html data-theme>. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
