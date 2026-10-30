@@ -2,11 +2,7 @@
 // its metadata, so an app spends its effort on the screens that make it a product; and what screens
 // about records share: the metadata and the person's rights, the workspace's people, comments, and
 // the record picker.
-// The records frame ERP's interface uses: the app's own modules in the sidebar under the platform's
-// bar (setFrameMode("app", its packages), then RequireAuth around the routes), and the pages of
-// other apps' screens and settings inside it.
-export { RequireAuth, setFrameMode } from "../../../src/app/Shell";
-export { AppSettingsPage, ScreenPage } from "../../../src/app/Screen";
+// The records frame is @ferrum/records/frame.
 export { ListView } from "../../../src/app/ListView";
 export { FormView } from "../../../src/app/FormView";
 export { ReportView } from "../../../src/app/ReportView";
