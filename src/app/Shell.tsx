@@ -243,8 +243,9 @@ function OfflineBanner() {
 
 // Once the user agreed to discard unsaved edits, the forms' beforeunload guards stay quiet. Added at startup,
 // before any guard, so it runs first even in engines that call a target's listeners in the order added.
+// Not where there is no window: @ferrum/records re-exports this module, and apps' tests import it in Node.
 let discarding = false;
-window.addEventListener("beforeunload", (e) => discarding && e.stopImmediatePropagation(), { capture: true });
+if (typeof window !== "undefined") window.addEventListener("beforeunload", (e) => discarding && e.stopImmediatePropagation(), { capture: true });
 
 function UpdateBanner() {
   const [dismissed, setDismissed] = useState(false);
