@@ -9,6 +9,9 @@
 //              app's crate carries dist/, so a source change without a build would ship stale files;
 //              and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
 //              compressed, CSS ≤ 50 KB)
+//   dev        Vite's development server for the interface (--port N, default 5173): on a
+//              Ferrum server with FERRUM_DEV_UI=1, `ferrum-app dev --ui http://localhost:5173`
+//              serves the app's pages from it, behind the real session, bar and bootstrap
 //   typecheck  TypeScript over src/, with this checkout's packages and libraries
 //   test       the interface's tests (vitest), as Ferrum-Frontend runs its own
 
@@ -90,6 +93,33 @@ switch (process.argv[2]) {
     if (size.over) fail("over the size budget (docs/plan/apps-ui.md §12.9): load pages when they are opened (lazy routes)");
     break;
   }
+  case "dev": {
+    const { createServer } = await tool("vite/dist/node/index.js");
+    const at = process.argv.indexOf("--port");
+    const port = at > 0 ? Number(process.argv[at + 1]) : 5173;
+    if (!Number.isInteger(port) || port < 1 || port > 65535) fail("--port takes a port number");
+    const origin = `http://localhost:${port}`;
+    const config = await appConfig();
+    const server = await createServer({
+      ...config,
+      configFile: false,
+      server: {
+        ...config.server,
+        host: "localhost",
+        port,
+        strictPort: true,
+        // The page is the Ferrum server's, on another origin: files are named by this server's
+        // address, and only pages on this machine may load them, or an isolated interface's
+        // sandboxed frame (its origin is opaque: "null").
+        origin,
+        cors: { origin: [/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|[^/]+\.localhost)(:\d+)?$/, "null"] },
+      },
+    });
+    await server.listen();
+    server.printUrls();
+    console.log(`ferrum-ui: on a Ferrum server with FERRUM_DEV_UI=1, point the app's pages here: ferrum-app dev --ui ${origin} --no-upload`);
+    break;
+  }
   case "typecheck":
     run("typescript/bin/tsc", ["--noEmit", "-p", "tsconfig.json"]);
     break;
@@ -101,5 +131,5 @@ switch (process.argv[2]) {
     break;
   }
   default:
-    fail("commands: build, check, typecheck, test");
+    fail("commands: build, check, dev, typecheck, test");
 }
