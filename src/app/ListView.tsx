@@ -472,7 +472,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         ) : (
           <div className="table-wrap">
             {/* Explicit roles: the phone card layout changes `display`, which drops native table semantics. */}
-            <table ref={table} className="table list-table" role="table" style={widthVars}>
+            {/* The row shows what a card would (data-ferrum-nocard: the shell draws none here). */}
+            <table ref={table} className="table list-table" role="table" style={widthVars} data-ferrum-nocard="">
               <caption className="sr-only" role="caption">
                 {meta.label_plural}
               </caption>
