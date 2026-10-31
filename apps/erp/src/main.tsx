@@ -1,18 +1,20 @@
 // ERP's own interface at /erp/ (docs/plan/apps-ui.md §13): today's records and ERP pages under the
 // platform's bar. The sidebar shows ERP's modules; other apps are in the bar's launcher, and the
-// shell's pages (apps, administration, the account) are page loads away.
+// shell's pages (apps, administration, the account) are page loads away. The same release draws
+// its page of the workspace's portal, "Your invoices" at /portal/invoices/ (§9.1, U7).
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Link, RouterProvider, useRouteError } from "react-router";
-import { routeBase, shell } from "@ferrum/client";
+import { createBrowserRouter, Link, Outlet, RouterProvider, useRouteError } from "react-router";
+import { bootstrap, routeBase, shell } from "@ferrum/client";
 import { Home } from "@/app/Home";
 import { recordsRoutes } from "@/app/recordsRoutes";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
+import { PortalInvoice, PortalInvoices } from "./Invoices";
 
 /** ERP's packages and its add-ons': the sidebar shows their modules (Studio has its own interface). */
 const ERP_PACKAGES = [
@@ -28,10 +30,10 @@ function RouteError() {
   return <ErrorState error={useRouteError()} onRetry={() => window.location.reload()} />;
 }
 
-function NotFound() {
+function NotFound({ back = "Go to ERP's home" }: { back?: string }) {
   return (
     <EmptyState title="Page not found">
-      <Link to="/">Go to ERP's home</Link>
+      <Link to="/">{back}</Link>
     </EmptyState>
   );
 }
@@ -48,28 +50,51 @@ function Started() {
   return null;
 }
 
-setFrameMode("app", ERP_PACKAGES, { pages: true });
+/** The portal's page, when the platform serves this release there. */
+const PORTAL = "portal/invoices";
+const onPortal = bootstrap()?.app?.entry === PORTAL;
 
-const router = createBrowserRouter(
-  [
-    {
-      path: "/",
-      element: (
-        <>
-          <Started />
-          <RequireAuth />
-        </>
-      ),
-      errorElement: <RouteError />,
-      children: [
-        { index: true, element: <ErpHome /> },
-        ...recordsRoutes,
-        { path: "*", element: <NotFound /> },
-      ],
-    },
-  ],
-  { basename: routeBase("erp") },
-);
+if (!onPortal) setFrameMode("app", ERP_PACKAGES, { pages: true });
+
+const portalRoutes = [
+  {
+    path: "/",
+    element: (
+      <main className="portal-page">
+        <Started />
+        <Outlet />
+      </main>
+    ),
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <PortalInvoices /> },
+      { path: ":id", element: <PortalInvoice /> },
+      { path: "*", element: <NotFound back="Go to your invoices" /> },
+    ],
+  },
+];
+
+const erpRoutes = [
+  {
+    path: "/",
+    element: (
+      <>
+        <Started />
+        <RequireAuth />
+      </>
+    ),
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <ErpHome /> },
+      ...recordsRoutes,
+      { path: "*", element: <NotFound /> },
+    ],
+  },
+];
+
+const router = onPortal
+  ? createBrowserRouter(portalRoutes, { basename: routeBase(PORTAL) })
+  : createBrowserRouter(erpRoutes, { basename: routeBase("erp") });
 
 setUnauthorizedHandler(() => shell().session.reauthenticate());
 

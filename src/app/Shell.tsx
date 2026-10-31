@@ -185,6 +185,8 @@ function Shell() {
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
+      // Under the platform's bar, search and "Go to" are the bar's (⌘K).
+      if (frameMode !== "classic" && e.key !== "Escape") return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPalette((p) => !p);
@@ -214,11 +216,12 @@ function Shell() {
       </aside>
       <div className="scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
       <div className="main-col">
-        <header className="topbar">
+        {/* Under the platform's bar the frame's own bar only opens the sidebar on a phone. */}
+        <header className={frameMode === "classic" ? "topbar" : "topbar topbar-nav-only"}>
           <button type="button" className="icon-btn nav-toggle" aria-label="Open navigation" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
             <Icon name="menu" size={18} />
           </button>
-          <NavPicker mode="inline" inputRef={searchRef} />
+          {frameMode === "classic" && <NavPicker mode="inline" inputRef={searchRef} />}
           <span className="spacer" />
           {/* Under the platform's bar, notifications and the account are the bar's. */}
           {frameMode === "classic" && <Notifications />}
@@ -238,9 +241,11 @@ function Shell() {
           )}
         </main>
       </div>
-      <Dialog open={palette} onClose={() => setPalette(false)} title="Go to…">
-        <NavPicker mode="palette" onDone={() => setPalette(false)} />
-      </Dialog>
+      {frameMode === "classic" && (
+        <Dialog open={palette} onClose={() => setPalette(false)} title="Go to…">
+          <NavPicker mode="palette" onDone={() => setPalette(false)} />
+        </Dialog>
+      )}
     </div>
   );
 }

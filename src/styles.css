@@ -241,6 +241,13 @@ html[data-ferrum-host] .topbar {
   display: none; /* outranks .icon-btn's display */
 }
 
+/* Under the platform's bar the frame's own bar holds only the drawer's button: none on a desktop. */
+@media (min-width: 901px) {
+  .topbar.topbar-nav-only {
+    display: none;
+  }
+}
+
 .offline-banner,
 .update-banner {
   display: flex;
@@ -2306,4 +2313,12 @@ main:has(> [data-fullbleed]) {
 }
 .app-addon {
   border-left: 3px solid var(--primary-soft);
+}
+
+/* A page of the workspace's portal: an app's, in one column under the portal's header. */
+.portal-page {
+  box-sizing: border-box;
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 2rem) 3rem;
 }
