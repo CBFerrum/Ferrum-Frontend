@@ -5,8 +5,11 @@
 
 import init, { computeTotals } from "./ferrum_calc.js";
 
-export type ChargeType = "on_net_total" | "on_previous_row_amount" | "on_previous_row_total" | "actual";
+/** `on_item_quantity`: `rate` per unit of the line's `tax_qty` (else `qty`), an excise or a fee. */
+export type ChargeType = "on_net_total" | "on_previous_row_amount" | "on_previous_row_total" | "actual" | "on_item_quantity";
 export type Rounding = "half_up" | "half_even";
+/** Each tax row rounded once over the document (the default), or line by line and added up. */
+export type TaxRounding = "per_document" | "per_line";
 
 export interface LineIn {
   key: string;
@@ -16,6 +19,8 @@ export interface LineIn {
   discount_percent?: string;
   /** Per-line rate overrides by tax row key. */
   tax_rates?: Record<string, string>;
+  /** The quantity per-unit taxes count (the line in stock units); `qty` when unset. */
+  tax_qty?: string | null;
 }
 
 export interface TaxIn {
@@ -26,6 +31,8 @@ export interface TaxIn {
   row_ref?: number | null;
   included_in_price?: boolean;
   deduct?: boolean;
+  /** Worked out and reported, never charged to the party: left out of the totals. */
+  reverse_charge?: boolean;
 }
 
 export interface CalcInput {
@@ -37,11 +44,12 @@ export interface CalcInput {
   taxes?: TaxIn[];
   discount?: { kind: "percent" | "amount"; value: string } | null;
   round_total_to?: string | null;
+  tax_rounding?: TaxRounding;
 }
 
 export interface CalcOutput {
   lines: { key: string; rate: string; amount: string; net_amount: string; taxes: string[] }[];
-  taxes: { key: string; tax_amount: string; deduct: boolean; total: string }[];
+  taxes: { key: string; tax_amount: string; deduct: boolean; reverse_charge: boolean; total: string }[];
   total: string;
   discount_amount: string;
   net_total: string;
