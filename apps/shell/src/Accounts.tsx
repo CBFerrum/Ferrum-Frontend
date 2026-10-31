@@ -28,7 +28,8 @@ interface Workspace {
 }
 
 interface Mine {
-  account: { id: string; email: string; name: string; verified: boolean; two_factor: boolean };
+  /** `home_region`: an account of another region, visiting; `home`: its accounts host there. */
+  account: { id: string; email: string; name: string; verified: boolean; two_factor: boolean; home_region: string | null; home: string | null };
   workspaces: Workspace[];
   region: string;
 }
@@ -202,20 +203,38 @@ function Home() {
         )}
       </Card>
       <Card id="acct-signin" title="Signing in">
-        <div className="acct-line">
-          <KeyRound size={18} aria-hidden />
-          <div>
-            <strong>Password</strong>
-            <span>The one for every workspace you added.</span>
-          </div>
-          <Button size="sm" onClick={() => setPassword(true)}>
-            Change
-          </Button>
-        </div>
-        <h3 className="acct-sub">Passkeys</h3>
-        <Passkeys />
-        <h3 className="acct-sub">Two-factor sign-in</h3>
-        <TwoFactorSettings />
+        {account.home_region ? (
+          <>
+            <p className="acct-quiet">
+              Your Ferrum account lives in region {account.home_region.toUpperCase()}, which keeps its password, passkeys and two-factor sign-in. This
+              region trusts it: you sign in there and come back here.
+            </p>
+            {account.home && (
+              <div>
+                <a className="btn btn-default btn-sm" href={account.home}>
+                  Manage it in {account.home_region.toUpperCase()}
+                </a>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="acct-line">
+              <KeyRound size={18} aria-hidden />
+              <div>
+                <strong>Password</strong>
+                <span>The one for every workspace you added.</span>
+              </div>
+              <Button size="sm" onClick={() => setPassword(true)}>
+                Change
+              </Button>
+            </div>
+            <h3 className="acct-sub">Passkeys</h3>
+            <Passkeys />
+            <h3 className="acct-sub">Two-factor sign-in</h3>
+            <TwoFactorSettings />
+          </>
+        )}
       </Card>
       <Card id="acct-devices" title="Signed-in browsers">
         <Devices
