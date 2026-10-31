@@ -8,8 +8,11 @@
 @import "tw-animate-css";
 @import "./styles.css" layer(legacy);
 @import "./app/records.css" layer(legacy);
-/* The kit's own components (web/packages), for the apps that build with this stylesheet. */
+/* Each interface's build scans its own folder (apps/{name}, Vite's root) by itself; these add what
+   they all import: the kit's own components (web/packages), and this folder's components and
+   screens (web/src), whose classes would otherwise be missing from every interface's stylesheet. */
 @source "../packages";
+@source ".";
 
 /* `dark:` follows the effective theme, which lib/theme.ts always writes to <html data-theme>. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

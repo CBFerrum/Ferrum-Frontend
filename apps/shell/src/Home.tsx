@@ -4,10 +4,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { AppIcon } from "@ferrum/kit";
 import { FirstRun } from "@/app/FirstRun";
-import { MyWork } from "@/app/Home";
 import { ScreenWidgets } from "@/app/Screen";
 import { api, errorMessage } from "@/lib/api";
 import { EmptyState, Spinner } from "@/ui/kit";
+import { MyWork, type WorkProvider } from "./MyWork";
 import "./shell.css";
 
 interface LauncherEntry {
@@ -25,6 +25,7 @@ interface ShellInfo {
   person: { name: string; admin: boolean };
   workspace: { name: string };
   apps: LauncherEntry[];
+  work?: WorkProvider[];
 }
 
 /** A tile's colour: the app's own, else one derived from its name, the bar launcher's
@@ -81,7 +82,7 @@ export function ShellHome() {
           <p className="muted">{info.data.person.admin ? <a href="/store/">Install apps</a> : "Ask an administrator to give you access to an app."}</p>
         </EmptyState>
       )}
-      <MyWork />
+      {info.data && <MyWork providers={info.data.work ?? []} apps={info.data.apps} />}
       <ScreenWidgets />
     </div>
   );
