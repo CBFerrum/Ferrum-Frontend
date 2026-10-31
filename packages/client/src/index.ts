@@ -44,8 +44,9 @@ export interface Bootstrap {
   } | null;
   host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test" | "accounts"; shell: string };
   /** `hooks`: the origin outside callers (webhooks, payment and connector callbacks) use for the
-   *  workspace's endpoints, which no change of its addresses moves. */
-  api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null };
+   *  workspace's endpoints, which no change of its addresses moves; `accounts`: the accounts host
+   *  (shapes B and C), where the person signs in and finds their other workspaces. */
+  api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
   locale: { language: string; timezone: string; dir: "ltr" | "rtl" };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
