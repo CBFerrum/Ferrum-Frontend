@@ -3,7 +3,8 @@
 // /data/. The server serves each of these core pages from this one release; the page that was
 // asked for (the bootstrap's entry) picks its routes, and moving between them is a page load, as
 // between apps. An app without an interface of its own has its records at /data/{app}/: the
-// records frame ERP's interface uses, with that app's modules (§10.1, records-only).
+// records frame ERP's interface uses, with that app's modules (§10.1, records-only). On the
+// accounts host (shapes B and C) it is the Ferrum account's page instead (Accounts.tsx).
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect, type ReactNode } from "react";
@@ -24,6 +25,7 @@ import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
 import { AccountPage } from "./Account";
+import { AccountsPage } from "./Accounts";
 import { ShellHome } from "./Home";
 
 const queryClient = new QueryClient({
@@ -106,7 +108,10 @@ function Records() {
 const entry = bootstrap()?.app?.entry ?? "";
 const scope = entry === "data" ? bootstrap()?.app?.scope : null;
 if (scope) setFrameMode("app", scope.packages, { pages: true });
-const router = scope
+// The accounts host (shapes B and C): its own page, without the bar, for every address there.
+const router = entry === "accounts"
+  ? createBrowserRouter([{ path: "*", element: <AccountsPage />, errorElement: <RouteError /> }])
+  : scope
   ? createBrowserRouter(
       [{ path: "/", element: <Records />, errorElement: <RouteError />, children: [{ index: true, element: <Home /> }, ...recordsRoutes, { path: "*", element: <NotFound /> }] }],
       { basename: `${routeBase("data")}${scope.app}` },

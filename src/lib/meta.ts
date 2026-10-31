@@ -157,6 +157,9 @@ export interface Me {
   /** IANA name of the workspace's time zone; dates such as `today` follow it. */
   timezone?: string;
   packages: string[];
+  /** Shapes B and C: the accounts host that keeps this person's password, two-step sign-in and
+   *  passkeys (their workspace account joined their Ferrum account). */
+  accounts?: string | null;
 }
 
 export interface ReportParam {

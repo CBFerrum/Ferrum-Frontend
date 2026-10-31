@@ -30,12 +30,20 @@ export function browserName(ua: string): string {
   return os ? `${browser} on ${os}` : browser;
 }
 
-function Devices() {
+/** The browsers signed in as the person, each signed out on its own. The accounts host signs this
+ *  browser out itself and signs out everywhere for every workspace too (`everywhere`). */
+export function Devices({
+  signOutHere = () => shell().session.signOut(),
+  everywhere = { path: "/api/auth/logout_all", message: "Every browser and app signed in as you is signed out, this one too. API keys keep working." },
+}: {
+  signOutHere?: () => void;
+  everywhere?: { path: string; message: string };
+}) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["sessions"], queryFn: ({ signal }) => api.get<{ sessions: Device[] }>("/api/auth/sessions", undefined, signal) });
   const signOut = async (d: Device) => {
     if (d.current) {
-      shell().session.signOut();
+      signOutHere();
       return;
     }
     try {
@@ -46,16 +54,16 @@ function Devices() {
       toast(errorMessage(e), "error");
     }
   };
-  const everywhere = async () => {
+  const signOutEverywhere = async () => {
     const ok = await confirmDialog({
       title: "Sign out everywhere?",
-      message: "Every browser and app signed in as you is signed out, this one too. API keys keep working.",
+      message: everywhere.message,
       confirmLabel: "Sign out everywhere",
       danger: true,
     });
     if (!ok) return;
     try {
-      await api.post("/api/auth/logout_all");
+      await api.post(everywhere.path);
       location.assign("/login");
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -95,7 +103,7 @@ function Devices() {
         </tbody>
       </table>
       <div>
-        <Button size="sm" variant="danger" onClick={() => void everywhere()}>
+        <Button size="sm" variant="danger" onClick={() => void signOutEverywhere()}>
           Sign out everywhere
         </Button>
       </div>
@@ -180,7 +188,7 @@ function ConfirmItsYou({ open, onClose, onDone }: { open: boolean; onClose: () =
 
 /** The passkeys the person keeps: each signs them in, on the address it was made on, without an
  *  email or a password; the device checks it is them (a fingerprint, a face, the device's PIN). */
-function Passkeys() {
+export function Passkeys() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["passkeys"], queryFn: ({ signal }) => api.get<{ passkeys: Passkey[] }>("/api/auth/passkeys", undefined, signal) });
   const [confirming, setConfirming] = useState(false);
@@ -358,17 +366,32 @@ export function AccountPage() {
           <p className="page-sub">{me ? `${me.user.full_name} · ${me.user.email}` : "…"}</p>
         </div>
       </div>
-      <Section id="acct-password" title="Password">
-        <div>
-          <Button onClick={() => setPassword(true)}>Change password</Button>
-        </div>
-      </Section>
-      <Section id="acct-passkeys" title="Passkeys">
-        <Passkeys />
-      </Section>
-      <Section id="acct-2fa" title="Two-factor sign-in">
-        <TwoFactorSettings />
-      </Section>
+      {me?.accounts ? (
+        <Section id="acct-signin" title="Signing in">
+          <p className="muted">
+            You sign in with your Ferrum account, {me.user.email}. Its password, two-step sign-in and passkeys work for every workspace you have.
+          </p>
+          <div>
+            <a className="btn btn-default btn-md" href={`${me.accounts}/`}>
+              Manage your Ferrum account
+            </a>
+          </div>
+        </Section>
+      ) : (
+        <>
+          <Section id="acct-password" title="Password">
+            <div>
+              <Button onClick={() => setPassword(true)}>Change password</Button>
+            </div>
+          </Section>
+          <Section id="acct-passkeys" title="Passkeys">
+            <Passkeys />
+          </Section>
+          <Section id="acct-2fa" title="Two-factor sign-in">
+            <TwoFactorSettings />
+          </Section>
+        </>
+      )}
       <Section id="acct-devices" title="Signed-in browsers">
         <Devices />
       </Section>
