@@ -1,4 +1,4 @@
-// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, personal data, workspace settings.
+// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, domains, personal data, workspace settings.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -33,6 +33,7 @@ const TABS = [
   { id: "plugins", label: "Plugins" },
   { id: "keys", label: "API keys" },
   { id: "sso", label: "Single sign-on" },
+  { id: "domains", label: "Domains" },
   { id: "privacy", label: "Personal data" },
   { id: "workspace", label: "Workspace" },
 ];
@@ -64,6 +65,7 @@ export function AdminPage() {
         {tab === "plugins" && <Plugins />}
         {tab === "keys" && <ApiKeys />}
         {tab === "sso" && <SingleSignOn />}
+        {tab === "domains" && <Domains />}
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
       </TabPanel>
@@ -1117,6 +1119,190 @@ interface Webhook {
   created_at: string;
   pending: number;
   dead: number;
+}
+
+// ── domains ──
+
+interface Domain {
+  host: string;
+  kind: "subdomain" | "custom";
+  target: string;
+  is_primary: boolean;
+  status: "verified" | "pending" | "failing" | "released";
+  checked_at: string | null;
+  released_at: string | null;
+}
+
+const TARGET_LABEL = (t: string, apps: { app: string; title: string }[]) =>
+  t === "shell" ? "This workspace" : t === "portal" ? "The portal" : `${apps.find((a) => `site:${a.app}` === t)?.title ?? t.slice(5)}'s public site`;
+
+const DOMAIN_STATUS: Record<Domain["status"], { tone: "green" | "amber" | "red" | "neutral"; text: string }> = {
+  verified: { tone: "green", text: "Working" },
+  pending: { tone: "amber", text: "Waiting for DNS" },
+  failing: { tone: "red", text: "Not reaching Ferrum" },
+  released: { tone: "neutral", text: "Released, redirecting" },
+};
+
+/** The workspace's own addresses: for itself, its portal and its apps' public sites. A custom
+ *  domain works once it points at the cluster: Ferrum checks it every few minutes (or now). */
+function Domains() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "domains"], queryFn: ({ signal }) => api.get<{ domains: Domain[]; point_to: string | null }>("/api/admin/domains", undefined, signal) });
+  const apps = useQuery({ queryKey: ["shell"], queryFn: ({ signal }) => api.get<{ apps: { app: string; title: string }[] }>("/api/shell", undefined, signal) });
+  const sites = [...new Map((apps.data?.apps ?? []).map((a) => [a.app, a])).values()];
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ host: "", target: "shell" });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "domains"] });
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post("/api/admin/domains", { host: form.host.trim(), target: form.target });
+      setAdding(false);
+      setForm({ host: "", target: "shell" });
+      toast("Domain added: point it at Ferrum, and it starts working once checked");
+      void refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const check = async (d: Domain) => {
+    try {
+      const r = await api.post<{ answers: boolean }>(`/api/admin/domains/${encodeURIComponent(d.host)}/check`);
+      toast(r.answers ? `${d.host} reaches Ferrum` : `${d.host} does not reach Ferrum yet`, r.answers ? "success" : "error");
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    }
+    void refresh();
+  };
+  const primary = async (d: Domain) => {
+    if (await attempt(() => api.put(`/api/admin/domains/${encodeURIComponent(d.host)}/primary`), `${d.host} is now the main address`)) void refresh();
+  };
+  const remove = async (d: Domain) => {
+    const ok = await confirmDialog({
+      title: `Remove ${d.host}?`,
+      message: "If it worked, it keeps sending visitors to the workspace's main address for 90 days, and no other workspace can use it for a year.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (ok && (await attempt(() => api.del(`/api/admin/domains/${encodeURIComponent(d.host)}`), "Domain removed"))) void refresh();
+  };
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Domains</h2>
+        <span className="spacer" />
+        <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
+          Add a domain
+        </Button>
+      </div>
+      <Loaded q={q}>
+        {(data) => (
+          <div className="card-body stack">
+            <p className="muted">
+              Use your own address for this workspace, its portal or an app's public site.{" "}
+              {data.point_to ? (
+                <>
+                  Point the domain at <span className="mono">{data.point_to}</span> with a CNAME record;
+                </>
+              ) : (
+                <>Point the domain at this server;</>
+              )}{" "}
+              Ferrum checks it within a few minutes and serves it with its own certificate.
+            </p>
+            {!data.domains.length ? (
+              <EmptyState title="No domains yet" icon="external" />
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Domain</th>
+                      <th scope="col">Serves</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Checked</th>
+                      <th scope="col">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.domains.map((d) => (
+                      <tr key={d.host}>
+                        <td className="mono" style={{ overflowWrap: "anywhere" }}>
+                          {d.host} {d.is_primary && <Badge tone="blue">main</Badge>}
+                        </td>
+                        <td>{TARGET_LABEL(d.target, sites)}</td>
+                        <td>
+                          <Badge tone={DOMAIN_STATUS[d.status].tone}>{d.kind === "subdomain" && d.status === "verified" ? "Working" : DOMAIN_STATUS[d.status].text}</Badge>
+                        </td>
+                        <td className="muted">{d.checked_at ? relativeTime(d.checked_at) : d.kind === "subdomain" ? "—" : "not yet"}</td>
+                        <td>
+                          <div className="row" style={{ gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                            {d.kind === "custom" && !d.released_at && (
+                              <Button size="sm" onClick={() => void check(d)}>
+                                Check now
+                              </Button>
+                            )}
+                            {d.status === "verified" && !d.is_primary && !d.released_at && (
+                              <Button size="sm" onClick={() => void primary(d)}>
+                                Make main
+                              </Button>
+                            )}
+                            {d.kind === "custom" && !d.released_at && (
+                              <Button size="sm" variant="ghost" onClick={() => void remove(d)}>
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </Loaded>
+      <Dialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Add a domain"
+        footer={
+          <>
+            <Button onClick={() => setAdding(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" form="domain-form" loading={busy}>
+              Add
+            </Button>
+          </>
+        }
+      >
+        <form id="domain-form" className="stack" onSubmit={add}>
+          {error && <Alert tone="error">{error}</Alert>}
+          <FieldWrap label="Domain" htmlFor="domain-host" required hint="A name you own, such as erp.example.com">
+            <input id="domain-host" className="input mono" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required autoFocus placeholder="erp.example.com" />
+          </FieldWrap>
+          <FieldWrap label="Serves" htmlFor="domain-target">
+            <select id="domain-target" className="input" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })}>
+              <option value="shell">This workspace</option>
+              <option value="portal">The portal (customers, suppliers)</option>
+              {sites.map((a) => (
+                <option key={a.app} value={`site:${a.app}`}>
+                  {a.title}'s public site
+                </option>
+              ))}
+            </select>
+          </FieldWrap>
+        </form>
+      </Dialog>
+    </section>
+  );
 }
 
 function Webhooks() {
