@@ -2322,3 +2322,19 @@ main:has(> [data-fullbleed]) {
   margin: 0 auto;
   padding: 1.5rem clamp(1rem, 4vw, 2rem) 3rem;
 }
+
+/* An app's pictures in the store's install dialog: a strip that scrolls sideways. */
+.app-shots {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.app-shots img {
+  display: block;
+  height: 160px;
+  width: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface-2);
+}

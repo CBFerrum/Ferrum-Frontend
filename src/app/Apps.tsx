@@ -55,7 +55,15 @@ export interface AppsResponse {
 /** What the store or upload says an app may do; rendered generically, section by section. */
 export type Permissions = Record<string, unknown>;
 interface Plan {
-  app: AppSummary & { description?: string | null; license?: string | null; homepage?: string | null };
+  app: AppSummary & {
+    description?: string | null;
+    license?: string | null;
+    homepage?: string | null;
+    /** Pictures of the app, where this server or its store serves them. */
+    screenshots?: string[];
+    /** Its interface runs isolated: a bundle the server does not trust, private to the workspace. */
+    isolated?: boolean;
+  };
   steps: { id: string; version: string; action: "install" | "upgrade" | "already"; source: string }[];
   permissions: Permissions;
   digest: string;
@@ -485,9 +493,23 @@ export function InstallDialog({
                 <Badge tone={p.app.runtime === "native" ? "purple" : p.app.runtime === "wasm" ? "green" : "neutral"}>{RUNTIME_LABEL[p.app.runtime]}</Badge>
                 {p.app.license && <Badge>{p.app.license}</Badge>}
                 {p.app.publisher && <Badge>{p.app.publisher}</Badge>}
+                {p.app.isolated && (
+                  <Badge tone="amber" title="Its interface runs in a frame of its own, without your session">
+                    Isolated
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
+          {!!p.app.screenshots?.length && (
+            <div className="app-shots" role="list" aria-label={`Pictures of ${p.app.name}`}>
+              {p.app.screenshots.map((src, i) => (
+                <a key={src} role="listitem" href={src} target="_blank" rel="noopener noreferrer">
+                  <img src={src} alt={`${p.app.name}, picture ${i + 1}`} loading="lazy" />
+                </a>
+              ))}
+            </div>
+          )}
           {p.app.description && <p className="comment-text">{p.app.description}</p>}
           {p.steps.filter((s) => s.action !== "already").length > 1 && (
             <div>
