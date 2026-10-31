@@ -2,7 +2,7 @@
 // user menu), keyboard shortcuts (`/` search, Ctrl/Cmd+K command palette).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
 import { bootstrap, shell } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
@@ -28,11 +28,13 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
-import { ApiKeys, CalendarApps } from "./Admin";
-import { TwoFactorSettings } from "./TwoFactor";
-import { dashboardNav } from "./studio/Dashboards";
-import { reportNav } from "./studio/ReportList";
-import { spaceNav } from "./studio/Spaces";
+import { dashboardNav, reportNav, spaceNav } from "./studio/nav";
+
+// The person's menu's dialogs load when one is opened: every interface's first script holds this
+// frame (docs/plan/apps-ui.md §12.9).
+const TwoFactorSettings = lazy(() => import("./TwoFactor").then((m) => ({ default: m.TwoFactorSettings })));
+const ApiKeys = lazy(() => import("./Admin").then((m) => ({ default: m.ApiKeys })));
+const CalendarApps = lazy(() => import("./Admin").then((m) => ({ default: m.CalendarApps })));
 
 type NavItem = { label: string; to: string; icon: string };
 
@@ -786,13 +788,25 @@ function UserMenu() {
       </Menu>
       <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
       <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title="Two-factor sign-in">
-        {dialog === "2fa" && <TwoFactorSettings />}
+        {dialog === "2fa" && (
+          <Suspense fallback={<Spinner label="Loading…" />}>
+            <TwoFactorSettings />
+          </Suspense>
+        )}
       </Dialog>
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title="Your API keys" wide>
-        <ApiKeys />
+        {dialog === "keys" && (
+          <Suspense fallback={<Spinner label="Loading…" />}>
+            <ApiKeys />
+          </Suspense>
+        )}
       </Dialog>
       <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title="Calendar and contacts apps" wide>
-        {dialog === "cal" && <CalendarApps email={me?.user.email ?? ""} />}
+        {dialog === "cal" && (
+          <Suspense fallback={<Spinner label="Loading…" />}>
+            <CalendarApps email={me?.user.email ?? ""} />
+          </Suspense>
+        )}
       </Dialog>
       <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title="Connect an AI assistant">
         <ConnectAi />

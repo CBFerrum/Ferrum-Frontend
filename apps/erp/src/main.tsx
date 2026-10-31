@@ -8,13 +8,11 @@ import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Outlet, RouterProvider, useRouteError } from "react-router";
 import { bootstrap, routeBase, shell } from "@ferrum/client";
-import { Home } from "@/app/Home";
 import { recordsRoutes } from "@/app/recordsRoutes";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
-import { PortalInvoice, PortalInvoices } from "./Invoices";
 
 /** ERP's packages and its add-ons': the sidebar shows their modules (Studio has its own interface). */
 const ERP_PACKAGES = [
@@ -38,11 +36,15 @@ function NotFound({ back = "Go to ERP's home" }: { back?: string }) {
   );
 }
 
-/** ERP's home: its modules, with the start-up signal. */
-function ErpHome() {
-  useEffect(() => shell().ready(), []);
-  return <Home />;
-}
+/** ERP's home: its modules, with the start-up signal; loaded when first opened, as every page
+ *  (§12.9: the first script holds only the frame). */
+const erpHome = () =>
+  import("@/app/Home").then(({ Home }) => ({
+    Component: function ErpHome() {
+      useEffect(() => shell().ready(), []);
+      return <Home />;
+    },
+  }));
 
 /** Every page tells the shell it started (the home does too; once is enough). */
 function Started() {
@@ -67,8 +69,8 @@ const portalRoutes = [
     ),
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <PortalInvoices /> },
-      { path: ":id", element: <PortalInvoice /> },
+      { index: true, lazy: () => import("./Invoices").then((m) => ({ Component: m.PortalInvoices })) },
+      { path: ":id", lazy: () => import("./Invoices").then((m) => ({ Component: m.PortalInvoice })) },
       { path: "*", element: <NotFound back="Go to your invoices" /> },
     ],
   },
@@ -85,7 +87,7 @@ const erpRoutes = [
     ),
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <ErpHome /> },
+      { index: true, lazy: erpHome },
       ...recordsRoutes,
       { path: "*", element: <NotFound /> },
     ],

@@ -3,7 +3,7 @@
 
 import { Copy, LayoutGrid, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, type RouteObject } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -25,15 +25,9 @@ import { PATHS } from "./space/model";
 export { useModuleSpace, useSpace, useSpaceNav } from "./space/hooks";
 
 /** Routes relative to `/app/`; the view and the editor load on first use. */
-export const spaceRoutes: RouteObject[] = [
-  { path: "studio/spaces", element: <SpacesPage /> },
-  { path: "studio/spaces/new", lazy: () => import("./SpaceEditor").then((m) => ({ Component: m.SpaceEditor })) },
-  { path: "studio/spaces/:id", lazy: () => import("./SpaceView").then((m) => ({ Component: m.SpaceView })) },
-  { path: "studio/spaces/:id/edit", lazy: () => import("./SpaceEditor").then((m) => ({ Component: m.SpaceEditor })) },
-];
 
 /** Sidebar entry for the list; `useSpaceNav()` gives one per space the viewer may open. */
-export const spaceNav: { label: string; to: string; icon: string }[] = [{ label: "Spaces", to: PATHS.spaces, icon: "space" }];
+export { spaceNav } from "./nav";
 
 const TAP = "pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 const ALL = "__all__";

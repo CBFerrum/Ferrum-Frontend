@@ -6,11 +6,6 @@
 
 import { useEffect } from "react";
 import { useLocation, type RouteObject } from "react-router";
-import { CustomizePage } from "./Customize";
-import { FormView } from "./FormView";
-import { ListView } from "./ListView";
-import { ReportView } from "./ReportView";
-import { AppSettingsPage, ScreenPage } from "./Screen";
 
 /** `…/studio/…` and `…/pos` in a frame: the same page in Studio's, or the till in the Point of
  *  Sale's, own interface (a page load). */
@@ -20,14 +15,16 @@ function ToOwnInterface() {
   return null;
 }
 
+// Each page loads when first opened, so an interface's first script holds only the frame
+// (docs/plan/apps-ui.md §12.9: entry JavaScript ≤ 200 KB compressed).
 export const recordsRoutes: RouteObject[] = [
-  { path: "e/:entity", element: <ListView /> },
-  { path: "e/:entity/:id", element: <FormView /> },
-  { path: "r/:name", element: <ReportView /> },
-  { path: "customize/:entity?", element: <CustomizePage /> },
+  { path: "e/:entity", lazy: () => import("./ListView").then((m) => ({ Component: m.ListView })) },
+  { path: "e/:entity/:id", lazy: () => import("./FormView").then((m) => ({ Component: m.FormView })) },
+  { path: "r/:name", lazy: () => import("./ReportView").then((m) => ({ Component: m.ReportView })) },
+  { path: "customize/:entity?", lazy: () => import("./Customize").then((m) => ({ Component: m.CustomizePage })) },
   { path: "customize/:entity/form", lazy: () => import("./FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
   { path: "studio/*", element: <ToOwnInterface /> },
   { path: "pos", element: <ToOwnInterface /> },
-  { path: "apps/:app/settings", element: <AppSettingsPage /> },
-  { path: "x/:app/:page", element: <ScreenPage /> },
+  { path: "apps/:app/settings", lazy: () => import("./Screen").then((m) => ({ Component: m.AppSettingsPage })) },
+  { path: "x/:app/:page", lazy: () => import("./Screen").then((m) => ({ Component: m.ScreenPage })) },
 ];
