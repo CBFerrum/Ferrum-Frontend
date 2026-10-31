@@ -220,7 +220,8 @@ function Shell() {
           </button>
           <NavPicker mode="inline" inputRef={searchRef} />
           <span className="spacer" />
-          <Notifications />
+          {/* Under the platform's bar, notifications and the account are the bar's. */}
+          {frameMode === "classic" && <Notifications />}
           {frameMode === "classic" && <UserMenu />}
         </header>
         <OfflineBanner />
