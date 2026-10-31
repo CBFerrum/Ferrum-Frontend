@@ -42,7 +42,9 @@ export interface Bootstrap {
     /** The shell's records of an app without an interface of its own (`/data/{app}/`). */
     scope?: { app: string; title: string; packages: string[] } | null;
   } | null;
-  host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test" | "accounts"; shell: string };
+  /** `bound`: the host belongs to one workspace (registered, or the server's one), so what the
+   *  browser keeps for its origin is that workspace's; false on a shared host (shape A′). */
+  host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test" | "accounts"; shell: string; bound?: boolean };
   /** `hooks`: the origin outside callers (webhooks, payment and connector callbacks) use for the
    *  workspace's endpoints, which no change of its addresses moves; `accounts`: the accounts host
    *  (shapes B and C), where the person signs in and finds their other workspaces. */
