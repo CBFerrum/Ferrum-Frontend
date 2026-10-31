@@ -12,13 +12,9 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Navigate, RouterProvider, useLocation, useRouteError, type RouteObject } from "react-router";
 import { shell } from "@ferrum/client";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
-import { dashboardRoutes } from "@/app/studio/Dashboards";
-import { ReportList } from "@/app/studio/ReportList";
-import { spaceRoutes } from "@/app/studio/Spaces";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
-import { StudioHome } from "./StudioHome";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } },
@@ -58,16 +54,25 @@ const toData = (path: string) => `/data${path}`;
 
 setFrameMode("app", ["studio"], { pages: true });
 
+// Each page loads when first opened: the first script holds only the frame (§12.9).
+const reportBuilder = () => import("@/app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder }));
+const spaceEditor = () => import("@/app/studio/SpaceEditor").then((m) => ({ Component: m.SpaceEditor }));
 const studioRoutes: RouteObject[] = [
-  { path: "studio", element: <StudioHome /> },
+  { path: "studio", lazy: () => import("./StudioHome").then((m) => ({ Component: m.StudioHome })) },
   // Lists of charts and of number cards (`/open/DashboardChart`): the dashboards page's tabs.
   { path: "studio/charts", element: <Navigate to="/studio/dashboards?tab=charts" replace /> },
   { path: "studio/cards", element: <Navigate to="/studio/dashboards?tab=cards" replace /> },
-  { path: "studio/reports", element: <ReportList /> },
-  { path: "studio/reports/new", lazy: () => import("@/app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
-  { path: "studio/reports/:id", lazy: () => import("@/app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder })) },
-  ...dashboardRoutes,
-  ...spaceRoutes,
+  { path: "studio/reports", lazy: () => import("@/app/studio/ReportList").then((m) => ({ Component: m.ReportList })) },
+  { path: "studio/reports/new", lazy: reportBuilder },
+  { path: "studio/reports/:id", lazy: reportBuilder },
+  { path: "studio/dashboards", lazy: () => import("@/app/studio/Dashboards").then((m) => ({ Component: m.DashboardsPage })) },
+  { path: "studio/dashboards/:id", lazy: () => import("@/app/studio/DashboardView").then((m) => ({ Component: m.DashboardViewPage })) },
+  { path: "studio/charts/:id", lazy: () => import("@/app/studio/ChartBuilder").then((m) => ({ Component: m.ChartBuilderPage })) },
+  { path: "studio/cards/:id", lazy: () => import("@/app/studio/NumberCardBuilder").then((m) => ({ Component: m.NumberCardBuilderPage })) },
+  { path: "studio/spaces", lazy: () => import("@/app/studio/Spaces").then((m) => ({ Component: m.SpacesPage })) },
+  { path: "studio/spaces/new", lazy: spaceEditor },
+  { path: "studio/spaces/:id", lazy: () => import("@/app/studio/SpaceView").then((m) => ({ Component: m.SpaceView })) },
+  { path: "studio/spaces/:id/edit", lazy: spaceEditor },
 ];
 
 const router = createBrowserRouter([

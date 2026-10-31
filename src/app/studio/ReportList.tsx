@@ -34,7 +34,7 @@ const SHARING: Record<Sharing, { label: string; icon: LucideIcon }> = {
 
 type Scope = "all" | "mine" | "shared";
 
-export const reportNav: { label: string; to: string; icon: string }[] = [{ label: "Reports", to: "/studio/reports", icon: "chart" }];
+export { reportNav } from "./nav";
 
 export function ReportList() {
   const list = useStudioList("reports");

@@ -11,22 +11,12 @@ import { StrictMode, useEffect, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Outlet, RouterProvider, useParams, useRouteError, type RouteObject } from "react-router";
 import { bootstrap, routeBase, shell } from "@ferrum/client";
-import { AdminPage } from "@/app/Admin";
-import { AppsPage } from "@/app/Apps";
-import { CustomizePage } from "@/app/Customize";
-import { FormView } from "@/app/FormView";
-import { Home } from "@/app/Home";
-import { ListView } from "@/app/ListView";
 import { recordsRoutes } from "@/app/recordsRoutes";
-import { ReportView } from "@/app/ReportView";
-import { AppSettingsPage } from "@/app/Screen";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
-import { AccountPage } from "./Account";
-import { AccountsPage } from "./Accounts";
-import { ShellHome } from "./Home";
+
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } },
@@ -68,23 +58,25 @@ const toRecord: RouteObject[] = [
   { path: "e/:entity/:id", element: <ToRecord /> },
 ];
 
+// Each page loads when first opened: the release's first script holds only the frame (§12.9).
+const apps = () => import("@/app/Apps").then((m) => ({ Component: m.AppsPage }));
 const pages: Record<string, RouteObject[]> = {
-  "": [{ index: true, element: <ShellHome /> }, ...toRecord],
+  "": [{ index: true, lazy: () => import("./Home").then((m) => ({ Component: m.ShellHome })) }, ...toRecord],
   store: [
-    { index: true, element: <AppsPage /> },
-    { path: "apps", element: <AppsPage /> },
-    { path: "apps/:app/settings", element: <AppSettingsPage /> },
+    { index: true, lazy: apps },
+    { path: "apps", lazy: apps },
+    { path: "apps/:app/settings", lazy: () => import("@/app/Screen").then((m) => ({ Component: m.AppSettingsPage })) },
     ...toRecord,
   ],
-  admin: [{ index: true, element: <AdminPage /> }, ...toRecord],
-  account: [{ index: true, element: <AccountPage /> }, ...toRecord],
+  admin: [{ index: true, lazy: () => import("@/app/Admin").then((m) => ({ Component: m.AdminPage })) }, ...toRecord],
+  account: [{ index: true, lazy: () => import("./Account").then((m) => ({ Component: m.AccountPage })) }, ...toRecord],
   data: [
     { index: true, element: <DataIndex /> },
-    { path: "e/:entity", element: <ListView /> },
-    { path: "e/:entity/:id", element: <FormView /> },
-    { path: "r/:name", element: <ReportView /> },
+    { path: "e/:entity", lazy: () => import("@/app/ListView").then((m) => ({ Component: m.ListView })) },
+    { path: "e/:entity/:id", lazy: () => import("@/app/FormView").then((m) => ({ Component: m.FormView })) },
+    { path: "r/:name", lazy: () => import("@/app/ReportView").then((m) => ({ Component: m.ReportView })) },
     // Customize, for every workspace on the shell, with ERP or without.
-    { path: "customize/:entity?", element: <CustomizePage /> },
+    { path: "customize/:entity?", lazy: () => import("@/app/Customize").then((m) => ({ Component: m.CustomizePage })) },
     { path: "customize/:entity/form", lazy: () => import("@/app/FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
   ],
 };
@@ -110,10 +102,10 @@ const scope = entry === "data" ? bootstrap()?.app?.scope : null;
 if (scope) setFrameMode("app", scope.packages, { pages: true });
 // The accounts host (shapes B and C): its own page, without the bar, for every address there.
 const router = entry === "accounts"
-  ? createBrowserRouter([{ path: "*", element: <AccountsPage />, errorElement: <RouteError /> }])
+  ? createBrowserRouter([{ path: "*", lazy: () => import("./Accounts").then((m) => ({ Component: m.AccountsPage })), errorElement: <RouteError /> }])
   : scope
   ? createBrowserRouter(
-      [{ path: "/", element: <Records />, errorElement: <RouteError />, children: [{ index: true, element: <Home /> }, ...recordsRoutes, { path: "*", element: <NotFound /> }] }],
+      [{ path: "/", element: <Records />, errorElement: <RouteError />, children: [{ index: true, lazy: () => import("@/app/Home").then((m) => ({ Component: m.Home })) }, ...recordsRoutes, { path: "*", element: <NotFound /> }] }],
       { basename: `${routeBase("data")}${scope.app}` },
     )
   : createBrowserRouter(

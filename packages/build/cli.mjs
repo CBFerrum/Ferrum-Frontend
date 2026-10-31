@@ -6,7 +6,9 @@
 //
 //   build      vite build into dist/, then dist/.source: a digest of the sources it was built from
 //   check      fails unless dist/ was built from the sources as they are now (run in CI): the
-//              app's crate carries dist/, so a source change without a build would ship stale files
+//              app's crate carries dist/, so a source change without a build would ship stale files;
+//              and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
+//              compressed, CSS ≤ 50 KB)
 //   typecheck  TypeScript over src/, with this checkout's packages and libraries
 //   test       the interface's tests (vitest), as Ferrum-Frontend runs its own
 
@@ -15,6 +17,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { measure } from "./budgets.mjs";
 
 const web = fileURLToPath(new URL("../../", import.meta.url));
 const ui = process.cwd();
@@ -82,6 +85,9 @@ switch (process.argv[2]) {
     const now = sourceDigest();
     if (stamp.sources !== now) fail(`dist/ was built from other sources (${String(stamp.sources).slice(0, 12)}, now ${now.slice(0, 12)}): run the build in ui/ and commit dist/`);
     console.log(`ferrum-ui: dist/ matches its sources (${now.slice(0, 12)})`);
+    const size = measure(join(ui, "dist"), "ferrum-ui: dist/");
+    console.log(size.line);
+    if (size.over) fail("over the size budget (docs/plan/apps-ui.md §12.9): load pages when they are opened (lazy routes)");
     break;
   }
   case "typecheck":

@@ -3,7 +3,7 @@
 // demand (charts and the grid stay out of the first download).
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useSearchParams, type RouteObject } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { ChartColumn, Copy, Ellipsis, Hash, LayoutDashboard, Lock, Pencil, Plus, Search, Trash2, Users, Globe, type LucideIcon } from "lucide-react";
 import { errorMessage } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
@@ -29,15 +29,9 @@ import { CHART_ICON } from "./dashboard/icons";
 import { SharingFields } from "./dashboard/RecordFields";
 import { EmptyBlock, ErrorBlock, Messages, PageHeader, plainLink, useConfirm } from "./dashboard/ui";
 
-export const dashboardRoutes: RouteObject[] = [
-  { path: "studio/dashboards", Component: DashboardsPage },
-  { path: "studio/dashboards/:id", lazy: async () => ({ Component: (await import("./DashboardView")).DashboardViewPage }) },
-  { path: "studio/charts/:id", lazy: async () => ({ Component: (await import("./ChartBuilder")).ChartBuilderPage }) },
-  { path: "studio/cards/:id", lazy: async () => ({ Component: (await import("./NumberCardBuilder")).NumberCardBuilderPage }) },
-];
 
 /** Charts and number cards are tabs of the dashboards page (`?tab=charts`, `?tab=cards`). */
-export const dashboardNav: { label: string; to: string; icon: string }[] = [{ label: "Dashboards", to: "/studio/dashboards", icon: "dashboard" }];
+export { dashboardNav } from "./nav";
 
 type Tab = "dashboards" | "charts" | "cards";
 const ENTITY: Record<Tab, string> = { dashboards: "Dashboard", charts: "DashboardChart", cards: "NumberCard" };
