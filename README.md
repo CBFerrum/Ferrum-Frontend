@@ -11,12 +11,12 @@ No component kit, no grid library.
 ## Develop
 
 Ferrum's server answers every page: Home, the store, administration, the account and records
-(`apps/shell`), and ERP (`apps/erp`), built here into `dist-apps/` and registered when the server
+(`apps/shell`) and Studio (`apps/studio`), built here into `dist-apps/` and registered when the server
 starts. With Ferrum's checkout beside this one (`ferrum/web` is this repository):
 
 ```sh
 npm install
-npm run build:apps                                              # dist-apps/shell, dist-apps/erp
+npm run build:apps                                              # dist-apps/shell, dist-apps/studio
 cd ../server && FERRUM_UI_DIR=../web/dist-apps cargo run -- start   # http://127.0.0.1:5150/
 ```
 
@@ -80,7 +80,7 @@ src/
 ## Apps' own interfaces and the packages
 
 Ferrum's apps own their interfaces (docs/plan/apps-ui.md in the Ferrum repository). This repository
-holds the shell's and ERP's (`apps/shell`, `apps/erp`, built into `dist-apps/` by `npm run
+holds the shell's and Studio's (`apps/shell`, `apps/studio`, built into `dist-apps/` by `npm run
 build:apps`), and the packages every interface uses: `@ferrum/client` (the bootstrap, the shell API
 with fallbacks, requests with the browser's session, errors, formatting, uploads), `@ferrum/kit`
 (the components and the look; `@ferrum/kit/primitives` for the shadcn building blocks),
