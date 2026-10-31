@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && npm run build:apps",
-    "build:apps": "vite build --config apps/shell/vite.config.ts && vite build --config apps/erp/vite.config.ts && node scripts/releases.mjs",
+    "build:apps": "vite build --config apps/shell/vite.config.ts && vite build --config apps/erp/vite.config.ts && vite build --config apps/studio/vite.config.ts && node scripts/releases.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -14,10 +14,10 @@ import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
 
-/** ERP's packages, its add-ons' and Studio's: the sidebar shows their modules. */
+/** ERP's packages and its add-ons': the sidebar shows their modules (Studio has its own interface). */
 const ERP_PACKAGES = [
   ...["core", "parties", "products", "accounting", "selling", "buying", "inventory", "manufacturing"],
-  ...["india", "finance", "procurement", "stock_ops", "mfg_ops", "studio"],
+  ...["india", "finance", "procurement", "stock_ops", "mfg_ops"],
 ];
 
 const queryClient = new QueryClient({
