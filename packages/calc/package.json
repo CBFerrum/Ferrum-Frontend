@@ -1,0 +1,9 @@
+{
+  "name": "@ferrum/calc",
+  "version": "0.1.0",
+  "description": "Ferrum's pricing engine in the browser: crates/calc built for WebAssembly, the same totals as the server",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" }
+}
