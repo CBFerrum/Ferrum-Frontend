@@ -398,6 +398,8 @@ interface User {
   sso: boolean;
   last_login_at?: string | null;
   roles: string[];
+  /** member, portal (customers, suppliers: the portal's pages only), guest or service. */
+  kind?: string;
 }
 interface Permission {
   entity: string;
@@ -485,6 +487,17 @@ function Users() {
     });
     if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/sso/unlink`), "Unlinked"))) void refresh();
   };
+  const changeKind = async (u: User) => {
+    const toPortal = (u.kind ?? "member") === "member";
+    const ok = await confirmDialog({
+      title: toPortal ? `Make ${u.full_name} a portal person?` : `Make ${u.full_name} a member?`,
+      message: toPortal
+        ? "They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold no roles. They are signed out everywhere now."
+        : "They will use the workspace's apps with the roles you give them. They are signed out everywhere now.",
+      confirmLabel: toPortal ? "Make portal person" : "Make member",
+    });
+    if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/kind`, { kind: toPortal ? "portal" : "member" }), "Changed"))) void refresh();
+  };
 
   return (
     <section className="card">
@@ -515,7 +528,8 @@ function Users() {
                   <tr key={u.id}>
                     <td>
                       <div>
-                        {u.full_name} {u.is_admin && <Badge tone="purple">admin</Badge>}
+                        {u.full_name} {u.is_admin && <Badge tone="purple">admin</Badge>}{" "}
+                        {u.kind && u.kind !== "member" && <Badge tone="amber">{u.kind}</Badge>}
                       </div>
                       <div className="muted">{u.email}</div>
                     </td>
@@ -551,6 +565,11 @@ function Users() {
                             Unlink SSO
                           </Button>
                         )}
+                        {u.id !== me?.user.id && (u.kind ?? "member") !== "service" && (
+                          <Button size="sm" onClick={() => void changeKind(u)}>
+                            {(u.kind ?? "member") === "member" ? "Make portal person" : "Make member"}
+                          </Button>
+                        )}
                         <Button size="sm" variant={u.is_active ? "danger" : "default"} disabled={u.id === me?.user.id} onClick={() => void toggleActive(u)}>
                           {u.is_active ? "Deactivate" : "Activate"}
                         </Button>
@@ -571,7 +590,7 @@ function Users() {
 }
 
 function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles: string[]; onClose: () => void; onDone: () => void }) {
-  const empty = { email: "", full_name: "", password: "", is_admin: false, roles: [] as string[] };
+  const empty = { email: "", full_name: "", password: "", is_admin: false, roles: [] as string[], kind: "member" };
   const [u, setU] = useState(empty);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -585,7 +604,16 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
     setBusy(true);
     setError(null);
     try {
-      await api.post("/api/admin/users", { ...u, email: u.email.trim(), full_name: u.full_name.trim(), password: u.password || undefined });
+      const portal = u.kind === "portal";
+      await api.post("/api/admin/users", {
+        ...u,
+        email: u.email.trim(),
+        full_name: u.full_name.trim(),
+        // Portal people sign in with emailed codes and hold no roles.
+        password: portal ? undefined : u.password || undefined,
+        roles: portal ? [] : u.roles,
+        is_admin: portal ? false : u.is_admin,
+      });
       toast("User created");
       onDone();
       close();
@@ -605,14 +633,28 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
         <FieldWrap label="Full name" htmlFor="nu-name" required>
           <input id="nu-name" className="input" value={u.full_name} onChange={(e) => setU({ ...u, full_name: e.target.value })} required />
         </FieldWrap>
-        <FieldWrap label="Initial password" htmlFor="nu-pw" hint="Optional. At least 10 characters with 3 of: lower, upper, digit, symbol.">
-          <input id="nu-pw" className="input" type="password" autoComplete="new-password" value={u.password} onChange={(e) => setU({ ...u, password: e.target.value })} />
+        <FieldWrap
+          label="Kind"
+          htmlFor="nu-kind"
+          hint={u.kind === "portal" ? "A customer or supplier: only the workspace's portal, signing in with codes sent to this email." : "Someone of the workspace, using its apps."}
+        >
+          <select id="nu-kind" className="input" value={u.kind} onChange={(e) => setU({ ...u, kind: e.target.value })}>
+            <option value="member">Member</option>
+            <option value="portal">Portal person</option>
+          </select>
         </FieldWrap>
-        <label className="check-field">
-          <input type="checkbox" checked={u.is_admin} onChange={(e) => setU({ ...u, is_admin: e.target.checked })} />
-          Administrator
-        </label>
-        <RoleChecks roles={roles} value={u.roles} onChange={(r) => setU({ ...u, roles: r })} />
+        {u.kind !== "portal" && (
+          <>
+            <FieldWrap label="Initial password" htmlFor="nu-pw" hint="Optional. At least 10 characters with 3 of: lower, upper, digit, symbol.">
+              <input id="nu-pw" className="input" type="password" autoComplete="new-password" value={u.password} onChange={(e) => setU({ ...u, password: e.target.value })} />
+            </FieldWrap>
+            <label className="check-field">
+              <input type="checkbox" checked={u.is_admin} onChange={(e) => setU({ ...u, is_admin: e.target.checked })} />
+              Administrator
+            </label>
+            <RoleChecks roles={roles} value={u.roles} onChange={(r) => setU({ ...u, roles: r })} />
+          </>
+        )}
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button onClick={close}>Cancel</Button>
           <Button type="submit" variant="primary" loading={busy}>
