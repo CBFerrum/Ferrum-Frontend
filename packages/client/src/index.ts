@@ -42,14 +42,29 @@ export interface Bootstrap {
     /** The shell's records of an app without an interface of its own (`/data/{app}/`). */
     scope?: { app: string; title: string; packages: string[] } | null;
   } | null;
-  host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test"; shell: string };
-  api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none" };
+  host: { kind: "page" | "frame" | "companion" | "status" | "public" | "native" | "test" | "accounts"; shell: string };
+  /** `hooks`: the origin outside callers (webhooks, payment and connector callbacks) use for the
+   *  workspace's endpoints, which no change of its addresses moves. */
+  api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null };
   locale: { language: string; timezone: string; dir: "ltr" | "rtl" };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
   /** On a public page: which of the app's public pages (`drive/s`). */
   public?: string;
+  /** On the accounts host (shapes B and C): the Ferrum account signed in. */
+  accounts?: { email: string; verified: boolean; two_factor: boolean; region: string; regions: { name: string; url: string }[]; mail: boolean };
+  /** On the accounts host: the step of entering a workspace that needs the person. */
+  request?: EnterRequest | null;
+}
+
+/** A step of entering a workspace at the accounts host (`/authorize`). */
+export interface EnterRequest {
+  need: "continue" | "join" | "sso" | "two_factor" | "no_access";
+  join?: { click: boolean; password: boolean; two_factor: boolean };
+  host: string;
+  state: string;
+  workspace: { name: string; slug: string; url: string };
 }
 
 let cached: Bootstrap | null | undefined;
