@@ -117,6 +117,89 @@
   display: none;
 }
 
+/* A connection: each part of its health on its own. */
+.connection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.connection-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.connection-head h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+.connection-title {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.connection-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.connection-facts > div {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.connection-facts dt {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.connection-facts dd {
+  margin: 1px 0 0;
+  font-size: 13.5px;
+  font-weight: 550;
+}
+.connection-facts [data-tone="green"] dd {
+  color: var(--success);
+}
+.connection-facts [data-tone="amber"] dd {
+  color: var(--warning);
+}
+.connection-facts [data-tone="red"] dd {
+  color: var(--danger);
+}
+.connection-can {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+.connector-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.connector-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+}
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  cursor: pointer;
+}
+
 /* A record beside its list: the list keeps its place, and the panel stays in view as it scrolls. */
 .list-page[data-peek] {
   display: grid;
