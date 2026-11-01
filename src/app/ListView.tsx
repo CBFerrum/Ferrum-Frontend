@@ -1,5 +1,5 @@
 // Generic list: columns from `list.columns` (else `in_list` fields) or the user's own choice (order,
-// widths; list/ColumnChooser), filters from `in_filter` fields, free-text search, sortable headers,
+// widths; list/ColumnChooser), filters from `in_filter` fields as chips (list/FilterBar), free-text search, sortable headers,
 // cursor/offset pagination, CSV export, saved views (list/SavedViews), row selection with bulk
 // actions (list/BulkBar) — and the same records as a board, calendar or timeline when the entity has
 // fields for one (`?view=`). Settings are the user's preference `list:<Entity>` (lib/prefs).
@@ -8,7 +8,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, NavigationType, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
 import { api, docPath, download, errorMessage } from "../lib/api";
-import { joinRange, readFilters, serializeFilters, splitRange, writeFilters } from "../lib/filters";
+import { readFilters, serializeFilters, writeFilters } from "../lib/filters";
 import { NUMERIC_TYPES } from "../lib/format";
 import { useLiveEntity } from "../lib/live";
 import { usePref, type Pref } from "../lib/prefs";
@@ -22,13 +22,14 @@ import {
   useEntityMeta,
   useMe,
   type EntityMeta,
-  type Field,
   type ListResponse,
 } from "../lib/meta";
 import { Button, EmptyState, ErrorState, Field as FieldWrap, Icon, PageLoading, toast, useDebounced } from "../ui/kit";
 import { pageState, togglePage, toggleRow } from "./list/bulk";
 import { BulkBar, SelectBox } from "./list/BulkBar";
 import { ColumnChooser, ColumnResizer } from "./list/ColumnChooser";
+import { FilterChips } from "./list/FilterBar";
+import { RecordPeek } from "./list/RecordPeek";
 import { SavedViews } from "./list/SavedViews";
 import {
   applyView,
@@ -49,7 +50,7 @@ import {
   type SavedView,
 } from "./list/settings";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
-import { CellValue, LinkInput } from "./widgets";
+import { CellValue } from "./widgets";
 
 const PAGE = 50;
 const noop = () => {};
@@ -162,8 +163,15 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       { replace: true },
     );
 
+  // ── the record open beside the list ──
+  const peek = phone ? null : sp.get("peek");
+  const setPeek = (id: string | null) =>
+    update((p) => {
+      if (id) p.set("peek", id);
+      else p.delete("peek");
+    });
+
   const [search, setSearch] = useState(q);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const debounced = useDebounced(search, 300);
   useEffect(() => setSearch(q), [q]);
   useEffect(() => {
@@ -226,6 +234,25 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     anchor.current = id;
   };
   const page = pageState(selected, ids);
+
+  // ↑ and ↓ walk the rows while one is open; Esc closes it.
+  useEffect(() => {
+    if (!peek) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || el?.closest("input,select,textarea,[contenteditable],[role=dialog],[role=menu]")) return;
+      if (e.key === "Escape") setPeek(null);
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        const at = ids.indexOf(peek) + (e.key === "ArrowDown" ? 1 : -1);
+        if (ids[at]) {
+          e.preventDefault();
+          setPeek(ids[at]);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [peek, ids]); // setPeek only writes the URL
 
   // ── column widths: `--cw-<column>` on the table; a header drag moves it directly, then saves ──
   const table = useRef<HTMLTableElement>(null);
@@ -298,7 +325,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   if (openDefault) return <PageLoading />; // the default view's address is on its way
 
   return (
-    <div>
+    <div className="list-page" data-peek={!!peek || undefined}>
+      <div className="list-main">
       <div className="page-head">
         <div>
           <h1 className="page-title">{meta.label_plural}</h1>
@@ -360,28 +388,38 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       </div>
 
       <div className="card">
-        <div className="toolbar" role="search" aria-label={`Filter ${meta.label_plural}`}>
-          <FieldWrap label="Search" htmlFor="list-search" className="field-wide">
+        <div className="list-bar" role="search" aria-label={`Filter ${meta.label_plural}`}>
+          <div className="list-search">
+            <Icon name="search" size={14} />
             <input
               id="list-search"
               className="input"
               type="search"
-              placeholder={`Search ${meta.label_plural.toLowerCase()}…`}
+              aria-label={`Search ${meta.label_plural.toLowerCase()}`}
+              placeholder="Search…"
               value={search}
               autoComplete="off"
               onChange={(e) => setSearch(e.target.value)}
             />
-          </FieldWrap>
-          {(filterFields.length > 0 || view !== "list") && (
-            // Phones show the search box and fold the other filters behind this button.
-            <Button className="filters-toggle" icon="settings" aria-expanded={filtersOpen} aria-controls="list-filters" onClick={() => setFiltersOpen((o) => !o)}>
-              Filters{Object.keys(fstate).length ? ` (${Object.keys(fstate).length})` : ""}
-            </Button>
+          </div>
+          <FilterChips fields={filterFields} state={fstate} onChange={setFilter} />
+          {view !== "list" && (
+            <ViewFieldPicker
+              view={view}
+              opts={opts}
+              value={view === "board" ? boardField!.name : view === "calendar" ? calendarField!.name : `${span![0].name}..${span![1].name}`}
+              onChange={(v) => update((p) => void p.set("by", v))}
+            />
           )}
-          {/* Phones: this replaces the column headers' sort buttons, which the card layout hides. */}
-          {view === "list" && sortable.length > 0 && (
-            <FieldWrap label="Sort" htmlFor="list-sort" className="list-sort">
-              <select id="list-sort" className="select" value={`${sortField} ${sortDir}`} onChange={(e) => setSort(e.target.value)}>
+          {filtered && (
+            <button type="button" className="chip-clear" onClick={clearFilters}>
+              Clear
+            </button>
+          )}
+          <div className="list-bar-end">
+            {/* Phones: this replaces the column headers' sort buttons, which the card layout hides. */}
+            {view === "list" && sortable.length > 0 && (
+              <select className="select list-sort" aria-label="Sort by" value={`${sortField} ${sortDir}`} onChange={(e) => setSort(e.target.value)}>
                 {!sortable.some((c) => c.name === sortField) && (
                   <option value={`${sortField} ${sortDir}`}>
                     {fieldLabel(meta, sortField)} {sortDir === "desc" ? "↓" : "↑"}
@@ -396,27 +434,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                   </option>,
                 ])}
               </select>
-            </FieldWrap>
-          )}
-          <div id="list-filters" className="toolbar-more" data-open={filtersOpen}>
-            {filterFields.map((f) => (
-              <FilterControl key={f.name} field={f} value={fstate[f.name] ?? ""} onChange={(v) => setFilter(f.name, v)} />
-            ))}
-            {view !== "list" && (
-              <ViewFieldPicker
-                view={view}
-                opts={opts}
-                value={view === "board" ? boardField!.name : view === "calendar" ? calendarField!.name : `${span![0].name}..${span![1].name}`}
-                onChange={(v) => update((p) => void p.set("by", v))}
-              />
             )}
-          </div>
-          {filtered && (
-            <Button variant="ghost" icon="x" onClick={clearFilters}>
-              Clear
-            </Button>
-          )}
-          <div className="ml-auto flex flex-wrap items-end gap-2">
             <SavedViews
               views={prefs.views}
               active={active}
@@ -539,8 +557,11 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                           role="row"
                           className="row-link [&[data-selected]>td]:bg-primary-soft"
                           data-selected={on || undefined}
+                          data-peeked={peek === id || undefined}
                           onClick={(e) => {
-                            if (!(e.target as HTMLElement).closest("a,button,input,label")) navigate(`/e/${E}/${r.id}`);
+                            if ((e.target as HTMLElement).closest("a,button,input,label")) return;
+                            if (phone) navigate(`/e/${E}/${r.id}`);
+                            else setPeek(peek === id ? null : id);
                           }}
                         >
                           {!phone && (
@@ -585,6 +606,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           </div>
         )}
       </div>
+      </div>
+      {peek && <RecordPeek key={peek} meta={meta} id={peek} onClose={() => setPeek(null)} />}
     </div>
   );
 }
@@ -607,69 +630,6 @@ function ViewFieldPicker({ view, opts, value, onChange }: { view: ViewKind; opts
           </option>
         ))}
       </select>
-    </FieldWrap>
-  );
-}
-
-function FilterControl({ field: f, value, onChange }: { field: Field; value: string; onChange: (v: string) => void }) {
-  const id = `flt-${f.name}`;
-  switch (f.type) {
-    case "select":
-      return (
-        <FieldWrap label={f.label} htmlFor={id}>
-          <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-            <option value="">All</option>
-            {(f.options ?? []).map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </FieldWrap>
-      );
-    case "check":
-      return (
-        <FieldWrap label={f.label} htmlFor={id}>
-          <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-            <option value="">All</option>
-            <option value="1">Yes</option>
-            <option value="0">No</option>
-          </select>
-        </FieldWrap>
-      );
-    case "link":
-      return (
-        <FieldWrap label={f.label} htmlFor={id} className="field-wide">
-          <LinkInput to={f.to ?? ""} id={id} value={value || null} linkFilters={f.link_filters} placeholder="Any" onChange={(v) => onChange(v ?? "")} />
-        </FieldWrap>
-      );
-    case "date":
-    case "datetime": {
-      const [from, to] = splitRange(value);
-      return (
-        <FieldWrap label={f.label} htmlFor={id} className="field-wide">
-          <div className="range">
-            <input id={id} className="input" type="date" aria-label={`${f.label} from`} value={from} onChange={(e) => onChange(joinRange(e.target.value, to))} />
-            <input className="input" type="date" aria-label={`${f.label} to`} value={to} onChange={(e) => onChange(joinRange(from, e.target.value))} />
-          </div>
-        </FieldWrap>
-      );
-    }
-    default:
-      return <TextFilter id={id} label={f.label} value={value} onChange={onChange} />;
-  }
-}
-
-function TextFilter({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
-  const debounced = useDebounced(draft, 300);
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => {
-    if (debounced !== value) onChange(debounced);
-  }, [debounced]); // react to the debounced value only
-  return (
-    <FieldWrap label={label} htmlFor={id}>
-      <input id={id} className="input" value={draft} onChange={(e) => setDraft(e.target.value)} />
     </FieldWrap>
   );
 }

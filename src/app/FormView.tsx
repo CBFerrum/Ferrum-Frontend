@@ -405,6 +405,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     ? []
     : meta.actions.filter(
         (a) =>
+          !a.hidden &&
           (!a.docstatus.length || a.docstatus.includes(docstatus)) &&
           (a.permission in perms ? allowed(a.permission as PermKey) : true) &&
           (!a.condition || evaluate(a.condition, { doc, user }) !== false),

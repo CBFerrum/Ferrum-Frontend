@@ -69,6 +69,8 @@ export interface ActionDef {
   params?: ActionParam[];
   /** Actions of one group show under one menu. */
   group?: string | null;
+  /** Called by code, never offered as a button. */
+  hidden?: boolean;
 }
 
 export interface ActionParam {
