@@ -7,6 +7,7 @@ import { api, ApiError, errorMessage, saveBlob, type FieldError } from "../lib/a
 import { formatDateTime, relativeTime } from "../lib/format";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
+import { Connections } from "./Connections";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
   Alert,
@@ -28,6 +29,7 @@ const TABS = [
   { id: "users", label: "Users" },
   { id: "roles", label: "Roles & permissions" },
   { id: "packages", label: "Packages" },
+  { id: "connections", label: "Connections" },
   { id: "webhooks", label: "Webhooks" },
   { id: "automations", label: "Automations" },
   { id: "plugins", label: "Plugins" },
@@ -60,6 +62,7 @@ export function AdminPage() {
         {tab === "users" && <Users />}
         {tab === "roles" && <Roles />}
         {tab === "packages" && <Packages />}
+        {tab === "connections" && <Connections />}
         {tab === "webhooks" && <Webhooks />}
         {tab === "automations" && <Automations />}
         {tab === "plugins" && <Plugins />}
