@@ -1285,26 +1285,6 @@ input[type="color"] {
 .toolbar .field-wide {
   width: 240px;
 }
-.toolbar-more {
-  display: contents;
-}
-.filters-toggle {
-  display: none;
-}
-@media (max-width: 720px) {
-  .filters-toggle {
-    display: inline-flex;
-  }
-  .toolbar-more {
-    display: none;
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .toolbar-more[data-open="true"] {
-    display: flex;
-  }
-}
 @media (max-width: 600px) {
   .toolbar .field {
     width: calc(50% - 4px);

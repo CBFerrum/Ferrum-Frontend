@@ -1,8 +1,259 @@
 /* Record screens on phones and touch devices: list cards, the form action bar, child-table cards. */
 
+/* The list's bar: search, filters as chips, then views and columns. Nothing takes room until used. */
+.list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.list-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.list-search {
+  position: relative;
+  flex: 0 1 220px;
+  min-width: 140px;
+}
+.list-search .icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+  pointer-events: none;
+}
+.list-search .input {
+  height: 30px;
+  padding-left: 29px;
+}
+.chip {
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  max-width: 280px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+  font-size: 13px;
+}
+.chip[data-empty] {
+  background: var(--surface);
+  border-style: dashed;
+}
+.chip-body,
+.chip-x {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.chip-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 4px 0 9px;
+}
+.chip-label {
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.chip-value {
+  overflow: hidden;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-x {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px 0 3px;
+  color: var(--muted-foreground);
+}
+.chip-x:hover {
+  color: var(--text);
+}
+.chip-add,
+.chip-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip-add:hover,
+.chip-clear:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.chip-popover.chip-popover {
+  width: 300px;
+  padding: 12px;
+}
+.chip-picker.chip-picker {
+  width: 220px;
+  padding: 4px;
+}
+.chip-popover .range {
+  flex-wrap: wrap;
+}
+
 /* Desktop sorts with the column headers; the Sort select is for the phone card layout. */
-.toolbar .list-sort {
+.list-bar .list-sort {
   display: none;
+}
+
+/* A record beside its list: the list keeps its place, and the panel stays in view as it scrolls. */
+.list-page[data-peek] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: 12px;
+  align-items: start;
+}
+.list-main {
+  min-width: 0;
+}
+.peek {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--ferrum-bar-height, 48px) - 24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  animation: peek-in 120ms ease-out;
+}
+@keyframes peek-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .peek {
+    animation: none;
+  }
+}
+.peek-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px 6px 14px;
+}
+.peek-title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.peek-title h2 {
+  font-size: 15px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.peek-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.peek-tabs button {
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.peek-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--primary);
+  color: var(--text);
+}
+.peek-body {
+  flex: 1;
+  min-height: 120px;
+  padding: 8px 8px 12px;
+  overflow-y: auto;
+}
+.peek-section + .peek-section {
+  margin-top: 10px;
+}
+.peek-section h3 {
+  margin: 4px 6px;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.peek-section dl {
+  margin: 0;
+}
+.peek-row {
+  display: grid;
+  grid-template-columns: 38% minmax(0, 1fr);
+  align-items: center;
+  min-height: 30px;
+}
+.peek-row dt {
+  overflow: hidden;
+  padding: 0 6px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.peek-row dd {
+  min-width: 0;
+  margin: 0;
+}
+.peek-value {
+  display: block;
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 6px;
+  overflow-wrap: anywhere;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+}
+button.peek-value {
+  cursor: text;
+}
+button.peek-value:hover {
+  background: var(--surface-2);
+}
+.peek-row dd .input,
+.peek-row dd .select {
+  height: 28px;
+  font-size: 13.5px;
+}
+.table .row-link[data-peeked] td {
+  background: var(--primary-soft);
 }
 
 @media (max-width: 720px) {
@@ -17,9 +268,18 @@
     flex-basis: 100%;
   }
 
-  .toolbar .list-sort {
-    display: flex;
-    flex: 1 1 auto; /* the rest of the line beside Filters, so long column names fit */
+  .list-search {
+    flex: 1 1 100%;
+  }
+  .list-bar-end {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .list-bar .list-sort {
+    display: block;
+    flex: 1 1 auto; /* the rest of the line beside the views, so long column names fit */
+    min-width: 0;
+    height: 32px;
   }
 
   /* Rows become cards: the first cell is the title, the others label/value pairs (empty ones hidden). */
