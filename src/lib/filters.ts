@@ -38,9 +38,16 @@ const UNFILTERABLE = new Set(["table", "attach", "secret", "json", "code"]);
 
 /** The fields a person can filter on: any they can read, those the app puts forward first. The
  *  server holds the rule: a field closed to them is refused, however it is asked for. */
-export function filterable<F extends FilterField & { in_filter?: boolean; can_read?: boolean; hidden?: boolean }>(fields: F[]): F[] {
+export function filterable<F extends FilterField & { label?: string; in_filter?: boolean; can_read?: boolean; hidden?: boolean }>(
+  fields: F[],
+  children: Record<string, { label: string; fields: F[] }> = {},
+): F[] {
   const open = fields.filter((f) => f.can_read === true && !f.hidden && !UNFILTERABLE.has(f.type));
-  return [...open.filter((f) => f.in_filter), ...open.filter((f) => !f.in_filter)];
+  // A row's link too: "orders with this item in them". It fills in nothing on a new record.
+  const rows = Object.entries(children).flatMap(([table, c]) =>
+    c.fields.filter((f) => f.type === "link" && f.can_read === true && !f.hidden).map((f) => ({ ...f, name: `${table}.${f.name}`, label: `${c.label}: ${f.label}`, can_write: false })),
+  );
+  return [...open.filter((f) => f.in_filter), ...open.filter((f) => !f.in_filter), ...rows];
 }
 
 /** Filter by whether the field holds anything, whatever its type. */

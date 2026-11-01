@@ -1,8 +1,9 @@
 // The list's saved views: switch between them and the standard view, save the current filters,
 // search, sort and columns as a view, save changes to one, rename or delete it, and pick the view
-// the list opens with. Views belong to the user (they are stored with their list settings).
+// the list opens with. Views belong to the user (they are stored with their list settings), until
+// they share one with the team; then it belongs to the list, and whoever shared it looks after it.
 
-import { Bookmark, ChevronDown, Pencil, Plus, RotateCcw, Save, Star, StarOff, Trash2 } from "lucide-react";
+import { Bookmark, ChevronDown, Pencil, Plus, RotateCcw, Save, Star, StarOff, Trash2, Users } from "lucide-react";
 import { useId, useRef, useState, type FormEvent } from "react";
 import {
   DropdownMenu,
@@ -19,6 +20,8 @@ import { sortedViews, viewNameError, type SavedView } from "./settings";
 
 interface Props {
   views: Record<string, SavedView>;
+  /** The views the team shares on this list. */
+  team: Record<string, SavedView>;
   active: SavedView | null;
   /** The list's filters, search or sort differ from what the active view saved. */
   modified: boolean;
@@ -29,6 +32,7 @@ interface Props {
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onDefault: (id: string | null) => void;
+  onShare: (view: SavedView) => void;
 }
 
 const ITEM = "pointer-coarse:min-h-11";
@@ -44,12 +48,18 @@ export function SavedViews(p: Props) {
   };
   const a = p.active;
   const isDefault = !!a && a.id === p.defaultId;
+  const shared = a?.shared;
+  // Someone else's shared view can be looked through, not changed.
+  const mine = !!a && (!shared || shared.can_change);
+  const teamViews = sortedViews(p.team);
 
   const remove = async (v: SavedView) => {
     const ok = await confirmDialog({
-      title: `Delete the view “${v.name}”?`,
-      message: "Only the view is deleted: its records, filters in the address bar and other views stay.",
-      confirmLabel: "Delete view",
+      title: v.shared ? `Stop sharing “${v.name}”?` : `Delete the view “${v.name}”?`,
+      message: v.shared
+        ? "It goes from everyone's list of views. Its records stay."
+        : "Only the view is deleted: its records, filters in the address bar and other views stay.",
+      confirmLabel: v.shared ? "Stop sharing" : "Delete view",
       danger: true,
     });
     if (ok) p.onDelete(v.id);
@@ -81,7 +91,7 @@ export function SavedViews(p: Props) {
           }}
         >
           <DropdownMenuLabel className="text-xs text-muted-foreground">Your views</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={a?.id ?? ""} onValueChange={(id) => p.onApply(p.views[id] ?? null)}>
+          <DropdownMenuRadioGroup value={a?.id ?? ""} onValueChange={(id) => p.onApply(p.views[id] ?? p.team[id] ?? null)}>
             <DropdownMenuRadioItem value="" className={ITEM}>
               Standard view
             </DropdownMenuRadioItem>
@@ -96,37 +106,54 @@ export function SavedViews(p: Props) {
                 )}
               </DropdownMenuRadioItem>
             ))}
+            {teamViews.length > 0 && <DropdownMenuLabel className="text-xs text-muted-foreground">Shared with the team</DropdownMenuLabel>}
+            {teamViews.map((v) => (
+              <DropdownMenuRadioItem key={v.id} value={v.id} className={ITEM}>
+                <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                {v.shared?.by && <span className="max-w-24 truncate text-xs text-muted-foreground">{v.shared.by}</span>}
+              </DropdownMenuRadioItem>
+            ))}
           </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
-          {a && p.modified && (
+          {a && p.modified && mine && (
             <>
               <DropdownMenuItem className={ITEM} onSelect={p.onSave}>
                 <Save aria-hidden="true" />
                 <span className="truncate">Save changes to “{a.name}”</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className={ITEM} onSelect={() => p.onApply(a)}>
-                <RotateCcw aria-hidden="true" />
-                Discard changes
-              </DropdownMenuItem>
             </>
+          )}
+          {a && p.modified && (
+            <DropdownMenuItem className={ITEM} onSelect={() => p.onApply(a)}>
+              <RotateCcw aria-hidden="true" />
+              Discard changes
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem className={ITEM} onSelect={later(() => setNaming({ name: "" }))}>
             <Plus aria-hidden="true" />
             Save as a new view…
           </DropdownMenuItem>
-          {a && (
+          {a && mine && (
             <>
               <DropdownMenuItem className={ITEM} onSelect={later(() => setNaming({ id: a.id, name: a.name }))}>
                 <Pencil aria-hidden="true" />
                 Rename…
               </DropdownMenuItem>
-              <DropdownMenuItem className={ITEM} onSelect={() => p.onDefault(isDefault ? null : a.id)}>
-                {isDefault ? <StarOff aria-hidden="true" /> : <Star aria-hidden="true" />}
-                {isDefault ? "Stop opening the list with it" : "Open the list with this view"}
-              </DropdownMenuItem>
+              {!shared && (
+                <>
+                  <DropdownMenuItem className={ITEM} onSelect={() => p.onDefault(isDefault ? null : a.id)}>
+                    {isDefault ? <StarOff aria-hidden="true" /> : <Star aria-hidden="true" />}
+                    {isDefault ? "Stop opening the list with it" : "Open the list with this view"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className={ITEM} onSelect={() => p.onShare(a)}>
+                    <Users aria-hidden="true" />
+                    Share with the team
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem className={ITEM} variant="destructive" onSelect={later(() => void remove(a))}>
                 <Trash2 aria-hidden="true" />
-                Delete…
+                {shared ? "Stop sharing…" : "Delete…"}
               </DropdownMenuItem>
             </>
           )}
@@ -138,7 +165,7 @@ export function SavedViews(p: Props) {
           <NameForm
             initial={naming.name}
             renaming={!!naming.id}
-            check={(name) => viewNameError(name, p.views, naming.id)}
+            check={(name) => viewNameError(name, a?.shared && naming.id ? p.team : p.views, naming.id)}
             onCancel={() => setNaming(null)}
             onDone={(name, makeDefault) => {
               if (naming.id) p.onRename(naming.id, name);

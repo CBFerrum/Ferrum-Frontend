@@ -4,7 +4,7 @@
 // actions (list/BulkBar) — and the same records as a board, calendar or timeline when the entity has
 // fields for one (`?view=`). Settings are the user's preference `list:<Entity>` (lib/prefs).
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, NavigationType, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
 import { api, docPath, download, errorMessage } from "../lib/api";
@@ -40,6 +40,7 @@ import {
   newViewId,
   queryOf,
   readPrefs,
+  readSharedView,
   resolveColumns,
   sameQuery,
   validSort,
@@ -47,6 +48,7 @@ import {
   withLayout,
   withoutView,
   withWidth,
+  type Layout,
   type ListPrefs,
   type SavedView,
 } from "./list/settings";
@@ -56,6 +58,7 @@ import { CellValue } from "./widgets";
 const PAGE = 50;
 const noop = () => {};
 const NO_PREFS: Record<string, unknown> = {};
+const NO_VIEWS: Record<string, SavedView> = {};
 const NONE: ReadonlySet<string> = new Set();
 
 // Phones show rows as cards (records.css): no checkbox column (each card has its own) and no widths.
@@ -93,15 +96,23 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   const me = useMe().data;
   const precisionOf = useCurrencyPrecision();
   const phone = usePhone();
+  const qc = useQueryClient();
   const E = meta.name;
 
   // ── settings and saved views ──
   const prefs = useMemo(() => readPrefs(pref.value), [pref.value]);
   // Keys this version does not know (written by a newer one) are kept.
   const save = (fn: (p: ListPrefs) => ListPrefs) => pref.set((raw) => ({ ...raw, ...fn(readPrefs(raw)) }));
-  const active = prefs.views[sp.get(VIEW_PARAM) ?? ""] ?? null;
+  const shared = useQuery({
+    queryKey: ["views", E],
+    queryFn: ({ signal }) => api.get<{ views: Parameters<typeof readSharedView>[0][] }>(`/api/views/${encodeURIComponent(E)}`, undefined, signal),
+    select: (r) => Object.fromEntries(r.views.map((v) => [v.id, readSharedView(v)])) as Record<string, SavedView>,
+  });
+  const team = shared.data ?? NO_VIEWS;
+  const active = prefs.views[sp.get(VIEW_PARAM) ?? ""] ?? team[sp.get(VIEW_PARAM) ?? ""] ?? null;
   const viewId = active?.id ?? null;
-  const layout = layoutOf(prefs, viewId);
+  // A shared view brings its own layout; changing columns on one is for whoever looks after it.
+  const layout = active?.shared ? active : layoutOf(prefs, viewId);
   const choices = useMemo(() => columnChoices(meta), [meta]);
   const columns = useMemo(() => resolveColumns(meta, layout.columns), [meta, layout.columns]);
   const query = queryOf(sp);
@@ -109,7 +120,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   const defaultView = prefs.default_view ? prefs.views[prefs.default_view] : undefined;
   // Opening the list (a link, the address bar, back or forward) without filters: the default view.
   const openDefault = !!defaultView && navType !== NavigationType.Replace && !Object.keys(query).length && !sp.has(VIEW_PARAM);
-  const staleView = sp.has(VIEW_PARAM) && !active; // deleted, maybe on another device
+  const moving = useRef<string | null>(null); // a view on its way to the team, which the address names for a moment longer
+  const staleView = sp.has(VIEW_PARAM) && !active && !shared.isLoading && sp.get(VIEW_PARAM) !== moving.current; // deleted, maybe on another device
   useEffect(() => {
     if (openDefault) setSp((p) => applyView(p, defaultView!), { replace: true });
     else if (staleView)
@@ -126,7 +138,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     if (pref.error) toast(`Your list settings could not be saved: ${errorMessage(pref.error)}`, "error");
   }, [pref.error]);
 
-  const filterFields = useMemo(() => filterable(meta.fields), [meta]);
+  const filterFields = useMemo(() => filterable(meta.fields, meta.children), [meta]);
   const fstate = readFilters(sp);
   const filters = serializeFilters(filterFields, fstate);
   const q = sp.get("q") ?? "";
@@ -263,12 +275,17 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   const widthVars = Object.fromEntries(Object.entries(widths).map(([n, w]) => [`--cw-${n}`, `${w}px`])) as CSSProperties;
   const sized = (n: string): CSSProperties | undefined => (n in widths ? { width: `var(--cw-${n})` } : undefined);
 
-  const setColumns = (names: string[]) => save((p) => withLayout(p, viewId, { columns: names }));
+  const setLayout = (patch: (l: Layout) => Layout) => {
+    if (!active?.shared) return save((p) => withLayout(p, viewId, patch(layoutOf(p, viewId))));
+    if (active.shared.can_change) void changeShared({ ...active, ...patch(active) });
+    else toast("This view is shared. Save it as a new view to make these changes your own.", "error");
+  };
+  const setColumns = (names: string[]) => setLayout(() => ({ columns: names }));
   const setWidth = (name: string, width: number | undefined) => {
     setDrag(null);
-    save((p) => withLayout(p, viewId, { widths: withWidth(layoutOf(p, viewId).widths, name, width) }));
+    setLayout((l) => ({ widths: withWidth(l.widths, name, width) }));
   };
-  const resetLayout = () => save((p) => withLayout(p, viewId, { columns: undefined, widths: undefined }));
+  const resetLayout = () => setLayout(() => ({ columns: undefined, widths: undefined }));
 
   const setFilter = (name: string, value: string) => update((p) => writeFilters(p, { ...readFilters(p), [name]: value }));
   const clearFilters = () => {
@@ -294,17 +311,49 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     showView(v);
     toast(`View “${name}” saved`);
   };
+  const viewBody = (v: SavedView) => ({ query: v.query, columns: v.columns, widths: v.widths });
+  const refreshTeam = () => qc.invalidateQueries({ queryKey: ["views", E] });
+  const changeShared = async (v: SavedView) => {
+    try {
+      await api.put(`/api/views/${encodeURIComponent(E)}/${v.id}`, { name: v.name, value: viewBody(v), version: v.shared?.version ?? 0 });
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    }
+    await refreshTeam();
+  };
   const saveView = () => {
     if (!active) return;
     const v = { ...active, query: viewQuery() };
-    save((p) => (p.views[v.id] ? { ...p, views: { ...p.views, [v.id]: { ...p.views[v.id], query: v.query } } } : p));
+    if (v.shared) void changeShared(v);
+    else save((p) => (p.views[v.id] ? { ...p, views: { ...p.views, [v.id]: { ...p.views[v.id], query: v.query } } } : p));
     showView(v);
     toast(`View “${v.name}” saved`);
   };
-  const renameView = (id: string, name: string) => save((p) => (p.views[id] ? { ...p, views: { ...p.views, [id]: { ...p.views[id], name } } } : p));
+  const renameView = (id: string, name: string) => {
+    if (team[id]) void changeShared({ ...team[id], name });
+    else save((p) => (p.views[id] ? { ...p, views: { ...p.views, [id]: { ...p.views[id], name } } } : p));
+  };
   const deleteView = (id: string) => {
-    save((p) => withoutView(p, id));
+    if (team[id]) {
+      api
+        .del(`/api/views/${encodeURIComponent(E)}/${id}`)
+        .catch((e: unknown) => toast(errorMessage(e), "error"))
+        .finally(() => void refreshTeam());
+    } else save((p) => withoutView(p, id));
     if (viewId === id) showView(null);
+  };
+  // Sharing moves the view: one copy, which everyone (its owner too) sees change.
+  const shareView = async (v: SavedView) => {
+    try {
+      const made = await api.post<{ id: string }>(`/api/views/${encodeURIComponent(E)}`, { name: v.name, value: viewBody(v) });
+      await refreshTeam();
+      moving.current = v.id;
+      setSp((p) => applyView(p, { ...v, id: made.id }), { replace: true });
+      save((p) => withoutView(p, v.id));
+      toast(`“${v.name}” is shared with everyone who can see this list`);
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    }
   };
   const setDefault = (id: string | null) => save((p) => ({ ...p, default_view: id ?? undefined }));
 
@@ -444,6 +493,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
             )}
             <SavedViews
               views={prefs.views}
+              team={team}
               active={active}
               modified={modified}
               defaultId={prefs.default_view}
@@ -453,6 +503,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
               onRename={renameView}
               onDelete={deleteView}
               onDefault={setDefault}
+              onShare={(v) => void shareView(v)}
             />
             {view === "list" && (
               <ColumnChooser

@@ -12,6 +12,7 @@ import { can, fieldState, recordTitle, useCurrencyPrecision, useMe, userScope, t
 import { Badge, ErrorState, Icon, Spinner, statusTone, toast } from "../../ui/kit";
 import { CollabPanel } from "../Collab";
 import { CellValue, FieldControl } from "../widgets";
+import { Related } from "./Related";
 
 /** Field kinds edited in the full form: rows, files, long text, and values worked out elsewhere. */
 const FORM_ONLY = new Set(["table", "attach", "image", "code", "json", "html", "markdown", "richtext", "secret"]);
@@ -166,8 +167,9 @@ export function RecordFields({ meta, doc, save, only }: { meta: EntityMeta; doc:
 export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string; onClose: () => void }) {
   const E = meta.name;
   const { record: q, save } = useRecord(meta, id);
-  const [tab, setTab] = useState<"details" | "discussion">("details");
+  const [tab, setTab] = useState<"details" | "related" | "discussion">("details");
   const doc = q.data;
+  const tabs = [["details", "Details"], ...(meta.linked_from?.length ? [["related", "Related"]] : []), ["discussion", "Discussion"]] as ["details" | "related" | "discussion", string][];
   return (
     <aside className="peek" aria-label={doc ? recordTitle(meta, doc) : `${meta.label} details`}>
       <header className="peek-head">
@@ -183,9 +185,9 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
         </button>
       </header>
       <div className="peek-tabs" role="tablist">
-        {(["details", "discussion"] as const).map((t) => (
+        {tabs.map(([t, label]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-            {t === "details" ? "Details" : "Discussion"}
+            {label}
           </button>
         ))}
       </div>
@@ -196,6 +198,8 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
           <Spinner label="Loading" />
         ) : tab === "discussion" ? (
           <CollabPanel entity={E} id={id} canWrite={can(meta.permissions, "write")} />
+        ) : tab === "related" ? (
+          <Related meta={meta} id={id} />
         ) : (
           <RecordFields meta={meta} doc={doc} save={save} />
         )}

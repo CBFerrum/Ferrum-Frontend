@@ -21,6 +21,8 @@ export interface SavedView {
   query: Record<string, string>;
   columns?: string[];
   widths?: Record<string, number>;
+  /** Set on a view the team shares (`/api/views/{entity}`), which lives outside these settings. */
+  shared?: { version: number; by?: string | null; can_change: boolean };
 }
 
 /** The columns of the personal layout or of a view; absent means the entity's defaults. */
@@ -158,6 +160,12 @@ export function withoutView(p: ListPrefs, id: string): ListPrefs {
   const views = { ...p.views };
   delete views[id];
   return { ...p, views, default_view: p.default_view === id ? undefined : p.default_view };
+}
+
+/** A shared view as the server returns it, checked as a stored view is. */
+export function readSharedView(raw: { id: string; name: string; value: unknown; version: number; by?: string | null; can_change: boolean }): SavedView {
+  const v = isPlain(raw.value) ? raw.value : {};
+  return { id: raw.id, name: raw.name, query: queryOfObject(v.query), columns: names(v.columns), widths: widthsOf(v.widths), shared: { version: raw.version, by: raw.by, can_change: raw.can_change } };
 }
 
 export const sortedViews = (views: Record<string, SavedView>) => Object.values(views).sort((a, b) => a.name.localeCompare(b.name));

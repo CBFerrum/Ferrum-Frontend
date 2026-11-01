@@ -16,6 +16,7 @@ import {
   withoutView,
   withWidth,
   type ListPrefs,
+  readSharedView,
 } from "./settings";
 
 const f = (name: string, type: Field["type"], extra: Partial<Field> = {}): Field => ({ name, label: name, type, can_read: true, storage: "column", ...extra });
@@ -137,5 +138,18 @@ describe("views in the URL", () => {
   it("compares queries regardless of order", () => {
     expect(sameQuery({ a: "1", b: "2" }, { b: "2", a: "1" })).toBe(true);
     expect(sameQuery({ a: "1" }, { a: "1", q: "x" })).toBe(false);
+  });
+});
+
+describe("views a team shares", () => {
+  it("are read like stored ones, so nothing but a list's own query reaches its address", () => {
+    const v = readSharedView({ id: "v1", name: "Open", value: { query: { "f.status": "Open", peek: "x", evil: "1" }, columns: ["a", 1] }, version: 3, by: "Bea", can_change: false });
+    expect(v.query).toEqual({ "f.status": "Open" });
+    expect(v.columns).toEqual(["a"]);
+    expect(v.shared).toEqual({ version: 3, by: "Bea", can_change: false });
+  });
+
+  it("survive a damaged value", () => {
+    expect(readSharedView({ id: "v1", name: "Open", value: 7, version: 1, can_change: true }).query).toEqual({});
   });
 });

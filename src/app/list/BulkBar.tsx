@@ -13,6 +13,7 @@ import { recordTitle, type Doc, type EntityMeta, type Field, type ListResponse, 
 import { Alert, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, toast } from "../../ui/kit";
 import { usePeople } from "../Collab";
 import { FieldControl } from "../widgets";
+import { MergeDialog } from "./MergeDialog";
 import { bulkActions, chunk, countOf, describeOp, MAX_BULK, mergeResults, parseTags, retryIds, rowErrorText, type BulkOp, type BulkResponse } from "./bulk";
 
 /** A row's checkbox (or the header's); `onToggle(range)` gets whether Shift was held. */
@@ -91,6 +92,7 @@ export function BulkBar({
   const qc = useQueryClient();
   const actions = bulkActions(meta, me);
   const [dialog, setDialog] = useState<"edit" | "assign" | "tags" | null>(null);
+  const [merging, setMerging] = useState(false);
   const [run, setRun] = useState<Run | null>(null);
   // The run's window can be closed while it works; its results then stay a click away.
   const [runOpen, setRunOpen] = useState(false);
@@ -269,6 +271,11 @@ export function BulkBar({
             {action}
           </Button>
         ))}
+        {n === 2 && meta.mergeable && actions.delete && (
+          <Button size="sm" onClick={() => setMerging(true)}>
+            Merge
+          </Button>
+        )}
         {actions.delete && (
           <Button
             size="sm"
@@ -291,6 +298,18 @@ export function BulkBar({
         )}
       </div>
 
+      {merging && n === 2 && (
+        <MergeDialog
+          meta={meta}
+          first={[...selected][0]!}
+          second={[...selected][1]!}
+          onClose={() => setMerging(false)}
+          onDone={() => {
+            setMerging(false);
+            clear();
+          }}
+        />
+      )}
       <Dialog open={dialog === "edit"} onClose={() => setDialog(null)} title={`Edit ${what}`}>
         {dialog === "edit" && <EditForm fields={actions.fields} onCancel={() => setDialog(null)} onApply={(values) => void execute({ op: "update", values }, [...selected])} />}
       </Dialog>
