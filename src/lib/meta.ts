@@ -97,6 +97,13 @@ export interface ChildTable {
   fields: Field[];
 }
 
+export interface LinkedFrom {
+  entity: string;
+  label: string;
+  field: string;
+  field_label: string;
+}
+
 export interface EntityMeta {
   name: string;
   label: string;
@@ -108,6 +115,10 @@ export interface EntityMeta {
   custom?: boolean;
   title_field?: string | null;
   submittable: boolean;
+  /** Duplicates of this entity can be merged (`POST /{id}/merge`). */
+  mergeable?: boolean;
+  /** Lists that link to this entity and the viewer may read; `field` may name a row (`items.item`). */
+  linked_from?: LinkedFrom[];
   company_scoped?: boolean;
   numbering?: { template: string; on?: string } | null;
   list: { columns: string[]; sort?: string | null };

@@ -154,6 +154,12 @@ describe("which fields can be filtered", () => {
     expect(got.map((x) => x.name)).toEqual(["status", "note", "amount"]);
   });
 
+  it("includes links in a child table's rows, by the path the server reads", () => {
+    const got = filterable([], { items: { label: "Items", fields: [f("item", "link", { label: "Item" }), f("note", "data"), f("secret", "link", { can_read: false })] } });
+    expect(got).toEqual([expect.objectContaining({ name: "items.item", label: "Items: Item", can_write: false })]);
+    expect(toApiFilters(got, { "items.item": "i1" })).toEqual([["items.item", "=", "i1"]]);
+  });
+
   it("leaves out what is closed to them and what a list cannot ask about", () => {
     const got = filterable([f("a", "table"), f("b", "attach"), f("c", "secret"), f("d", "json"), f("e", "data", { hidden: true }), f("g", "data", { can_read: false })]);
     expect(got).toEqual([]);

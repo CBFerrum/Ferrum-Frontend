@@ -32,6 +32,8 @@ import {
   toast,
 } from "../ui/kit";
 import { CollabPanel } from "./Collab";
+import { MergeDialog } from "./list/MergeDialog";
+import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
@@ -114,6 +116,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const server = useServerInfo().data;
   const pdf = server?.pdf === true;
   const [emailing, setEmailing] = useState(false);
+  const [merging, setMerging] = useState(false);
   const user = useMemo(() => userScope(me), [me]);
   const [base, setBase] = useState<Doc | null>(initial);
   const [doc, setDoc] = useState<Doc>(() => initial ?? prefill(meta, sp, user));
@@ -501,6 +504,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     ...(isNew
       ? []
       : [
+          ...(meta.linked_from?.length ? [{ id: "related", label: "Related" }] : []),
           { id: "discussion", label: "Discussion" },
           { id: "activity", label: "Activity" },
           ...panels.map((p) => ({ id: `screen:${p.app}/${p.id}`, label: p.title ?? p.id })),
@@ -729,6 +733,18 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               onClose={() => setEmailing(false)}
             />
           )}
+          {merging && (
+            <MergeDialog
+              meta={meta}
+              first={String(id)}
+              onClose={() => setMerging(false)}
+              onDone={(stays) => {
+                setMerging(false);
+                navigate(`/e/${E}/${stays}`, { replace: true });
+                void qc.invalidateQueries({ queryKey: ["doc", E] });
+              }}
+            />
+          )}
           {(canDelete || me.user.is_admin) && (
             <Menu ariaLabel="More actions" icon="chevronDown">
               {(close) => (
@@ -751,6 +767,16 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                       }}
                     >
                       Design form layout
+                    </MenuItem>
+                  )}
+                  {canDelete && meta.mergeable && (
+                    <MenuItem
+                      onSelect={() => {
+                        close();
+                        setMerging(true);
+                      }}
+                    >
+                      Merge with…
                     </MenuItem>
                   )}
                   {canDelete && (
@@ -811,6 +837,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           <TabPanel id="doc" tab={active}>
             {active === "discussion" ? (
               <CollabPanel entity={E} id={String(id)} canWrite={can(meta.permissions, "write")} />
+            ) : active === "related" ? (
+              <Related meta={meta} id={String(id)} />
             ) : active === "activity" ? (
               <AuditPanel meta={meta} id={String(id)} />
             ) : active.startsWith("screen:") ? (

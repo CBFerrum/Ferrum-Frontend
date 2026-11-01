@@ -22,3 +22,5 @@ export {
 export { CollabPanel, Composer, mentionedIn, usePeople, type Person } from "../../../src/app/Collab";
 export { LinkInput, LinkTitle, useLinkTitle } from "../../../src/app/widgets";
 export { RecordFields, useRecord } from "../../../src/app/list/RecordPeek";
+export { Related } from "../../../src/app/list/Related";
+export { MergeDialog } from "../../../src/app/list/MergeDialog";

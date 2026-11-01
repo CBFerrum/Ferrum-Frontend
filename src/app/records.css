@@ -590,3 +590,112 @@ button.peek-value:hover {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
+
+/* What links to a record. */
+.related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.related-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--foreground);
+  text-decoration: none;
+}
+.related-row:hover {
+  background: var(--muted);
+}
+.related-count {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two records, side by side, before they become one. */
+.merge-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.merge-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.merge-side {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.merge-side[data-on] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.merge-side span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.merge-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.merge-table caption {
+  padding-bottom: 6px;
+  text-align: left;
+}
+.merge-table th {
+  width: 28%;
+  padding: 6px 8px 6px 0;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-align: left;
+  vertical-align: top;
+}
+.merge-table td {
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.merge-table th {
+  border-top: 1px solid var(--border);
+}
+.merge-value {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .merge-sides {
+    grid-template-columns: 1fr;
+  }
+  .merge-table,
+  .merge-table tbody,
+  .merge-table tr,
+  .merge-table th,
+  .merge-table td {
+    display: block;
+    width: 100%;
+  }
+  .merge-table tr {
+    padding: 6px 0;
+    border-top: 1px solid var(--border);
+  }
+  .merge-table th,
+  .merge-table td {
+    padding: 2px 0;
+    border: 0;
+  }
+}
