@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import type { ActionDef, ActionParam, Doc } from "../lib/meta";
 import { Alert, Button, Dialog, Field } from "../ui/kit";
+import { LinkInput } from "./widgets";
 
 function initial(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -70,6 +71,8 @@ export function ActionDialog({
         return <input id={id} className="input" type="number" step={1} value={value} onChange={(e) => set(e.target.value)} required={p.required} />;
       case "date":
         return <input id={id} className="input" type="date" value={value} onChange={(e) => set(e.target.value)} required={p.required} />;
+      case "link":
+        return <LinkInput to={p.to ?? ""} id={id} value={value || null} required={p.required} onChange={(v) => set(v ?? "")} />;
       default:
         return <input id={id} className="input" value={value} onChange={(e) => set(e.target.value)} required={p.required} />;
     }

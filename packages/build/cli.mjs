@@ -10,7 +10,7 @@
 //              and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
 //              compressed, CSS ≤ 50 KB)
 //   dev        Vite's development server for the interface (--port N, default 5173): on a
-//              Ferrum server with FERRUM_DEV_UI=1, `ferrum-app dev --ui http://localhost:5173`
+//              Ferrum server with FERRUM_DEV_UI=true, `ferrum-app dev --ui http://localhost:5173`
 //              serves the app's pages from it, behind the real session, bar and bootstrap
 //   typecheck  TypeScript over src/, with this checkout's packages and libraries
 //   test       the interface's tests (vitest), as Ferrum-Frontend runs its own
@@ -117,7 +117,7 @@ switch (process.argv[2]) {
     });
     await server.listen();
     server.printUrls();
-    console.log(`ferrum-ui: on a Ferrum server with FERRUM_DEV_UI=1, point the app's pages here: ferrum-app dev --ui ${origin} --no-upload`);
+    console.log(`ferrum-ui: on a Ferrum server with FERRUM_DEV_UI=true, point the app's pages here: ferrum-app dev --ui ${origin} --no-upload`);
     break;
   }
   case "typecheck":
