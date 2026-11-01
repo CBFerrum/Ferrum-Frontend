@@ -59,6 +59,11 @@ export function parseApiError(status: number, body: unknown): ApiError {
 }
 
 /** A one-line message for toasts; includes field errors when there is no form to show them in. */
+/** The reason alone, for a screen with no fields to highlight: a terminal, a scanner. */
+export function refusal(e: unknown): string {
+  return e instanceof ApiError && e.fields.length ? e.fields.map((f) => f.message).join("; ") : errorMessage(e);
+}
+
 export function errorMessage(e: unknown, withFields = true): string {
   if (e instanceof ApiError) {
     if (withFields && e.fields.length) {
