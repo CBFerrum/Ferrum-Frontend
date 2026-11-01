@@ -42,6 +42,15 @@ export function dayOf(value: unknown): string | null {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** `value` moved to `day`: a date becomes that day; a moment in time keeps its time of day. */
+export function movedTo(value: unknown, day: string): string {
+  if (typeof value !== "string" || /^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(value).getTime())) return day;
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const at = new Date(value);
+  at.setFullYear(y, m - 1, d);
+  return at.toISOString();
+}
+
 const DAY = 86_400_000;
 const utc = (day: string) => Date.parse(`${day}T00:00:00Z`);
 export const addDays = (day: string, n: number) => new Date(utc(day) + n * DAY).toISOString().slice(0, 10);

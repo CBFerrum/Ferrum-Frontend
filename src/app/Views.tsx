@@ -7,7 +7,7 @@ import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
 import { todayIso } from "../lib/format";
 import { can, recordTitle, type Doc, type EntityMeta, type Field, type ListResponse } from "../lib/meta";
-import { addDays, bar, dayOf, dayRangeFilters, monthGrid, weekStart } from "../lib/views";
+import { addDays, bar, dayOf, dayRangeFilters, monthGrid, movedTo, weekStart } from "../lib/views";
 import { Badge, Button, EmptyState, ErrorState, Icon, PageLoading, statusTone, toast } from "../ui/kit";
 import { CellValue } from "./widgets";
 
@@ -40,6 +40,9 @@ function RecordLink({ meta, id, onOpen, ...rest }: { meta: EntityMeta; id: strin
     />
   );
 }
+
+/** Whether a view may change `field` on a record, as dragging a card does. */
+const canMove = (meta: EntityMeta, field: Field) => (r: Doc) => can(meta.permissions, "write") && field.can_write === true && !field.read_only && (r.docstatus ?? 0) === 0;
 
 /** Fields shown on a card: the list columns without the title and the grouping field. */
 function cardFields(meta: EntityMeta, skip: string[]): Field[] {
@@ -88,6 +91,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
   const qc = useQueryClient();
   const shown = useMemo(() => cardFields(meta, [field.name]), [meta, field]);
   const res = useViewRows(meta, ["board", field.name], rest, [field.name, ...shown.map((f) => f.name)]);
+  const canCreate = can(meta.permissions, "create") && field.can_write === true && meta.kind !== "ledger";
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
@@ -102,7 +106,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
     return cols;
   }, [field, rows]);
 
-  const movable = (r: Doc) => can(meta.permissions, "write") && field.can_write === true && !field.read_only && (r.docstatus ?? 0) === 0;
+  const movable = canMove(meta, field);
   const move = async (r: Doc, to: string) => {
     if (((r[field.name] as string | null) ?? "") === to) return;
     setMoving(String(r.id));
@@ -149,6 +153,11 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
               <header className="board-col-head">
                 <Badge tone={col ? statusTone(col) : "neutral"}>{col || `No ${field.label.toLowerCase()}`}</Badge>
                 <span className="faint">{items.length}</span>
+                {canCreate && col && (
+                  <Link className="icon-btn board-add" to={`/e/${meta.name}/new?${new URLSearchParams({ [field.name]: col })}`} aria-label={`New ${meta.label} in ${col}`} title={`New in ${col}`}>
+                    <Icon name="plus" size={14} />
+                  </Link>
+                )}
               </header>
               <ul className="board-cards">
                 {items.map((r) => {
@@ -207,6 +216,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps & { field: Field }) {
+  const qc = useQueryClient();
   const today = todayIso();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selected, setSelected] = useState(today);
@@ -230,6 +240,20 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
   const title = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
   const canCreate = can(meta.permissions, "create") && field.can_write === true && field.type === "date";
   const dayItems = byDay.get(selected) ?? [];
+  const movable = canMove(meta, field);
+  const [dragged, setDragged] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const reschedule = async (r: Doc, day: string) => {
+    if (!day || dayOf(r[field.name]) === day) return;
+    try {
+      await api.patch(docPath(meta.name, String(r.id)), { [field.name]: movedTo(r[field.name], day) }, { ifMatch: r.version });
+      toast(`${recordTitle(meta, r)} moved to ${day}`);
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    }
+    await qc.invalidateQueries({ queryKey: ["view", meta.name] });
+    void qc.invalidateQueries({ queryKey: ["list", meta.name] });
+  };
 
   if (res.error) return <ErrorState error={res.error} onRetry={() => res.refetch()} />;
   return (
@@ -271,7 +295,21 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
                   className="cal-day"
                   data-other={day.slice(0, 7) !== month}
                   data-today={day === today}
+                  data-over={over === day || undefined}
                   aria-selected={day === selected}
+                  onDragOver={(e) => {
+                    if (!dragged) return;
+                    e.preventDefault();
+                    setOver(day);
+                  }}
+                  onDragLeave={() => setOver((o) => (o === day ? null : o))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const r = res.data?.rows.find((x) => String(x.id) === dragged);
+                    setDragged(null);
+                    setOver(null);
+                    if (r) void reschedule(r, day);
+                  }}
                 >
                   <button type="button" className="cal-date" onClick={() => setSelected(day)} aria-label={`${day}: ${items.length} ${items.length === 1 ? "record" : "records"}`}>
                     {Number(day.slice(8))}
@@ -280,7 +318,20 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
                   <ul className="cal-items">
                     {items.slice(0, 3).map((r) => (
                       <li key={String(r.id)}>
-                        <RecordLink meta={meta} id={String(r.id)} onOpen={onOpen} className="cal-item" title={recordTitle(meta, r)} data-peeked={open === String(r.id) || undefined}>
+                        <RecordLink
+                          meta={meta}
+                          id={String(r.id)}
+                          onOpen={onOpen}
+                          className="cal-item"
+                          title={recordTitle(meta, r)}
+                          data-peeked={open === String(r.id) || undefined}
+                          draggable={movable(r)}
+                          onDragStart={() => setDragged(String(r.id))}
+                          onDragEnd={() => {
+                            setDragged(null);
+                            setOver(null);
+                          }}
+                        >
                           {recordTitle(meta, r)}
                         </RecordLink>
                       </li>
@@ -315,6 +366,16 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
             {dayItems.map((r) => (
               <li key={String(r.id)} className="board-card" data-peeked={open === String(r.id) || undefined}>
                 <Card meta={meta} row={r} fields={shown} onOpen={onOpen} />
+                {/* Touch screens and keyboards cannot drag: the same move from a date. */}
+                {movable(r) && (
+                  <input
+                    type="date"
+                    className="input board-move"
+                    aria-label={`Move ${recordTitle(meta, r)} to`}
+                    value={dayOf(r[field.name]) ?? ""}
+                    onChange={(e) => void reschedule(r, e.target.value)}
+                  />
+                )}
               </li>
             ))}
           </ul>

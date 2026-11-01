@@ -699,3 +699,16 @@ button.peek-value:hover {
     border: 0;
   }
 }
+
+/* A day a record is being dragged onto, and a board column's own "new". */
+.cal-day[data-over] {
+  outline: 2px dashed var(--primary);
+  outline-offset: -2px;
+}
+.board-col-head:has(.board-add) {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.board-add {
+  margin-left: auto;
+}
