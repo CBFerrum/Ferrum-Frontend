@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Field } from "./meta";
-import { bar, dayOf, dayRangeFilters, monthGrid, viewOptions, weekStart } from "./views";
+import { bar, dayOf, dayRangeFilters, monthGrid, movedTo, viewOptions, weekStart } from "./views";
 
 const f = (name: string, type: Field["type"], extra: Partial<Field> = {}): Field => ({ name, label: name, type, can_read: true, ...extra });
 
@@ -79,5 +79,19 @@ describe("bar", () => {
     expect(bar(null, null, "2026-10-01", 10)).toBeNull();
     expect(bar("2026-10-05", null, "2026-10-01", 10)).toEqual({ left: 40, width: 10, before: false, after: false });
     expect(bar("2026-10-05", "2026-10-01", "2026-10-01", 10)).toEqual({ left: 40, width: 10, before: false, after: false });
+  });
+});
+
+describe("moving a record to another day", () => {
+  it("sets a date", () => {
+    expect(movedTo("2026-11-04", "2026-11-09")).toBe("2026-11-09");
+    expect(movedTo(null, "2026-11-09")).toBe("2026-11-09");
+    expect(movedTo("not a date", "2026-11-09")).toBe("2026-11-09");
+  });
+
+  it("keeps a moment's time of day, across a month's end too", () => {
+    const at = new Date(2026, 10, 30, 14, 45).toISOString();
+    const moved = new Date(movedTo(at, "2026-12-02"));
+    expect([moved.getFullYear(), moved.getMonth(), moved.getDate(), moved.getHours(), moved.getMinutes()]).toEqual([2026, 11, 2, 14, 45]);
   });
 });
