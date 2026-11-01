@@ -1,5 +1,5 @@
 // Generic list: columns from `list.columns` (else `in_list` fields) or the user's own choice (order,
-// widths; list/ColumnChooser), filters from `in_filter` fields as chips (list/FilterBar), free-text search, sortable headers,
+// widths; list/ColumnChooser), filters on any field the viewer can read as chips (list/FilterBar), free-text search, sortable headers,
 // cursor/offset pagination, CSV export, saved views (list/SavedViews), row selection with bulk
 // actions (list/BulkBar) — and the same records as a board, calendar or timeline when the entity has
 // fields for one (`?view=`). Settings are the user's preference `list:<Entity>` (lib/prefs).
@@ -8,7 +8,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, NavigationType, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
 import { api, docPath, download, errorMessage } from "../lib/api";
-import { readFilters, serializeFilters, writeFilters } from "../lib/filters";
+import { filterable, isWord, readFilters, serializeFilters, writeFilters } from "../lib/filters";
 import { NUMERIC_TYPES } from "../lib/format";
 import { useLiveEntity } from "../lib/live";
 import { usePref, type Pref } from "../lib/prefs";
@@ -126,7 +126,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     if (pref.error) toast(`Your list settings could not be saved: ${errorMessage(pref.error)}`, "error");
   }, [pref.error]);
 
-  const filterFields = useMemo(() => meta.fields.filter((f) => f.in_filter && f.can_read === true && !f.hidden && f.type !== "table"), [meta]);
+  const filterFields = useMemo(() => filterable(meta.fields), [meta]);
   const fstate = readFilters(sp);
   const filters = serializeFilters(filterFields, fstate);
   const q = sp.get("q") ?? "";
@@ -311,7 +311,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   // "New" from a filtered list starts with the filtered link/select values.
   const newHref = useMemo(() => {
     const pre = new URLSearchParams();
-    for (const f of filterFields) if ((f.type === "link" || f.type === "select") && fstate[f.name] && f.can_write) pre.set(f.name, fstate[f.name]);
+    for (const f of filterFields) if ((f.type === "link" || f.type === "select") && fstate[f.name] && !isWord(fstate[f.name]) && f.can_write) pre.set(f.name, fstate[f.name]);
     const s = pre.toString();
     return `/e/${E}/new${s ? `?${s}` : ""}`;
   }, [E, filterFields, fstate]);
@@ -474,11 +474,11 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         )}
 
         {view === "board" ? (
-          <BoardView meta={meta} field={boardField!} filters={filters} q={q} />
+          <BoardView meta={meta} field={boardField!} filters={filters} q={q} onOpen={phone ? undefined : setPeek} open={peek} />
         ) : view === "calendar" ? (
-          <CalendarView meta={meta} field={calendarField!} filters={filters} q={q} />
+          <CalendarView meta={meta} field={calendarField!} filters={filters} q={q} onOpen={phone ? undefined : setPeek} open={peek} />
         ) : view === "timeline" ? (
-          <TimelineView meta={meta} start={span![0]} end={span![1]} filters={filters} q={q} />
+          <TimelineView meta={meta} start={span![0]} end={span![1]} filters={filters} q={q} onOpen={phone ? undefined : setPeek} />
         ) : list.error ? (
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : !list.isLoading && !rows.length ? (

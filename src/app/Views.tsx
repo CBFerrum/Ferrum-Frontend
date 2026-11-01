@@ -2,7 +2,7 @@
 // They honour the list's search and filters; records open in the usual form.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type DragEvent } from "react";
+import { useMemo, useState, type ComponentProps, type DragEvent } from "react";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../lib/api";
 import { todayIso } from "../lib/format";
@@ -19,6 +19,26 @@ interface ViewProps {
   /** The list's serialized filters and search. */
   filters?: string;
   q: string;
+  /** Opens a record beside the view; without it (phones) a record opens as a page. */
+  onOpen?: (id: string) => void;
+  /** The record open beside the view. */
+  open?: string | null;
+}
+
+/** A record in a view. A click opens it beside the view, keeping your place; a click meant for a
+ *  new tab or window still gets one, because it is a real link. */
+function RecordLink({ meta, id, onOpen, ...rest }: { meta: EntityMeta; id: string; onOpen?: (id: string) => void } & Omit<ComponentProps<typeof Link>, "to">) {
+  return (
+    <Link
+      {...rest}
+      to={`/e/${meta.name}/${id}`}
+      onClick={(e) => {
+        if (!onOpen || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen(id);
+      }}
+    />
+  );
 }
 
 /** Fields shown on a card: the list columns without the title and the grouping field. */
@@ -31,7 +51,7 @@ function cardFields(meta: EntityMeta, skip: string[]): Field[] {
     .slice(0, 3);
 }
 
-function useViewRows(meta: EntityMeta, key: unknown[], { filters, q }: Omit<ViewProps, "meta">, fields: string[], extra: unknown[] = [], sort?: string) {
+function useViewRows(meta: EntityMeta, key: unknown[], { filters, q }: Pick<ViewProps, "filters" | "q">, fields: string[], extra: unknown[] = [], sort?: string) {
   const all = JSON.stringify([...(filters ? (JSON.parse(filters) as unknown[]) : []), ...extra]);
   const wanted = [...new Set(["id", "version", "docstatus", ...(meta.title_field ? [meta.title_field] : []), ...fields])].join(",");
   return useQuery({
@@ -45,12 +65,12 @@ function Truncated({ n }: { n: number }) {
   return n >= LIMIT ? <p className="faint view-note">Showing the first {LIMIT}. Filter to narrow the view.</p> : null;
 }
 
-function Card({ meta, row, fields }: { meta: EntityMeta; row: Doc; fields: Field[] }) {
+function Card({ meta, row, fields, onOpen }: { meta: EntityMeta; row: Doc; fields: Field[]; onOpen?: (id: string) => void }) {
   return (
     <>
-      <Link className="cell-title" to={`/e/${meta.name}/${row.id}`}>
+      <RecordLink className="cell-title" meta={meta} id={String(row.id)} onOpen={onOpen}>
         {recordTitle(meta, row)}
-      </Link>
+      </RecordLink>
       {fields.map((f) =>
         row[f.name] === null || row[f.name] === undefined || row[f.name] === "" ? null : (
           <div key={f.name} className="card-field">
@@ -64,7 +84,7 @@ function Card({ meta, row, fields }: { meta: EntityMeta; row: Doc; fields: Field
 
 // ── board ──
 
-export function BoardView({ meta, field, ...rest }: ViewProps & { field: Field }) {
+export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { field: Field }) {
   const qc = useQueryClient();
   const shown = useMemo(() => cardFields(meta, [field.name]), [meta, field]);
   const res = useViewRows(meta, ["board", field.name], rest, [field.name, ...shown.map((f) => f.name)]);
@@ -141,6 +161,7 @@ export function BoardView({ meta, field, ...rest }: ViewProps & { field: Field }
                       draggable={canMove}
                       aria-busy={moving === id}
                       data-dragging={dragging === id}
+                      data-peeked={open === id || undefined}
                       onDragStart={(e) => {
                         e.dataTransfer.effectAllowed = "move";
                         e.dataTransfer.setData("text/plain", id);
@@ -151,7 +172,7 @@ export function BoardView({ meta, field, ...rest }: ViewProps & { field: Field }
                         setOver(null);
                       }}
                     >
-                      <Card meta={meta} row={r} fields={shown} />
+                      <Card meta={meta} row={r} fields={shown} onOpen={onOpen} />
                       {/* Touch screens and keyboards cannot drag: the same move from a menu. */}
                       {canMove && (
                         <select
@@ -185,7 +206,7 @@ export function BoardView({ meta, field, ...rest }: ViewProps & { field: Field }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Field }) {
+export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps & { field: Field }) {
   const today = todayIso();
   const [month, setMonth] = useState(today.slice(0, 7));
   const [selected, setSelected] = useState(today);
@@ -259,9 +280,9 @@ export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Fiel
                   <ul className="cal-items">
                     {items.slice(0, 3).map((r) => (
                       <li key={String(r.id)}>
-                        <Link to={`/e/${meta.name}/${r.id}`} className="cal-item" title={recordTitle(meta, r)}>
+                        <RecordLink meta={meta} id={String(r.id)} onOpen={onOpen} className="cal-item" title={recordTitle(meta, r)} data-peeked={open === String(r.id) || undefined}>
                           {recordTitle(meta, r)}
-                        </Link>
+                        </RecordLink>
                       </li>
                     ))}
                     {items.length > 3 && (
@@ -292,8 +313,8 @@ export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Fiel
         {dayItems.length ? (
           <ul className="agenda-list">
             {dayItems.map((r) => (
-              <li key={String(r.id)} className="board-card">
-                <Card meta={meta} row={r} fields={shown} />
+              <li key={String(r.id)} className="board-card" data-peeked={open === String(r.id) || undefined}>
+                <Card meta={meta} row={r} fields={shown} onOpen={onOpen} />
               </li>
             ))}
           </ul>
@@ -310,7 +331,7 @@ export function CalendarView({ meta, field, ...rest }: ViewProps & { field: Fiel
 
 const WEEKS = 6;
 
-export function TimelineView({ meta, start, end, ...rest }: ViewProps & { start: Field; end: Field }) {
+export function TimelineView({ meta, start, end, onOpen, ...rest }: ViewProps & { start: Field; end: Field }) {
   const today = todayIso();
   const [from, setFrom] = useState(() => addDays(weekStart(today), -7));
   const days = WEEKS * 7;
@@ -367,14 +388,16 @@ export function TimelineView({ meta, start, end, ...rest }: ViewProps & { start:
               const label = `${recordTitle(meta, r)}: ${dayOf(r[start.name]) ?? "?"} – ${dayOf(r[end.name]) ?? "?"}${pct != null ? `, ${pct}% complete` : ""}`;
               return (
                 <div key={String(r.id)} className="tl-row">
-                  <Link className="tl-label cell-title" to={`/e/${meta.name}/${r.id}`} title={recordTitle(meta, r)}>
+                  <RecordLink className="tl-label cell-title" meta={meta} id={String(r.id)} onOpen={onOpen} title={recordTitle(meta, r)}>
                     {recordTitle(meta, r)}
-                  </Link>
+                  </RecordLink>
                   <div className="tl-track">
                     {todayAt && <span className="tl-today" style={{ left: `${todayAt.left + todayAt.width / 2}%` }} aria-hidden="true" />}
                     {b && (
-                      <Link
-                        to={`/e/${meta.name}/${r.id}`}
+                      <RecordLink
+                        meta={meta}
+                        id={String(r.id)}
+                        onOpen={onOpen}
                         className="tl-bar"
                         data-tone={status ? statusTone(r.status) : "blue"}
                         data-before={b.before}
@@ -385,7 +408,7 @@ export function TimelineView({ meta, start, end, ...rest }: ViewProps & { start:
                         tabIndex={-1}
                       >
                         {pct != null && <span className="tl-fill" style={{ width: `${pct}%` }} />}
-                      </Link>
+                      </RecordLink>
                     )}
                   </div>
                 </div>
