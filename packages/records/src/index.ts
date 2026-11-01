@@ -21,3 +21,4 @@ export {
 } from "../../../src/lib/meta";
 export { CollabPanel, Composer, mentionedIn, usePeople, type Person } from "../../../src/app/Collab";
 export { LinkInput, LinkTitle, useLinkTitle } from "../../../src/app/widgets";
+export { RecordFields, useRecord } from "../../../src/app/list/RecordPeek";

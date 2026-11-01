@@ -101,21 +101,15 @@ function PeekField({ meta, field, doc, locked, user, precision, save }: {
   );
 }
 
-export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string; onClose: () => void }) {
+/** A record, and a change to one of its fields against the version on screen. */
+export function useRecord(meta: EntityMeta, id: string) {
   const E = meta.name;
   const qc = useQueryClient();
-  const me = useMe().data;
-  const user = useMemo(() => userScope(me), [me]);
-  const precisionOf = useCurrencyPrecision();
   const key = ["peek", E, id];
-  const q = useQuery({ queryKey: key, queryFn: ({ signal }) => api.get<Doc>(docPath(E, id), { titles: true }, signal) });
-  const [tab, setTab] = useState<"details" | "discussion">("details");
-  const sections = useMemo(() => formSections(meta).sections, [meta]);
-  const doc = q.data;
-
+  const record = useQuery({ queryKey: key, queryFn: ({ signal }) => api.get<Doc>(docPath(E, id), { titles: true }, signal) });
   const save = async (name: string, value: unknown) => {
     try {
-      const next = await api.patch<Doc>(docPath(E, id), { [name]: value }, { ifMatch: Number(doc?.version) });
+      const next = await api.patch<Doc>(docPath(E, id), { [name]: value }, { ifMatch: Number(record.data?.version) });
       qc.setQueryData(key, (old: Doc | undefined) => ({ ...next, _titles: { ...old?._titles, ...next._titles } }));
       void qc.invalidateQueries({ queryKey: key });
       void qc.invalidateQueries({ queryKey: ["list", E] });
@@ -127,8 +121,52 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
       } else toast(errorMessage(e), "error");
     }
   };
+  return { record, save };
+}
 
-  const locked = (doc?.docstatus ?? 0) !== 0;
+/** A record's sections (or just the named ones), each field changing where it stands. */
+export function RecordFields({ meta, doc, save, only }: { meta: EntityMeta; doc: Doc; save: (name: string, value: unknown) => Promise<void>; only?: string[] }) {
+  const me = useMe().data;
+  const user = useMemo(() => userScope(me), [me]);
+  const precisionOf = useCurrencyPrecision();
+  const sections = useMemo(() => formSections(meta).sections, [meta]);
+  const locked = (doc.docstatus ?? 0) !== 0;
+  return (
+    <>
+      {sections
+        .filter((s) => (!only || (s.label && only.includes(s.label))) && (!s.visibleIf || evaluate(s.visibleIf, { doc, user }) !== false))
+        .map((s) => {
+          const fields = s.fields.filter((f) => f.type !== "table");
+          if (!fields.length) return null;
+          return (
+            <section key={s.key} className="peek-section">
+              {s.label && <h3>{s.label}</h3>}
+              <dl>
+                {fields.map((f) => (
+                  <PeekField
+                    key={f.name}
+                    meta={meta}
+                    field={f}
+                    doc={doc}
+                    locked={locked}
+                    user={user}
+                    precision={f.type === "currency" && f.currency && !f.currency.includes(".") ? precisionOf(doc[f.currency]) : undefined}
+                    save={save}
+                  />
+                ))}
+              </dl>
+            </section>
+          );
+        })}
+    </>
+  );
+}
+
+export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string; onClose: () => void }) {
+  const E = meta.name;
+  const { record: q, save } = useRecord(meta, id);
+  const [tab, setTab] = useState<"details" | "discussion">("details");
+  const doc = q.data;
   return (
     <aside className="peek" aria-label={doc ? recordTitle(meta, doc) : `${meta.label} details`}>
       <header className="peek-head">
@@ -158,31 +196,7 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
         ) : tab === "discussion" ? (
           <CollabPanel entity={E} id={id} canWrite={can(meta.permissions, "write")} />
         ) : (
-          sections
-            .filter((s) => !s.visibleIf || evaluate(s.visibleIf, { doc, user }) !== false)
-            .map((s) => {
-              const fields = s.fields.filter((f) => f.type !== "table");
-              if (!fields.length) return null;
-              return (
-                <section key={s.key} className="peek-section">
-                  {s.label && <h3>{s.label}</h3>}
-                  <dl>
-                    {fields.map((f) => (
-                      <PeekField
-                        key={f.name}
-                        meta={meta}
-                        field={f}
-                        doc={doc}
-                        locked={locked}
-                        user={user}
-                        precision={f.type === "currency" && f.currency && !f.currency.includes(".") ? precisionOf(doc[f.currency]) : undefined}
-                        save={save}
-                      />
-                    ))}
-                  </dl>
-                </section>
-              );
-            })
+          <RecordFields meta={meta} doc={doc} save={save} />
         )}
       </div>
     </aside>

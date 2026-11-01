@@ -76,7 +76,9 @@ export interface ActionDef {
 export interface ActionParam {
   name: string;
   label: string;
-  type: "data" | "text" | "select" | "int" | "date";
+  type: "data" | "text" | "select" | "int" | "date" | "link";
+  /** The entity a `link` parameter picks a record of. */
+  to?: string;
   options?: string[];
   required?: boolean;
   description?: string | null;
