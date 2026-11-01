@@ -29,6 +29,7 @@ import { pageState, togglePage, toggleRow } from "./list/bulk";
 import { BulkBar, SelectBox } from "./list/BulkBar";
 import { ColumnChooser, ColumnResizer } from "./list/ColumnChooser";
 import { FilterChips } from "./list/FilterBar";
+import { ImportDialog } from "./list/ImportDialog";
 import { RecordPeek } from "./list/RecordPeek";
 import { SavedViews } from "./list/SavedViews";
 import {
@@ -172,6 +173,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     });
 
   const [search, setSearch] = useState(q);
+  const [importing, setImporting] = useState(false);
   const debounced = useDebounced(search, 300);
   useEffect(() => setSearch(q), [q]);
   useEffect(() => {
@@ -376,6 +378,11 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           {can(meta.permissions, "export") && (
             <Button icon="download" onClick={() => void exportCsv()}>
               Export CSV
+            </Button>
+          )}
+          {can(meta.permissions, "import") && canCreate && (
+            <Button icon="upload" onClick={() => setImporting(true)}>
+              Import
             </Button>
           )}
           {canCreate && (
@@ -608,6 +615,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       </div>
       </div>
       {peek && <RecordPeek key={peek} meta={meta} id={peek} onClose={() => setPeek(null)} />}
+      {importing && <ImportDialog meta={meta} onClose={() => setImporting(false)} />}
     </div>
   );
 }
