@@ -5,7 +5,7 @@
 
 import { parseApiError } from "./errors";
 
-export { ApiError, errorMessage, parseApiError, type FieldError } from "./errors";
+export { ApiError, errorMessage, parseApiError, refusal, type FieldError } from "./errors";
 export {
   compareDecimal,
   formatDate,
