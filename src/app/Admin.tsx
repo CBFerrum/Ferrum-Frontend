@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import { api, ApiError, errorMessage, saveBlob, type FieldError } from "../lib/api";
+import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
@@ -141,6 +141,7 @@ function PersonalData() {
   };
   const nothing = found && !found.records.length && !found.account;
   return (
+    <>
     <section className="card">
       <div className="card-head">
         <h2>Personal data</h2>
@@ -218,6 +219,23 @@ function PersonalData() {
         )}
       </div>
     </section>
+    <section className="card">
+      <div className="card-head">
+        <h2>Evidence for a review</h2>
+      </div>
+      <div className="card-pad stack">
+        <p className="muted">
+          What a reviewer asks for, read from the system now: who can reach what, who outside the workspace is involved, what happens to personal data, and whether its
+          history is whole. These are facts, not a claim that the workspace meets any standard. Taking a copy is recorded.
+        </p>
+        <div className="row">
+          <Button icon="download" onClick={() => downloadFile("/api/admin/evidence", "evidence.json").catch((e) => toast(errorMessage(e), "error"))}>
+            Download the evidence pack
+          </Button>
+        </div>
+      </div>
+    </section>
+    </>
   );
 }
 
