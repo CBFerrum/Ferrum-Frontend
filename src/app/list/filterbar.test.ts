@@ -12,6 +12,20 @@ describe("filter chips", () => {
     expect(chipText(field("select"), "Open")).toBe("Open");
   });
 
+  it("name the word a filter uses", () => {
+    expect(chipText(field("date"), "@last_30")).toBe("Last 30 days");
+    expect(chipText(field("link"), "@empty")).toBe("is empty");
+    expect(chipText(field("select"), "@set")).toBe("has a value");
+  });
+
+  it("say how a number is compared", () => {
+    expect(chipText(field("currency"), ">=100")).toBe("at least 100");
+    expect(chipText(field("int"), "<5")).toBe("under 5");
+    expect(chipText(field("decimal"), "1..2")).toBe("1 – 2");
+    expect(chipText(field("decimal"), "..2")).toBe("at most 2");
+    expect(chipText(field("int"), "7")).toBe("7");
+  });
+
   it("show a date range by which ends it has", () => {
     expect(chipText(field("date"), "2026-01-01..2026-01-31")).toBe("2026-01-01 – 2026-01-31");
     expect(chipText(field("date"), "2026-01-01..2026-01-01")).toBe("2026-01-01");

@@ -113,6 +113,7 @@ export function useRecord(meta: EntityMeta, id: string) {
       qc.setQueryData(key, (old: Doc | undefined) => ({ ...next, _titles: { ...old?._titles, ...next._titles } }));
       void qc.invalidateQueries({ queryKey: key });
       void qc.invalidateQueries({ queryKey: ["list", E] });
+      void qc.invalidateQueries({ queryKey: ["view", E] });
     } catch (e) {
       // What was on screen is out of date: show what is true now rather than the failed edit.
       if (e instanceof ApiError && (e.status === 409 || e.status === 412)) {

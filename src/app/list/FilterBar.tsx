@@ -5,17 +5,29 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { joinRange, splitRange, type FilterState } from "../../lib/filters";
+import { EMPTY, isWord, joinNumber, joinRange, PERIODS, SET, splitNumber, splitRange, type FilterState } from "../../lib/filters";
 import type { Field } from "../../lib/meta";
 import { Field as FieldWrap, Icon, useDebounced } from "../../ui/kit";
 import { LinkInput, useLinkTitle } from "../widgets";
 
+const NUMBERS = new Set(["int", "decimal", "currency", "percent"]);
+const NUMBER_WORDS: Record<string, string> = { ">=": "at least", "<=": "at most", ">": "over", "<": "under" };
+
 /** The filters a chip shows in its text, from `f.<field>`. */
 export function chipText(f: Field, value: string): string {
+  if (value === EMPTY) return "is empty";
+  if (value === SET) return "has a value";
   if (f.type === "check") return value === "1" ? "Yes" : "No";
   if (f.type === "date" || f.type === "datetime") {
+    const word = PERIODS.find(([k]) => k === value);
+    if (word) return word[1];
     const [from, to] = splitRange(value);
     return from && to ? (from === to ? from : `${from} – ${to}`) : from ? `from ${from}` : to ? `until ${to}` : "";
+  }
+  if (NUMBERS.has(f.type)) {
+    const { op, a, b } = splitNumber(value);
+    if (op === "..") return a && b ? `${a} – ${b}` : a ? `at least ${a}` : b ? `at most ${b}` : "";
+    return op === "=" ? a : `${NUMBER_WORDS[op]} ${a}`;
   }
   return value;
 }
@@ -26,7 +38,7 @@ function LinkText({ to, id }: { to: string; id: string }) {
 
 /** The value in a chip; a link shows the linked record's title. */
 function ChipValue({ field: f, value }: { field: Field; value: string }): ReactNode {
-  return f.type === "link" ? <LinkText to={f.to ?? ""} id={value} /> : chipText(f, value);
+  return f.type === "link" && !isWord(value) ? <LinkText to={f.to ?? ""} id={value} /> : chipText(f, value);
 }
 
 export function FilterControl({ field: f, value, onChange }: { field: Field; value: string; onChange: (v: string) => void }) {
@@ -58,24 +70,80 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
     case "link":
       return (
         <FieldWrap label={f.label} htmlFor={id}>
-          <LinkInput to={f.to ?? ""} id={id} value={value || null} linkFilters={f.link_filters} placeholder="Any" onChange={(v) => onChange(v ?? "")} />
+          <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} placeholder="Any" onChange={(v) => onChange(v ?? "")} />
         </FieldWrap>
       );
     case "date":
     case "datetime": {
-      const [from, to] = splitRange(value);
+      const [from, to] = isWord(value) ? ["", ""] : splitRange(value);
       return (
         <FieldWrap label={f.label} htmlFor={id}>
           <div className="range">
             <input id={id} className="input" type="date" aria-label={`${f.label} from`} value={from} onChange={(e) => onChange(joinRange(e.target.value, to))} />
             <input className="input" type="date" aria-label={`${f.label} to`} value={to} onChange={(e) => onChange(joinRange(from, e.target.value))} />
           </div>
+          <div className="filter-words" role="group" aria-label="Periods">
+            {PERIODS.map(([word, label]) => (
+              <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(word)}>
+                {label}
+              </button>
+            ))}
+          </div>
         </FieldWrap>
       );
     }
+    case "int":
+    case "decimal":
+    case "currency":
+    case "percent":
+      return <NumberFilter id={id} label={f.label} value={isWord(value) ? "" : value} onChange={onChange} />;
     default:
-      return <TextFilter id={id} label={f.label} value={value} onChange={onChange} />;
+      return <TextFilter id={id} label={f.label} value={isWord(value) ? "" : value} onChange={onChange} />;
   }
+}
+
+/** Whether the field holds anything: a filter every field can take, under its own control. */
+function Presence({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="filter-words" role="group" aria-label="Whether it has a value">
+      {[
+        [EMPTY, "Is empty"],
+        [SET, "Has a value"],
+      ].map(([word, label]) => (
+        <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(value === word ? "" : word)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function NumberFilter({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
+  const parsed = splitNumber(value);
+  const [op, setOp] = useState(parsed.op);
+  const [a, setA] = useState(parsed.a);
+  const [b, setB] = useState(parsed.b);
+  const [da, db] = [useDebounced(a, 300), useDebounced(b, 300)];
+  useEffect(() => {
+    const next = joinNumber(op, da, db);
+    if (next !== value) onChange(next);
+  }, [op, da, db]); // react to what was typed, not to the value it becomes
+  return (
+    <FieldWrap label={label} htmlFor={id}>
+      <div className="range">
+        <select className="select" aria-label={`How to compare ${label}`} value={op} onChange={(e) => setOp(e.target.value)}>
+          <option value="=">Is</option>
+          <option value=">=">At least</option>
+          <option value="<=">At most</option>
+          <option value=">">Over</option>
+          <option value="<">Under</option>
+          <option value="..">Between</option>
+        </select>
+        <input id={id} className="input" inputMode="decimal" autoComplete="off" aria-label={op === ".." ? `${label} from` : label} value={a} onChange={(e) => setA(e.target.value)} />
+        {op === ".." && <input className="input" inputMode="decimal" autoComplete="off" aria-label={`${label} to`} value={b} onChange={(e) => setB(e.target.value)} />}
+      </div>
+    </FieldWrap>
+  );
 }
 
 function TextFilter({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
@@ -108,6 +176,7 @@ function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: s
         </PopoverTrigger>
         <PopoverContent align="start" className="chip-popover">
           <FilterControl field={field} value={value} onChange={onChange} />
+          {field.type !== "check" && <Presence value={value} onChange={onChange} />}
         </PopoverContent>
       </Popover>
       <button type="button" className="chip-x" aria-label={`Remove the ${field.label} filter`} onClick={() => onChange("")}>

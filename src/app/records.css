@@ -560,3 +560,33 @@ button.peek-value:hover {
     min-width: 200px; /* the dense grid (tablets) keeps some room for the text */
   }
 }
+
+/* The words a filter can use instead of a value. */
+.filter-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.filter-word {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.filter-word:hover {
+  color: var(--foreground);
+}
+.filter-word[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--foreground);
+}
+
+/* The record open beside a view. */
+.board-card[data-peeked],
+.cal-item[data-peeked] {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
