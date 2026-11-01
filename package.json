@@ -37,6 +37,7 @@
     "lib0": "0.2.119",
     "livekit-client": "2.22.4",
     "lucide-react": "1.57.0",
+    "pdfjs-dist": "6.4.299",
     "radix-ui": "1.8.1",
     "react": "19.2.9",
     "react-day-picker": "10.0.2",
