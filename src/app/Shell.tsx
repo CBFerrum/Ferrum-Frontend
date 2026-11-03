@@ -201,11 +201,16 @@ function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const TopBar = frameMode === "classic" ? "header" : "div";
+
   return (
     <div className="shell" data-nav-open={navOpen}>
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
+      {/* Under the platform's bar, the bar has the skip link, inside its banner. */}
+      {frameMode === "classic" && (
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+      )}
       {/* Any link closes the drawer, the current page's too (its path does not change). */}
       <aside className="sidebar" aria-label="Sidebar" onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
@@ -218,8 +223,9 @@ function Shell() {
       </aside>
       <div className="scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
       <div className="main-col">
-        {/* Under the platform's bar the frame's own bar only opens the sidebar on a phone. */}
-        <header className={frameMode === "classic" ? "topbar" : "topbar topbar-nav-only"}>
+        {/* Under the platform's bar the frame's own bar only opens the sidebar on a phone, and the platform's
+            bar is the page's one banner. */}
+        <TopBar className={frameMode === "classic" ? "topbar" : "topbar topbar-nav-only"}>
           <button type="button" className="icon-btn nav-toggle" aria-label="Open navigation" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
             <Icon name="menu" size={18} />
           </button>
@@ -228,7 +234,7 @@ function Shell() {
           {/* Under the platform's bar, notifications and the account are the bar's. */}
           {frameMode === "classic" && <Notifications />}
           {frameMode === "classic" && <UserMenu />}
-        </header>
+        </TopBar>
         <OfflineBanner />
         <UpdateBanner />
         <main id="main" tabIndex={-1}>
