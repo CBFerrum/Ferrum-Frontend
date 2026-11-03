@@ -1458,6 +1458,10 @@ function Webhooks() {
 interface SsoProvider {
   id: string;
   label: string;
+  protocol: "oidc" | "saml";
+  /** SAML: the metadata as given, XML or the address it is published at. */
+  saml_metadata: string | null;
+  /** OpenID Connect: the issuer; SAML: the provider's entity ID. */
   issuer: string;
   client_id: string;
   has_secret: boolean;
@@ -1468,9 +1472,19 @@ interface SsoProvider {
   linked_users: number;
 }
 
+/** This workspace as SAML providers know it; none when the server cannot do SAML. */
+interface SamlServiceProvider {
+  entity_id: string;
+  acs_url: string;
+  metadata_url: string;
+}
+
 function SingleSignOn() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["admin", "sso"], queryFn: ({ signal }) => api.get<{ providers: SsoProvider[] }>("/api/admin/sso", undefined, signal) });
+  const q = useQuery({
+    queryKey: ["admin", "sso"],
+    queryFn: ({ signal }) => api.get<{ providers: SsoProvider[]; saml: SamlServiceProvider | null }>("/api/admin/sso", undefined, signal),
+  });
   const roles = useRoles();
   const [editing, setEditing] = useState<SsoProvider | "new" | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "sso"] });
@@ -1483,14 +1497,22 @@ function SingleSignOn() {
     });
     if (ok && (await attempt(() => api.del(`/api/admin/sso/${p.id}`), "Provider removed"))) void refresh();
   };
-  const copy = async () => {
+  const copy = async (value: string, what: string) => {
     try {
-      await navigator.clipboard.writeText(ssoRedirectUri());
-      toast("Redirect URI copied");
+      await navigator.clipboard.writeText(value);
+      toast(`${what} copied`);
     } catch {
-      toast("Copy the address manually", "error");
+      toast("Copy it manually", "error");
     }
   };
+  const copyable = (value: string, what: string) => (
+    <div className="row" style={{ flexWrap: "nowrap" }}>
+      <input className="input mono" readOnly value={value} aria-label={what} onFocus={(e) => e.currentTarget.select()} />
+      <Button icon="copy" onClick={() => void copy(value, what)} aria-label={`Copy the ${what.toLowerCase()}`}>
+        Copy
+      </Button>
+    </div>
+  );
 
   return (
     <section className="card">
@@ -1506,12 +1528,18 @@ function SingleSignOn() {
           People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a
           web application with this redirect URI, then add the provider here with the client ID and secret it gives you.
         </p>
-        <div className="row" style={{ flexWrap: "nowrap" }}>
-          <input className="input mono" readOnly value={ssoRedirectUri()} aria-label="Redirect URI" onFocus={(e) => e.currentTarget.select()} />
-          <Button icon="copy" onClick={() => void copy()}>
-            Copy
-          </Button>
-        </div>
+        {copyable(ssoRedirectUri(), "Redirect URI")}
+        {q.data?.saml && (
+          <>
+            <p className="muted">
+              Or through a SAML 2.0 identity provider (AD FS, Entra ID, Okta, OneLogin, PingFederate, Keycloak…): give it this workspace's metadata address, or its
+              entity ID and assertion consumer service, then add the provider here with its metadata.
+            </p>
+            {copyable(q.data.saml.metadata_url, "Metadata address")}
+            {copyable(q.data.saml.entity_id, "Entity ID")}
+            {copyable(q.data.saml.acs_url, "Assertion consumer service")}
+          </>
+        )}
       </div>
       <Loaded q={q}>
         {(data) =>
@@ -1538,7 +1566,7 @@ function SingleSignOn() {
                   {data.providers.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        {p.label} {!p.enabled && <Badge tone="red">disabled</Badge>}
+                        {p.label} {p.protocol === "saml" && <Badge tone="purple">SAML</Badge>} {!p.enabled && <Badge tone="red">disabled</Badge>}
                       </td>
                       <td className="mono" style={{ overflowWrap: "anywhere" }}>
                         {p.issuer}
@@ -1573,6 +1601,7 @@ function SingleSignOn() {
       {editing && (
         <SsoProviderDialog
           provider={editing === "new" ? null : editing}
+          saml={Boolean(q.data?.saml)}
           roles={(roles.data?.roles ?? []).map((r) => r.name)}
           onClose={() => setEditing(null)}
           onDone={() => {
@@ -1585,9 +1614,24 @@ function SingleSignOn() {
   );
 }
 
-function SsoProviderDialog({ provider, roles, onClose, onDone }: { provider: SsoProvider | null; roles: string[]; onClose: () => void; onDone: () => void }) {
+function SsoProviderDialog({
+  provider,
+  saml,
+  roles,
+  onClose,
+  onDone,
+}: {
+  provider: SsoProvider | null;
+  /** Whether the server can do SAML. */
+  saml: boolean;
+  roles: string[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [form, setForm] = useState({
     label: provider?.label ?? "",
+    protocol: provider?.protocol ?? "oidc",
+    saml_metadata: provider?.saml_metadata ?? "",
     issuer: provider?.issuer ?? "",
     client_id: provider?.client_id ?? "",
     secret: "",
@@ -1606,12 +1650,15 @@ function SsoProviderDialog({ provider, roles, onClose, onDone }: { provider: Sso
     setBusy(true);
     setErrors([]);
     setError(null);
+    const isSaml = form.protocol === "saml";
     const body = {
       label: form.label.trim(),
-      issuer: form.issuer.trim(),
-      client_id: form.client_id.trim(),
+      protocol: form.protocol,
+      issuer: isSaml ? undefined : form.issuer.trim(),
+      client_id: isSaml ? undefined : form.client_id.trim(),
+      saml_metadata: isSaml ? form.saml_metadata.trim() : undefined,
       // Left empty, an existing secret stays as it is.
-      client_secret: form.noSecret ? "" : form.secret ? form.secret : undefined,
+      client_secret: isSaml ? undefined : form.noSecret ? "" : form.secret ? form.secret : undefined,
       domains: form.domains.split(/[\s,]+/).filter(Boolean),
       auto_create: form.auto_create,
       default_roles: form.auto_create ? form.default_roles : [],
@@ -1636,6 +1683,40 @@ function SsoProviderDialog({ provider, roles, onClose, onDone }: { provider: Sso
         <FieldWrap label="Name" htmlFor="sso-label" required error={fieldError("label")} hint="On the sign-in button: “Continue with …”.">
           <input id="sso-label" className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} maxLength={60} required />
         </FieldWrap>
+        {(saml || provider?.protocol === "saml") && (
+          <fieldset className="stack" disabled={Boolean(provider)}>
+            <legend>Protocol</legend>
+            <label className="check-field">
+              <input type="radio" name="sso-protocol" checked={form.protocol === "oidc"} onChange={() => setForm({ ...form, protocol: "oidc" })} />
+              OpenID Connect
+            </label>
+            <label className="check-field">
+              <input type="radio" name="sso-protocol" checked={form.protocol === "saml"} onChange={() => setForm({ ...form, protocol: "saml" })} />
+              SAML 2.0
+            </label>
+            {fieldError("protocol") && <p className="field-error">{fieldError("protocol")}</p>}
+          </fieldset>
+        )}
+        {form.protocol === "saml" ? (
+          <FieldWrap
+            label="Identity provider metadata"
+            htmlFor="sso-metadata"
+            required
+            error={fieldError("saml_metadata")}
+            hint="Paste its metadata XML, or the https address it publishes it at (read again at each sign-in, so a new signing certificate is picked up). It must hold a signing certificate."
+          >
+            <textarea
+              id="sso-metadata"
+              className="input mono"
+              rows={6}
+              value={form.saml_metadata}
+              onChange={(e) => setForm({ ...form, saml_metadata: e.target.value })}
+              placeholder="https://… or <EntityDescriptor …>"
+              required
+            />
+          </FieldWrap>
+        ) : (
+          <>
         <FieldWrap label="Issuer URL" htmlFor="sso-issuer" required error={fieldError("issuer")} hint="Its discovery document is read from here, e.g. https://login.microsoftonline.com/<tenant>/v2.0 or https://acme.okta.com.">
           <input
             id="sso-issuer"
@@ -1672,11 +1753,18 @@ function SsoProviderDialog({ provider, roles, onClose, onDone }: { provider: Sso
           <input type="checkbox" checked={form.noSecret} onChange={(e) => setForm({ ...form, noSecret: e.target.checked, secret: "" })} />
           No client secret (a public client: PKCE only)
         </label>
+          </>
+        )}
         <FieldWrap
           label="Email domains"
           htmlFor="sso-domains"
           error={fieldError("domains")}
-          hint="Separated by commas. Only these addresses sign in through it; leave empty to accept any address the provider has verified. Providers that do not say whether they verified an address (Microsoft Entra ID) need the domains listed."
+          required={form.protocol === "saml"}
+          hint={
+            form.protocol === "saml"
+              ? "Separated by commas. Only these addresses sign in through it: SAML never says whether an address was checked, so the domains are required."
+              : "Separated by commas. Only these addresses sign in through it; leave empty to accept any address the provider has verified. Providers that do not say whether they verified an address (Microsoft Entra ID) need the domains listed."
+          }
         >
           <input id="sso-domains" className="input mono" value={form.domains} onChange={(e) => setForm({ ...form, domains: e.target.value })} placeholder="example.com" />
         </FieldWrap>
