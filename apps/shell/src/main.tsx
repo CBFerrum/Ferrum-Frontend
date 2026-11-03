@@ -70,6 +70,11 @@ const pages: Record<string, RouteObject[]> = {
   ],
   admin: [{ index: true, lazy: () => import("@/app/Admin").then((m) => ({ Component: m.AdminPage })) }, ...toRecord],
   account: [{ index: true, lazy: () => import("./Account").then((m) => ({ Component: m.AccountPage })) }, ...toRecord],
+  help: [
+    { index: true, lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpPage })) },
+    { path: ":entity", lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpArticle })) },
+    ...toRecord,
+  ],
   data: [
     { index: true, element: <DataIndex /> },
     { path: "e/:entity", lazy: () => import("@/app/ListView").then((m) => ({ Component: m.ListView })) },
