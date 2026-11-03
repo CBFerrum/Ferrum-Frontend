@@ -1,4 +1,4 @@
-// The help center (/help/): every record type the viewer may read, explained from its own
+// The help center (/data/help/): every record type the viewer may read, explained from its own
 // definition, so it is right for this workspace's apps, customizations and permissions. Searching
 // finds a record type by its names, its module and what it is for; its page says what it is for,
 // how it moves from draft to done, what each field means, what each action does and the rules
@@ -54,7 +54,7 @@ export function HelpPage() {
             <ul>
               {list.map(({ entity }) => (
                 <li key={entity.name}>
-                  <Link to={`/${encodeURIComponent(entity.name)}`}>{entity.label_plural}</Link>
+                  <Link to={`/help/${encodeURIComponent(entity.name)}`}>{entity.label_plural}</Link>
                   {entity.description ? <span className="muted"> — {entity.description}</span> : null}
                 </li>
               ))}
@@ -86,7 +86,7 @@ export function HelpArticle() {
   return (
     <article className="help-article">
       <p>
-        <Link to="/">
+        <Link to="/help">
           <Icon name="left" size={14} /> Help
         </Link>
       </p>
