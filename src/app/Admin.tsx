@@ -1505,12 +1505,15 @@ function SingleSignOn() {
       toast("Copy it manually", "error");
     }
   };
-  const copyable = (value: string, what: string) => (
-    <div className="row" style={{ flexWrap: "nowrap" }}>
-      <input className="input mono" readOnly value={value} aria-label={what} onFocus={(e) => e.currentTarget.select()} />
-      <Button icon="copy" onClick={() => void copy(value, what)} aria-label={`Copy the ${what.toLowerCase()}`}>
-        Copy
-      </Button>
+  const copyable = (value: string, what: string, label?: string) => (
+    <div className="stack" style={{ gap: 4 }}>
+      {label && <span className="field-label">{label}</span>}
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <input className="input mono" readOnly value={value} aria-label={what} onFocus={(e) => e.currentTarget.select()} />
+        <Button icon="copy" onClick={() => void copy(value, what)} aria-label={`Copy the ${what.toLowerCase()}`}>
+          Copy
+        </Button>
+      </div>
     </div>
   );
 
@@ -1528,16 +1531,16 @@ function SingleSignOn() {
           People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a
           web application with this redirect URI, then add the provider here with the client ID and secret it gives you.
         </p>
-        {copyable(ssoRedirectUri(), "Redirect URI")}
+        {copyable(ssoRedirectUri(), "Redirect URI", q.data?.saml ? "Redirect URI (OpenID Connect)" : undefined)}
         {q.data?.saml && (
           <>
             <p className="muted">
               Or through a SAML 2.0 identity provider (AD FS, Entra ID, Okta, OneLogin, PingFederate, Keycloak…): give it this workspace's metadata address, or its
               entity ID and assertion consumer service, then add the provider here with its metadata.
             </p>
-            {copyable(q.data.saml.metadata_url, "Metadata address")}
-            {copyable(q.data.saml.entity_id, "Entity ID")}
-            {copyable(q.data.saml.acs_url, "Assertion consumer service")}
+            {copyable(q.data.saml.metadata_url, "Metadata address", q.data.saml.metadata_url === q.data.saml.entity_id ? "Metadata address, also its entity ID" : "Metadata address")}
+            {q.data.saml.metadata_url !== q.data.saml.entity_id && copyable(q.data.saml.entity_id, "Entity ID", "Entity ID")}
+            {copyable(q.data.saml.acs_url, "Assertion consumer service", "Assertion consumer service (HTTP-POST)")}
           </>
         )}
       </div>
@@ -1684,16 +1687,20 @@ function SsoProviderDialog({
           <input id="sso-label" className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} maxLength={60} required />
         </FieldWrap>
         {(saml || provider?.protocol === "saml") && (
-          <fieldset className="stack" disabled={Boolean(provider)}>
-            <legend>Protocol</legend>
-            <label className="check-field">
-              <input type="radio" name="sso-protocol" checked={form.protocol === "oidc"} onChange={() => setForm({ ...form, protocol: "oidc" })} />
-              OpenID Connect
-            </label>
-            <label className="check-field">
-              <input type="radio" name="sso-protocol" checked={form.protocol === "saml"} onChange={() => setForm({ ...form, protocol: "saml" })} />
-              SAML 2.0
-            </label>
+          <fieldset disabled={Boolean(provider)} style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend className="field-label" style={{ marginBottom: 6 }}>
+              Protocol
+            </legend>
+            <div className="row" style={{ gap: 16 }}>
+              <label className="row" style={{ gap: 8 }}>
+                <input type="radio" name="sso-protocol" checked={form.protocol === "oidc"} onChange={() => setForm({ ...form, protocol: "oidc" })} />
+                OpenID Connect
+              </label>
+              <label className="row" style={{ gap: 8 }}>
+                <input type="radio" name="sso-protocol" checked={form.protocol === "saml"} onChange={() => setForm({ ...form, protocol: "saml" })} />
+                SAML 2.0
+              </label>
+            </div>
             {fieldError("protocol") && <p className="field-error">{fieldError("protocol")}</p>}
           </fieldset>
         )}
@@ -1707,7 +1714,7 @@ function SsoProviderDialog({
           >
             <textarea
               id="sso-metadata"
-              className="input mono"
+              className="textarea mono"
               rows={6}
               value={form.saml_metadata}
               onChange={(e) => setForm({ ...form, saml_metadata: e.target.value })}
