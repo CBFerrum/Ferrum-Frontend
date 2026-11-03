@@ -54,6 +54,7 @@ import {
 } from "./list/settings";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue } from "./widgets";
+import { HelpLink } from "./HelpLink";
 
 const PAGE = 50;
 const noop = () => {};
@@ -380,7 +381,10 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       <div className="list-main">
       <div className="page-head">
         <div>
-          <h1 className="page-title">{meta.label_plural}</h1>
+          <h1 className="page-title">
+            {meta.label_plural}
+            <HelpLink meta={meta} />
+          </h1>
           <p className="page-sub" aria-live="polite">
             {view === "board"
               ? `Board by ${boardField!.label.toLowerCase()}`

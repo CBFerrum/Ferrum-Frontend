@@ -138,6 +138,8 @@ export interface EntitySummary {
   label_plural: string;
   kind: EntityMeta["kind"];
   module?: string | null;
+  /** What the record type is for (the server sends it from 0.3.x). */
+  description?: string | null;
   submittable: boolean;
   custom?: boolean;
   /** The package that owns it (`tenant` for custom entities). */
