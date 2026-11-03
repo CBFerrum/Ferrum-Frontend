@@ -37,6 +37,7 @@ import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
+import { HelpLink } from "./HelpLink";
 
 export function FormView() {
   const { entity = "", id = "" } = useParams();
@@ -626,7 +627,10 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <Link to={`/e/${E}`}>{meta.label_plural}</Link>
             <Icon name="chevronRight" size={12} />
           </div>
-          <h1 className="page-title">{heading}</h1>
+          <h1 className="page-title">
+            {heading}
+            <HelpLink meta={meta} />
+          </h1>
           {sub && <p className="page-sub">{sub}</p>}
           <div className="row" style={{ marginTop: 8 }}>
             {meta.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[docstatus])}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}

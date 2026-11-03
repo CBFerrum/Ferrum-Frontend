@@ -404,3 +404,15 @@ a.shell-work-link:focus-visible {
     display: none;
   }
 }
+
+/* The help center (/data/help/). */
+.help { max-width: 860px; }
+.help-search { display: flex; align-items: center; gap: 8px; margin: 12px 0 20px; padding: 8px 12px; border: 1px solid var(--border, #d1d5db); border-radius: 8px; }
+.help-search input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; }
+.help-module h2 { font-size: 1rem; margin: 20px 0 8px; }
+.help-module ul { list-style: none; padding: 0; margin: 0; }
+.help-module li { padding: 4px 0; }
+.help-article { max-width: 860px; }
+.help-article h2 { font-size: 1.05rem; margin: 24px 0 8px; }
+.help-lead { font-size: 1.05rem; }
+.help-fields td { vertical-align: top; }
