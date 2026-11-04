@@ -63,6 +63,8 @@ interface Plan {
     screenshots?: string[];
     /** Its interface runs isolated: a bundle the server does not trust, private to the workspace. */
     isolated?: boolean;
+    /** An industrial solution's equipment: what the app describes, not what anyone tried with it. */
+    equipment?: { connectors: string[]; profiles: { vendor: string; model: string; scheme: string }[]; acceptance: string[] };
   };
   steps: { id: string; version: string; action: "install" | "upgrade" | "already"; source: string }[];
   permissions: Permissions;
@@ -511,6 +513,22 @@ export function InstallDialog({
             </div>
           )}
           {p.app.description && <p className="comment-text">{p.app.description}</p>}
+          {p.app.equipment && (
+            <div>
+              <h3 className="field-label">Equipment it describes</h3>
+              <ul>
+                {p.app.equipment.profiles.map((e) => (
+                  <li key={`${e.vendor}|${e.model}|${e.scheme}`}>
+                    {e.vendor} {e.model} <span className="faint">({e.scheme})</span>
+                  </li>
+                ))}
+              </ul>
+              {p.app.equipment.acceptance.length > 0 && (
+                <p className="muted">{`Before a device of these is commissioned, it passes on site: ${p.app.equipment.acceptance.join(", ")}.`}</p>
+              )}
+              <p className="faint">What the app describes, not what anyone tried with it.</p>
+            </div>
+          )}
           {p.steps.filter((s) => s.action !== "already").length > 1 && (
             <div>
               <h3 className="field-label">Also installs</h3>
