@@ -314,7 +314,8 @@ export function size(bytes: number): string {
     n /= 1024;
     i++;
   }
-  return new Intl.NumberFormat(undefined, { style: "unit", unit: units[i], unitDisplay: "short", maximumFractionDigits: 1 }).format(n);
+  // Bytes are words ("0 bytes"); larger units their short forms ("1.5 kB").
+  return new Intl.NumberFormat(undefined, { style: "unit", unit: units[i], unitDisplay: i === 0 ? "long" : "short", maximumFractionDigits: 1 }).format(n);
 }
 
 function PlanAndUsage() {
@@ -357,6 +358,7 @@ function PlanAndUsage() {
 
 /** Its administrator closes the workspace, typing its name: read-only and kept for a while, then gone. */
 function CloseWorkspace() {
+  const qc = useQueryClient();
   const q = useUsage();
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -370,6 +372,8 @@ function CloseWorkspace() {
     try {
       const r = await api.post<{ retain_until: string }>("/api/admin/close", { confirm: typed });
       setClosed(r.retain_until);
+      // The plan's panel says the account is closed now.
+      await qc.invalidateQueries({ queryKey: ["admin", "usage"] });
     } catch (err) {
       toast(errorMessage(err), "error");
     } finally {
