@@ -169,8 +169,6 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
     try {
       await call();
       toast(done);
-      // A sync or comparison is queued: its tiles change once it has run.
-      if (what !== "test") for (const ms of [3000, 10000]) setTimeout(refresh, ms);
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -308,7 +306,12 @@ function AddConnection({ connector, onClose, onDone }: { connector: Connector; o
 export function Connections() {
   const qc = useQueryClient();
   const [adding, setAdding] = useState<Connector | null>(null);
-  const connections = useQuery({ queryKey: ["connections"], queryFn: ({ signal }) => api.get<{ connections: ConnectionRow[] }>("/api/admin/connections", undefined, signal), refetchInterval: 30_000 });
+  // Every few seconds while something waits to go (a queued sync or comparison), else twice a minute.
+  const connections = useQuery({
+    queryKey: ["connections"],
+    queryFn: ({ signal }) => api.get<{ connections: ConnectionRow[] }>("/api/admin/connections", undefined, signal),
+    refetchInterval: (q) => (q.state.data?.connections.some((c) => (c.health?.backlog ?? 0) > 0) ? 3000 : 30_000),
+  });
   const connectors = useQuery({ queryKey: ["connectors"], queryFn: ({ signal }) => api.get<{ connectors: Connector[] }>("/api/admin/connectors", undefined, signal) });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["connections"] });
   if (connections.error) return <ErrorState error={connections.error} onRetry={() => void connections.refetch()} />;
