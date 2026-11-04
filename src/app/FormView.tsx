@@ -609,7 +609,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     </>
   );
 
-  const titleValue = meta.title_field ? doc[meta.title_field] : null;
+  const titleValue = meta.title_field ? (doc._titles?.[meta.title_field] ?? doc[meta.title_field]) : null;
   const heading = isNew ? `New ${meta.label}` : doc.number ? String(doc.number) : recordTitle(meta, doc);
   const sub = !isNew && doc.number && titleValue ? String(titleValue) : null;
   const status = meta.fields.some((f) => f.name === "status") ? doc.status : null;
