@@ -1,7 +1,9 @@
 // The design system: small, accessible building blocks styled by styles.css.
 
 import {
+  cloneElement,
   Component,
+  isValidElement,
   useEffect,
   useId,
   useRef,
@@ -10,6 +12,7 @@ import {
   type ButtonHTMLAttributes,
   type ErrorInfo,
   type KeyboardEvent,
+  type ReactElement,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -138,9 +141,14 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  // A single control without an id gets one, so the label names it to assistive technology.
+  const auto = useId();
+  const only = !htmlFor && isValidElement<{ id?: string }>(children) && typeof children.type === "string" ? children : null;
+  const id = htmlFor ?? (only ? (only.props.id ?? auto) : undefined);
+  const control = only && !only.props.id ? cloneElement(only as ReactElement<{ id?: string }>, { id }) : children;
   return (
     <div className={`field ${error ? "field-invalid" : ""} ${className ?? ""}`}>
-      <label className="field-label" htmlFor={htmlFor}>
+      <label className="field-label" htmlFor={id}>
         {label}
         {required && (
           <span className="req" aria-hidden="true">
@@ -148,13 +156,13 @@ export function Field({
           </span>
         )}
       </label>
-      {children}
+      {control}
       {error ? (
-        <p className="field-error" id={htmlFor ? `${htmlFor}-error` : undefined}>
+        <p className="field-error" id={id ? `${id}-error` : undefined}>
           {error}
         </p>
       ) : hint ? (
-        <p className="field-hint" id={htmlFor ? `${htmlFor}-hint` : undefined}>
+        <p className="field-hint" id={id ? `${id}-hint` : undefined}>
           {hint}
         </p>
       ) : null}
