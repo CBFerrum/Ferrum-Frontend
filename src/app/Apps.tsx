@@ -78,13 +78,15 @@ const RUNTIME_LABEL = { native: "Built in", wasm: "Sandboxed", meta: "No code" }
 
 /** Words for a permission section key: `entities` → "Entities". */
 export function sectionLabel(key: string): string {
+  if (key === "native") return "Built into the server";
   const s = key.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** Lines describing one permission section, whatever its JSON shape. */
-export function permissionLines(value: unknown): string[] {
-  if (value == null) return [];
+export function permissionLines(value: unknown, key?: string): string[] {
+  if (value == null || value === false) return [];
+  if (value === true) return [key === "native" ? "It runs in the server itself, not in a sandbox" : "Yes"];
   if (Array.isArray(value)) return value.flatMap((v) => (typeof v === "object" && v ? [describeObject(v as Record<string, unknown>)] : [String(v)]));
   if (typeof value === "object") return Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : typeof v === "object" ? describeObject(v as Record<string, unknown>) : String(v)}`);
   return [String(value)];
@@ -99,7 +101,7 @@ function describeObject(o: Record<string, unknown>): string {
 }
 
 export function PermissionList({ permissions }: { permissions: Permissions }) {
-  const sections = Object.entries(permissions).filter(([, v]) => permissionLines(v).length > 0);
+  const sections = Object.entries(permissions).filter(([k, v]) => permissionLines(v, k).length > 0);
   if (!sections.length) return <p className="muted">This app asks for no access beyond its own records.</p>;
   return (
     <dl className="kv">
@@ -107,7 +109,7 @@ export function PermissionList({ permissions }: { permissions: Permissions }) {
         <div key={k}>
           <dt>{sectionLabel(k)}</dt>
           <dd>
-            {permissionLines(v).map((l) => (
+            {permissionLines(v, k).map((l) => (
               <div key={l}>{l}</div>
             ))}
           </dd>

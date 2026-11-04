@@ -17,12 +17,14 @@ describe("add-ons", () => {
 describe("permission summaries", () => {
   it("labels sections", () => {
     expect(sectionLabel("http_hosts")).toBe("Http hosts");
+    expect(sectionLabel("native")).toBe("Built into the server");
   });
   it("describes lists of grants, plain lists and maps", () => {
     expect(permissionLines([{ entity: "Customer", read: true, write: false, create: true }])).toEqual(["Customer — read, create"]);
     expect(permissionLines(["api.example.com"])).toEqual(["api.example.com"]);
     expect(permissionLines({ sockets: ["/ocpp/*"], public: true })).toEqual(["sockets: /ocpp/*", "public: true"]);
     expect(permissionLines(null)).toEqual([]);
+    expect([permissionLines(true, "native"), permissionLines(false, "native"), permissionLines(true, "other")]).toEqual([["It runs in the server itself, not in a sandbox"], [], ["Yes"]]);
     expect(permissionLines([{ path: "/status", public: true }])).toEqual(["/status — public"]);
   });
 });
