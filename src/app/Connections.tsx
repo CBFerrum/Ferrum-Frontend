@@ -116,7 +116,7 @@ function History({ id, onChange }: { id: string; onChange: () => void }) {
     <div className="stack">
       {q.data.streams.length > 0 && (
         <p className="muted">
-          {q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} records`).join(" · ")}
+          {q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} ${s.records === 1 ? "record" : "records"}`).join(" · ")}
         </p>
       )}
       {q.data.runs.length === 0 ? (
@@ -169,6 +169,8 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
     try {
       await call();
       toast(done);
+      // A sync or comparison is queued: its tiles change once it has run.
+      if (what !== "test") for (const ms of [3000, 10000]) setTimeout(refresh, ms);
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -193,7 +195,7 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
           <p className="muted">
             {connector?.label ?? c.provider}
             {connector?.api_version ? ` · API ${connector.api_version}` : ""}
-            {c.linked ? ` · ${c.linked.toLocaleString()} records linked` : ""}
+            {c.linked ? ` · ${c.linked.toLocaleString()} ${c.linked === 1 ? "record" : "records"} linked` : ""}
           </p>
         </div>
         <div className="row">
