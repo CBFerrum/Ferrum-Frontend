@@ -14,6 +14,7 @@ import {
   type RefObject,
 } from "react";
 import { errorMessage } from "../lib/api";
+import { t } from "../lib/i18n";
 
 // ── icons ──
 
@@ -281,7 +282,7 @@ export function TabPanel({ id, tab, children }: { id: string; tab: string; child
 
 // ── states ──
 
-export function PageLoading({ label = "Loading…" }: { label?: string }) {
+export function PageLoading({ label = t("Loading…") }: { label?: string }) {
   return (
     <div className="state">
       <Spinner label={label} />
@@ -302,7 +303,7 @@ export function EmptyState({ title, children, icon = "file" }: { title: string; 
   );
 }
 
-export function ErrorState({ error, onRetry, title = "Something went wrong" }: { error: unknown; onRetry?: () => void; title?: string }) {
+export function ErrorState({ error, onRetry, title = t("Something went wrong") }: { error: unknown; onRetry?: () => void; title?: string }) {
   return (
     <div className="state" role="alert">
       <span className="state-icon state-icon-error">
@@ -312,7 +313,7 @@ export function ErrorState({ error, onRetry, title = "Something went wrong" }: {
       <p className="muted">{errorMessage(error)}</p>
       {onRetry && (
         <Button icon="refresh" onClick={onRetry}>
-          Try again
+          {t("Try again")}
         </Button>
       )}
     </div>
@@ -422,9 +423,9 @@ export function ConfirmHost() {
       title={req?.title ?? ""}
       footer={
         <>
-          <Button onClick={() => close(false)}>{req?.cancelLabel ?? "Cancel"}</Button>
+          <Button onClick={() => close(false)}>{req?.cancelLabel ?? t("Cancel")}</Button>
           <Button variant={req?.danger ? "danger" : "primary"} data-autofocus onClick={() => close(true)}>
-            {req?.confirmLabel ?? "Confirm"}
+            {req?.confirmLabel ?? t("Confirm")}
           </Button>
         </>
       }

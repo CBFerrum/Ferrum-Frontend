@@ -4,7 +4,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { shell } from "@ferrum/client";
+import { LANGUAGES, shell, t } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
 import { TwoFactorSettings } from "@/app/TwoFactor";
@@ -343,6 +343,38 @@ export function Passkeys() {
   );
 }
 
+/** The person's own language for the interface (the `locale` preference), or the workspace's. */
+function Language() {
+  const q = useQuery({ queryKey: ["prefs"], queryFn: ({ signal }) => api.get<{ prefs: Record<string, { value: { language?: string } }> }>("/api/prefs", undefined, signal) });
+  const [busy, setBusy] = useState(false);
+  const mine = q.data?.prefs.locale?.value.language ?? "";
+  const choose = async (tag: string) => {
+    setBusy(true);
+    try {
+      if (tag) await api.put("/api/prefs/locale", { value: { language: tag } });
+      else await api.del("/api/prefs/locale");
+      // The page's words and direction come with it: it is read again.
+      location.reload();
+    } catch (e) {
+      toast(errorMessage(e), "error");
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row" style={{ gap: 8 }}>
+      <select className="select" aria-label={t("Language")} value={mine} disabled={busy || !q.data} onChange={(e) => void choose(e.target.value)}>
+        <option value="">The workspace&apos;s language</option>
+        {LANGUAGES.map((l) => (
+          <option key={l.tag} value={l.tag} lang={l.tag}>
+            {l.name}
+          </option>
+        ))}
+      </select>
+      {busy && <Spinner />}
+    </div>
+  );
+}
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section className="card" aria-labelledby={id}>
@@ -392,6 +424,10 @@ export function AccountPage() {
           </Section>
         </>
       )}
+      <Section id="acct-language" title={t("Language")}>
+        <p className="muted">The interface&apos;s words where they are translated, which way its pages read, and how numbers and dates are written.</p>
+        <Language />
+      </Section>
       <Section id="acct-devices" title="Signed-in browsers">
         <Devices />
       </Section>
