@@ -291,7 +291,8 @@ export const can = (p: Perms | undefined, key: PermKey) => !!p && p[key] !== "no
 /** Display title of a record: its title field, else its number, else a short id. */
 export function recordTitle(meta: Pick<EntityMeta, "title_field"> | undefined, row: Doc | undefined): string {
   if (!row) return "";
-  const t = meta?.title_field ? row[meta.title_field] : undefined;
+  // A link as the title shows the linked record's title, not its id.
+  const t = meta?.title_field ? (row._titles?.[meta.title_field] ?? row[meta.title_field]) : undefined;
   if (t !== undefined && t !== null && t !== "") return String(t);
   if (row.number) return String(row.number);
   return shortId(row.id);
