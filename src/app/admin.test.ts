@@ -11,7 +11,7 @@ describe("permission conditions", () => {
 
 describe("sizes", () => {
   it("reads as the largest unit under 1024", () => {
-    expect(size(0)).toMatch(/^0\s?byte/);
+    expect(size(0)).toMatch(/^0\s?bytes$/);
     expect(size(1536)).toMatch(/^1\.5\s?kB/);
     expect(size(10 * 1024 ** 3)).toMatch(/^10\s?GB/);
   });
