@@ -4,7 +4,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
-import { connectionFacts, type ConnectionHealth } from "../lib/connections";
+import { ago, connectionFacts, type ConnectionHealth, type Run, runWords } from "../lib/connections";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 
 interface Connector {
@@ -88,8 +88,80 @@ function Differences({ id, onChange }: { id: string; onChange: () => void }) {
   );
 }
 
+/** What the connection did lately (each read, send and comparison, and how it went) with a failed
+ * one tried again, and how many records each stream links. */
+function History({ id, onChange }: { id: string; onChange: () => void }) {
+  const q = useQuery({
+    queryKey: ["connection-activity", id],
+    queryFn: ({ signal }) => api.get<{ runs: Run[]; streams: { stream: string; entity: string; records: number; last_synced?: string | null }[] }>(`/api/admin/connections/${id}/activity`, undefined, signal),
+  });
+  const [busy, setBusy] = useState<string | null>(null);
+  if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  if (!q.data) return <PageLoading />;
+  const again = async (r: Run) => {
+    setBusy(r.id);
+    try {
+      await api.post(`/api/jobs/${r.id}/retry`, {});
+      toast("Tried again");
+      await q.refetch();
+      onChange();
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const now = new Date();
+  return (
+    <div className="stack">
+      {q.data.streams.length > 0 && (
+        <p className="muted">
+          {q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} records`).join(" · ")}
+        </p>
+      )}
+      {q.data.runs.length === 0 ? (
+        <p className="muted">It has done nothing yet.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>What</th>
+              <th>How it went</th>
+              <th>When</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {q.data.runs.map((r) => {
+              const w = runWords(r);
+              return (
+                <tr key={r.id}>
+                  <td>{w.what}</td>
+                  <td>
+                    <Badge tone={w.tone}>{r.status}</Badge>
+                    {r.last_error ? <span className="muted"> {r.last_error}</span> : null}
+                  </td>
+                  <td>{ago(r.finished_at ?? r.created_at, now)}</td>
+                  <td className="num">
+                    {w.again && (
+                      <Button size="sm" loading={busy === r.id} onClick={() => void again(r)}>
+                        Try again
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector?: Connector; refresh: () => void }) {
   const [showing, setShowing] = useState(false);
+  const [history, setHistory] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const facts = connectionFacts(c.health, new Date());
   const run = async (what: string, call: () => Promise<unknown>, done: string) => {
@@ -156,6 +228,12 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
           {showing && <Differences id={c.id} onChange={refresh} />}
         </div>
       )}
+      <div className="connection-more">
+        <button type="button" className="link-btn" aria-expanded={history} onClick={() => setHistory((s) => !s)}>
+          {history ? "Hide what it did" : "See what it did lately"}
+        </button>
+        {history && <History id={c.id} onChange={refresh} />}
+      </div>
       {!!connector?.capabilities?.length && (
         <div className="connection-can">
           <span className="faint">Can</span>

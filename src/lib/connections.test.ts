@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, connectionFacts } from "./connections";
+import { ago, connectionFacts, runWords } from "./connections";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const fact = (facts: ReturnType<typeof connectionFacts>, label: string) => facts.find((f) => f.label === label)!;
@@ -43,5 +43,14 @@ describe("how long ago", () => {
     expect(ago("2026-11-01T11:59:00Z", now)).toBe("1 minute ago");
     expect(ago("2026-11-01T09:00:00Z", now)).toBe("3 hours ago");
     expect(ago("2026-10-31T12:00:00Z", now)).toBe("1 day ago");
+  });
+});
+
+describe("what a connection did", () => {
+  it("says each run in words, and which can be tried again", () => {
+    const run = (kind: string, status: string, stream?: string) => ({ id: "1", kind, status, stream, created_at: "2026-11-05T01:00:00Z" });
+    expect(runWords(run("platform.connector.sync", "done"))).toEqual({ what: "Read", tone: "green", again: false });
+    expect(runWords(run("platform.connector.deliver", "failed", "posts"))).toEqual({ what: "Sent on posts", tone: "red", again: true });
+    expect(runWords(run("platform.connector.reconcile", "running")).tone).toBe("amber");
   });
 });
