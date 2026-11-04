@@ -274,7 +274,130 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocal
 
 function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
-  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>;
+  return (
+    <div className="stack">
+      <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>
+      <PlanAndUsage />
+      <CloseWorkspace />
+    </div>
+  );
+}
+
+interface Usage {
+  /** The workspace's address name. */
+  slug: string;
+  now: Record<string, number>;
+  quotas: Record<string, number>;
+  /** The operator's plan the workspace is on, by name. */
+  plan: string | null;
+  state: string;
+  note: string | null;
+}
+
+/** What the workspace uses, beside what its plan allows. */
+const METERS: { id: string; label: string; bytes?: boolean }[] = [
+  { id: "people", label: "People" },
+  { id: "storage_bytes", label: "Files", bytes: true },
+  { id: "ai_tokens_month", label: "Assistant this month (tokens)" },
+  { id: "jobs_month", label: "Background jobs this month" },
+];
+
+function useUsage() {
+  return useQuery({ queryKey: ["admin", "usage"], queryFn: ({ signal }) => api.get<Usage>("/api/admin/usage", undefined, signal) });
+}
+
+export function size(bytes: number): string {
+  const units = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte"];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return new Intl.NumberFormat(undefined, { style: "unit", unit: units[i], unitDisplay: "short", maximumFractionDigits: 1 }).format(n);
+}
+
+function PlanAndUsage() {
+  const q = useUsage();
+  const amount = (m: (typeof METERS)[number], n: number) => (m.bytes ? size(n) : n.toLocaleString());
+  return (
+    <section className="card card-pad stack" style={{ maxWidth: 560 }} aria-labelledby="ws-plan">
+      <h2 id="ws-plan" className="section-title">
+        Plan and usage
+      </h2>
+      <Loaded q={q}>
+        {(u) => (
+          <>
+            <p className="muted">{u.plan ? `This workspace is on the ${u.plan} plan.` : "This workspace is on no plan: its operator sets what it may use."}</p>
+            {u.state !== "active" && <Alert tone="warning">{`This workspace's account is ${u.state}${u.note ? `: ${u.note}` : "."}`}</Alert>}
+            <table className="table">
+              <thead>
+                <tr>
+                  <th scope="col">What</th>
+                  <th scope="col">Used</th>
+                  <th scope="col">Allowed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {METERS.map((m) => (
+                  <tr key={m.id}>
+                    <th scope="row">{m.label}</th>
+                    <td>{amount(m, u.now[m.id] ?? 0)}</td>
+                    <td>{u.quotas[m.id] === undefined ? "No limit" : amount(m, u.quotas[m.id])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </Loaded>
+    </section>
+  );
+}
+
+/** Its administrator closes the workspace, typing its name: read-only and kept for a while, then gone. */
+function CloseWorkspace() {
+  const q = useUsage();
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [closed, setClosed] = useState<string | null>(null);
+  const slug = q.data?.slug ?? "";
+  const close = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!(await confirmDialog({ title: `Close ${slug}?`, message: "Everyone can still read and export it, and nobody can change anything. It is kept for 30 days; after that its operator may delete it.", confirmLabel: "Close it", danger: true })))
+      return;
+    setBusy(true);
+    try {
+      const r = await api.post<{ retain_until: string }>("/api/admin/close", { confirm: typed });
+      setClosed(r.retain_until);
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card card-pad stack" style={{ maxWidth: 560 }} aria-labelledby="ws-close">
+      <h2 id="ws-close" className="section-title">
+        Close this workspace
+      </h2>
+      {closed ? (
+        <Alert tone="info">{`Closed. It is read-only, and kept until ${closed}; ask its operator to open it again before then. Export what you need from each list.`}</Alert>
+      ) : (
+        <form className="stack" onSubmit={close}>
+          <p className="muted">Closing makes the workspace read-only for everyone, with export still open, and keeps it for 30 days. Its operator can open it again until then.</p>
+          <FieldWrap label={`Type ${slug} to close it`} htmlFor="ws-close-name">
+            <input id="ws-close-name" className="input" value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
+          </FieldWrap>
+          <div className="row" style={{ justifyContent: "flex-end" }}>
+            <Button type="submit" variant="danger" loading={busy} disabled={!slug || typed.trim() !== slug}>
+              Close the workspace
+            </Button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
 }
 
 function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
@@ -379,7 +502,11 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
           variant="primary"
           loading={busy}
           disabled={
-            !fyChanged && form.timezone === initial.timezone && form.require_two_factor === initial.require_two_factor && form.require_sso === initial.require_sso
+            !fyChanged &&
+            form.timezone === initial.timezone &&
+            form.language === initial.language &&
+            form.require_two_factor === initial.require_two_factor &&
+            form.require_sso === initial.require_sso
           }
         >
           Save
