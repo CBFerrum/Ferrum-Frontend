@@ -38,8 +38,17 @@ function compareAbs(a: { int: string; frac: string }, b: { int: string; frac: st
   return fa === fb ? 0 : fa < fb ? -1 : 1;
 }
 
+/** The locale numbers and dates are written in when a caller names none: the one the person or the
+ *  workspace chose (lib/i18n.ts applyLocale), else the browser's. */
+let defaultLocale: string | undefined;
+
+export function setFormatLocale(tag: string | undefined): void {
+  defaultLocale = tag;
+}
+
 const formatters = new Map<string, Intl.NumberFormat>();
-function numberFormat(locale: string | undefined, digits: number): Intl.NumberFormat {
+function numberFormat(given: string | undefined, digits: number): Intl.NumberFormat {
+  const locale = given ?? defaultLocale;
   const key = `${locale ?? ""}|${digits}`;
   let nf = formatters.get(key);
   if (!nf) {
@@ -110,21 +119,21 @@ export function formatDate(value: unknown, locale?: string): string {
   const m = typeof value === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
   if (!m) return value == null ? "" : String(value);
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d);
+  return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium" }).format(d);
 }
 
 export function formatDateTime(value: unknown, locale?: string): string {
   if (typeof value !== "string" || !value) return value == null ? "" : String(value);
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(d);
+  return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
 export function relativeTime(value: string, now = Date.now()): string {
   const t = new Date(value).getTime();
   if (Number.isNaN(t)) return value;
   const s = Math.round((t - now) / 1000);
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(defaultLocale, { numeric: "auto" });
   const abs = Math.abs(s);
   if (abs < 60) return rtf.format(s, "second");
   if (abs < 3600) return rtf.format(Math.round(s / 60), "minute");

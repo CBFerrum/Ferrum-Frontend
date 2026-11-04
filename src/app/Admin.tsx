@@ -5,6 +5,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDateTime, relativeTime } from "../lib/format";
+import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import { Connections } from "./Connections";
@@ -262,6 +263,8 @@ async function attempt(fn: () => Promise<unknown>, success?: string): Promise<bo
 
 interface WorkspaceSettings {
   timezone: string;
+  /** The interface's language for everyone who chose none (BCP 47); none: English. */
+  language: string | null;
   fiscal_year_start_month: number;
   require_two_factor: boolean;
   require_sso: boolean;
@@ -271,7 +274,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocal
 
 function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
-  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>;
+  return <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>;
 }
 
 function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
@@ -320,6 +323,21 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
           {zones.map((z) => (
             <option key={z} value={z}>
               {z}
+            </option>
+          ))}
+        </select>
+      </FieldWrap>
+      <FieldWrap
+        label="Language"
+        htmlFor="ws-lang"
+        error={fieldError("language")}
+        hint="The interface's language, direction and number and date formats for everyone who has not chosen their own."
+      >
+        <select id="ws-lang" className="select" value={form.language ?? ""} onChange={(e) => setForm({ ...form, language: e.target.value || null })}>
+          <option value="">English</option>
+          {LANGUAGES.filter((l) => l.tag !== "en").map((l) => (
+            <option key={l.tag} value={l.tag} lang={l.tag}>
+              {l.name}
             </option>
           ))}
         </select>

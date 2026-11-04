@@ -22,6 +22,8 @@ export {
   todayIso,
   type FormatOptions,
 } from "../../../src/lib/format";
+export { addCatalog, applyLocale, currentLanguage, direction, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
+import { applyLocale } from "../../../src/lib/i18n";
 
 export interface Bootstrap {
   v: 1;
@@ -49,7 +51,8 @@ export interface Bootstrap {
    *  workspace's endpoints, which no change of its addresses moves; `accounts`: the accounts host
    *  (shapes B and C), where the person signs in and finds their other workspaces. */
   api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
-  locale: { language: string; timezone: string; dir: "ltr" | "rtl" };
+  /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
+  locale: { language: string; timezone: string; dir: "ltr" | "rtl"; chosen?: boolean };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
@@ -80,13 +83,17 @@ let cached: Bootstrap | null | undefined;
 export function bootstrap(): Bootstrap | null {
   if (cached !== undefined) return cached;
   const handed = (globalThis as { __FERRUM_BOOTSTRAP__?: Bootstrap }).__FERRUM_BOOTSTRAP__;
-  if (handed) return (cached = handed);
-  try {
-    const el = typeof document !== "undefined" ? document.getElementById("ferrum-bootstrap") : null;
-    cached = el?.textContent ? (JSON.parse(el.textContent) as Bootstrap) : null;
-  } catch {
-    cached = null;
+  if (handed) cached = handed;
+  else {
+    try {
+      const el = typeof document !== "undefined" ? document.getElementById("ferrum-bootstrap") : null;
+      cached = el?.textContent ? (JSON.parse(el.textContent) as Bootstrap) : null;
+    } catch {
+      cached = null;
+    }
   }
+  // Read once per page: its words, direction and formats follow the person's language from here.
+  if (cached) applyLocale(cached.locale);
   return cached;
 }
 
