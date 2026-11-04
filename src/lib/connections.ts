@@ -60,3 +60,24 @@ export function connectionFacts(h: ConnectionHealth, now: Date): Fact[] {
     { label: "Differences", value: count(h.drift), tone: h.drift ? "amber" : "neutral" },
   ];
 }
+
+/** One thing a connection did: a read, a send or a comparison, as the hub lists it. */
+export interface Run {
+  id: string;
+  kind: string;
+  status: string;
+  attempts?: number;
+  max_attempts?: number;
+  last_error?: string | null;
+  stream?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+}
+
+/** What a run was, in words, and its tone: a failed one is what someone tries again. */
+export function runWords(r: Run): { what: string; tone: Tone; again: boolean } {
+  const what =
+    r.kind === "platform.connector.sync" ? "Read" : r.kind === "platform.connector.deliver" ? `Sent${r.stream ? ` on ${r.stream}` : ""}` : r.kind === "platform.connector.reconcile" ? "Compared" : r.kind;
+  const tone: Tone = r.status === "done" ? "green" : r.status === "failed" ? "red" : r.status === "cancelled" ? "neutral" : "amber";
+  return { what, tone, again: r.status === "failed" };
+}
