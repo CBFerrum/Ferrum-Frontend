@@ -1265,10 +1265,146 @@ function Roles() {
               </Button>
             </form>
           </section>
+          <RoleConflicts roles={names} />
           <ExplainAccess roles={names} entities={entities} />
         </div>
       )}
     </Loaded>
+  );
+}
+
+interface RoleConflict {
+  role_a: string;
+  role_b: string;
+  reason: string;
+  /** Who holds both, having held them before the pair was declared. */
+  holders: { id: string; email: string; full_name: string }[];
+}
+
+/** Pairs of roles one person may not hold together (segregation of duties): from the moment one is
+ * declared the server refuses any grant that would join them, whichever way it comes. */
+function RoleConflicts({ roles }: { roles: string[] }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["admin", "role-conflicts"],
+    queryFn: ({ signal }) => api.get<{ conflicts: RoleConflict[] }>("/api/admin/role-conflicts", undefined, signal),
+  });
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "role-conflicts"] });
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const ok = await attempt(() => api.put("/api/admin/role-conflicts", { role_a: a, role_b: b, reason }), `No one is given both ${a} and ${b} from now`);
+    setBusy(false);
+    if (ok) {
+      setA("");
+      setB("");
+      setReason("");
+      void refresh();
+    }
+  };
+  const remove = async (c: RoleConflict) => {
+    const ok = await confirmDialog({
+      title: `Allow ${c.role_a} and ${c.role_b} together?`,
+      message: "One person may then be given both.",
+      confirmLabel: "Allow together",
+      danger: true,
+    });
+    if (ok && (await attempt(() => api.del("/api/admin/role-conflicts", { query: { role_a: c.role_a, role_b: c.role_b } }), "Allowed together"))) void refresh();
+  };
+  return (
+    <section className="card card-pad stack" aria-labelledby="conflicts-title">
+      <h2 id="conflicts-title" className="section-title">
+        Roles one person may not hold together
+      </h2>
+      <Loaded q={q}>
+        {(d) =>
+          d.conflicts.length ? (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Roles</th>
+                    <th>Why</th>
+                    <th>Held by both</th>
+                    <th aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.conflicts.map((c) => (
+                    <tr key={`${c.role_a}\u0000${c.role_b}`}>
+                      <td>
+                        <Badge>{c.role_a}</Badge> and <Badge>{c.role_b}</Badge>
+                      </td>
+                      <td>{c.reason}</td>
+                      <td>
+                        {c.holders.length ? (
+                          <div className="chips">
+                            {c.holders.map((h) => (
+                              <Badge key={h.id} tone="red">
+                                {h.full_name || h.email}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="faint">no one</span>
+                        )}
+                      </td>
+                      <td>
+                        <Button onClick={() => void remove(c)}>Allow together</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted">None yet: anyone may be given any roles together.</p>
+          )
+        }
+      </Loaded>
+      <form className="row" style={{ alignItems: "flex-end", flexWrap: "wrap" }} onSubmit={(e) => void add(e)}>
+        <FieldWrap label="Role" htmlFor="conflict-a">
+          <select id="conflict-a" className="select" value={a} onChange={(e) => setA(e.target.value)} required>
+            <option value="">Choose a role…</option>
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Is not held with" htmlFor="conflict-b">
+          <select id="conflict-b" className="select" value={b} onChange={(e) => setB(e.target.value)} required>
+            <option value="">Choose a role…</option>
+            {roles
+              .filter((r) => r !== a)
+              .map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Because" htmlFor="conflict-why" className="field-wide">
+          <input
+            id="conflict-why"
+            className="input"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            required
+            maxLength={500}
+            placeholder="e.g. whoever adds suppliers does not pay them"
+          />
+        </FieldWrap>
+        <Button type="submit" icon="plus" loading={busy} disabled={!a || !b || !reason.trim()}>
+          Add
+        </Button>
+      </form>
+    </section>
   );
 }
 
