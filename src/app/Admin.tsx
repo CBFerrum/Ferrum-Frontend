@@ -91,7 +91,11 @@ interface PersonRecord {
 
 interface PersonData {
   email: string;
+  /** The digits of the phone number asked with, if one was. */
+  phone?: string | null;
   records: PersonRecord[];
+  /** Records holding the name asked with: possibly theirs, for a person to judge, never erased for it. */
+  possibly?: { entity: string; label: string; id: string; name: string }[];
   account: { id: string; email: string; full_name: string; is_active: boolean; is_admin: boolean; roles: string[]; created_at: string; last_login_at?: string | null } | null;
 }
 
@@ -101,9 +105,12 @@ function FieldLabels({ entity, names }: { entity: string; names: string[] }) {
   return <>{names.map((n) => fields?.find((f) => f.name === n)?.label ?? n).join(", ")}</>;
 }
 
-/** Personal-data requests: what is kept about a person (by email), a copy for them, and its erasure. */
+/** Personal-data requests: what is kept about a person (by email, and their phone number and name
+ * when given), a copy for them, and its erasure. */
 function PersonalData() {
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
   const [found, setFound] = useState<PersonData | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<"find" | "erase" | null>(null);
@@ -114,14 +121,22 @@ function PersonalData() {
     setError(null);
     setFound(null);
     try {
-      setFound(await api.get<PersonData>("/api/admin/personal-data", { email: email.trim() }));
+      const query: Record<string, string> = { email: email.trim() };
+      if (phone.trim()) query.phone = phone.trim();
+      if (name.trim()) query.name = name.trim();
+      setFound(await api.get<PersonData>("/api/admin/personal-data", query));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setBusy(null);
     }
   };
-  const download = () => found && saveBlob(new Blob([JSON.stringify(found, null, 2)], { type: "application/json" }), `personal-data-${found.email}.json`);
+  // The person's copy: never the records that only share their name, which may be someone else's.
+  const download = () => {
+    if (!found) return;
+    const { possibly: _maybe, ...copy } = found;
+    saveBlob(new Blob([JSON.stringify(copy, null, 2)], { type: "application/json" }), `personal-data-${found.email}.json`);
+  };
   const erase = async () => {
     if (!found) return;
     const what = `${found.records.length} ${found.records.length === 1 ? "record" : "records"}${found.account ? " and the login account" : ""}`;
@@ -130,7 +145,11 @@ function PersonalData() {
     setBusy("erase");
     setError(null);
     try {
-      const res = await api.post<{ erased: unknown[]; account_erased: boolean; audit_events_redacted: number }>("/api/admin/personal-data/erase", { email: found.email, reason: reason.trim() });
+      const res = await api.post<{ erased: unknown[]; account_erased: boolean; audit_events_redacted: number }>("/api/admin/personal-data/erase", {
+        email: found.email,
+        phone: found.phone ?? undefined,
+        reason: reason.trim(),
+      });
       toast(`Erased ${res.erased.length} ${res.erased.length === 1 ? "record" : "records"}${res.account_erased ? " and the login account" : ""}; ${res.audit_events_redacted} history entries redacted`);
       setFound(null);
       setReason("");
@@ -140,7 +159,7 @@ function PersonalData() {
       setBusy(null);
     }
   };
-  const nothing = found && !found.records.length && !found.account;
+  const nothing = found && !found.records.length && !found.account && !found.possibly?.length;
   return (
     <>
     <section className="card">
@@ -149,12 +168,19 @@ function PersonalData() {
       </div>
       <div className="card-pad stack">
         <p className="muted">
-          Find what is kept about a person by their email address, give them a copy, or erase it. Erasure blanks their details on the records listed and in those
+          Find what is kept about a person by their email address (and their phone number, or their name, when records may hold those without it), give them a
+          copy, or erase it. Erasure blanks their details on the records listed and in those
           records&apos; history, and closes their login account; submitted documents keep the names they carry, as bookkeeping law requires.
         </p>
         <form className="row" onSubmit={find}>
           <FieldWrap label="Email" htmlFor="pd-email">
             <input id="pd-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </FieldWrap>
+          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="As it was recorded: its digits must match">
+            <input id="pd-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </FieldWrap>
+          <FieldWrap label="Name (optional)" htmlFor="pd-name" hint="Lists records holding it, for you to judge">
+            <input id="pd-name" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
           </FieldWrap>
           <Button type="submit" variant="primary" icon="search" loading={busy === "find"} disabled={!email.trim()}>
             Find
@@ -197,6 +223,34 @@ function PersonalData() {
                 </tbody>
               </table>
             </div>
+            {!!found.possibly?.length && (
+              <>
+                <h3 className="section-title">Possibly theirs: the same name</h3>
+                <p className="muted">Not in the copy and never erased for the name alone: open each, and if it is theirs, change or delete it there.</p>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Kind</th>
+                        <th scope="col">Record</th>
+                        <th scope="col">Name held</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {found.possibly.map((r) => (
+                        <tr key={`${r.entity}/${r.id}`}>
+                          <td>{r.label}</td>
+                          <td>
+                            <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.id.slice(0, 8)}</a>
+                          </td>
+                          <td>{r.name}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
             <div className="row">
               <Button icon="download" onClick={download}>
                 Download a copy (JSON)
