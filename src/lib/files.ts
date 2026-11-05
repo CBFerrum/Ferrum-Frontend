@@ -1,6 +1,8 @@
-// Uploads: through the API when a file fits its request limit, otherwise straight to object storage
-// with a presigned URL (S3 deployments), so large files never pass through an API server.
+// Uploads: through the API when a file fits its request limit, otherwise in parts that survive a
+// dropped connection (`uploadInParts`), or, from a server without them, straight to object storage
+// with a presigned URL (S3 deployments).
 
+import { uploadInParts } from "@ferrum/client";
 import { api } from "./api";
 
 export interface StoredFile {
@@ -15,6 +17,8 @@ interface Limits {
   max_bytes: number;
   direct: boolean;
   direct_max_bytes: number | null;
+  parts?: boolean;
+  parts_max_bytes?: number | null;
 }
 
 interface StartedUpload {
@@ -43,8 +47,9 @@ export function megabytes(bytes: number): string {
 }
 
 /** Which way a file of this size goes, or why it cannot be uploaded. */
-export function uploadRoute(size: number, l: Limits): "api" | "direct" | { tooLarge: number } {
+export function uploadRoute(size: number, l: Limits): "api" | "parts" | "direct" | { tooLarge: number } {
   if (size <= l.max_bytes) return "api";
+  if (l.parts && l.parts_max_bytes != null) return size <= l.parts_max_bytes ? "parts" : { tooLarge: l.parts_max_bytes };
   if (l.direct && l.direct_max_bytes != null && size <= l.direct_max_bytes) return "direct";
   return { tooLarge: l.direct && l.direct_max_bytes != null ? l.direct_max_bytes : l.max_bytes };
 }
@@ -62,6 +67,7 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
     }
     return api.post<StoredFile>("/api/files", fd);
   }
+  if (route === "parts") return uploadInParts(file, attach, api);
   const up = await api.post<StartedUpload>("/api/files/uploads", {
     file_name: file.name,
     content_type: file.type,

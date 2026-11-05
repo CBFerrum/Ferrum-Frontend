@@ -3,11 +3,11 @@
 // (with fallbacks where no shell runs, as in a test or a page opened outside one), and requests to
 // the API with the browser's session, with the platform's errors and version checks handled.
 
-import { parseApiError } from "./errors";
+import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, parseApiError, refusal, type FieldError } from "./errors";
 export { cacheName, currentLease, mayKeep, pendingName, stale, sweep, type OfflineEnv, type OfflineLease } from "./offline";
-import { currentLease, type OfflineEnv, type OfflineLease } from "./offline";
+import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
   compareDecimal,
   formatDate,
@@ -511,6 +511,9 @@ interface Limits {
   max_bytes: number;
   direct: boolean;
   direct_max_bytes: number | null;
+  /** In parts through the server, on any store, going on after a dropped connection. */
+  parts?: boolean;
+  parts_max_bytes?: number | null;
 }
 
 let limits: Promise<Limits> | null = null;
@@ -533,8 +536,9 @@ export function megabytes(bytes: number): string {
 
 /**
  * Stores a file in the platform's file store (`/api/files`), attached to a record when `attach`
- * is given: through the API when it fits its request limit, else straight to object storage with
- * a presigned URL. For files that must survive the page (a big upload to Drive), hand them to
+ * is given: through the API when it fits its request limit, else in parts that survive a dropped
+ * connection ({@link uploadInParts}), or straight to object storage with a presigned URL from a
+ * server without them. For files that must survive the page (a big upload to Drive), hand them to
  * `shell().uploads` instead.
  */
 export async function uploadFile(file: File, attach?: { entity: string; id: string }): Promise<StoredFile> {
@@ -547,6 +551,10 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
       fd.append("record_id", attach.id);
     }
     return api.post<StoredFile>("/api/files", fd);
+  }
+  if (l.parts && l.parts_max_bytes != null) {
+    if (file.size > l.parts_max_bytes) throw new Error(`Files must be ${megabytes(l.parts_max_bytes)} or smaller.`);
+    return uploadInParts(file, attach);
   }
   if (!l.direct || l.direct_max_bytes == null || file.size > l.direct_max_bytes) {
     throw new Error(`Files must be ${megabytes(l.direct && l.direct_max_bytes != null ? l.direct_max_bytes : l.max_bytes)} or smaller.`);
@@ -568,3 +576,135 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
   return api.post<StoredFile>(`/api/files/uploads/${up.upload_id}/complete`);
 }
 
+// ───────────────────────── uploads in parts ─────────────────────────
+
+/** What the server says of an upload in parts (Ferrum docs/api.md, "Files"). */
+interface PartsUpload {
+  upload_id: string;
+  parts?: boolean;
+  size: number;
+  offset: number;
+  part_bytes: number;
+  expires_at: string;
+}
+
+/** The requests an upload in parts makes: this package's `api`, or a page's own with its session. */
+export type PartsApi = Pick<typeof api, "get" | "post" | "put">;
+
+/** How often a part is sent again after the connection drops before the upload stops; it goes on
+ *  from where it stood when the same file is chosen again. */
+const PART_TRIES = 8;
+
+let uploadsHere: Record<string, string> = {};
+
+/** The uploads in parts this person started on this device, by file: work not sent yet
+ *  (docs/offline.md), kept under their pending name, or for this page only without one. */
+function uploadsKept(): Record<string, string> {
+  const env = offlineEnv();
+  const name = pendingName(env, "files", "uploads");
+  if (!name || !env.storage) return { ...uploadsHere };
+  try {
+    const v: unknown = JSON.parse(env.storage.getItem(name) ?? "{}");
+    return v && typeof v === "object" ? { ...(v as Record<string, string>) } : {};
+  } catch {
+    return {};
+  }
+}
+
+function keepUploads(list: Record<string, string>) {
+  const env = offlineEnv();
+  const name = pendingName(env, "files", "uploads");
+  if (!name || !env.storage) {
+    uploadsHere = list;
+    return;
+  }
+  try {
+    if (Object.keys(list).length) env.storage.setItem(name, JSON.stringify(list));
+    else env.storage.removeItem(name);
+  } catch {
+    uploadsHere = list;
+  }
+}
+
+function forgetUpload(key: string) {
+  const list = uploadsKept();
+  delete list[key];
+  keepUploads(list);
+}
+
+const uploadPath = (id: string) => `/api/files/uploads/${encodeURIComponent(id)}`;
+const connectionLost = (status: number) => status === 0 || status === 408 || status === 429 || status >= 500;
+
+/** The upload in parts of this file the device last started, where the server says it stands;
+ *  none when it is gone, expired or of another size. */
+async function resumed(client: PartsApi, key: string, size: number): Promise<PartsUpload | null> {
+  const id = uploadsKept()[key];
+  if (!id) return null;
+  let s: PartsUpload | null = null;
+  try {
+    s = await client.get<PartsUpload>(uploadPath(id));
+  } catch (e) {
+    // Without a connection it cannot be told: the upload is kept for the next try.
+    if (!(e instanceof ApiError) || connectionLost(e.status)) throw e;
+  }
+  if (s && s.parts !== false && s.size === size && Date.parse(s.expires_at) > Date.now()) return s;
+  forgetUpload(key);
+  return null;
+}
+
+/**
+ * Sends a file in parts through the server (`POST /api/files/uploads` with `parts`): each part goes
+ * from where the server says the upload stands, so a dropped connection costs at most a part, sent
+ * again after a growing wait, and the same file chosen again later (after a reload, for the same
+ * record) goes on from there.
+ */
+export async function uploadInParts(
+  file: File,
+  attach?: { entity: string; id: string },
+  client: PartsApi = api,
+  wait: (ms: number) => Promise<void> = sleep,
+): Promise<StoredFile> {
+  const key = [file.name, file.size, file.lastModified, attach?.entity ?? "", attach?.id ?? ""].join("/");
+  const up =
+    (await resumed(client, key, file.size)) ??
+    (await client.post<PartsUpload>("/api/files/uploads", {
+      file_name: file.name,
+      content_type: file.type,
+      size: file.size,
+      entity: attach?.entity,
+      record_id: attach?.id,
+      parts: true,
+    }));
+  keepUploads({ ...uploadsKept(), [key]: up.upload_id });
+  let offset = up.offset;
+  for (let tries = 0; offset < file.size; ) {
+    try {
+      offset = (await client.put<PartsUpload>(`${uploadPath(up.upload_id)}/parts/${offset}`, file.slice(offset, offset + up.part_bytes))).offset;
+      tries = 0;
+    } catch (e) {
+      let failure = e;
+      let status = e instanceof ApiError ? e.status : 0;
+      if (status === 409) {
+        try {
+          const stands = await client.get<PartsUpload>(uploadPath(up.upload_id));
+          // The part arrived before and its answer was lost: on from where the upload stands.
+          if (stands.offset !== offset) {
+            offset = stands.offset;
+            continue;
+          }
+        } catch (g) {
+          [failure, status] = [g, g instanceof ApiError ? g.status : 0];
+        }
+      }
+      if (!connectionLost(status) || ++tries > PART_TRIES) {
+        // Gone, expired or refused: the next try starts again. Otherwise it goes on from here.
+        if ([404, 409, 422].includes(status)) forgetUpload(key);
+        throw failure;
+      }
+      await wait(Math.min(30_000, 1000 * 2 ** (tries - 1)));
+    }
+  }
+  const stored = await client.post<StoredFile>(`${uploadPath(up.upload_id)}/complete`);
+  forgetUpload(key);
+  return stored;
+}
