@@ -344,6 +344,8 @@ interface WorkspaceSettings {
   fiscal_year_start_month: number;
   require_two_factor: boolean;
   require_sso: boolean;
+  /** What devices may keep for people to work offline, and for how many hours (docs/offline.md). */
+  offline?: { allowed?: boolean; hours?: number };
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" }));
@@ -352,7 +354,7 @@ function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
   return (
     <div className="stack">
-      <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>
+      <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} />}</Loaded>
       <PlanAndUsage />
       <WorkspaceExport />
       <CloseWorkspace />
@@ -671,6 +673,34 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
           Require it
         </label>
       </FieldWrap>
+      <FieldWrap
+        label="Working offline"
+        htmlFor="ws-offline"
+        error={fieldError("offline")}
+        hint="What a device keeps for someone to work from without a connection (a till's price book) is forgotten when the time is up, when someone else signs in there, or when they are signed out everywhere. Work done offline is kept until it is sent, whatever this says."
+      >
+        <label className="row" style={{ gap: 8 }}>
+          <input
+            id="ws-offline"
+            type="checkbox"
+            checked={form.offline?.allowed !== false}
+            onChange={(e) => setForm({ ...form, offline: { ...form.offline, allowed: e.target.checked } })}
+          />
+          Devices may keep it for
+          <input
+            className="input"
+            type="number"
+            min={1}
+            max={720}
+            style={{ width: 90 }}
+            aria-label="Hours devices may keep it"
+            disabled={form.offline?.allowed === false}
+            value={form.offline?.hours ?? 72}
+            onChange={(e) => setForm({ ...form, offline: { ...form.offline, hours: Number(e.target.value) } })}
+          />
+          hours
+        </label>
+      </FieldWrap>
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <Button
           type="submit"
@@ -681,7 +711,8 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
             form.timezone === initial.timezone &&
             form.language === initial.language &&
             form.require_two_factor === initial.require_two_factor &&
-            form.require_sso === initial.require_sso
+            form.require_sso === initial.require_sso &&
+            JSON.stringify(form.offline) === JSON.stringify(initial.offline)
           }
         >
           Save
