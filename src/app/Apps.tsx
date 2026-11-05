@@ -103,7 +103,7 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (need.live) {
-    return <p className="muted">{`${need.app}'s licence is live${need.period_end ? ` until ${formatDate(need.period_end)}` : ""}.`}</p>;
+    return <p className="muted">{`${need.app}'s licence is live${need.period_end ? ` until ${formatDate(need.period_end.slice(0, 10))}` : ""}.`}</p>;
   }
   const give = async (e: FormEvent) => {
     e.preventDefault();

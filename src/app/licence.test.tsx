@@ -24,6 +24,7 @@ describe("a sold app's licence", () => {
   it("is live, with no field", () => {
     const html = renderToString(<LicenceNeeded need={{ ...need, given: true, live: true, period_end: "2027-01-01T00:00:00Z" }} onGiven={() => {}} />);
     expect(html).toContain("licence is live until");
+    expect(html).not.toContain("T00:00:00Z");
     expect(html).not.toContain("<input");
   });
 
