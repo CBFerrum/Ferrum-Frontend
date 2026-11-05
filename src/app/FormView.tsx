@@ -13,7 +13,7 @@ import { formSections } from "../lib/formTabs";
 import { useContributions } from "../lib/screens";
 import { ScreenFrame } from "./Screen";
 import { formDesignerLink } from "../lib/formLayout";
-import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
+import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
 import {
   Alert,
   Badge,
@@ -495,7 +495,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
 
   const scope = { doc, user };
   const topErrors = new Map(errors.filter((e) => !e.row).map((e) => [e.field, e.message]));
-  const states = new Map<string, FieldState>(meta.fields.map((f) => [f.name, fieldState(f, scope, locked)]));
+  const inState = wf?.states.find((s) => s.name === wfState);
+  const states = new Map<string, FieldState>(meta.fields.map((f) => [f.name, inWorkflowState(f, fieldState(f, scope, locked), inState)]));
   // Sections shown now (their condition holds and a field is visible), and the tabs that have one.
   const shown = layout.sections.flatMap((s) => {
     if (s.visibleIf && evaluate(s.visibleIf, scope) === false) return [];
