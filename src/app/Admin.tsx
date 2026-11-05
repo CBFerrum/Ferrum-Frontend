@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
-import { formatDateTime, relativeTime } from "../lib/format";
+import { formatDate, formatDateTime, relativeTime } from "../lib/format";
 import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
@@ -570,6 +570,8 @@ interface User {
   sso: boolean;
   last_login_at?: string | null;
   roles: string[];
+  /** The roles held only until a moment, and that moment; the others are held for good. */
+  role_until?: Record<string, string>;
   /** member, portal (customers, suppliers: the portal's pages only), guest or service. */
   kind?: string;
 }
@@ -601,6 +603,23 @@ const useUsers = () =>
   useQuery({ queryKey: ["admin", "users"], queryFn: ({ signal }) => api.get<{ users: User[] }>("/api/admin/users", undefined, signal) });
 const useRoles = () =>
   useQuery({ queryKey: ["admin", "roles"], queryFn: ({ signal }) => api.get<{ roles: Role[] }>("/api/admin/roles", undefined, signal) });
+
+/** The day, in this browser's time, that a role given until `iso` is held through. */
+export function throughDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** What is sent for the days the roles kept are held through: each day's close in this browser's
+ * time, or the moment a role already ends at when its day was left as it was. */
+export function roleEnds(roles: string[], through: Record<string, string>, held: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of roles) {
+    const day = through[r];
+    if (day) out[r] = held[r] && throughDay(held[r]) === day ? held[r] : new Date(`${day}T23:59:59`).toISOString();
+  }
+  return out;
+}
 
 function RoleChecks({ roles, value, onChange }: { roles: string[]; value: string[]; onChange: (v: string[]) => void }) {
   if (!roles.length) return <p className="faint">No roles defined yet.</p>;
@@ -707,7 +726,16 @@ function Users() {
                     </td>
                     <td>
                       <div className="chips">
-                        {u.roles.length ? u.roles.map((r) => <Badge key={r}>{r}</Badge>) : <span className="faint">none</span>}
+                        {u.roles.length ? (
+                          u.roles.map((r) => (
+                            <Badge key={r}>
+                              {r}
+                              {u.role_until?.[r] && ` through ${formatDate(throughDay(u.role_until[r]))}`}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="faint">none</span>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -840,16 +868,19 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
 
 function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; roles: string[]; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState<string[]>([]);
+  const [through, setThrough] = useState<Record<string, string>>({});
   const [seen, setSeen] = useState<User | null>(null);
   const [busy, setBusy] = useState(false);
   if (user !== seen) {
     setSeen(user);
     setValue(user?.roles ?? []);
+    setThrough(Object.fromEntries(Object.entries(user?.role_until ?? {}).map(([r, iso]) => [r, throughDay(iso)])));
   }
   const save = async () => {
     if (!user) return;
     setBusy(true);
-    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value }), "Roles updated");
+    const until = roleEnds(value, through, user.role_until);
+    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value, until }), "Roles updated");
     setBusy(false);
     if (ok) {
       onDone();
@@ -871,6 +902,28 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
       }
     >
       <RoleChecks roles={roles} value={value} onChange={setValue} />
+      {value.length > 0 && (
+        <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
+          <legend className="field-label" style={{ marginBottom: 6 }}>
+            Held through (optional)
+          </legend>
+          <div className="form-grid">
+            {value.map((r) => (
+              <FieldWrap key={r} label={r} htmlFor={`role-through-${r}`}>
+                <input
+                  id={`role-through-${r}`}
+                  className="input"
+                  type="date"
+                  min={throughDay(new Date().toISOString())}
+                  value={through[r] ?? ""}
+                  onChange={(e) => setThrough({ ...through, [r]: e.target.value })}
+                />
+              </FieldWrap>
+            ))}
+          </div>
+          <p className="faint">Empty: held for good. A role with a day ends when that day does, and what it allowed ends with it.</p>
+        </fieldset>
+      )}
     </Dialog>
   );
 }
