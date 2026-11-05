@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
+import { violations } from "../../../test/axe";
 import type { EntityMeta, Me, MetaIndex, Perms } from "@/lib/meta";
 import { studioKeys, type ResolvedWidget, type SpaceRecord, type StudioListRow } from "@/lib/studio";
 import { SpaceEditor } from "../SpaceEditor";
@@ -54,13 +55,18 @@ function client() {
   return qc;
 }
 
+/** Every screen this file draws, for the accessibility check at its end. */
+const drawn: string[] = [];
+
 function render(element: ReactNode, path = "/", routePath = "/", qc = client()): string {
   const router = createMemoryRouter([{ path: routePath, element }], { initialEntries: [path] });
-  return renderToString(
+  const html = renderToString(
     <QueryClientProvider client={qc}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  drawn.push(html);
+  return html;
 }
 
 const widgets = [
@@ -238,5 +244,14 @@ describe("space editor", () => {
     const html = render(<SpaceEditor />, "/studio/spaces/s1/edit", "/studio/spaces/:id/edit", qc);
     expect(html).toContain("Duplicate to customize");
     expect(html).toContain('href="/studio/spaces/new?from=s1"');
+  });
+});
+
+describe("these screens, for assistive technology", () => {
+  it("break none of axe's rules that hold without layout", async () => {
+    expect(drawn.length).toBeGreaterThan(0);
+    const found = new Set<string>();
+    for (const html of drawn) for (const v of await violations(html)) found.add(v);
+    expect([...found]).toEqual([]);
   });
 });

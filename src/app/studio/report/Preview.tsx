@@ -48,7 +48,7 @@ export function ResultNotices({ meta, entityLabel, onMoreRows }: { meta: ResultM
 
 export function ResultSkeleton() {
   return (
-    <div className="grid gap-2 rounded-lg border border-border bg-card p-3" aria-busy="true" aria-label="Loading results">
+    <div className="grid gap-2 rounded-lg border border-border bg-card p-3" role="status" aria-busy="true" aria-label="Loading results">
       <Skeleton className="h-8" />
       {Array.from({ length: 8 }, (_, i) => (
         <Skeleton key={i} className="h-6" style={{ opacity: 1 - i * 0.1 }} />
