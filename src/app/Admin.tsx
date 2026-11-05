@@ -351,7 +351,7 @@ interface ExportJob {
   kind: string;
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: { step?: string; done?: number; total?: number } | null;
-  result: { parts?: { id: string; file_name: string; size?: number }[]; expires_in_days?: number; deleted?: string } | null;
+  result: { parts?: { id: string; file_name: string; size?: number }[]; expires_in_days?: number; deleted?: string; files_missing?: number } | null;
   last_error: string | null;
   created_at: string;
   finished_at: string | null;
@@ -417,6 +417,12 @@ function WorkspaceExport() {
             <p className="faint">
               Made {latest.finished_at ? formatDateTime(latest.finished_at) : ""}; kept {days} days, unless a personal-data erasure deletes it first.
             </p>
+            {latest.result?.files_missing ? (
+              <Alert tone="warning">
+                {latest.result.files_missing} {latest.result.files_missing === 1 ? "file" : "files"} the storage no longer has {latest.result.files_missing === 1 ? "was" : "were"} left
+                out; the export's manifest names them.
+              </Alert>
+            ) : null}
             <ul className="stack" style={{ gap: 4 }}>
               {parts.map((p) => (
                 <li key={p.id}>
