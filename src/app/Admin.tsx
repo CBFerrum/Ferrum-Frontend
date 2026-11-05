@@ -140,17 +140,25 @@ function PersonalData() {
   const erase = async () => {
     if (!found) return;
     const what = `${found.records.length} ${found.records.length === 1 ? "record" : "records"}${found.account ? " and the login account" : ""}`;
-    if (!(await confirmDialog({ title: `Erase ${found.email}?`, message: `The person's details leave ${what}, and their history. This cannot be undone.`, confirmLabel: "Erase", danger: true })))
+    const message = `The person's details leave ${what}, and their history. The workspace's stored exports, copies from before, are deleted too. This cannot be undone.`;
+    if (!(await confirmDialog({ title: `Erase ${found.email}?`, message, confirmLabel: "Erase", danger: true })))
       return;
     setBusy("erase");
     setError(null);
     try {
-      const res = await api.post<{ erased: unknown[]; account_erased: boolean; audit_events_redacted: number }>("/api/admin/personal-data/erase", {
-        email: found.email,
-        phone: found.phone ?? undefined,
-        reason: reason.trim(),
-      });
-      toast(`Erased ${res.erased.length} ${res.erased.length === 1 ? "record" : "records"}${res.account_erased ? " and the login account" : ""}; ${res.audit_events_redacted} history entries redacted`);
+      const res = await api.post<{ erased: unknown[]; retained: unknown[]; account_erased: boolean; audit_events_redacted: number; exports_deleted: number }>(
+        "/api/admin/personal-data/erase",
+        {
+          email: found.email,
+          phone: found.phone ?? undefined,
+          reason: reason.trim(),
+        },
+      );
+      const kept = res.retained.length ? `; ${res.retained.length} kept for the reasons given` : "";
+      const exports = res.exports_deleted ? `; ${res.exports_deleted} stored ${res.exports_deleted === 1 ? "export" : "exports"} deleted` : "";
+      toast(
+        `Erased ${res.erased.length} ${res.erased.length === 1 ? "record" : "records"}${res.account_erased ? " and the login account" : ""}; ${res.audit_events_redacted} history entries redacted${kept}${exports}`,
+      );
       setFound(null);
       setReason("");
     } catch (err) {
