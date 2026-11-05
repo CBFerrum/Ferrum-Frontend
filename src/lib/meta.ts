@@ -87,7 +87,8 @@ export interface ActionParam {
 export interface Workflow {
   name?: string;
   initial_state: string;
-  states: { name: string; docstatus: number; edit_roles: string[] }[];
+  /** `editable`: the only fields a person may change in the state; `required`: what it needs. */
+  states: { name: string; docstatus: number; edit_roles: string[]; editable?: string[]; required?: string[] }[];
   transitions: { action: string; from: string; to: string; roles: string[]; condition?: string | null; not_creator?: boolean }[];
 }
 
@@ -328,6 +329,16 @@ export function fieldState(f: Field, scope: RuleScope, locked = false): FieldSta
     f.can_write !== true ||
     (!!f.read_only_if && evaluate(f.read_only_if, scope) === true);
   return { visible, required, disabled };
+}
+
+/**
+ * A field as the document's workflow state has it: read-only unless the state lets it change
+ * (`editable`), required where the state needs it (`required`). The server holds to the same.
+ */
+export function inWorkflowState(f: Field, st: FieldState, state?: { editable?: string[]; required?: string[] }): FieldState {
+  if (!state) return st;
+  const frozen = !!state.editable?.length && !state.editable.includes(f.name);
+  return { ...st, disabled: st.disabled || frozen, required: st.required || !!state.required?.includes(f.name) };
 }
 
 /** Whether a field's value is maintained by the server (it never needs to be sent). */
