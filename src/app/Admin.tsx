@@ -94,8 +94,9 @@ interface PersonData {
   /** The digits of the phone number asked with, if one was. */
   phone?: string | null;
   records: PersonRecord[];
-  /** Records holding the name asked with: possibly theirs, for a person to judge, never erased for it. */
-  possibly?: { entity: string; label: string; id: string; name: string }[];
+  /** Records holding the name asked with, or the number with or without its country code: possibly
+   *  theirs, for a person to judge, never erased for it. */
+  possibly?: { entity: string; label: string; id: string; name?: string; phone?: string }[];
   account: { id: string; email: string; full_name: string; is_active: boolean; is_admin: boolean; roles: string[]; created_at: string; last_login_at?: string | null } | null;
 }
 
@@ -184,7 +185,7 @@ function PersonalData() {
           <FieldWrap label="Email" htmlFor="pd-email">
             <input id="pd-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </FieldWrap>
-          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="As it was recorded: its digits must match">
+          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="Its digits as recorded; one held with or without a country code is listed apart">
             <input id="pd-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </FieldWrap>
           <FieldWrap label="Name (optional)" htmlFor="pd-name" hint="Lists records holding it, for you to judge">
@@ -233,15 +234,15 @@ function PersonalData() {
             </div>
             {!!found.possibly?.length && (
               <>
-                <h3 className="section-title">Possibly theirs: the same name</h3>
-                <p className="muted">Not in the copy and never erased for the name alone: open each, and if it is theirs, change or delete it there.</p>
+                <h3 className="section-title">Possibly theirs: the same name, or the number with or without its country code</h3>
+                <p className="muted">Not in the copy and never erased for that alone: open each, and if it is theirs, change or delete it there.</p>
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
                         <th scope="col">Kind</th>
                         <th scope="col">Record</th>
-                        <th scope="col">Name held</th>
+                        <th scope="col">Held</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -251,7 +252,7 @@ function PersonalData() {
                           <td>
                             <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.id.slice(0, 8)}</a>
                           </td>
-                          <td>{r.name}</td>
+                          <td>{r.name ?? r.phone}</td>
                         </tr>
                       ))}
                     </tbody>
