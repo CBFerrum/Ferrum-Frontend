@@ -37,4 +37,10 @@ describe("recordTitle", () => {
     expect(recordTitle(meta, { id: "a", risk: "01a1a58b-73aa", _titles: { risk: "Single cell for the EU region" } })).toBe("Single cell for the EU region");
     expect(recordTitle(meta, { id: "a", risk: "Plain words" })).toBe("Plain words");
   });
+
+  it("names settings by what they are, not by an id", () => {
+    const row = { id: "01a1ad8d-e2b6-72c6-b015-44112acce0ac" };
+    expect(recordTitle({ title_field: null, kind: "settings", label: "Field Service Settings" }, row)).toBe("Field Service Settings");
+    expect(recordTitle({ title_field: null, kind: "document", label: "Stock Entry" }, row)).toBe("2acce0ac");
+  });
 });
