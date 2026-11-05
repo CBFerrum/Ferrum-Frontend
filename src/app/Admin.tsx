@@ -86,6 +86,9 @@ interface PersonRecord {
   number?: string | null;
   /** Fields erasure blanks. */
   erases: string[];
+  /** Matched by a table's rows: the table, and how many of its rows are theirs (the rest stay). */
+  table?: string;
+  rows?: number;
   data: Record<string, unknown>;
 }
 
@@ -216,7 +219,17 @@ function PersonalData() {
                         <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.number || r.id.slice(0, 8)}</a>
                       </td>
                       <td className="muted">
-                        <FieldLabels entity={r.entity} names={r.erases} />
+                        {r.table ? (
+                          <>
+                            {r.erases.includes(r.table)
+                              ? "their "
+                              : `${r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", ")} in their `}
+                            {r.rows === 1 ? "row" : `${r.rows} rows`} of <FieldLabels entity={r.entity} names={[r.table]} />
+                            {r.erases.includes(r.table) ? ", removed" : ""}
+                          </>
+                        ) : (
+                          <FieldLabels entity={r.entity} names={r.erases} />
+                        )}
                       </td>
                     </tr>
                   ))}
