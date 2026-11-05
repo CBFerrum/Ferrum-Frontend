@@ -94,8 +94,9 @@ interface PersonData {
   /** The digits of the phone number asked with, if one was. */
   phone?: string | null;
   records: PersonRecord[];
-  /** Records holding the name asked with: possibly theirs, for a person to judge, never erased for it. */
-  possibly?: { entity: string; label: string; id: string; name: string }[];
+  /** Records holding the name asked with, or the number with or without its country code: possibly
+   *  theirs, for a person to judge, never erased for it. */
+  possibly?: { entity: string; label: string; id: string; name?: string; phone?: string }[];
   account: { id: string; email: string; full_name: string; is_active: boolean; is_admin: boolean; roles: string[]; created_at: string; last_login_at?: string | null } | null;
 }
 
@@ -184,7 +185,7 @@ function PersonalData() {
           <FieldWrap label="Email" htmlFor="pd-email">
             <input id="pd-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </FieldWrap>
-          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="As it was recorded: its digits must match">
+          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="Its digits as recorded; one held with or without a country code is listed apart">
             <input id="pd-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </FieldWrap>
           <FieldWrap label="Name (optional)" htmlFor="pd-name" hint="Lists records holding it, for you to judge">
@@ -233,15 +234,15 @@ function PersonalData() {
             </div>
             {!!found.possibly?.length && (
               <>
-                <h3 className="section-title">Possibly theirs: the same name</h3>
-                <p className="muted">Not in the copy and never erased for the name alone: open each, and if it is theirs, change or delete it there.</p>
+                <h3 className="section-title">Possibly theirs: the same name, or the number with or without its country code</h3>
+                <p className="muted">Not in the copy and never erased for that alone: open each, and if it is theirs, change or delete it there.</p>
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
                         <th scope="col">Kind</th>
                         <th scope="col">Record</th>
-                        <th scope="col">Name held</th>
+                        <th scope="col">Held</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -251,7 +252,7 @@ function PersonalData() {
                           <td>
                             <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.id.slice(0, 8)}</a>
                           </td>
-                          <td>{r.name}</td>
+                          <td>{r.name ?? r.phone}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -340,8 +341,103 @@ function Workspace() {
     <div className="stack">
       <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>
       <PlanAndUsage />
+      <WorkspaceExport />
       <CloseWorkspace />
     </div>
+  );
+}
+
+interface ExportJob {
+  id: string;
+  kind: string;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: { step?: string; done?: number; total?: number } | null;
+  result: { parts?: { id: string; file_name: string; size?: number }[]; expires_in_days?: number; deleted?: string; files_missing?: number } | null;
+  last_error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+const EXPORT_KIND = "platform.export";
+
+/** Whether a finished export's files are gone: deleted by an erasure, or past the days it is kept. */
+export function exportGone(job: Pick<ExportJob, "status" | "result" | "finished_at">, now: number): boolean {
+  if (job.status !== "done") return false;
+  const days = job.result?.expires_in_days ?? 7;
+  return !!job.result?.deleted || (!!job.finished_at && now > new Date(job.finished_at).getTime() + days * 86_400_000);
+}
+
+/** The workspace's copy to take away: every record with its rows, files, history and settings, never
+ *  a secret, as zip files an administrator downloads for some days; a personal-data erasure deletes
+ *  them sooner, and the next export holds what it left. */
+function WorkspaceExport() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["admin", "exports"],
+    queryFn: ({ signal }) => api.get<{ jobs: ExportJob[] }>("/api/jobs", { limit: 50 }, signal),
+    refetchInterval: (query) => (query.state.data?.jobs.some((j) => j.kind === EXPORT_KIND && (j.status === "queued" || j.status === "running")) ? 3000 : false),
+  });
+  const [busy, setBusy] = useState(false);
+  const latest = (q.data?.jobs ?? []).filter((j) => j.kind === EXPORT_KIND).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const making = latest?.status === "queued" || latest?.status === "running";
+  const start = async () => {
+    setBusy(true);
+    if (await attempt(() => api.post("/api/admin/export", {}), "The export is being made")) await qc.invalidateQueries({ queryKey: ["admin", "exports"] });
+    setBusy(false);
+  };
+  const save = (part: { id: string; file_name: string }) => void attempt(() => downloadFile(`/api/jobs/${latest!.id}/parts/${part.id}`, part.file_name));
+  const days = latest?.result?.expires_in_days ?? 7;
+  const gone = !!latest && exportGone(latest, Date.now());
+  const parts = latest?.status === "done" && !gone ? (latest.result?.parts ?? []) : [];
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Export the workspace</h2>
+        <span className="spacer" />
+        <Button size="sm" loading={busy} disabled={making} onClick={() => void start()}>
+          Make an export
+        </Button>
+      </div>
+      <div className="card-body stack" style={{ gap: 8 }}>
+        <p className="muted">Every record with its rows, the files, the history and the settings, never a password or secret, in zip files you download here.</p>
+        {making && (
+          <p role="status">
+            Being made{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? ` (${latest.progress.done ?? 0} of ${latest.progress.total})` : ""}` : ""}…
+          </p>
+        )}
+        {latest?.status === "failed" && <Alert tone="error">The last export failed: {latest.last_error}</Alert>}
+        {gone && (
+          <p className="faint">
+            {latest?.result?.deleted
+              ? "The last export was deleted by a personal-data erasure, as every copy from before one is. Make another."
+              : `The last export was kept its ${days} days and is gone. Make another.`}
+          </p>
+        )}
+        {latest?.status === "done" && !gone && (
+          <>
+            <p className="faint">
+              Made {latest.finished_at ? formatDateTime(latest.finished_at) : ""}; kept {days} days, unless a personal-data erasure deletes it first.
+            </p>
+            {latest.result?.files_missing ? (
+              <Alert tone="warning">
+                {latest.result.files_missing} {latest.result.files_missing === 1 ? "file" : "files"} the storage no longer has {latest.result.files_missing === 1 ? "was" : "were"} left
+                out; the export's manifest names them.
+              </Alert>
+            ) : null}
+            <ul className="stack" style={{ gap: 4 }}>
+              {parts.map((p) => (
+                <li key={p.id}>
+                  <Button size="sm" variant="ghost" onClick={() => save(p)}>
+                    Download {p.file_name}
+                  </Button>
+                  {p.size ? <span className="faint"> {size(p.size)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1617,33 +1713,124 @@ function Packages() {
     setBusy(null);
   };
   return (
+    <div className="stack">
+      <Loaded q={q}>
+        {(data) => (
+          <div className="home-grid">
+            {data.packages.map((p) => (
+              <section key={p.name} className="card">
+                <div className="card-head">
+                  <h2>{p.label ?? p.name}</h2>
+                  <span className="faint mono">
+                    {p.name}@{p.version}
+                  </span>
+                  <span className="spacer" />
+                  {p.installed ? (
+                    <Badge tone="green">installed</Badge>
+                  ) : (
+                    <Button size="sm" variant="primary" loading={busy === p.name} onClick={() => void install(p)}>
+                      Install
+                    </Button>
+                  )}
+                </div>
+                <div className="card-body stack" style={{ gap: 8 }}>
+                  <p className="muted">{p.description}</p>
+                  {p.depends.length > 0 && <p className="faint">Requires: {p.depends.join(", ")}</p>}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </Loaded>
+      <Backfills />
+    </div>
+  );
+}
+
+interface Backfill {
+  package: string;
+  name: string;
+  state: "waiting" | "running" | "done";
+  changed: number;
+  remaining: number | null;
+  finished_at: string | null;
+  needing_now: number;
+}
+
+const BACKFILL_STATE: Record<Backfill["state"], { tone: "green" | "amber" | "neutral"; text: string }> = {
+  waiting: { tone: "neutral", text: "Waiting for the upkeep" },
+  running: { tone: "amber", text: "Running" },
+  done: { tone: "green", text: "Done" },
+};
+
+/** Data the installed packages' releases move in batches: how far each got, and the rows it could
+ *  not change (put them right, then run it again). Nothing shows while no package moves any. */
+function Backfills() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "backfills"], queryFn: ({ signal }) => api.get<{ backfills: Backfill[] }>("/api/admin/backfills", undefined, signal) });
+  const [busy, setBusy] = useState<string | null>(null);
+  const rerun = async (b: Backfill) => {
+    const key = `${b.package}/${b.name}`;
+    const ok = await confirmDialog({ title: `Run ${key} again?`, message: "It runs from the start at the next upkeep, over the rows that still need it.", confirmLabel: "Run again" });
+    if (!ok) return;
+    setBusy(key);
+    if (await attempt(() => api.post(`/api/admin/backfills/${encodeURIComponent(b.package)}/${encodeURIComponent(b.name)}/rerun`, {}), `${key} runs again at the next upkeep`)) {
+      await qc.invalidateQueries({ queryKey: ["admin", "backfills"] });
+    }
+    setBusy(null);
+  };
+  return (
     <Loaded q={q}>
-      {(data) => (
-        <div className="home-grid">
-          {data.packages.map((p) => (
-            <section key={p.name} className="card">
-              <div className="card-head">
-                <h2>{p.label ?? p.name}</h2>
-                <span className="faint mono">
-                  {p.name}@{p.version}
-                </span>
-                <span className="spacer" />
-                {p.installed ? (
-                  <Badge tone="green">installed</Badge>
-                ) : (
-                  <Button size="sm" variant="primary" loading={busy === p.name} onClick={() => void install(p)}>
-                    Install
-                  </Button>
-                )}
-              </div>
-              <div className="card-body stack" style={{ gap: 8 }}>
-                <p className="muted">{p.description}</p>
-                {p.depends.length > 0 && <p className="faint">Requires: {p.depends.join(", ")}</p>}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      {(data) =>
+        data.backfills.length === 0 ? null : (
+          <section className="card">
+            <div className="card-head">
+              <h2>Data moves</h2>
+            </div>
+            <div className="card-body table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Backfill</th>
+                    <th scope="col">State</th>
+                    <th scope="col">Rows changed</th>
+                    <th scope="col">It could not change</th>
+                    <th scope="col">Need it now</th>
+                    <th scope="col">Finished</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.backfills.map((b) => {
+                    const key = `${b.package}/${b.name}`;
+                    return (
+                      <tr key={key}>
+                        <td className="mono">{key}</td>
+                        <td>
+                          <Badge tone={BACKFILL_STATE[b.state].tone}>{BACKFILL_STATE[b.state].text}</Badge>
+                        </td>
+                        <td>{b.changed}</td>
+                        <td>{b.remaining ?? ""}</td>
+                        <td>{b.needing_now}</td>
+                        <td>{b.finished_at ? formatDateTime(b.finished_at) : ""}</td>
+                        <td>
+                          {b.state === "done" && (
+                            <Button size="sm" loading={busy === key} onClick={() => void rerun(b)}>
+                              Run again
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )
+      }
     </Loaded>
   );
 }
