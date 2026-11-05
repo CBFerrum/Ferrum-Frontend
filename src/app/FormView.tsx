@@ -39,6 +39,13 @@ import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
 
+/** What a finished action says: its own message when it gives one ("3 deferred lines recognised
+ * through 31 Oct"), else that it is done. */
+export function actionToast(label: string, res: unknown): string {
+  const message = res && typeof res === "object" ? (res as { message?: unknown }).message : undefined;
+  return typeof message === "string" && message.trim() ? message : `${label}: done`;
+}
+
 export function FormView() {
   const { entity = "", id = "" } = useParams();
   const meta = useEntityMeta(entity);
@@ -423,7 +430,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       const type = typeof r.file.type === "string" ? r.file.type : "application/octet-stream";
       saveBlob(new Blob([r.file.content], { type }), typeof r.file.name === "string" ? r.file.name : `${a.name}.txt`);
     }
-    toast(`${a.label}: done`);
+    toast(actionToast(a.label, res));
     if (typeof r.entity === "string" && typeof r.id === "string") navigate(`/e/${r.entity}/${r.id}`);
     else if (!a.read_only) {
       const fresh = await reload();
