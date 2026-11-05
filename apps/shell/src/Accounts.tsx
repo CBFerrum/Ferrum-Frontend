@@ -55,8 +55,17 @@ async function signOut(then = "/login") {
   location.assign(then);
 }
 
+/**
+ * Where signing in as another account comes back to: this step, as one where the account is
+ * chosen. Signing in is choosing it, so the way back does not ask "Continue" once more (the
+ * server's own way in does the same, `sign_in_first`).
+ */
+export function backAsChosen(path: string): string {
+  return path.replace("prompt=select_account", "prompt=none");
+}
+
 /** Another account: signs out here, and signs in again on the way back to this step. */
-const anotherAccount = () => void signOut(`/login?next=${encodeURIComponent(here())}`);
+const anotherAccount = () => void signOut(`/login?next=${encodeURIComponent(backAsChosen(here()))}`);
 
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
