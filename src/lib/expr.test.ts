@@ -37,6 +37,20 @@ describe("evaluate", () => {
     expect(evaluate("!(doc.is_return && doc.update_stock)", { doc })).toBe(true);
   });
 
+  it("reads an empty number as 0 and an empty check as false, as the server does", () => {
+    const fresh = { paid_amount: null, advance_amount: "1000", qty: null, approved: null, closes_on: null };
+    expect(evaluate("doc.paid_amount < doc.advance_amount", { doc: fresh })).toBe(true);
+    expect(evaluate("doc.advance_amount > doc.paid_amount", { doc: fresh })).toBe(true);
+    expect(evaluate("doc.qty > 0", { doc: fresh })).toBe(false);
+    expect(evaluate("doc.qty == 0", { doc: fresh })).toBe(true);
+    expect(evaluate("doc.missing_amount < 5", { doc: fresh })).toBe(true);
+    expect(evaluate("doc.approved == false", { doc: fresh })).toBe(true);
+    // Beside anything but a number or a check, empty stays empty.
+    expect(evaluate("doc.closes_on > '2026-01-01'", { doc: fresh })).toBe(false);
+    expect(evaluate("doc.closes_on == null", { doc: fresh })).toBe(true);
+    expect(evaluate("doc.paid_amount in [0, 1]", { doc: fresh })).toBe(false);
+  });
+
   it("handles null", () => {
     expect(evaluate("doc.return_against == null", { doc })).toBe(true);
     expect(evaluate("doc.return_against != null", { doc })).toBe(false);
