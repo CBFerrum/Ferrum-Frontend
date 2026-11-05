@@ -6,6 +6,8 @@
 import { parseApiError } from "./errors";
 
 export { ApiError, errorMessage, parseApiError, refusal, type FieldError } from "./errors";
+export { cacheName, currentLease, mayKeep, pendingName, stale, sweep, type OfflineEnv, type OfflineLease } from "./offline";
+import { currentLease, type OfflineEnv, type OfflineLease } from "./offline";
 export {
   compareDecimal,
   formatDate,
@@ -58,6 +60,8 @@ export interface Bootstrap {
   flags: Record<string, unknown>;
   /** On a public page: which of the app's public pages (`drive/s`). */
   public?: string;
+  /** What this device may keep for the person while offline, and until when (docs/offline.md). */
+  offline?: OfflineLease | null;
   /** On the accounts host (shapes B and C): the Ferrum account signed in. */
   accounts?: { email: string; verified: boolean; two_factor: boolean; region: string; regions: { name: string; url: string }[]; mail: boolean };
   /** On the accounts host: the step of entering a workspace that needs the person. */
@@ -95,6 +99,30 @@ export function bootstrap(): Bootstrap | null {
   // Read once per page: its words, direction and formats follow the person's language from here.
   if (cached) applyLocale(cached.locale);
   return cached;
+}
+
+/** This page's offline lease and where it keeps things (see ./offline). */
+export function offlineEnv(): OfflineEnv {
+  const b = bootstrap();
+  let storage: OfflineEnv["storage"];
+  try {
+    storage = globalThis.localStorage;
+  } catch {
+    storage = undefined;
+  }
+  return { workspace: b?.workspace.slug ?? null, lease: b?.offline ?? null, storage };
+}
+
+/** Renews the lease while online, for a page that stays open for days (a till); the one kept when
+ *  the server cannot say. */
+export async function renewOfflineLease(): Promise<OfflineLease | null> {
+  const env = offlineEnv();
+  try {
+    const lease = await request<OfflineLease>("/api/shell/offline");
+    return currentLease({ ...env, lease });
+  } catch {
+    return currentLease(env);
+  }
 }
 
 /** Forgets the bootstrap read (tests). */
