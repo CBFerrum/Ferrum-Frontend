@@ -2,6 +2,7 @@
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { violations } from "../../test/axe";
 import type { LayoutSection } from "../../lib/formLayout";
 import type { EntityMeta } from "../../lib/meta";
 import { Canvas } from "./Canvas";
@@ -32,9 +33,18 @@ const layout: LayoutSection[] = [
 const noop = () => {};
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
+
+/** Every screen this file draws, for the accessibility check at its end. */
+const drawn: string[] = [];
+const draw = (node: Parameters<typeof renderToString>[0]) => {
+  const html = renderToString(node);
+  drawn.push(html);
+  return html;
+};
+
 describe("designer rendering", () => {
   it("shows the current tab's sections and fields, the tabs and the unplaced fields", () => {
-    const html = renderToString(
+    const html = draw(
       <Canvas meta={meta} layout={layout} onChange={noop} tab={null} onTab={noop} selected="s0" onSelect={noop} flagged={new Set(["s0"])} wide aside={<p>inspector here</p>} />,
     );
     const t = text(html);
@@ -54,7 +64,7 @@ describe("designer rendering", () => {
   });
 
   it("opens another tab's sections", () => {
-    const t = text(renderToString(<Canvas meta={meta} layout={layout} onChange={noop} tab="More" onTab={noop} selected={null} onSelect={noop} flagged={new Set()} wide={false} />));
+    const t = text(draw(<Canvas meta={meta} layout={layout} onChange={noop} tab="More" onTab={noop} selected={null} onSelect={noop} flagged={new Set()} wide={false} />));
     expect(t).toContain("Untitled section");
     expect(t).toContain("customer · link → Customer");
     expect(t).toContain("Conditional");
@@ -63,12 +73,12 @@ describe("designer rendering", () => {
 
   it("inspects a section with its condition hint and the server's message", () => {
     const props = { meta, layout, onChange: noop, onTab: noop, problems: [], framed: true };
-    const t = text(renderToString(<SectionInspector {...props} sectionKey="s1" saveError={null} />));
+    const t = text(draw(<SectionInspector {...props} sectionKey="s1" saveError={null} />));
     expect(t).toContain("Section settings");
     expect(t).toContain("The section shows while this condition is true.");
-    const rejected = text(renderToString(<SectionInspector {...props} sectionKey="s1" saveError={{ message: "Section condition: syntax error", sections: ["s1"] }} />));
+    const rejected = text(draw(<SectionInspector {...props} sectionKey="s1" saveError={{ message: "Section condition: syntax error", sections: ["s1"] }} />));
     expect(rejected).toContain("The server rejected this condition");
-    expect(text(renderToString(<SectionInspector {...props} sectionKey={null} saveError={null} />))).toContain("Select a section");
+    expect(text(draw(<SectionInspector {...props} sectionKey={null} saveError={null} />))).toContain("Select a section");
   });
 
   it("lists saved layouts with the one in use", () => {
@@ -83,7 +93,7 @@ describe("designer rendering", () => {
     });
     const versions = [v(2, true), v(1, false)];
     const t = text(
-      renderToString(
+      draw(
         <LayoutHistory meta={meta} loading={false} error={null} onRetry={noop} versions={versions} current={versions[0]} restoring={null} onRestore={noop} />,
       ),
     );
@@ -92,5 +102,14 @@ describe("designer rendering", () => {
     expect(t).toContain("1 tab · 1 section · 2 fields");
     expect(t).toContain("Simpler");
     expect(t.match(/Restore/g)).toHaveLength(2); // the older one and the original layout
+  });
+});
+
+describe("the designer, for assistive technology", () => {
+  it("breaks none of axe's rules that hold without layout", async () => {
+    expect(drawn.length).toBeGreaterThan(0);
+    const found = new Set<string>();
+    for (const html of drawn) for (const v of await violations(html)) found.add(v);
+    expect([...found]).toEqual([]);
   });
 });
