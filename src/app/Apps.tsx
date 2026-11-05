@@ -5,10 +5,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api, errorMessage } from "../lib/api";
-import { formatDateTime } from "../lib/format";
+import { formatDate, formatDateTime } from "../lib/format";
 import { useMe } from "../lib/meta";
 import { useContributions } from "../lib/screens";
-import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
+import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
 
 export interface AppSummary {
   id: string;
@@ -72,6 +72,73 @@ interface Plan {
   increases?: string[];
   warnings?: string[];
   uninstall?: "keep" | "ask";
+  /** The apps it brings that a store sells: each installs only once its licence is live. */
+  licences?: LicenceNeed[];
+}
+
+/** A sold app's licence, as its store last said of the one this workspace gave. */
+interface LicenceNeed {
+  app: string;
+  store: string;
+  given: boolean;
+  live: boolean;
+  period_end?: string | null;
+  last_error?: string | null;
+}
+
+const LICENCE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The host a store is at, as people read it. */
+export function storeHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** A sold app's licence in the install dialog: live, or a field for the one bought in its store. */
+export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: () => void }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (need.live) {
+    return <p className="muted">{`${need.app}'s licence is live${need.period_end ? ` until ${formatDate(need.period_end)}` : ""}.`}</p>;
+  }
+  const give = async (e: FormEvent) => {
+    e.preventDefault();
+    const licence = value.trim();
+    if (!LICENCE.test(licence)) {
+      setError("A licence is the id shown on Your purchases in the store, such as 0f2c6a1e-…");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.put(`/api/admin/apps/${need.app}/licence`, { licence });
+      toast(`${need.app}'s licence kept`);
+      onGiven();
+    } catch (err) {
+      setError(errorMessage(err, false));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const given = need.given ? ` The licence given ${need.last_error ? `could not be checked: ${need.last_error}` : "has lapsed: renew it in the store"}.` : "";
+  return (
+    <form className="stack" onSubmit={(e) => void give(e)}>
+      <Alert tone="info">{`${need.app} is sold in the store at ${storeHost(need.store)}: give the licence you bought for this workspace, from Your purchases there.${given}`}</Alert>
+      {error && <Alert tone="error">{error}</Alert>}
+      <Field label={`Licence for ${need.app}`}>
+        <input className="input" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" spellCheck={false} required />
+      </Field>
+      <div className="row">
+        <Button type="submit" icon="check" loading={busy}>
+          Give the licence
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 const RUNTIME_LABEL = { native: "Built in", wasm: "Sandboxed", meta: "No code" } as const;
@@ -218,6 +285,12 @@ export function AppsPage() {
 
 function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string; upgrade?: boolean }) => void }) {
   const qc = useQueryClient();
+  // Sold apps whose store no longer says their licence is live: what is installed stays, not upgraded.
+  const licences = useQuery({
+    queryKey: ["apps", "licences"],
+    queryFn: ({ signal }) => api.get<{ licences: (LicenceNeed & { app: string })[] }>("/api/admin/apps/licences", undefined, signal),
+  });
+  const lapsed = new Map((licences.data?.licences ?? []).filter((l) => !l.live).map((l) => [l.app, l.last_error ?? "Its store says the licence has lapsed: renew it there."]));
   const [busy, setBusy] = useState<string | null>(null);
   const settings = new Set((useContributions("ui.settings").data ?? []).map((c) => c.app));
   const refresh = () =>
@@ -293,6 +366,11 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
           <label className="check-field" style={{ minHeight: 0 }}>
             <input type="checkbox" checked={a.enabled} disabled={busy === a.id} onChange={() => void toggle(a)} /> Enabled
           </label>
+          {lapsed.has(a.id) && (
+            <Badge tone="amber" title={lapsed.get(a.id)}>
+              Licence lapsed
+            </Badge>
+          )}
           <span className="spacer" />
           {a.enabled && settings.has(a.id) && (
             <Link className="btn btn-default btn-sm" to={`/apps/${a.id}/settings`}>
@@ -479,6 +557,7 @@ export function InstallDialog({
     }
   };
   const p = plan.data;
+  const unlicensed = (p?.licences ?? []).filter((l) => !l.live);
   return (
     <Dialog open={!!request} onClose={close} title={p ? `${request?.upgrade ? "Update" : "Install"} ${p.app.name}` : "App"} wide>
       {plan.isLoading ? (
@@ -555,6 +634,9 @@ export function InstallDialog({
               {w}
             </Alert>
           ))}
+          {(p.licences ?? []).map((l) => (
+            <LicenceNeeded key={l.app} need={l} onGiven={() => void plan.refetch()} />
+          ))}
           <div>
             <h3 className="field-label">
               <Icon name="alert" size={14} /> This app will be able to
@@ -563,7 +645,14 @@ export function InstallDialog({
           </div>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={close}>Cancel</Button>
-            <Button variant="primary" icon="check" loading={busy} onClick={() => void install()}>
+            <Button
+              variant="primary"
+              icon="check"
+              loading={busy}
+              disabled={unlicensed.length > 0}
+              title={unlicensed.length ? "Give its licence first" : undefined}
+              onClick={() => void install()}
+            >
               {request?.upgrade ? "Allow and update" : "Allow and install"}
             </Button>
           </div>
