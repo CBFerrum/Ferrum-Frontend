@@ -14,7 +14,7 @@ export interface AppSummary {
   id: string;
   name: string;
   version: string;
-  runtime: "native" | "wasm" | "meta";
+  runtime: "native" | "wasm" | "meta" | "service";
   summary: string;
   categories?: string[];
   publisher?: string;
@@ -141,11 +141,13 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
   );
 }
 
-const RUNTIME_LABEL = { native: "Built in", wasm: "Sandboxed", meta: "No code" } as const;
+const RUNTIME_LABEL = { native: "Built in", wasm: "Sandboxed", meta: "No code", service: "Runs elsewhere" } as const;
+const RUNTIME_TONE = { native: "purple", wasm: "green", meta: "neutral", service: "blue" } as const;
 
 /** Words for a permission section key: `entities` → "Entities". */
 export function sectionLabel(key: string): string {
   if (key === "native") return "Built into the server";
+  if (key === "services") return "Runs outside Ferrum, as an account of its own, at";
   const s = key.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -225,7 +227,7 @@ export function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; c
       {addonOf && <div className="faint app-meta">Add-on of {addonOf}</div>}
       <p className="muted app-summary">{app.summary}</p>
       <div className="chips">
-        <Badge tone={app.runtime === "native" ? "purple" : app.runtime === "wasm" ? "green" : "neutral"}>{RUNTIME_LABEL[app.runtime]}</Badge>
+        <Badge tone={RUNTIME_TONE[app.runtime] ?? "neutral"}>{RUNTIME_LABEL[app.runtime] ?? app.runtime}</Badge>
         {app.private && <Badge tone="amber">Private</Badge>}
         {(app.categories ?? []).slice(0, 2).map((c) => (
           <Badge key={c}>{c}</Badge>
@@ -573,7 +575,7 @@ export function InstallDialog({
               <strong>{p.app.name}</strong> <span className="faint">v{p.app.version}</span>
               <p className="muted">{p.app.summary}</p>
               <div className="chips">
-                <Badge tone={p.app.runtime === "native" ? "purple" : p.app.runtime === "wasm" ? "green" : "neutral"}>{RUNTIME_LABEL[p.app.runtime]}</Badge>
+                <Badge tone={RUNTIME_TONE[p.app.runtime] ?? "neutral"}>{RUNTIME_LABEL[p.app.runtime] ?? p.app.runtime}</Badge>
                 {p.app.license && <Badge>{p.app.license}</Badge>}
                 {p.app.publisher && <Badge>{p.app.publisher}</Badge>}
                 {p.app.isolated && (
