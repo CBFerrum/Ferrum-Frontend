@@ -2649,8 +2649,25 @@ interface ApiKey {
   expires_at?: string | null;
   revoked_at?: string | null;
   last_used_at?: string | null;
-  /** `dav`: an app password for calendar and contacts apps; none: a key to the whole API. */
+  /** `dav`: an app password for calendar and contacts apps; `records:…`: a key to the records it
+   * names; none: a key to the whole API. */
   scope?: string | null;
+}
+
+/** A records key's scope from what someone typed ("Customer=read; SalesInvoice=read+write"), or
+ * nothing for a key to the whole API. The server checks the entities and what each may do. */
+export function recordsScope(typed: string): string | undefined {
+  const parts = typed
+    .split(/[;\n]/)
+    .map((p) => p.replace(/\s+/g, ""))
+    .filter(Boolean);
+  return parts.length ? `records:${parts.join(";")}` : undefined;
+}
+
+/** What a key reaches, in words. */
+export function keyReaches(scope?: string | null): string {
+  if (scope?.startsWith("records:")) return scope.slice("records:".length).split(";").join(", ").replaceAll("+", " and ").replaceAll("=", ": ");
+  return "the whole API";
 }
 
 /** Your keys to the API, or (`scope="dav"`) your app passwords for calendar and contacts apps. */
@@ -2660,6 +2677,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
   const app = scope === "dav";
   const [name, setName] = useState("");
   const [expires, setExpires] = useState("");
+  const [records, setRecords] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -2673,11 +2691,12 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
       const res = await api.post<{ id: string; key: string }>("/api/auth/api_keys", {
         name: name.trim(),
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : undefined,
-        scope,
+        scope: app ? scope : recordsScope(records),
       });
       setCreated(res.key);
       setName("");
       setExpires("");
+      setRecords("");
       void refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -2708,6 +2727,22 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
         <FieldWrap label="Expires (optional)" htmlFor="key-exp">
           <input id="key-exp" className="input" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </FieldWrap>
+        {!app && (
+          <FieldWrap
+            label="Only these records (optional)"
+            htmlFor="key-records"
+            className="field-wide"
+            hint="Entities and what the key may do with each, e.g. Customer=read; SalesInvoice=read+create. Empty: the whole API, as you."
+          >
+            <input
+              id="key-records"
+              className="input"
+              value={records}
+              onChange={(e) => setRecords(e.target.value)}
+              placeholder="Customer=read; SalesInvoice=read+create"
+            />
+          </FieldWrap>
+        )}
         <Button type="submit" variant="primary" icon="plus" loading={busy}>
           {app ? "Create app password" : "Create key"}
         </Button>
@@ -2719,7 +2754,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
       )}
       <Loaded q={q}>
         {(all) => {
-          const data = { keys: all.keys.filter((k) => (k.scope ?? undefined) === scope) };
+          const data = { keys: all.keys.filter((k) => (app ? k.scope === "dav" : !k.scope || k.scope.startsWith("records:"))) };
           return !data.keys.length ? (
             <EmptyState title={app ? "No app passwords" : "No API keys"} icon="settings" />
           ) : (
@@ -2729,6 +2764,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
                   <tr>
                     <th scope="col">Name</th>
                     <th scope="col">Key</th>
+                    {!app && <th scope="col">Reaches</th>}
                     <th scope="col">Created</th>
                     <th scope="col">Expires</th>
                     <th scope="col">Last used</th>
@@ -2744,6 +2780,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
                         {k.name} {k.revoked_at && <Badge tone="red">revoked</Badge>}
                       </td>
                       <td className="mono">{k.prefix}</td>
+                      {!app && <td>{keyReaches(k.scope)}</td>}
                       <td className="nowrap">{formatDateTime(k.created_at)}</td>
                       <td className="nowrap">{k.expires_at ? formatDateTime(k.expires_at) : <span className="faint">never</span>}</td>
                       <td className="nowrap">{k.last_used_at ? relativeTime(k.last_used_at) : <span className="faint">never</span>}</td>
