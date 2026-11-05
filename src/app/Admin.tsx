@@ -1859,6 +1859,8 @@ interface Webhook {
   created_at: string;
   pending: number;
   dead: number;
+  /** The app whose service hears of events through it: it goes with the app, not by hand. */
+  app?: string | null;
 }
 
 // ── domains ──
@@ -2132,7 +2134,11 @@ function Webhooks() {
                       <td className="num">{w.dead > 0 ? <Badge tone="red">{w.dead}</Badge> : w.dead}</td>
                       <td className="nowrap">{formatDateTime(w.created_at)}</td>
                       <td>
-                        <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(w)} aria-label={`Delete webhook ${w.name}`} />
+                        {w.app ? (
+                          <span className="muted">The {w.app} app&apos;s</span>
+                        ) : (
+                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(w)} aria-label={`Delete webhook ${w.name}`} />
+                        )}
                       </td>
                     </tr>
                   ))}
