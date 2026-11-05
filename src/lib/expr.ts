@@ -4,6 +4,9 @@
 //   `today`, `now`, member/index access, == != < <= > >= in, && || !, unary minus, parentheses.
 // Anything else (function calls, arithmetic, ternaries) is "unknown": callers then fall back to
 // the permissive choice (show the field / allow the action) because the server is the authority.
+// An empty value compared with a number reads as 0, and compared with true or false as false: the
+// server reads empty numbers and checks so (EffEntity::cel_view), so `doc.paid < doc.total` holds
+// on a fresh record on the page as it does there.
 
 import { compareDecimal, isDecimalString, todayIso } from "./format";
 
@@ -194,6 +197,14 @@ function equals(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
+/** `v` as it is compared with `other`: empty beside a number is 0, beside true or false is false. */
+function filled(v: unknown, other: unknown): unknown {
+  if (v !== null && v !== undefined) return v;
+  if (isNumeric(other) || isDecimalString(other)) return new Num("0");
+  if (typeof other === "boolean") return false;
+  return v;
+}
+
 function truthy(v: unknown): boolean {
   if (v instanceof Num) return compareDecimal(v.text, "0") !== 0;
   if (Array.isArray(v)) return v.length > 0;
@@ -241,8 +252,10 @@ function evalNode(n: Node, s: Scope): unknown {
     case "bin": {
       if (n.op === "&&") return truthy(evalNode(n.l, s)) && truthy(evalNode(n.r, s));
       if (n.op === "||") return truthy(evalNode(n.l, s)) || truthy(evalNode(n.r, s));
-      const l = evalNode(n.l, s);
-      const r = evalNode(n.r, s);
+      const left = evalNode(n.l, s);
+      const right = evalNode(n.r, s);
+      const r = n.op === "in" ? right : filled(right, left);
+      const l = n.op === "in" ? left : filled(left, right);
       switch (n.op) {
         case "==":
           return equals(l, r);
@@ -254,7 +267,8 @@ function evalNode(n: Node, s: Scope): unknown {
           if (r === null) return false;
           throw new EvalError("'in' needs a list");
         default: {
-          // Ordering against null is false (CEL would raise an error, which the server treats as failure).
+          // Ordering against an empty value that is not beside a number is false (CEL would raise an
+          // error, which the server treats as failure).
           if (l === null || r === null) return false;
           const c = compareValues(l, r);
           if (c === null) throw new EvalError("values cannot be compared");
