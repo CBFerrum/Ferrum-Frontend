@@ -1265,9 +1265,128 @@ function Roles() {
               </Button>
             </form>
           </section>
+          <ExplainAccess roles={names} entities={entities} />
         </div>
       )}
     </Loaded>
+  );
+}
+
+interface Explanation {
+  allowed: boolean;
+  reason: string;
+  roles?: string[];
+  rules?: { role: string; entity: string; if_owner: boolean; where?: Record<string, unknown> | null }[];
+  /** The fields their scopes limit the records by (`id` for the scoped entity itself). */
+  scoped_by?: string[];
+  simulated?: boolean;
+}
+
+/** Why someone may or may not do something, as the server decides it, or what other roles would
+ * let them do without changing anything. */
+function ExplainAccess({ roles, entities }: { roles: string[]; entities: { name: string; label: string }[] }) {
+  const users = useUsers();
+  const [user, setUser] = useState("");
+  const [action, setAction] = useState("read");
+  const [entity, setEntity] = useState("");
+  const [record, setRecord] = useState<string | null>(null);
+  const [simulate, setSimulate] = useState(false);
+  const [as, setAs] = useState<string[]>([]);
+  const [answer, setAnswer] = useState<{ asked: string; is: Explanation } | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Portal people and guests hold no roles: the pages apps give them answer for them.
+  const people = (users.data?.users ?? []).filter((u) => u.kind !== "portal" && u.kind !== "guest");
+  // An answer is shown only while the question is the one it answers.
+  const asked = JSON.stringify([user, action, entity, record, simulate ? as : null]);
+  const ask = async (e: FormEvent) => {
+    e.preventDefault();
+    const query: Record<string, string> = { user, entity, action };
+    if (record) query.record = record;
+    if (simulate) query.roles = as.join(",");
+    setBusy(true);
+    await attempt(async () => setAnswer({ asked, is: await api.get<Explanation>("/api/admin/access/explain", query) }));
+    setBusy(false);
+  };
+  return (
+    <section className="card card-pad stack" aria-labelledby="explain-title">
+      <h2 id="explain-title" className="section-title">
+        Why may they, or not?
+      </h2>
+      <form className="row" style={{ alignItems: "flex-end", flexWrap: "wrap" }} onSubmit={(e) => void ask(e)}>
+        <FieldWrap label="Person" htmlFor="explain-user">
+          <select id="explain-user" className="select" value={user} onChange={(e) => setUser(e.target.value)} required>
+            <option value="">Choose someone…</option>
+            {people.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name} ({u.email})
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Do" htmlFor="explain-action">
+          <select id="explain-action" className="select" value={action} onChange={(e) => setAction(e.target.value)}>
+            {ACTIONS.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Entity" htmlFor="explain-entity">
+          <select
+            id="explain-entity"
+            className="select"
+            value={entity}
+            onChange={(e) => {
+              setEntity(e.target.value);
+              setRecord(null);
+            }}
+            required
+          >
+            <option value="">Choose an entity…</option>
+            {entities.map((e) => (
+              <option key={e.name} value={e.name}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        {entity && (
+          <FieldWrap label="This record (optional)" htmlFor="explain-record">
+            <LinkInput id="explain-record" to={entity} value={record} onChange={(id) => setRecord(id)} />
+          </FieldWrap>
+        )}
+        <Button type="submit" variant="primary" loading={busy} disabled={!user || !entity}>
+          Explain
+        </Button>
+      </form>
+      {answer?.asked === asked && (
+        <div role="status" className="stack">
+          <div>
+            <Badge tone={answer.is.allowed ? "green" : "red"}>{answer.is.allowed ? "allowed" : "not allowed"}</Badge> {answer.is.simulated && <Badge tone="amber">as if</Badge>}{" "}
+            {answer.is.reason.charAt(0).toUpperCase() + answer.is.reason.slice(1)}.
+          </div>
+          {answer.is.roles && <p className="muted">Roles: {answer.is.roles.length ? answer.is.roles.join(", ") : "none"}</p>}
+          {!!answer.is.rules?.length && (
+            <ul className="muted" style={{ margin: 0 }}>
+              {answer.is.rules.map((r, i) => (
+                <li key={i}>
+                  {r.role}: {r.entity === "*" ? "every entity" : r.entity}
+                  {r.if_owner && ", their own records"}
+                  {r.where && `, where ${JSON.stringify(r.where)}`}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!!answer.is.scoped_by?.length && <p className="muted">Limited by their scopes on: {answer.is.scoped_by.join(", ")}</p>}
+        </div>
+      )}
+      <label className="check-field">
+        <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
+        As if they held other roles (nothing changes)
+      </label>
+      {simulate && <RoleChecks roles={roles} value={as} onChange={setAs} />}
+    </section>
   );
 }
 
