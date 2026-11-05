@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
-import { formatDateTime, relativeTime } from "../lib/format";
+import { formatDate, formatDateTime, relativeTime } from "../lib/format";
 import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
@@ -570,6 +570,8 @@ interface User {
   sso: boolean;
   last_login_at?: string | null;
   roles: string[];
+  /** The roles held only until a moment, and that moment; the others are held for good. */
+  role_until?: Record<string, string>;
   /** member, portal (customers, suppliers: the portal's pages only), guest or service. */
   kind?: string;
 }
@@ -601,6 +603,23 @@ const useUsers = () =>
   useQuery({ queryKey: ["admin", "users"], queryFn: ({ signal }) => api.get<{ users: User[] }>("/api/admin/users", undefined, signal) });
 const useRoles = () =>
   useQuery({ queryKey: ["admin", "roles"], queryFn: ({ signal }) => api.get<{ roles: Role[] }>("/api/admin/roles", undefined, signal) });
+
+/** The day, in this browser's time, that a role given until `iso` is held through. */
+export function throughDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** What is sent for the days the roles kept are held through: each day's close in this browser's
+ * time, or the moment a role already ends at when its day was left as it was. */
+export function roleEnds(roles: string[], through: Record<string, string>, held: Record<string, string> = {}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of roles) {
+    const day = through[r];
+    if (day) out[r] = held[r] && throughDay(held[r]) === day ? held[r] : new Date(`${day}T23:59:59`).toISOString();
+  }
+  return out;
+}
 
 function RoleChecks({ roles, value, onChange }: { roles: string[]; value: string[]; onChange: (v: string[]) => void }) {
   if (!roles.length) return <p className="faint">No roles defined yet.</p>;
@@ -707,7 +726,16 @@ function Users() {
                     </td>
                     <td>
                       <div className="chips">
-                        {u.roles.length ? u.roles.map((r) => <Badge key={r}>{r}</Badge>) : <span className="faint">none</span>}
+                        {u.roles.length ? (
+                          u.roles.map((r) => (
+                            <Badge key={r}>
+                              {r}
+                              {u.role_until?.[r] && ` through ${formatDate(throughDay(u.role_until[r]))}`}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="faint">none</span>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -840,16 +868,19 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
 
 function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; roles: string[]; onClose: () => void; onDone: () => void }) {
   const [value, setValue] = useState<string[]>([]);
+  const [through, setThrough] = useState<Record<string, string>>({});
   const [seen, setSeen] = useState<User | null>(null);
   const [busy, setBusy] = useState(false);
   if (user !== seen) {
     setSeen(user);
     setValue(user?.roles ?? []);
+    setThrough(Object.fromEntries(Object.entries(user?.role_until ?? {}).map(([r, iso]) => [r, throughDay(iso)])));
   }
   const save = async () => {
     if (!user) return;
     setBusy(true);
-    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value }), "Roles updated");
+    const until = roleEnds(value, through, user.role_until);
+    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value, until }), "Roles updated");
     setBusy(false);
     if (ok) {
       onDone();
@@ -871,6 +902,28 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
       }
     >
       <RoleChecks roles={roles} value={value} onChange={setValue} />
+      {value.length > 0 && (
+        <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
+          <legend className="field-label" style={{ marginBottom: 6 }}>
+            Held through (optional)
+          </legend>
+          <div className="form-grid">
+            {value.map((r) => (
+              <FieldWrap key={r} label={r} htmlFor={`role-through-${r}`}>
+                <input
+                  id={`role-through-${r}`}
+                  className="input"
+                  type="date"
+                  min={throughDay(new Date().toISOString())}
+                  value={through[r] ?? ""}
+                  onChange={(e) => setThrough({ ...through, [r]: e.target.value })}
+                />
+              </FieldWrap>
+            ))}
+          </div>
+          <p className="faint">Empty: held for good. A role with a day ends when that day does, and what it allowed ends with it.</p>
+        </fieldset>
+      )}
     </Dialog>
   );
 }
@@ -1212,9 +1265,128 @@ function Roles() {
               </Button>
             </form>
           </section>
+          <ExplainAccess roles={names} entities={entities} />
         </div>
       )}
     </Loaded>
+  );
+}
+
+interface Explanation {
+  allowed: boolean;
+  reason: string;
+  roles?: string[];
+  rules?: { role: string; entity: string; if_owner: boolean; where?: Record<string, unknown> | null }[];
+  /** The fields their scopes limit the records by (`id` for the scoped entity itself). */
+  scoped_by?: string[];
+  simulated?: boolean;
+}
+
+/** Why someone may or may not do something, as the server decides it, or what other roles would
+ * let them do without changing anything. */
+function ExplainAccess({ roles, entities }: { roles: string[]; entities: { name: string; label: string }[] }) {
+  const users = useUsers();
+  const [user, setUser] = useState("");
+  const [action, setAction] = useState("read");
+  const [entity, setEntity] = useState("");
+  const [record, setRecord] = useState<string | null>(null);
+  const [simulate, setSimulate] = useState(false);
+  const [as, setAs] = useState<string[]>([]);
+  const [answer, setAnswer] = useState<{ asked: string; is: Explanation } | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Portal people and guests hold no roles: the pages apps give them answer for them.
+  const people = (users.data?.users ?? []).filter((u) => u.kind !== "portal" && u.kind !== "guest");
+  // An answer is shown only while the question is the one it answers.
+  const asked = JSON.stringify([user, action, entity, record, simulate ? as : null]);
+  const ask = async (e: FormEvent) => {
+    e.preventDefault();
+    const query: Record<string, string> = { user, entity, action };
+    if (record) query.record = record;
+    if (simulate) query.roles = as.join(",");
+    setBusy(true);
+    await attempt(async () => setAnswer({ asked, is: await api.get<Explanation>("/api/admin/access/explain", query) }));
+    setBusy(false);
+  };
+  return (
+    <section className="card card-pad stack" aria-labelledby="explain-title">
+      <h2 id="explain-title" className="section-title">
+        Why may they, or not?
+      </h2>
+      <form className="row" style={{ alignItems: "flex-end", flexWrap: "wrap" }} onSubmit={(e) => void ask(e)}>
+        <FieldWrap label="Person" htmlFor="explain-user">
+          <select id="explain-user" className="select" value={user} onChange={(e) => setUser(e.target.value)} required>
+            <option value="">Choose someone…</option>
+            {people.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name} ({u.email})
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Do" htmlFor="explain-action">
+          <select id="explain-action" className="select" value={action} onChange={(e) => setAction(e.target.value)}>
+            {ACTIONS.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        <FieldWrap label="Entity" htmlFor="explain-entity">
+          <select
+            id="explain-entity"
+            className="select"
+            value={entity}
+            onChange={(e) => {
+              setEntity(e.target.value);
+              setRecord(null);
+            }}
+            required
+          >
+            <option value="">Choose an entity…</option>
+            {entities.map((e) => (
+              <option key={e.name} value={e.name}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </FieldWrap>
+        {entity && (
+          <FieldWrap label="This record (optional)" htmlFor="explain-record">
+            <LinkInput id="explain-record" to={entity} value={record} onChange={(id) => setRecord(id)} />
+          </FieldWrap>
+        )}
+        <Button type="submit" variant="primary" loading={busy} disabled={!user || !entity}>
+          Explain
+        </Button>
+      </form>
+      {answer?.asked === asked && (
+        <div role="status" className="stack">
+          <div>
+            <Badge tone={answer.is.allowed ? "green" : "red"}>{answer.is.allowed ? "allowed" : "not allowed"}</Badge> {answer.is.simulated && <Badge tone="amber">as if</Badge>}{" "}
+            {answer.is.reason.charAt(0).toUpperCase() + answer.is.reason.slice(1)}.
+          </div>
+          {answer.is.roles && <p className="muted">Roles: {answer.is.roles.length ? answer.is.roles.join(", ") : "none"}</p>}
+          {!!answer.is.rules?.length && (
+            <ul className="muted" style={{ margin: 0 }}>
+              {answer.is.rules.map((r, i) => (
+                <li key={i}>
+                  {r.role}: {r.entity === "*" ? "every entity" : r.entity}
+                  {r.if_owner && ", their own records"}
+                  {r.where && `, where ${JSON.stringify(r.where)}`}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!!answer.is.scoped_by?.length && <p className="muted">Limited by their scopes on: {answer.is.scoped_by.join(", ")}</p>}
+        </div>
+      )}
+      <label className="check-field">
+        <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
+        As if they held other roles (nothing changes)
+      </label>
+      {simulate && <RoleChecks roles={roles} value={as} onChange={setAs} />}
+    </section>
   );
 }
 
