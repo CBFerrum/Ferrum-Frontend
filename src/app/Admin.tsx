@@ -340,8 +340,97 @@ function Workspace() {
     <div className="stack">
       <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}`} initial={s} />}</Loaded>
       <PlanAndUsage />
+      <WorkspaceExport />
       <CloseWorkspace />
     </div>
+  );
+}
+
+interface ExportJob {
+  id: string;
+  kind: string;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: { step?: string; done?: number; total?: number } | null;
+  result: { parts?: { id: string; file_name: string; size?: number }[]; expires_in_days?: number; deleted?: string } | null;
+  last_error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+const EXPORT_KIND = "platform.export";
+
+/** Whether a finished export's files are gone: deleted by an erasure, or past the days it is kept. */
+export function exportGone(job: Pick<ExportJob, "status" | "result" | "finished_at">, now: number): boolean {
+  if (job.status !== "done") return false;
+  const days = job.result?.expires_in_days ?? 7;
+  return !!job.result?.deleted || (!!job.finished_at && now > new Date(job.finished_at).getTime() + days * 86_400_000);
+}
+
+/** The workspace's copy to take away: every record with its rows, files, history and settings, never
+ *  a secret, as zip files an administrator downloads for some days; a personal-data erasure deletes
+ *  them sooner, and the next export holds what it left. */
+function WorkspaceExport() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["admin", "exports"],
+    queryFn: ({ signal }) => api.get<{ jobs: ExportJob[] }>("/api/jobs", { limit: 50 }, signal),
+    refetchInterval: (query) => (query.state.data?.jobs.some((j) => j.kind === EXPORT_KIND && (j.status === "queued" || j.status === "running")) ? 3000 : false),
+  });
+  const [busy, setBusy] = useState(false);
+  const latest = (q.data?.jobs ?? []).filter((j) => j.kind === EXPORT_KIND).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const making = latest?.status === "queued" || latest?.status === "running";
+  const start = async () => {
+    setBusy(true);
+    if (await attempt(() => api.post("/api/admin/export", {}), "The export is being made")) await qc.invalidateQueries({ queryKey: ["admin", "exports"] });
+    setBusy(false);
+  };
+  const save = (part: { id: string; file_name: string }) => void attempt(() => downloadFile(`/api/jobs/${latest!.id}/parts/${part.id}`, part.file_name));
+  const days = latest?.result?.expires_in_days ?? 7;
+  const gone = !!latest && exportGone(latest, Date.now());
+  const parts = latest?.status === "done" && !gone ? (latest.result?.parts ?? []) : [];
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Export the workspace</h2>
+        <span className="spacer" />
+        <Button size="sm" loading={busy} disabled={making} onClick={() => void start()}>
+          Make an export
+        </Button>
+      </div>
+      <div className="card-body stack" style={{ gap: 8 }}>
+        <p className="muted">Every record with its rows, the files, the history and the settings, never a password or secret, in zip files you download here.</p>
+        {making && (
+          <p role="status">
+            Being made{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? ` (${latest.progress.done ?? 0} of ${latest.progress.total})` : ""}` : ""}…
+          </p>
+        )}
+        {latest?.status === "failed" && <Alert tone="error">The last export failed: {latest.last_error}</Alert>}
+        {gone && (
+          <p className="faint">
+            {latest?.result?.deleted
+              ? "The last export was deleted by a personal-data erasure, as every copy from before one is. Make another."
+              : `The last export was kept its ${days} days and is gone. Make another.`}
+          </p>
+        )}
+        {latest?.status === "done" && !gone && (
+          <>
+            <p className="faint">
+              Made {latest.finished_at ? formatDateTime(latest.finished_at) : ""}; kept {days} days, unless a personal-data erasure deletes it first.
+            </p>
+            <ul className="stack" style={{ gap: 4 }}>
+              {parts.map((p) => (
+                <li key={p.id}>
+                  <Button size="sm" variant="ghost" onClick={() => save(p)}>
+                    Download {p.file_name}
+                  </Button>
+                  {p.size ? <span className="faint"> {size(p.size)}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
