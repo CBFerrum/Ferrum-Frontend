@@ -290,12 +290,14 @@ export const DOCSTATUS_LABEL = ["Draft", "Submitted", "Cancelled"] as const;
 export const can = (p: Perms | undefined, key: PermKey) => !!p && p[key] !== "none";
 
 /** Display title of a record: its title field, else its number, else a short id. */
-export function recordTitle(meta: Pick<EntityMeta, "title_field"> | undefined, row: Doc | undefined): string {
+export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pick<EntityMeta, "kind" | "label">>) | undefined, row: Doc | undefined): string {
   if (!row) return "";
   // A link as the title shows the linked record's title, not its id.
   const t = meta?.title_field ? (row._titles?.[meta.title_field] ?? row[meta.title_field]) : undefined;
   if (t !== undefined && t !== null && t !== "") return String(t);
   if (row.number) return String(row.number);
+  // Settings are named by what they are (one to a company at most), not by an id.
+  if (meta?.kind === "settings" && meta.label) return meta.label;
   return shortId(row.id);
 }
 
