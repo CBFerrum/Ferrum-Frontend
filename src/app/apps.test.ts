@@ -18,6 +18,7 @@ describe("permission summaries", () => {
   it("labels sections", () => {
     expect(sectionLabel("http_hosts")).toBe("Http hosts");
     expect(sectionLabel("native")).toBe("Built into the server");
+    expect(sectionLabel("services")).toBe("Runs outside Ferrum, as an account of its own, at");
   });
   it("describes lists of grants, plain lists and maps", () => {
     expect(permissionLines([{ entity: "Customer", read: true, write: false, create: true }])).toEqual(["Customer — read, create"]);
