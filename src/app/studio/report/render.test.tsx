@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToString } from "react-dom/server";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
+import { violations } from "../../../test/axe";
 import type { Me, MetaIndex } from "../../../lib/meta";
 import { buildSpec, studioKeys, type FieldCatalog, type QueryResult, type ReportRecord, type StudioListRow } from "../../../lib/studio";
 import type { ReactNode } from "react";
@@ -91,6 +92,9 @@ function seeded(seed: (qc: QueryClient) => void = () => {}): QueryClient {
 const html = (node: ReactNode) =>
   renderToString(<QueryClientProvider client={seeded()}>{node}</QueryClientProvider>).replace(/<!-- -->/g, "");
 
+/** Every screen this file draws, for the accessibility check at its end. */
+const drawn: string[] = [];
+
 function render(url: string, seed: (qc: QueryClient) => void = () => {}): string {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   qc.setQueryData(["meta"], meta);
@@ -99,11 +103,13 @@ function render(url: string, seed: (qc: QueryClient) => void = () => {}): string
   qc.setQueryData(studioKeys.fields("SalesInvoice"), catalog);
   seed(qc);
   const router = createMemoryRouter(reportRoutes, { initialEntries: [url] });
-  return renderToString(
+  const html = renderToString(
     <QueryClientProvider client={qc}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
-  ).replace(/<!-- -->/g, ""); // text-node separators
+  ).replace(/<!-- -->/g, "");
+  drawn.push(html);
+  return html; // text-node separators
 }
 
 describe("report screens", () => {
@@ -207,5 +213,14 @@ describe("report screens", () => {
     expect(html).toContain("Revenue by customer");
     expect(html).toContain("Sales Invoices");
     expect(html).toContain("Who buys most");
+  });
+});
+
+describe("these screens, for assistive technology", () => {
+  it("break none of axe's rules that hold without layout", async () => {
+    expect(drawn.length).toBeGreaterThan(0);
+    const found = new Set<string>();
+    for (const html of drawn) for (const v of await violations(html)) found.add(v);
+    expect([...found]).toEqual([]);
   });
 });
