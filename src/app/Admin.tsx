@@ -1617,33 +1617,124 @@ function Packages() {
     setBusy(null);
   };
   return (
+    <div className="stack">
+      <Loaded q={q}>
+        {(data) => (
+          <div className="home-grid">
+            {data.packages.map((p) => (
+              <section key={p.name} className="card">
+                <div className="card-head">
+                  <h2>{p.label ?? p.name}</h2>
+                  <span className="faint mono">
+                    {p.name}@{p.version}
+                  </span>
+                  <span className="spacer" />
+                  {p.installed ? (
+                    <Badge tone="green">installed</Badge>
+                  ) : (
+                    <Button size="sm" variant="primary" loading={busy === p.name} onClick={() => void install(p)}>
+                      Install
+                    </Button>
+                  )}
+                </div>
+                <div className="card-body stack" style={{ gap: 8 }}>
+                  <p className="muted">{p.description}</p>
+                  {p.depends.length > 0 && <p className="faint">Requires: {p.depends.join(", ")}</p>}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </Loaded>
+      <Backfills />
+    </div>
+  );
+}
+
+interface Backfill {
+  package: string;
+  name: string;
+  state: "waiting" | "running" | "done";
+  changed: number;
+  remaining: number | null;
+  finished_at: string | null;
+  needing_now: number;
+}
+
+const BACKFILL_STATE: Record<Backfill["state"], { tone: "green" | "amber" | "neutral"; text: string }> = {
+  waiting: { tone: "neutral", text: "Waiting for the upkeep" },
+  running: { tone: "amber", text: "Running" },
+  done: { tone: "green", text: "Done" },
+};
+
+/** Data the installed packages' releases move in batches: how far each got, and the rows it could
+ *  not change (put them right, then run it again). Nothing shows while no package moves any. */
+function Backfills() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "backfills"], queryFn: ({ signal }) => api.get<{ backfills: Backfill[] }>("/api/admin/backfills", undefined, signal) });
+  const [busy, setBusy] = useState<string | null>(null);
+  const rerun = async (b: Backfill) => {
+    const key = `${b.package}/${b.name}`;
+    const ok = await confirmDialog({ title: `Run ${key} again?`, message: "It runs from the start at the next upkeep, over the rows that still need it.", confirmLabel: "Run again" });
+    if (!ok) return;
+    setBusy(key);
+    if (await attempt(() => api.post(`/api/admin/backfills/${encodeURIComponent(b.package)}/${encodeURIComponent(b.name)}/rerun`, {}), `${key} runs again at the next upkeep`)) {
+      await qc.invalidateQueries({ queryKey: ["admin", "backfills"] });
+    }
+    setBusy(null);
+  };
+  return (
     <Loaded q={q}>
-      {(data) => (
-        <div className="home-grid">
-          {data.packages.map((p) => (
-            <section key={p.name} className="card">
-              <div className="card-head">
-                <h2>{p.label ?? p.name}</h2>
-                <span className="faint mono">
-                  {p.name}@{p.version}
-                </span>
-                <span className="spacer" />
-                {p.installed ? (
-                  <Badge tone="green">installed</Badge>
-                ) : (
-                  <Button size="sm" variant="primary" loading={busy === p.name} onClick={() => void install(p)}>
-                    Install
-                  </Button>
-                )}
-              </div>
-              <div className="card-body stack" style={{ gap: 8 }}>
-                <p className="muted">{p.description}</p>
-                {p.depends.length > 0 && <p className="faint">Requires: {p.depends.join(", ")}</p>}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      {(data) =>
+        data.backfills.length === 0 ? null : (
+          <section className="card">
+            <div className="card-head">
+              <h2>Data moves</h2>
+            </div>
+            <div className="card-body table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Backfill</th>
+                    <th scope="col">State</th>
+                    <th scope="col">Rows changed</th>
+                    <th scope="col">It could not change</th>
+                    <th scope="col">Need it now</th>
+                    <th scope="col">Finished</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.backfills.map((b) => {
+                    const key = `${b.package}/${b.name}`;
+                    return (
+                      <tr key={key}>
+                        <td className="mono">{key}</td>
+                        <td>
+                          <Badge tone={BACKFILL_STATE[b.state].tone}>{BACKFILL_STATE[b.state].text}</Badge>
+                        </td>
+                        <td>{b.changed}</td>
+                        <td>{b.remaining ?? ""}</td>
+                        <td>{b.needing_now}</td>
+                        <td>{b.finished_at ? formatDateTime(b.finished_at) : ""}</td>
+                        <td>
+                          {b.state === "done" && (
+                            <Button size="sm" loading={busy === key} onClick={() => void rerun(b)}>
+                              Run again
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )
+      }
     </Loaded>
   );
 }
