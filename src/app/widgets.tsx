@@ -16,8 +16,8 @@ import {
   type RefObject,
 } from "react";
 import { Link } from "react-router";
-import { api, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
-import { formatValue, humanize, NUMERIC_TYPES, shortId } from "../lib/format";
+import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
+import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
 import {
   DOCSTATUS_LABEL,
@@ -29,7 +29,7 @@ import {
   type Field,
   type ListResponse,
 } from "../lib/meta";
-import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
 
 export interface ControlProps {
   field: Field;
@@ -100,8 +100,28 @@ export function FieldControl(p: ControlProps) {
       );
     case "date":
       return <input type="date" className="input" {...common} value={text(value)} onChange={(e) => onChange(orNull(e.target.value))} />;
-    case "datetime":
-      return <input type="datetime-local" className="input" {...common} value={toLocalInput(value)} onChange={(e) => onChange(fromLocalInput(e.target.value))} />;
+    case "datetime": {
+      // On the workspace's clock; its zone is named beside the box when the browser's is another.
+      const zone = zoneLabel();
+      const input = (
+        <input
+          type="datetime-local"
+          className="input"
+          {...common}
+          title={zone ? `On the workspace's clock (${zone})` : undefined}
+          value={toZonedInput(value)}
+          onChange={(e) => onChange(fromZonedInput(e.target.value))}
+        />
+      );
+      return zone && !p.compact ? (
+        <span className="zoned">
+          {input}
+          <span className="zoned-name faint">{zone}</span>
+        </span>
+      ) : (
+        input
+      );
+    }
     case "int":
       return (
         <input
@@ -187,20 +207,22 @@ export function FieldControl(p: ControlProps) {
   }
 }
 
-/** RFC 3339 (UTC) ↔ the browser's local `datetime-local` value. */
-function toLocalInput(v: unknown): string {
-  if (typeof v !== "string" || !v) return "";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "";
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+/** For an entity the workspace does not have (its app, or an add-on of one, is not installed):
+ * what it is and where it comes from, rather than an error. */
+export function NotInstalled({ entity }: { entity: string }) {
+  const name = humanize(entity.replace(/([a-z0-9])([A-Z])/g, "$1_$2"));
+  return (
+    <EmptyState title={`${name} is not in this workspace`} icon="apps">
+      <p className="muted">The app that adds it is not installed. An administrator can install it from Apps.</p>
+      <a className="btn btn-default btn-md" href="/store/?tab=store">
+        Open Apps
+      </a>
+    </EmptyState>
+  );
 }
 
-function fromLocalInput(s: string): string | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
+/** Whether a failed entity lookup means the workspace does not have the entity. */
+export const notInstalled = (error: unknown) => error instanceof ApiError && error.status === 404;
 
 // ── link autocomplete ──
 

@@ -14,6 +14,7 @@ export {
   formatDateTime,
   formatDecimal,
   formatValue,
+  fromZonedInput,
   humanize,
   initials,
   isDecimalString,
@@ -22,6 +23,8 @@ export {
   setTimeZone,
   shortId,
   todayIso,
+  toZonedInput,
+  zoneLabel,
   type FormatOptions,
 } from "../../../src/lib/format";
 export { addCatalog, applyLocale, currentLanguage, direction, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";

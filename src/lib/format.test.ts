@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { compareDecimal, formatDate, formatDecimal, formatValue, humanize, setTimeZone, todayIso } from "./format";
+import { compareDecimal, formatDate, formatDateTime, formatDecimal, formatValue, fromZonedInput, humanize, setTimeZone, todayIso, toZonedInput, zoneLabel } from "./format";
 
 describe("formatDecimal", () => {
   it("groups digits and keeps the value's own precision by default", () => {
@@ -83,5 +83,39 @@ describe("todayIso", () => {
   it("falls back to the browser's day for a zone it does not know", () => {
     setTimeZone("Not/A_Zone");
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("times on the workspace's clock", () => {
+  afterEach(() => setTimeZone(undefined));
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  it("shows a moment on the workspace's clock, naming its zone when the browser's is another", () => {
+    setTimeZone("America/New_York");
+    const shown = formatDateTime("2026-11-06T01:04:00Z", "en-GB");
+    expect(shown).toContain("5 Nov 2026");
+    expect(shown).toContain("20:04");
+    if (browser !== "America/New_York") expect(shown.endsWith(` ${zoneLabel(new Date("2026-11-06T01:04:00Z"))}`) && zoneLabel() !== "").toBe(true);
+    setTimeZone(browser);
+    expect(zoneLabel()).toBe("");
+  });
+
+  it("reads and writes a date-and-time box on the workspace's clock", () => {
+    setTimeZone("Asia/Kolkata");
+    expect(toZonedInput("2026-11-06T01:04:00Z")).toBe("2026-11-06T06:34");
+    expect(fromZonedInput("2026-11-06T06:34")).toBe("2026-11-06T01:04:00.000Z");
+    // New York changes its clocks on 8 March and 1 November 2026.
+    setTimeZone("America/New_York");
+    expect(fromZonedInput("2026-03-07T12:00")).toBe("2026-03-07T17:00:00.000Z");
+    expect(fromZonedInput("2026-03-08T12:00")).toBe("2026-03-08T16:00:00.000Z");
+    expect(fromZonedInput("2026-11-01T12:00")).toBe("2026-11-01T17:00:00.000Z");
+    expect(toZonedInput("2026-03-08T16:00:00Z")).toBe("2026-03-08T12:00");
+    expect([toZonedInput(""), fromZonedInput(""), fromZonedInput("tomorrow")]).toEqual(["", null, null]);
+  });
+
+  it("keeps the browser's clock for a zone it does not know", () => {
+    setTimeZone("Not/A_Zone");
+    expect(fromZonedInput(toZonedInput("2026-11-06T01:04:00Z"))).toBe("2026-11-06T01:04:00.000Z");
+    expect(zoneLabel()).toBe("");
   });
 });

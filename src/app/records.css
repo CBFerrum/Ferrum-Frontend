@@ -716,3 +716,18 @@ button.peek-value:hover {
 /* The way to the help center from a list or a form. */
 .help-link { display: inline-flex; margin-left: 8px; color: var(--muted, #6b7280); vertical-align: middle; }
 .help-link:hover, .help-link:focus-visible { color: var(--accent, #2563eb); }
+
+/* A date-and-time box on the workspace's clock, its zone named beside it. */
+.zoned {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.zoned > .input {
+  flex: 1;
+  min-width: 0;
+}
+.zoned-name {
+  font-size: 12px;
+  white-space: nowrap;
+}
