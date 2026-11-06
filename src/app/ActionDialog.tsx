@@ -9,7 +9,17 @@ function initial(v: unknown): string {
   return typeof v === "string" ? v : String(v);
 }
 
-/** Asks for an action's parameters, prefilled from the record's fields of the same name, and runs it. */
+/** A refusal's field errors split: those on the dialog's own parameters, shown beside them, and the
+ * rest (another record's rows the action made, such as a delivery note's warehouse) as words, which
+ * would otherwise show nowhere. */
+export function splitErrors(fields: FieldError[], params: ActionParam[]): { own: FieldError[]; others: string } {
+  const mine = (f: FieldError) => !f.row && params.some((p) => p.name === f.field);
+  const others = fields.filter((f) => !mine(f)).map((f) => (f.row ? `row ${f.row[1] + 1} ` : "") + `${f.field}: ${f.message}`);
+  return { own: fields.filter(mine), others: others.join("; ") };
+}
+
+/** Asks for an action's parameters, prefilled from the record's fields of the same name, and runs it.
+ * An action that asks to be confirmed says so here too, so it is one dialog, not two. */
 export function ActionDialog({
   action,
   doc,
@@ -43,8 +53,11 @@ export function ActionDialog({
     try {
       onDone(await api.post<unknown>(path, body));
     } catch (err) {
-      if (err instanceof ApiError && err.fields.length) setErrors(err.fields);
-      else setError(errorMessage(err));
+      if (err instanceof ApiError && err.fields.length) {
+        const { own, others } = splitErrors(err.fields, params);
+        setErrors(own);
+        if (others) setError(others);
+      } else setError(errorMessage(err));
       setBusy(false);
     }
   };
@@ -81,6 +94,7 @@ export function ActionDialog({
   return (
     <Dialog open onClose={onClose} title={action.label}>
       <form className="stack" onSubmit={submit}>
+        {action.confirm && <p className="muted">{action.confirm}</p>}
         {error && <Alert tone="error">{error}</Alert>}
         {params.map((p) => (
           <Field key={p.name} label={p.label} htmlFor={`action-${p.name}`} required={p.required} error={fieldError(p.name)} hint={p.description ?? undefined}>
