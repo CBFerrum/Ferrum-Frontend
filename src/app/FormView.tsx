@@ -11,6 +11,7 @@ import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
 import { useContributions } from "../lib/screens";
+import { t } from "../lib/i18n";
 import { ScreenFrame } from "./Screen";
 import { formDesignerLink } from "../lib/formLayout";
 import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
@@ -294,7 +295,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       if (isNew) {
         // One key per attempt: the client's own retries on connection errors reuse it.
         const created = await api.post<Doc>(docPath(E), createBody(meta, doc), { idempotencyKey: newKey() });
-        toast(`${meta.label} created`);
+        toast(t("{label} created", { label: meta.label }));
         allowNav.current = true;
         void invalidateLists();
         navigate(`/e/${E}/${created.id}`, { replace: true });
@@ -303,7 +304,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       if (!base || !changes || !Object.keys(changes).length) return base;
       const saved = await api.patch<Doc>(docPath(E, String(id)), changes, { ifMatch: base.version });
       load(saved, docRef.current);
-      toast("Saved");
+      toast(t("Saved"));
       void invalidateLists();
       return saved;
     } catch (e) {
@@ -514,13 +515,13 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const tabOf = new Map(shown.flatMap(({ s, items }) => items.map(({ f }) => [f.name, tabId(s.tab)] as const)));
   const unplaced = errors.filter((e) => !tabOf.has(e.row ? e.row[0] : e.field));
   const tabs = [
-    ...layout.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((t) => ({ id: tabId(t), label: t ?? "Details" })),
+    ...layout.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((tab) => ({ id: tabId(tab), label: tab ?? t("Details") })),
     ...(isNew
       ? []
       : [
-          ...(meta.linked_from?.length ? [{ id: "related", label: "Related" }] : []),
-          { id: "discussion", label: "Discussion" },
-          { id: "activity", label: "Activity" },
+          ...(meta.linked_from?.length ? [{ id: "related", label: t("Related") }] : []),
+          { id: "discussion", label: t("Discussion") },
+          { id: "activity", label: t("Activity") },
           ...panels.map((p) => ({ id: `screen:${p.app}/${p.id}`, label: p.title ?? p.id })),
         ]),
   ];
@@ -664,7 +665,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         <div className="page-actions doc-actions">
           {!locked && (
             <Button variant={dirty ? "primary" : "default"} onClick={() => void save()} loading={busy === "save"} disabled={busyAny || !dirty} title="Save (Ctrl+S)">
-              {isNew ? "Create" : "Save"}
+              {isNew ? t("Create") : t("Save")}
             </Button>
           )}
           {canSubmit && (
@@ -715,7 +716,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           ))}
           {!isNew && (
             <Button icon="printer" onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))}>
-              Print
+              {t("Print")}
             </Button>
           )}
           {!isNew && pdf && (
@@ -725,7 +726,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
             <Button icon="mail" onClick={() => setEmailing(true)}>
-              Email
+              {t("Email")}
             </Button>
           )}
           {asking && (
@@ -763,7 +764,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             />
           )}
           {(canDelete || me.user.is_admin) && (
-            <Menu ariaLabel="More actions" icon="chevronDown">
+            <Menu ariaLabel={t("More actions")} icon="chevronDown">
               {(close) => (
                 <>
                   {me.user.is_admin && (

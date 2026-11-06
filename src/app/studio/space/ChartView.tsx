@@ -86,7 +86,7 @@ function SeriesTooltip({ active, payload, model }: TipProps & { model: ChartMode
         <div key={s.key} className="flex items-center gap-2">
           <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
           <span className="text-muted-foreground">{s.label}</span>
-          <span className="ml-auto pl-3 font-mono font-medium text-foreground tabular-nums">{row.fmt[s.key] || "—"}</span>
+          <span className="ms-auto ps-3 font-mono font-medium text-foreground tabular-nums">{row.fmt[s.key] || "—"}</span>
         </div>
       ))}
     </div>
@@ -164,8 +164,8 @@ function Shares({ list, total }: ReturnType<typeof parts>) {
         <li key={i} className="flex min-w-0 items-center gap-2">
           <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: p.color }} aria-hidden="true" />
           <span className="truncate">{p.label}</span>
-          <span className="ml-auto shrink-0 tabular-nums">{p.fmt}</span>
-          <span className="w-14 shrink-0 text-right text-muted-foreground tabular-nums">{share.format(p.value / total)}</span>
+          <span className="ms-auto shrink-0 tabular-nums">{p.fmt}</span>
+          <span className="w-14 shrink-0 text-end text-muted-foreground tabular-nums">{share.format(p.value / total)}</span>
         </li>
       ))}
       {list.length > 12 && <li className="text-xs text-muted-foreground">and {list.length - 12} more</li>}
@@ -235,7 +235,7 @@ function FunnelView({ model }: { model: ChartModel }) {
             <span className="truncate">{r.label}</span>
             <span className="shrink-0 tabular-nums">
               {r.fmt[s.key] || "—"}
-              {i > 0 && values[0] > 0 && <span className="ml-1.5 text-xs text-muted-foreground">{share.format(values[i] / values[0])}</span>}
+              {i > 0 && values[0] > 0 && <span className="ms-1.5 text-xs text-muted-foreground">{share.format(values[i] / values[0])}</span>}
             </span>
           </div>
           <div className="h-2.5 w-full rounded-full bg-muted" aria-hidden="true">

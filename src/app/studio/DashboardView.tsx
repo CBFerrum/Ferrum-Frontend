@@ -471,7 +471,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
   const handle = (it: Placed) => (
     <button
       type="button"
-      className="dash-drag -ml-1.5 grid size-7 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing pointer-coarse:size-10"
+      className="dash-drag -ms-1.5 grid size-7 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing pointer-coarse:size-10"
       aria-label={`Move ${titleOf(it)}: drag, or use the arrow keys; Shift and the arrow keys resize`}
       onKeyDown={(e: KeyboardEvent) => {
         const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];

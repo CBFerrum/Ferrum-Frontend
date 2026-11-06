@@ -215,7 +215,7 @@ function ShortcutTile({ w, pending }: { w: ShortcutWidget; pending?: boolean }) 
       className={cn(
         "group flex h-full min-h-24 flex-col justify-between gap-3 rounded-xl border bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent hover:no-underline",
         FOCUS,
-        accent && "border-l-[3px]",
+        accent && "border-s-[3px]",
       )}
       style={accent ? ({ borderLeftColor: accent } as CSSProperties) : undefined}
     >
@@ -341,9 +341,9 @@ function QuickList({ w }: { w: Extract<ResolvedWidget, { type: "list"; error?: u
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-4">{headField?.label ?? meta?.fields.find((f) => f.name === meta.title_field)?.label ?? meta?.label ?? "Record"}</TableHead>
+                <TableHead className="ps-4">{headField?.label ?? meta?.fields.find((f) => f.name === meta.title_field)?.label ?? meta?.label ?? "Record"}</TableHead>
                 {columns.map((f) => (
-                  <TableHead key={f.name} className={cn(["int", "decimal", "currency", "percent"].includes(f.type) && "text-right", "last:pr-4")}>
+                  <TableHead key={f.name} className={cn(["int", "decimal", "currency", "percent"].includes(f.type) && "text-end", "last:pe-4")}>
                     {f.label}
                   </TableHead>
                 ))}
@@ -352,13 +352,13 @@ function QuickList({ w }: { w: Extract<ResolvedWidget, { type: "list"; error?: u
             <TableBody>
               {w.rows.map((r, i) => (
                 <TableRow key={String(r.id ?? i)}>
-                  <TableCell className="max-w-56 truncate pl-4 font-medium">
+                  <TableCell className="max-w-56 truncate ps-4 font-medium">
                     <Link to={PATHS.record(w.entity, String(r.id))} className={cn("rounded-sm", FOCUS)}>
                       {headField ? formatValue(headField, r[headField.name]) || r._titles?.[headField.name] || recordTitle(meta, r) : recordTitle(meta, r)}
                     </Link>
                   </TableCell>
                   {columns.map((f) => (
-                    <TableCell key={f.name} className={cn(["int", "decimal", "currency", "percent"].includes(f.type) && "text-right tabular-nums", "last:pr-4")}>
+                    <TableCell key={f.name} className={cn(["int", "decimal", "currency", "percent"].includes(f.type) && "text-end tabular-nums", "last:pe-4")}>
                       {cell(f, r)}
                     </TableCell>
                   ))}
@@ -437,7 +437,7 @@ function mdBlock(b: MdBlock, key: number): ReactNode {
       return <p key={key}>{inlines(b.c)}</p>;
     case "ul":
       return (
-        <ul key={key} className="list-disc space-y-1 pl-5">
+        <ul key={key} className="list-disc space-y-1 ps-5">
           {b.items.map((c, i) => (
             <li key={i}>{inlines(c)}</li>
           ))}
@@ -445,7 +445,7 @@ function mdBlock(b: MdBlock, key: number): ReactNode {
       );
     case "ol":
       return (
-        <ol key={key} start={b.start} className="list-decimal space-y-1 pl-5">
+        <ol key={key} start={b.start} className="list-decimal space-y-1 ps-5">
           {b.items.map((c, i) => (
             <li key={i}>{inlines(c)}</li>
           ))}
@@ -453,7 +453,7 @@ function mdBlock(b: MdBlock, key: number): ReactNode {
       );
     case "quote":
       return (
-        <blockquote key={key} className="grid gap-2 border-l-2 pl-3 text-muted-foreground">
+        <blockquote key={key} className="grid gap-2 border-s-2 ps-3 text-muted-foreground">
           {b.c.map((x, i) => mdBlock(x, i))}
         </blockquote>
       );

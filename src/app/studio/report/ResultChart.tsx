@@ -49,7 +49,7 @@ function TipRow({ color, label, value }: { color?: string; label: ReactNode; val
     <div className="flex w-full min-w-40 items-center gap-2">
       <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: color }} aria-hidden="true" />
       <span className="text-muted-foreground">{label}</span>
-      <span className="ml-auto pl-3 font-mono font-medium text-foreground tabular-nums">{value}</span>
+      <span className="ms-auto ps-3 font-mono font-medium text-foreground tabular-nums">{value}</span>
     </div>
   );
 }
@@ -306,7 +306,7 @@ function Heatmap({ model, title }: { model: ChartModel; title: string }) {
     <div className="overflow-x-auto py-2">
       <div className="inline-grid grid-flow-col gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={`${title}: ${s.label} by day, ${days.length} days; the table lists every value`}>
         {WEEKDAYS.map((d, i) => (
-          <span key={i} className="pr-1 leading-[14px]" aria-hidden="true">
+          <span key={i} className="pe-1 leading-[14px]" aria-hidden="true">
             {d}
           </span>
         ))}

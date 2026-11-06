@@ -55,7 +55,7 @@ export function NumberCardView({ data, title, onDrill, className }: { data: Card
           <button
             type="button"
             onClick={onDrill}
-            className="max-w-full truncate rounded text-left text-2xl font-semibold tabular-nums hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none @xs:text-3xl"
+            className="max-w-full truncate rounded text-start text-2xl font-semibold tabular-nums hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none @xs:text-3xl"
             title={`${value}: view the records`}
             aria-label={`${title}: ${value}. View the records`}
           >

@@ -100,8 +100,8 @@ export function ReportList() {
 
       <div className="flex flex-wrap items-center gap-2" role="search">
         <div className="relative min-w-48 flex-1 sm:max-w-80">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="pl-8" placeholder="Search reports…" aria-label="Search reports" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input type="search" className="ps-8" placeholder="Search reports…" aria-label="Search reports" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <ToggleGroup type="single" variant="outline" value={scope} onValueChange={(v) => v && setScope(v as Scope)} aria-label="Whose reports">
           <ToggleGroupItem value="all">All</ToggleGroupItem>
@@ -230,7 +230,7 @@ export function ReportList() {
                   </span>
                   {r.is_standard && <Badge variant="outline">Standard</Badge>}
                   {!r.mine && !r.is_standard && <Badge variant="outline">Shared with me</Badge>}
-                  <span className="ml-auto" title={r.updated_at}>
+                  <span className="ms-auto" title={r.updated_at}>
                     Updated {relativeTime(r.updated_at)}
                   </span>
                 </div>

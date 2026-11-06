@@ -54,7 +54,7 @@ function DrillBody({ target }: { target: DrillTarget }) {
   const shown = rows.data?.rows.length ?? 0;
   return (
     <>
-      <SheetHeader className="border-b pr-12">
+      <SheetHeader className="border-b pe-12">
         <SheetTitle>{target.title}</SheetTitle>
         <SheetDescription aria-live="polite">
           {m ? `${m.label_plural}` : "Records"}
@@ -109,7 +109,7 @@ function DrillBody({ target }: { target: DrillTarget }) {
             </Link>
           </Button>
         ) : (
-          m && <p className="mr-auto text-xs text-muted-foreground">The list page cannot apply all of these filters; the records are shown here.</p>
+          m && <p className="me-auto text-xs text-muted-foreground">The list page cannot apply all of these filters; the records are shown here.</p>
         )}
       </SheetFooter>
     </>
