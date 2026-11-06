@@ -39,6 +39,8 @@ export interface Field {
   read_only_if?: string;
   fetch_from?: string;
   description?: string;
+  /** How a form edits it where its type alone does not say: `studio_query` for a JSON field holding a Studio query. */
+  widget?: string;
   link_filters?: Record<string, unknown>;
   storage?: "column" | "ext";
   can_read?: boolean;
