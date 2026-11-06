@@ -2,7 +2,7 @@
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { recordTitle } from "../lib/meta";
+import { recordTitle, singleRecord } from "../lib/meta";
 import { Field } from "./kit";
 
 describe("Field", () => {
@@ -42,5 +42,11 @@ describe("recordTitle", () => {
     const row = { id: "01a1ad8d-e2b6-72c6-b015-44112acce0ac" };
     expect(recordTitle({ title_field: null, kind: "settings", label: "Field Service Settings" }, row)).toBe("Field Service Settings");
     expect(recordTitle({ title_field: null, kind: "document", label: "Stock Entry" }, row)).toBe("2acce0ac");
+  });
+
+  it("opens a workspace's settings as their one record, and lists a company's", () => {
+    expect(singleRecord({ kind: "settings" })).toBe(true);
+    expect(singleRecord({ kind: "settings", company_scoped: true })).toBe(false);
+    expect(singleRecord({ kind: "master" })).toBe(false);
   });
 });
