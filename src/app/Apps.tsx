@@ -66,7 +66,7 @@ interface Plan {
     /** An industrial solution's equipment: what the app describes, not what anyone tried with it. */
     equipment?: { connectors: string[]; profiles: { vendor: string; model: string; scheme: string }[]; acceptance: string[] };
   };
-  steps: { id: string; version: string; action: "install" | "upgrade" | "already"; source: string }[];
+  steps: { id: string; name?: string; version: string; action: "install" | "upgrade" | "already"; source: string }[];
   permissions: Permissions;
   digest: string;
   increases?: string[];
@@ -620,7 +620,7 @@ export function InstallDialog({
                   .filter((s) => s.action !== "already" && s.id !== p.app.id)
                   .map((s) => (
                     <li key={s.id}>
-                      {s.id} {s.version}
+                      {s.name || s.id} {s.version}
                     </li>
                   ))}
               </ul>
