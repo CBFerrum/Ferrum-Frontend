@@ -2,6 +2,7 @@
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { NotInstalled } from "../app/widgets";
 import { recordTitle, singleRecord } from "../lib/meta";
 import { Field } from "./kit";
 
@@ -42,6 +43,20 @@ describe("recordTitle", () => {
     const row = { id: "01a1ad8d-e2b6-72c6-b015-44112acce0ac" };
     expect(recordTitle({ title_field: null, kind: "settings", label: "Field Service Settings" }, row)).toBe("Field Service Settings");
     expect(recordTitle({ title_field: null, kind: "document", label: "Stock Entry" }, row)).toBe("2acce0ac");
+  });
+
+  it("heads a draft numbered on submit as a draft of its kind", () => {
+    const journal = { title_field: null, kind: "document" as const, label: "Journal Entry", numbering: { template: "JV-{YYYY}-{seq:5}", on: "submit" } };
+    const row = { id: "01a1ad8d-e2b6-72c6-b015-44112acce0ac", docstatus: 0 };
+    expect(recordTitle(journal, row)).toBe("Draft Journal Entry");
+    expect(recordTitle(journal, { ...row, number: "JV-2026-00003", docstatus: 1 })).toBe("JV-2026-00003");
+    expect(recordTitle({ ...journal, numbering: { template: "X-{seq}" } }, row)).toBe("2acce0ac");
+  });
+
+  it("says an entity of an app that is not installed is not in the workspace", () => {
+    const html = renderToString(<NotInstalled entity="MaterialRequest" />);
+    expect(html).toContain("Material Request is not in this workspace");
+    expect(html).toContain('href="/store/?tab=store"');
   });
 
   it("opens a workspace's settings as their one record, and lists a company's", () => {

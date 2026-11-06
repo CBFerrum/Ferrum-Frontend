@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { setTimeZone } from "./format";
 import type { Field } from "./meta";
 import { bar, dayOf, dayRangeFilters, monthGrid, movedTo, viewOptions, weekStart } from "./views";
 
@@ -52,6 +53,18 @@ describe("dates", () => {
     expect(dayOf(null)).toBeNull();
     const local = new Date(2026, 9, 28, 23, 30);
     expect(dayOf(local.toISOString())).toBe("2026-10-28");
+  });
+  describe("on the workspace's clock", () => {
+    afterEach(() => setTimeZone(undefined));
+    it("puts a moment on its day, moves it keeping its time, and filters its days", () => {
+      setTimeZone("Asia/Kolkata");
+      expect(dayOf("2026-11-05T20:00:00Z")).toBe("2026-11-06"); // 01:30 there
+      expect(movedTo("2026-11-05T20:00:00Z", "2026-11-10")).toBe("2026-11-09T20:00:00.000Z");
+      expect(dayRangeFilters(f("at", "datetime"), "2026-11-06", "2026-11-06")).toEqual([
+        ["at", ">=", "2026-11-05T18:30:00.000Z"],
+        ["at", "<=", "2026-11-06T18:29:59.999Z"],
+      ]);
+    });
   });
   it("filters whole days for dates and datetimes", () => {
     expect(dayRangeFilters(f("d", "date"), "2026-10-01", "2026-10-31")).toEqual([

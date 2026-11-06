@@ -290,7 +290,7 @@ export const DOCSTATUS_LABEL = ["Draft", "Submitted", "Cancelled"] as const;
 export const can = (p: Perms | undefined, key: PermKey) => !!p && p[key] !== "none";
 
 /** Display title of a record: its title field, else its number, else a short id. */
-export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pick<EntityMeta, "kind" | "label">>) | undefined, row: Doc | undefined): string {
+export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pick<EntityMeta, "kind" | "label" | "numbering">>) | undefined, row: Doc | undefined): string {
   if (!row) return "";
   // A link as the title shows the linked record's title, not its id.
   const t = meta?.title_field ? (row._titles?.[meta.title_field] ?? row[meta.title_field]) : undefined;
@@ -298,6 +298,8 @@ export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pic
   if (row.number) return String(row.number);
   // Settings are named by what they are (one to a company at most), not by an id.
   if (meta?.kind === "settings" && meta.label) return meta.label;
+  // A draft numbered when it is submitted has no number yet: it is a draft of its kind.
+  if (meta?.numbering?.on === "submit" && meta.label && (row.docstatus ?? 0) === 0) return `Draft ${meta.label}`;
   return shortId(row.id);
 }
 
