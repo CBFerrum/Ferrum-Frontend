@@ -17,6 +17,7 @@ import {
   can,
   fieldLabel,
   recordTitle,
+  singleRecord,
   SYSTEM_FIELD_LABELS,
   useCurrencyPrecision,
   useEntityMeta,
@@ -81,7 +82,22 @@ export function ListView() {
   const meta = useEntityMeta(entity);
   if (meta.error) return <ErrorState error={meta.error} onRetry={() => meta.refetch()} />;
   if (!meta.data) return <PageLoading />;
+  if (singleRecord(meta.data)) return <OneRecord key={entity} entity={meta.data.name} />;
   return <ListWithPrefs key={entity} meta={meta.data} />;
+}
+
+/** Settings open as their one record, or as a new one until it exists: not as a list of one. */
+function OneRecord({ entity }: { entity: string }) {
+  const navigate = useNavigate();
+  const one = useQuery({
+    queryKey: ["list", entity, "one"],
+    queryFn: ({ signal }) => api.get<ListResponse>(docPath(entity), { fields: "id", limit: 1 }, signal),
+  });
+  const id = one.data?.rows[0]?.id;
+  useEffect(() => {
+    if (one.data) navigate(id ? encodeURIComponent(String(id)) : "new", { replace: true, relative: "path" });
+  }, [one.data]); // react to the answer only
+  return one.error ? <ErrorState error={one.error} onRetry={() => one.refetch()} /> : <PageLoading />;
 }
 
 /** The user's settings for this list (columns, sort, views) load first, so it opens with them. */

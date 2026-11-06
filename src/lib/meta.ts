@@ -301,6 +301,9 @@ export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pic
   return shortId(row.id);
 }
 
+/** Settings are one record to a workspace (one to a company when company-scoped: those are listed). */
+export const singleRecord = (meta: Pick<EntityMeta, "kind" | "company_scoped">) => meta.kind === "settings" && !meta.company_scoped;
+
 export function fieldLabel(meta: EntityMeta, name: string): string {
   return meta.fields.find((f) => f.name === name)?.label ?? SYSTEM_FIELD_LABELS[name] ?? humanize(name);
 }
