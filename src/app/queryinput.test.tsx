@@ -52,12 +52,14 @@ const result: QueryResult = {
 };
 const definition = { name: "definition", label: "Definition", type: "json", widget: "studio_query", can_write: true } as Field;
 
-function html(value: unknown, disabled = false): string {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+function html(value: unknown, disabled = false, seed: (qc: QueryClient) => void = () => {}): string {
+  // A refusal stays as it was answered: on a page, the query asked again is refused again.
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, staleTime: Infinity } } });
   qc.setQueryData(["me"], me);
   qc.setQueryData(studioKeys.sources, { builtin: [], entities: [{ name: "SalesInvoice", label: "Sales Invoice", module: "selling" }] });
   qc.setQueryData(studioKeys.fields("SalesInvoice"), catalog);
   qc.setQueryData(studioKeys.query(spec), result);
+  seed(qc);
   return renderToString(
     <QueryClientProvider client={qc}>
       <QueryInput field={definition} value={value} onChange={() => {}} id="f" disabled={disabled} />
@@ -76,6 +78,16 @@ describe("a query field on a form", () => {
 
   it("starts from nothing, asking what it is about", () => {
     expect(html(null)).toContain("Choose what it is about.");
+  });
+
+  it("is written as JSON where Studio is not installed, saying so", async () => {
+    // As the server answers a workspace without Studio: its sources refused.
+    const refused = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await refused.prefetchQuery({ queryKey: studioKeys.sources, queryFn: () => Promise.reject(new Error("package studio not found")) });
+    const state = refused.getQueryState(studioKeys.sources);
+    const out = html(spec, false, (qc) => qc.getQueryCache().build(qc, { queryKey: studioKeys.sources }).setState(state!));
+    expect(out).toContain("Once Studio is installed");
+    expect(out).toContain("<textarea");
   });
 
   it("is written as JSON when the builder cannot read it, and read only when the field is", () => {
