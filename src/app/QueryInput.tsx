@@ -82,11 +82,14 @@ export default function QueryInput(p: ControlProps) {
     update((s) => startState(s, entity, meta?.list.columns, cat));
   };
 
-  if (disabled || asJson)
+  // Studio's endpoints answer only in a workspace that has Studio: without it, the query is written.
+  const noStudio = sources.isError;
+  if (disabled || asJson || noStudio)
     return (
       <div className="stack">
+        {noStudio && !disabled && <p className="field-hint">Studio builds this query. Once Studio is installed (Apps, Store), it is built here; until then it is written as JSON.</p>}
         <JsonInput {...p} />
-        {!disabled && (
+        {!disabled && !noStudio && (
           <div>
             <Button size="sm" onClick={() => setAsJson(false)} disabled={value != null && value !== "" && !spec}>
               Build it instead
@@ -119,7 +122,7 @@ export default function QueryInput(p: ControlProps) {
           </Button>
         </div>
         {!d.entity ? (
-          <NoRows>Choose what it is about.</NoRows>
+          <p className="field-hint">Choose what it is about.</p>
         ) : query.error && !refused.length ? (
           <p className="field-error">{errorMessage(query.error)}</p>
         ) : query.isLoading && !result ? (
