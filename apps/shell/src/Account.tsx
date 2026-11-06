@@ -3,7 +3,7 @@
 // passwords, and connecting an AI assistant.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { LANGUAGES, shell, t } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
@@ -375,6 +375,41 @@ function Language() {
   );
 }
 
+/** The zone the person's pages show times in (the `timezone` preference), or the workspace's.
+ *  Business days (today, due dates) stay the workspace's. */
+function TimeZone() {
+  const q = useQuery({ queryKey: ["prefs"], queryFn: ({ signal }) => api.get<{ prefs: Record<string, { value: { zone?: string } }> }>("/api/prefs", undefined, signal) });
+  const workspace = useMe().data?.timezone ?? "";
+  const [busy, setBusy] = useState(false);
+  const mine = q.data?.prefs.timezone?.value.zone ?? "";
+  const zones = useMemo(() => (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? [], []);
+  const choose = async (zone: string) => {
+    setBusy(true);
+    try {
+      if (zone) await api.put("/api/prefs/timezone", { value: { zone } });
+      else await api.del("/api/prefs/timezone");
+      // Every time on the page is drawn again on the new clock.
+      location.reload();
+    } catch (e) {
+      toast(errorMessage(e), "error");
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row" style={{ gap: 8 }}>
+      <select className="select" aria-label="Time zone" value={mine} disabled={busy || !q.data} onChange={(e) => void choose(e.target.value)}>
+        <option value="">{workspace ? `The workspace's (${workspace})` : "The workspace's"}</option>
+        {[...new Set([mine, ...zones])].filter(Boolean).map((z) => (
+          <option key={z} value={z}>
+            {z.replaceAll("_", " ")}
+          </option>
+        ))}
+      </select>
+      {busy && <Spinner />}
+    </div>
+  );
+}
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section className="card" aria-labelledby={id}>
@@ -427,6 +462,10 @@ export function AccountPage() {
       <Section id="acct-language" title={t("Language")}>
         <p className="muted">The interface&apos;s words where they are translated, which way its pages read, and how numbers and dates are written.</p>
         <Language />
+      </Section>
+      <Section id="acct-time-zone" title="Time zone">
+        <p className="muted">The clock your pages show times on. Due dates and what counts as today stay the workspace&apos;s.</p>
+        <TimeZone />
       </Section>
       <Section id="acct-devices" title="Signed-in browsers">
         <Devices />
