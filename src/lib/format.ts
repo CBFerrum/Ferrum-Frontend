@@ -125,10 +125,17 @@ export function formatDate(value: unknown, locale?: string): string {
 /** A moment in time, on the workspace's clock, its zone named when the browser's is another. */
 export function formatDateTime(value: unknown, locale?: string): string {
   if (typeof value !== "string" || !value) return value == null ? "" : String(value);
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const shown = new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium", timeStyle: "short", timeZone: shownZone() }).format(d);
-  const zone = zoneLabel(d);
+  return formatMoment(value, { dateStyle: "medium", timeStyle: "short" }, locale);
+}
+
+/** A moment in a page's own shape (`{ day: "numeric", month: "short", hour: "numeric", minute:
+ *  "2-digit" }`), on the workspace's clock, its zone named when the browser's is another. */
+export function formatMoment(value: string | number | Date | null | undefined, shape: Intl.DateTimeFormatOptions, locale?: string): string {
+  if (value === null || value === undefined || value === "") return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  const shown = new Intl.DateTimeFormat(locale ?? defaultLocale, { ...shape, timeZone: shownTimeZone() }).format(d);
+  const zone = shape.timeZoneName ? "" : zoneLabel(d);
   return zone ? `${shown} ${zone}` : shown;
 }
 
@@ -167,9 +174,10 @@ export function setTimeZone(zone: string | undefined): void {
   timeZone = zone;
 }
 
-/** The zone times are shown and entered in: the workspace's, or the browser's while it is not
- * known or is a zone this browser does not know. */
-function shownZone(): string | undefined {
+/** The zone times are shown and entered in: the workspace's, or the browser's (undefined) while
+ * it is not known or is a zone this browser does not know. A page drawing times itself passes it
+ * as `timeZone`. */
+export function shownTimeZone(): string | undefined {
   if (!timeZone) return undefined;
   try {
     new Intl.DateTimeFormat("en", { timeZone });
@@ -182,7 +190,7 @@ function shownZone(): string | undefined {
 /** The short name of the zone times are shown in at `d` ("UTC", "GMT+5:30"), when it is not the
  * browser's own; empty when it is. */
 export function zoneLabel(d: Date = new Date()): string {
-  const zone = shownZone();
+  const zone = shownTimeZone();
   if (!zone || zone === Intl.DateTimeFormat().resolvedOptions().timeZone) return "";
   return new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "short" }).formatToParts(d).find((p) => p.type === "timeZoneName")?.value ?? zone;
 }
@@ -190,7 +198,7 @@ export function zoneLabel(d: Date = new Date()): string {
 /** The wall clock at instant `t` in the zone times are shown in. */
 function wallClock(t: number): { y: number; mo: number; d: number; h: number; mi: number; s: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: shownZone(),
+    timeZone: shownTimeZone(),
     hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
