@@ -169,24 +169,35 @@ export function shortId(id: unknown): string {
 }
 
 let timeZone: string | undefined; // the workspace's, once /api/auth/me is known; until then the browser's
+let displayZone: string | undefined; // the person's own, when they chose one
 
-/** Makes `todayIso`, and the times pages show and take, follow the workspace's time zone, as the
- * server's `today` does. */
+/** Makes `todayIso` follow the workspace's time zone, as the server's `today` does, and the times
+ * pages show and take too unless the person chose a zone of their own. */
 export function setTimeZone(zone: string | undefined): void {
   timeZone = zone;
 }
 
-/** The zone times are shown and entered in: the workspace's, or the browser's (undefined) while
- * it is not known or is a zone this browser does not know. A page drawing times itself passes it
- * as `timeZone`. */
-export function shownTimeZone(): string | undefined {
-  if (!timeZone) return undefined;
+/** The zone the person chose to see times in (`display_timezone`); business days stay the
+ * workspace's. */
+export function setDisplayZone(zone: string | undefined): void {
+  displayZone = zone;
+}
+
+const known = (zone: string | undefined): string | undefined => {
+  if (!zone) return undefined;
   try {
-    new Intl.DateTimeFormat("en", { timeZone });
-    return timeZone;
+    new Intl.DateTimeFormat("en", { timeZone: zone });
+    return zone;
   } catch {
     return undefined;
   }
+};
+
+/** The zone times are shown and entered in: the person's own, else the workspace's, or the
+ * browser's (undefined) while neither is known or is a zone this browser does not know. A page
+ * drawing times itself passes it as `timeZone`. */
+export function shownTimeZone(): string | undefined {
+  return known(displayZone) ?? known(timeZone);
 }
 
 /** The short name of the zone times are shown in at `d` ("UTC", "GMT+5:30"), when it is not the
