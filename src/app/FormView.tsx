@@ -34,7 +34,7 @@ import {
 import { CollabPanel } from "./Collab";
 import { MergeDialog } from "./list/MergeDialog";
 import { Related } from "./list/Related";
-import { FieldControl, LinkTitle, TableGrid, withValue } from "./widgets";
+import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
@@ -50,6 +50,7 @@ export function FormView() {
   const { entity = "", id = "" } = useParams();
   const meta = useEntityMeta(entity);
   const me = useMe();
+  if (notInstalled(meta.error)) return <NotInstalled entity={entity} />;
   if (meta.error || me.error) return <ErrorState error={meta.error ?? me.error} onRetry={() => (meta.error ? meta.refetch() : me.refetch())} />;
   if (!meta.data || !me.data) return <PageLoading />;
   return <DocLoader key={`${entity}/${id}`} meta={meta.data} me={me.data} id={id} />;

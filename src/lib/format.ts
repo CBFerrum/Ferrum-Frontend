@@ -122,11 +122,14 @@ export function formatDate(value: unknown, locale?: string): string {
   return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium" }).format(d);
 }
 
+/** A moment in time, on the workspace's clock, its zone named when the browser's is another. */
 export function formatDateTime(value: unknown, locale?: string): string {
   if (typeof value !== "string" || !value) return value == null ? "" : String(value);
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium", timeStyle: "short" }).format(d);
+  const shown = new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium", timeStyle: "short", timeZone: shownZone() }).format(d);
+  const zone = zoneLabel(d);
+  return zone ? `${shown} ${zone}` : shown;
 }
 
 export function relativeTime(value: string, now = Date.now()): string {
@@ -158,9 +161,73 @@ export function shortId(id: unknown): string {
 
 let timeZone: string | undefined; // the workspace's, once /api/auth/me is known; until then the browser's
 
-/** Makes `todayIso` follow the workspace's time zone, as the server's `today` does. */
+/** Makes `todayIso`, and the times pages show and take, follow the workspace's time zone, as the
+ * server's `today` does. */
 export function setTimeZone(zone: string | undefined): void {
   timeZone = zone;
+}
+
+/** The zone times are shown and entered in: the workspace's, or the browser's while it is not
+ * known or is a zone this browser does not know. */
+function shownZone(): string | undefined {
+  if (!timeZone) return undefined;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone });
+    return timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The short name of the zone times are shown in at `d` ("UTC", "GMT+5:30"), when it is not the
+ * browser's own; empty when it is. */
+export function zoneLabel(d: Date = new Date()): string {
+  const zone = shownZone();
+  if (!zone || zone === Intl.DateTimeFormat().resolvedOptions().timeZone) return "";
+  return new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "short" }).formatToParts(d).find((p) => p.type === "timeZoneName")?.value ?? zone;
+}
+
+/** The wall clock at instant `t` in the zone times are shown in. */
+function wallClock(t: number): { y: number; mo: number; d: number; h: number; mi: number; s: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: shownZone(),
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(t));
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { y: n("year"), mo: n("month"), d: n("day"), h: n("hour"), mi: n("minute"), s: n("second") };
+}
+
+/** An instant (RFC 3339) as a `datetime-local` value (`YYYY-MM-DDTHH:mm`) on the clock of the
+ * zone times are shown in. */
+export function toZonedInput(v: unknown): string {
+  if (typeof v !== "string" || !v) return "";
+  const t = new Date(v).getTime();
+  if (Number.isNaN(t)) return "";
+  const w = wallClock(t);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${w.y}-${p(w.mo)}-${p(w.d)}T${p(w.h)}:${p(w.mi)}`;
+}
+
+/** A `datetime-local` value read on the clock of the zone times are shown in, as an instant
+ * (RFC 3339, UTC). */
+export function fromZonedInput(s: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+  if (!m) return null;
+  const wall = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] ?? 0));
+  const offset = (t: number) => {
+    const w = wallClock(t);
+    return Date.UTC(w.y, w.mo - 1, w.d, w.h, w.mi, w.s) - Math.floor(t / 1000) * 1000;
+  };
+  // The zone's offset at that wall time: guessed from the wall time itself, then taken again where
+  // the guess lands, so a day that changes the clocks reads right.
+  const guess = wall - offset(wall);
+  return new Date(wall - offset(guess)).toISOString();
 }
 
 /** Today's date in the workspace's time zone as `YYYY-MM-DD`. */

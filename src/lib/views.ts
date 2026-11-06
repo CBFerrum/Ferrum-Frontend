@@ -2,6 +2,7 @@
 // Pure functions so they are tested without a browser.
 
 import type { Field } from "./meta";
+import { fromZonedInput, toZonedInput } from "./format";
 
 export type ViewKind = "list" | "board" | "calendar" | "timeline";
 
@@ -33,22 +34,18 @@ export function viewOptions(fields: Field[]): ViewOptions {
   return { board, calendar, timeline };
 }
 
-/** `YYYY-MM-DD` of a date or datetime value, in the viewer's time zone for datetimes. */
+/** `YYYY-MM-DD` of a date or datetime value, on the workspace's clock for datetimes. */
 export function dayOf(value: unknown): string | null {
   if (typeof value !== "string" || !value) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return toZonedInput(value).slice(0, 10) || null;
 }
 
-/** `value` moved to `day`: a date becomes that day; a moment in time keeps its time of day. */
+/** `value` moved to `day`: a date becomes that day; a moment in time keeps its time of day on the
+ * workspace's clock. */
 export function movedTo(value: unknown, day: string): string {
   if (typeof value !== "string" || /^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(new Date(value).getTime())) return day;
-  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-  const at = new Date(value);
-  at.setFullYear(y, m - 1, d);
-  return at.toISOString();
+  return fromZonedInput(`${day}${toZonedInput(value).slice(10)}`) ?? day;
 }
 
 const DAY = 86_400_000;
@@ -72,8 +69,9 @@ export function weekStart(day: string): string {
 /** API filters selecting records with `field` inside [from, to] (whole days). */
 export function dayRangeFilters(field: Field, from: string, to: string): [string, string, string][] {
   if (field.type === "datetime") {
-    const lo = new Date(`${from}T00:00:00`).toISOString();
-    const hi = new Date(new Date(`${to}T00:00:00`).getTime() + DAY - 1).toISOString();
+    // The workspace's days, from its midnight to the next one's.
+    const lo = fromZonedInput(`${from}T00:00`) ?? `${from}T00:00:00Z`;
+    const hi = new Date(Date.parse(fromZonedInput(`${addDays(to, 1)}T00:00`) ?? `${addDays(to, 1)}T00:00:00Z`) - 1).toISOString();
     return [
       [field.name, ">=", lo],
       [field.name, "<=", hi],
