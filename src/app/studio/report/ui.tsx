@@ -57,7 +57,7 @@ export function PanelSection({ title, action, children, hint }: { title: string;
     <section className="grid gap-2 border-b border-border px-4 py-3 last:border-b-0" aria-label={title}>
       <div className="flex min-h-7 items-center gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
-        <span className="ml-auto flex items-center gap-1">{action}</span>
+        <span className="ms-auto flex items-center gap-1">{action}</span>
       </div>
       {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
       {children}

@@ -66,7 +66,7 @@ export function WidgetFrame({ title, label, accent, menu, handle, children, clas
       style={accent && isSafeColor(accent) ? { borderTop: `3px solid ${accent}` } : undefined}
     >
       {(title || menu || handle) && (
-        <header className="flex min-h-9 shrink-0 items-center gap-1 py-1 pr-1 pl-3">
+        <header className="flex min-h-9 shrink-0 items-center gap-1 py-1 pe-1 ps-3">
           {handle}
           <h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={typeof title === "string" ? title : undefined}>
             {title}
@@ -237,7 +237,7 @@ function ShortcutBody({ w }: { w: Extract<ResolvedWidget, { type: "shortcut" }> 
   const accent = isSafeColor(w.color) ? w.color : "var(--primary)";
   const count = w.count != null ? formatDecimal(w.count, 0) : null;
   const inner = (
-    <span className="flex h-full min-h-0 flex-col justify-between gap-1 text-left">
+    <span className="flex h-full min-h-0 flex-col justify-between gap-1 text-start">
       <span className="line-clamp-2 text-sm font-medium">{w.label}</span>
       {count !== null ? (
         <span className="text-2xl font-semibold tabular-nums" style={{ color: accent }}>

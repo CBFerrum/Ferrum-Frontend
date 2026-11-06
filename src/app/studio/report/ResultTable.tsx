@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { columnLabel, formatCell, groupRows, isNumericColumn, ruleColor, toNumber, type CellOptions, type ColumnSetting, type ResultColumn, type ResultRow, type Sort } from "@/lib/studio";
+import { arrowStep } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export interface ColumnEditor {
@@ -179,7 +180,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
                   aria-rowindex={v.index + 2}
                   className={cn("group/row", d.kind === "subtotal" ? "bg-muted font-medium" : "hover:bg-muted/50")}
                 >
-                  <td className="border-b border-border px-2 py-[var(--cell-py)] text-right text-xs text-muted-foreground tabular-nums">
+                  <td className="border-b border-border px-2 py-[var(--cell-py)] text-end text-xs text-muted-foreground tabular-nums">
                     {d.kind === "row" && entity && d.row._id ? (
                       <Link to={`/e/${entity}/${d.row._id}`} className="inline-flex items-center gap-0.5 rounded hover:text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none" aria-label={`Open record ${d.n}`}>
                         {d.n}
@@ -193,7 +194,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
                     d.kind === "row" ? (
                       <BodyCell key={c.name} c={c} row={d.row} options={options} max={barMax.get(c.name)} />
                     ) : (
-                      <td key={c.name} className={cn("truncate border-b border-border px-3 py-[var(--cell-py)]", isNumericColumn(c) && "text-right tabular-nums")}>
+                      <td key={c.name} className={cn("truncate border-b border-border px-3 py-[var(--cell-py)]", isNumericColumn(c) && "text-end tabular-nums")}>
                         {c.name in d.totals ? formatCell(c, d.totals[c.name], undefined, options) : i === 0 ? d.label : ""}
                       </td>
                     ),
@@ -212,7 +213,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
               <tr aria-rowindex={display.length + 2}>
                 <td className="sticky bottom-0 z-10 border-t border-border bg-muted px-2 py-2" />
                 {columns.map((c, i) => (
-                  <td key={c.name} className={cn("sticky bottom-0 z-10 truncate border-t border-border bg-muted px-3 py-2 font-semibold", isNumericColumn(c) && "text-right tabular-nums")}>
+                  <td key={c.name} className={cn("sticky bottom-0 z-10 truncate border-t border-border bg-muted px-3 py-2 font-semibold", isNumericColumn(c) && "text-end tabular-nums")}>
                     {c.name in totals ? formatCell(c, totals[c.name], undefined, options) : i === 0 ? "Total" : ""}
                   </td>
                 ))}
@@ -243,13 +244,13 @@ function BodyCell({ c, row, options, max }: { c: ResultColumn; row: ResultRow; o
     const pct = n === null || !max ? 0 : (Math.abs(n) / max) * 100;
     content = (
       <span className="relative block">
-        <span aria-hidden="true" className={cn("absolute inset-y-0 left-0 rounded-sm", n !== null && n < 0 ? "bg-destructive/20" : "bg-primary/20")} style={{ width: `${pct}%` }} />
+        <span aria-hidden="true" className={cn("absolute inset-y-0 start-0 rounded-sm", n !== null && n < 0 ? "bg-destructive/20" : "bg-primary/20")} style={{ width: `${pct}%` }} />
         <span className="relative">{text}</span>
       </span>
     );
   }
   return (
-    <td className={cn("truncate border-b border-border px-3 py-[var(--cell-py)]", numeric && "text-right tabular-nums", color && "font-medium")} style={color ? { color } : undefined} title={text.length > 24 ? text : undefined}>
+    <td className={cn("truncate border-b border-border px-3 py-[var(--cell-py)]", numeric && "text-end tabular-nums", color && "font-medium")} style={color ? { color } : undefined} title={text.length > 24 ? text : undefined}>
       {content}
     </td>
   );
@@ -276,7 +277,7 @@ function HeaderRow({ headers, byName, sort, onSort, onSortTo, editor, setSizing,
   const label = (id: unknown) => byName.get(String(id))?.label ?? "column";
   const cells = (
     <tr>
-      <th scope="col" className="sticky top-0 z-20 border-b border-border bg-muted px-2 py-2 text-right text-xs font-medium text-muted-foreground">
+      <th scope="col" className="sticky top-0 z-20 border-b border-border bg-muted px-2 py-2 text-end text-xs font-medium text-muted-foreground">
         <span aria-hidden="true">#</span>
         <span className="sr-only">Row number</span>
       </th>
@@ -331,9 +332,11 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
     else setSizing((s) => ({ ...s, [c.name]: next }));
   };
   const onResizeKey = (e: KeyboardEvent) => {
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    // The handle is on the column's far edge: on along the line widens it, back narrows it.
+    const step = arrowStep(e);
+    if (step !== null) {
       e.preventDefault();
-      resizeBy((e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? 64 : 16));
+      resizeBy(step * (e.shiftKey ? 64 : 16));
     }
   };
   return (
@@ -342,9 +345,9 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
       scope="col"
       aria-sort={active === "asc" ? "ascending" : active === "desc" ? "descending" : canSort ? "none" : undefined}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn("group/head sticky top-0 z-20 border-b border-border bg-muted p-0 text-left font-medium", isDragging && "z-30 opacity-80 shadow-lg")}
+      className={cn("group/head sticky top-0 z-20 border-b border-border bg-muted p-0 text-start font-medium", isDragging && "z-30 opacity-80 shadow-lg")}
     >
-      <div className={cn("flex h-full min-w-0 items-center gap-0.5 py-1 pr-2 pl-1", numeric && "flex-row-reverse pr-1 pl-2")}>
+      <div className={cn("flex h-full min-w-0 items-center gap-0.5 py-1 pe-2 ps-1", numeric && "flex-row-reverse pe-1 ps-2")}>
         {movable && (
           <button
             ref={setActivatorNodeRef}
@@ -364,7 +367,7 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
           onClick={() => onSort?.(c)}
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1 rounded px-1 py-1 enabled:hover:text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-default",
-            numeric && "flex-row-reverse text-right",
+            numeric && "flex-row-reverse text-end",
           )}
           title={canSort ? `${label}: sort` : label}
         >
@@ -433,7 +436,7 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
         onKeyDown={onResizeKey}
         title="Drag to resize (or focus and use the arrow keys); double-click to reset"
         className={cn(
-          "absolute top-0 right-0 h-full w-2 cursor-col-resize touch-none select-none hover:bg-primary/30 focus-visible:bg-primary/50 focus-visible:outline-none pointer-coarse:w-4",
+          "absolute top-0 end-0 h-full w-2 cursor-col-resize touch-none select-none hover:bg-primary/30 focus-visible:bg-primary/50 focus-visible:outline-none pointer-coarse:w-4",
           h.column.getIsResizing() && "bg-primary/50",
         )}
       />

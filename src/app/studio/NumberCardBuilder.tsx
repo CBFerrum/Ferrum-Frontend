@@ -290,7 +290,7 @@ function CardEditor({
       {dialog}
       {!embedded && <UnsavedGuard dirty={b.dirty && !b.standard} allowRef={leave} />}
       <DrillDownSheet target={drill} onClose={() => setDrill(null)} />
-      <div className={cn(embedded && "border-b p-4 pr-12")}>
+      <div className={cn(embedded && "border-b p-4 pe-12")}>
         <PageHeader
           eyebrow={
             embedded ? undefined : (

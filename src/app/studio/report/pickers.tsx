@@ -104,7 +104,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
                   }}
                 >
                   {none.label}
-                  {!value && <Check className="ml-auto" />}
+                  {!value && <Check className="ms-auto" />}
                 </CommandItem>
               </CommandGroup>
             )}
@@ -114,7 +114,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
                   <CommandItem key={f.path} value={f.path} keywords={[f.label, group]} className={ITEM} onSelect={() => choose(f)}>
                     <TypeIcon type={f.type} />
                     <span className="truncate">{shortLabel(f)}</span>
-                    {f.path === value && <Check className="ml-auto" />}
+                    {f.path === value && <Check className="ms-auto" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -188,7 +188,7 @@ export function EntityPicker({ sources, loading, value, onChange, large, autoOpe
                     }}
                   >
                     <span className="truncate">{e.label}</span>
-                    {e.name === value && <Check className="ml-auto" />}
+                    {e.name === value && <Check className="ms-auto" />}
                   </CommandItem>
                 ))}
               </CommandGroup>

@@ -19,6 +19,7 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
+import { t } from "../lib/i18n";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
 import {
@@ -396,7 +397,7 @@ export function LinkInput({
         aria-required={required || undefined}
         disabled={disabled}
         autoComplete="off"
-        placeholder={disabled ? "" : (placeholder ?? `Search ${name}…`)}
+        placeholder={disabled ? "" : (placeholder ?? t("Search {name}…", { name }))}
         value={typed ?? resolved ?? (value ? "…" : "")}
         onChange={(e) => {
           setTyped(e.target.value);
@@ -439,7 +440,7 @@ export function LinkInput({
             </li>
           ) : !rows.length ? (
             <li className="option-empty" role="presentation">
-              No matches
+              {t("No matches")}
             </li>
           ) : (
             rows.map((r, i) => {
@@ -778,7 +779,7 @@ export function TableGrid({
               })}
             </ol>
           ) : (
-            <p className="grid-empty">No rows yet.</p>
+            <p className="grid-empty">{t("No rows yet.")}</p>
           )
         ) : (
           <table className="grid" aria-label={child.label}>
@@ -798,7 +799,7 @@ export function TableGrid({
                   </th>
                 ))}
                 <th scope="col">
-                  <span className="sr-only">Row actions</span>
+                  <span className="sr-only">{t("Row actions")}</span>
                 </th>
               </tr>
             </thead>
@@ -879,7 +880,7 @@ export function TableGrid({
               {!rows.length && (
                 <tr>
                   <td colSpan={cols.length + 2} className="grid-empty">
-                    No rows yet.
+                    {t("No rows yet.")}
                   </td>
                 </tr>
               )}
@@ -890,9 +891,9 @@ export function TableGrid({
       {!locked && (
         <div className="grid-foot">
           <Button size="sm" icon="plus" onClick={() => add()}>
-            Add row
+            {t("Add row")}
           </Button>
-          {!phone && <span className="field-hint">Alt+↑/↓ moves a row · Ctrl+Enter inserts a row below</span>}
+          {!phone && <span className="field-hint">{t("Alt+↑/↓ moves a row · Ctrl+Enter inserts a row below")}</span>}
         </div>
       )}
       <Dialog

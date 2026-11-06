@@ -5,6 +5,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, errorMessage } from "../lib/api";
+import { t } from "../lib/i18n";
 import { useMe, type EntityMeta } from "../lib/meta";
 import { buildSpec, draftFromSpec, fieldIssues, specIssues, studio, studioKeys, useStudioFields, useStudioQuery, useStudioSources, type Spec } from "../lib/studio";
 import { Button, useDebounced } from "../ui/kit";
@@ -87,12 +88,12 @@ export default function QueryInput(p: ControlProps) {
   if (disabled || asJson || noStudio)
     return (
       <div className="stack">
-        {noStudio && !disabled && <p className="field-hint">Studio builds this query. Once Studio is installed (Apps, Store), it is built here; until then it is written as JSON.</p>}
+        {noStudio && !disabled && <p className="field-hint">{t("Studio builds this query. Once Studio is installed (Apps, Store), it is built here; until then it is written as JSON.")}</p>}
         <JsonInput {...p} />
         {!disabled && !noStudio && (
           <div>
             <Button size="sm" onClick={() => setAsJson(false)} disabled={value != null && value !== "" && !spec}>
-              Build it instead
+              {t("Build it instead")}
             </Button>
           </div>
         )}
@@ -116,13 +117,13 @@ export default function QueryInput(p: ControlProps) {
       />
       <div className="flex min-w-0 flex-col gap-2 p-2" aria-live="polite">
         <div className="flex items-center justify-between gap-2">
-          <strong className="text-sm">What it gives now</strong>
+          <strong className="text-sm">{t("What it gives now")}</strong>
           <Button size="sm" onClick={() => setAsJson(true)}>
-            Write it as JSON
+            {t("Write it as JSON")}
           </Button>
         </div>
         {!d.entity ? (
-          <p className="field-hint">Choose what it is about.</p>
+          <p className="field-hint">{t("Choose what it is about.")}</p>
         ) : query.error && !refused.length ? (
           <p className="field-error">{errorMessage(query.error)}</p>
         ) : query.isLoading && !result ? (

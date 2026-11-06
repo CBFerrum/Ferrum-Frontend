@@ -56,7 +56,7 @@ export function Markdown({ source, className }: { source: string; className?: st
             );
           case "quote":
             return (
-              <blockquote key={i} className="border-l-2 pl-3 text-muted-foreground">
+              <blockquote key={i} className="border-s-2 ps-3 text-muted-foreground">
                 <InlineView nodes={b.c} />
               </blockquote>
             );
@@ -65,7 +65,7 @@ export function Markdown({ source, className }: { source: string; className?: st
           default: {
             const L = b.t;
             return (
-              <L key={i} className={cn("space-y-0.5 pl-5", L === "ul" ? "list-disc" : "list-decimal")}>
+              <L key={i} className={cn("space-y-0.5 ps-5", L === "ul" ? "list-disc" : "list-decimal")}>
                 {b.items.map((it, j) => (
                   <li key={j}>
                     <InlineView nodes={it} />

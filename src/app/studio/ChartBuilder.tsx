@@ -387,7 +387,7 @@ function ChartEditor({
     <div className={cn(embedded && "flex h-full min-h-0 flex-col")}>
       {dialog}
       {!embedded && <UnsavedGuard dirty={b.dirty && !b.standard} allowRef={leave} />}
-      <div className={cn(embedded && "border-b p-4 pr-12")}>
+      <div className={cn(embedded && "border-b p-4 pe-12")}>
         <PageHeader
           eyebrow={
             embedded ? undefined : (

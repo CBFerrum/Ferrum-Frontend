@@ -76,6 +76,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { arrowStep } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { addSection, moveField, removeField, removeSection, renameTab, setSectionTab, tabsOf, unplaced, type LayoutSection } from "../../lib/formLayout";
 import type { EntityMeta, Field } from "../../lib/meta";
@@ -415,7 +416,8 @@ function TabStrip({ tabs, current }: { tabs: (string | null)[]; current: string 
   const c = useCanvas();
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.indexOf(current);
-    const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
+    const step = arrowStep(e);
+    const to = step !== null ? i + step : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : null;
     if (to === null || !tabs.length) return;
     e.preventDefault();
     const j = (to + tabs.length) % tabs.length;
@@ -637,7 +639,7 @@ function SectionCard({ s, first, last }: { s: LayoutSection; first: boolean; las
           id={`fd-st-${s.key}`}
           onClick={() => c.select(s.key)}
           aria-pressed={c.wide ? selected : undefined}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm font-semibold outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-start text-sm font-semibold outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
         >
           <span className={cn("truncate", !s.label?.trim() && "font-normal text-muted-foreground italic")}>{title}</span>
           <span className="sr-only">, settings</span>
@@ -800,7 +802,7 @@ function FieldCard({ name, first, last, inPalette }: { name: string; first: bool
       ref={sortable.setNodeRef}
       style={{ transform: CSS.Translate.toString(sortable.transform), transition: sortable.transition }}
       className={cn(
-        "flex min-w-0 items-center gap-0.5 rounded-md border bg-background pr-0.5 shadow-xs",
+        "flex min-w-0 items-center gap-0.5 rounded-md border bg-background pe-0.5 shadow-xs",
         !inPalette && f && WIDE.has(f.type) && "col-span-full",
         sortable.isDragging && "opacity-40",
       )}
@@ -931,10 +933,10 @@ function Palette() {
           aria-expanded={open}
           aria-controls="fd-palette-list"
           onClick={() => setOpen(!open)}
-          className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-start text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           {title}
-          <ChevronDown className={cn("ml-auto size-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
+          <ChevronDown className={cn("ms-auto size-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
         </button>
       )}
       {(c.wide || open) && (
@@ -945,8 +947,8 @@ function Palette() {
           </p>
           {all.length > 6 && (
             <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input type="search" aria-label="Search unplaced fields" placeholder="Search fields" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-8" />
+              <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input type="search" aria-label="Search unplaced fields" placeholder="Search fields" value={query} onChange={(e) => setQuery(e.target.value)} className="ps-8" />
             </div>
           )}
           <div className="-mx-1 flex min-h-0 flex-col gap-1.5 overflow-y-auto px-1 py-0.5">
@@ -996,7 +998,7 @@ function DragPreview({ data }: { data: DragData }) {
   const c = useCanvas();
   if (data.type === "field") {
     return (
-      <div className="flex w-64 max-w-[80vw] cursor-grabbing items-center gap-0.5 rounded-md border bg-background pr-2 shadow-lg ring-2 ring-primary">
+      <div className="flex w-64 max-w-[80vw] cursor-grabbing items-center gap-0.5 rounded-md border bg-background pe-2 shadow-lg ring-2 ring-primary">
         <span className="inline-flex size-8 shrink-0 items-center justify-center text-muted-foreground">
           <GripVertical className="size-4" aria-hidden="true" />
         </span>
