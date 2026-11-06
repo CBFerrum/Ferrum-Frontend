@@ -129,13 +129,15 @@ export function formatDateTime(value: unknown, locale?: string): string {
 }
 
 /** A moment in a page's own shape (`{ day: "numeric", month: "short", hour: "numeric", minute:
- *  "2-digit" }`), on the workspace's clock, its zone named when the browser's is another. */
+ *  "2-digit" }`), on the workspace's clock, its zone named when the browser's is another and the
+ *  shape shows a time of day. */
 export function formatMoment(value: string | number | Date | null | undefined, shape: Intl.DateTimeFormatOptions, locale?: string): string {
   if (value === null || value === undefined || value === "") return "";
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   const shown = new Intl.DateTimeFormat(locale ?? defaultLocale, { ...shape, timeZone: shownTimeZone() }).format(d);
-  const zone = shape.timeZoneName ? "" : zoneLabel(d);
+  const timed = shape.timeStyle || shape.hour || shape.minute || shape.second;
+  const zone = timed && !shape.timeZoneName ? zoneLabel(d) : "";
   return zone ? `${shown} ${zone}` : shown;
 }
 

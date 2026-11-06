@@ -123,6 +123,10 @@ describe("times on the workspace's clock", () => {
     // A shape that names its zone is not named twice.
     expect(formatMoment(at, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short" }, "en-GB")).toBe("06:34 GMT+5:30");
     expect([formatMoment(null, shape), formatMoment("", shape), formatMoment("soon", shape)]).toEqual(["", "", "soon"]);
+    // A day alone is the workspace's day, with no zone to name.
+    setTimeZone("Pacific/Kiritimati");
+    expect(formatMoment("2026-11-05T11:00:00Z", { weekday: "long", day: "numeric", month: "long" }, "en-GB")).toBe("Friday 6 November");
+    setTimeZone("Asia/Kolkata");
     expect(shownTimeZone()).toBe("Asia/Kolkata");
   });
 
