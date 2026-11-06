@@ -439,11 +439,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     }
   };
   const runAction = async (a: ActionDef) => {
-    if (a.confirm && !(await confirmDialog({ title: a.label, message: a.confirm, confirmLabel: a.label }))) return;
+    // The dialog asking for its parameters says what it confirms: one dialog, not two.
     if (a.params?.length) {
       setAsking(a);
       return;
     }
+    if (a.confirm && !(await confirmDialog({ title: a.label, message: a.confirm, confirmLabel: a.label }))) return;
     await operate(`action:${a.name}`, async () => afterAction(a, await api.post<unknown>(docPath(E, String(id), "actions", a.name), {})));
   };
 
