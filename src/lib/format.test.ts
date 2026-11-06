@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { compareDecimal, formatDate, formatDateTime, formatDecimal, formatMoment, formatValue, fromZonedInput, humanize, setTimeZone, shownTimeZone, todayIso, toZonedInput, zoneLabel } from "./format";
+import { compareDecimal, formatDate, formatDateTime, formatDecimal, formatMoment, formatValue, fromZonedInput, humanize, setDisplayZone, setTimeZone, shownTimeZone, todayIso, toZonedInput, zoneLabel } from "./format";
 
 describe("formatDecimal", () => {
   it("groups digits and keeps the value's own precision by default", () => {
@@ -128,6 +128,21 @@ describe("times on the workspace's clock", () => {
     expect(formatMoment("2026-11-05T11:00:00Z", { weekday: "long", day: "numeric", month: "long" }, "en-GB")).toBe("Friday 6 November");
     setTimeZone("Asia/Kolkata");
     expect(shownTimeZone()).toBe("Asia/Kolkata");
+  });
+
+  it("shows a person's own clock while today stays the workspace's", () => {
+    // 11:00 UTC on 5 Nov: already 6 Nov in Kiritimati, still 5 Nov in Pago Pago.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-05T11:00:00Z"));
+    setTimeZone("Pacific/Kiritimati");
+    setDisplayZone("Pacific/Pago_Pago");
+    expect(todayIso()).toBe("2026-11-06");
+    expect(shownTimeZone()).toBe("Pacific/Pago_Pago");
+    expect(toZonedInput("2026-11-05T11:00:00Z")).toBe("2026-11-05T00:00");
+    setDisplayZone("Not/A_Zone");
+    expect(shownTimeZone()).toBe("Pacific/Kiritimati");
+    setDisplayZone(undefined);
+    vi.useRealTimers();
   });
 
   it("keeps the browser's clock for a zone it does not know", () => {

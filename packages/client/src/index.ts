@@ -21,6 +21,7 @@ export {
   isDecimalString,
   NUMERIC_TYPES,
   relativeTime,
+  setDisplayZone,
   setTimeZone,
   shortId,
   shownTimeZone,
@@ -31,7 +32,7 @@ export {
 } from "../../../src/lib/format";
 export { addCatalog, applyLocale, currentLanguage, direction, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
 import { applyLocale } from "../../../src/lib/i18n";
-import { setTimeZone } from "../../../src/lib/format";
+import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
 export interface Bootstrap {
   v: 1;
@@ -60,7 +61,7 @@ export interface Bootstrap {
    *  (shapes B and C), where the person signs in and finds their other workspaces. */
   api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
-  locale: { language: string; timezone: string; dir: "ltr" | "rtl"; chosen?: boolean };
+  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
@@ -107,6 +108,7 @@ export function bootstrap(): Bootstrap | null {
   if (cached) {
     applyLocale(cached.locale);
     setTimeZone(cached.locale?.timezone);
+    setDisplayZone(cached.locale?.display_timezone);
   }
   return cached;
 }
@@ -139,6 +141,7 @@ export async function renewOfflineLease(): Promise<OfflineLease | null> {
 export function resetBootstrap(): void {
   cached = undefined;
   setTimeZone(undefined);
+  setDisplayZone(undefined);
 }
 
 /** The base path of one of the app's routes, `/crm/`, from the bootstrap (or `/{route}/`). */

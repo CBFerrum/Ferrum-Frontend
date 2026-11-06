@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installFakeShell, removeFakeShell } from "@ferrum/testing";
+import { fakeBootstrap, installFakeShell, removeFakeShell } from "@ferrum/testing";
 import { ApiError, bootstrap, request, resetBootstrap, routeBase, shell, shownTimeZone } from "./index";
 
 afterEach(() => {
@@ -22,6 +22,13 @@ describe("@ferrum/client", () => {
     expect(shownTimeZone()).toBe("UTC");
     resetBootstrap();
     expect(shownTimeZone()).toBeUndefined();
+  });
+
+  it("shows times on the person's own clock when the page names one", () => {
+    const boot = fakeBootstrap();
+    installFakeShell({ bootstrap: { ...boot, locale: { ...boot.locale, display_timezone: "Asia/Kolkata" } } });
+    bootstrap();
+    expect(shownTimeZone()).toBe("Asia/Kolkata");
   });
 
   it("falls back when no shell runs", () => {
