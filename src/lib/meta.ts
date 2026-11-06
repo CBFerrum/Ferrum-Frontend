@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { evaluate } from "./expr";
-import { humanize, setTimeZone, shortId } from "./format";
+import { humanize, setDisplayZone, setTimeZone, shortId } from "./format";
 
 export type FieldType =
   | "data" | "text" | "markdown" | "code" | "int" | "decimal" | "currency" | "percent" | "date" | "datetime"
@@ -174,6 +174,8 @@ export interface Me {
   fiscal_year_start_month: number;
   /** IANA name of the workspace's time zone; dates such as `today` follow it. */
   timezone?: string;
+  /** The zone times are shown in: the person's own, else the workspace's. */
+  display_timezone?: string;
   packages: string[];
   /** Shapes B and C: the accounts host that keeps this person's password, two-step sign-in and
    *  passkeys (their workspace account joined their Ferrum account). */
@@ -244,6 +246,7 @@ export const useMe = () =>
     queryFn: async ({ signal }) => {
       const me = await api.get<Me>("/api/auth/me", undefined, signal);
       setTimeZone(me.timezone); // `today` in defaults and conditions follows the workspace, like the server
+      setDisplayZone(me.display_timezone); // times show on the person's own clock when they chose one
       return me;
     },
     staleTime: LONG,
