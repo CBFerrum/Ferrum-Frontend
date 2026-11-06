@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .list-search {
   position: relative;
@@ -22,7 +22,7 @@
 }
 .list-search .icon {
   position: absolute;
-  left: 9px;
+  inset-inline-start: 9px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--faint);
@@ -30,7 +30,7 @@
 }
 .list-search .input {
   height: 30px;
-  padding-left: 29px;
+  padding-inline-start: 29px;
 }
 .chip {
   display: inline-flex;
@@ -59,7 +59,8 @@
   align-items: center;
   gap: 5px;
   min-width: 0;
-  padding: 0 4px 0 9px;
+  padding-block: 0 0;
+  padding-inline: 9px 4px;
 }
 .chip-label {
   color: var(--muted-foreground);
@@ -74,7 +75,8 @@
 .chip-x {
   display: inline-flex;
   align-items: center;
-  padding: 0 7px 0 3px;
+  padding-block: 0 0;
+  padding-inline: 3px 7px;
   color: var(--muted-foreground);
 }
 .chip-x:hover {
@@ -283,7 +285,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 10px 8px 6px 14px;
+  padding-block: 10px 6px;
+  padding-inline: 14px 8px;
 }
 .peek-title {
   display: flex;
@@ -368,7 +371,7 @@
   color: inherit;
   font: inherit;
   font-size: 13.5px;
-  text-align: left;
+  text-align: start;
 }
 button.peek-value {
   cursor: text;
@@ -402,7 +405,7 @@ button.peek-value:hover {
   }
   .list-bar-end {
     flex: 1 1 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   .list-bar .list-sort {
     display: block;
@@ -441,7 +444,7 @@ button.peek-value:hover {
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
-    text-align: right;
+    text-align: end;
   }
   .list-table td + td::before {
     content: attr(data-label);
@@ -449,7 +452,7 @@ button.peek-value:hover {
     max-width: 45%;
     color: var(--muted-foreground);
     font-size: 12.5px;
-    text-align: left;
+    text-align: start;
   }
   .list-table td:empty {
     display: none;
@@ -480,7 +483,7 @@ button.peek-value:hover {
   .doc-actions .menu-list {
     position: fixed;
     top: auto;
-    right: max(8px, env(safe-area-inset-right));
+    inset-inline-end: max(8px, env(safe-area-inset-right));
     bottom: calc(60px + max(8px, env(safe-area-inset-bottom)));
   }
   main:has(.doc-actions:not(:empty)) {
@@ -518,7 +521,7 @@ button.peek-value:hover {
     min-width: 16px;
     color: var(--faint);
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: end;
   }
   .grid-card dl {
     display: flex;
@@ -547,14 +550,14 @@ button.peek-value:hover {
     gap: 4px;
   }
   .grid-card-actions .btn {
-    margin-right: auto; /* Edit apart from move/remove */
+    margin-inline-end: auto; /* Edit apart from move/remove */
   }
 }
 
 @media (pointer: coarse) {
   /* Link fields: room in the input for both 44px clear/open buttons. */
   .combo .input {
-    padding-right: 94px;
+    padding-inline-end: 94px;
   }
   .grid td:has(> .combo) {
     min-width: 200px; /* the dense grid (tablets) keeps some room for the text */
@@ -652,14 +655,15 @@ button.peek-value:hover {
 }
 .merge-table caption {
   padding-bottom: 6px;
-  text-align: left;
+  text-align: start;
 }
 .merge-table th {
   width: 28%;
-  padding: 6px 8px 6px 0;
+  padding-block: 6px 6px;
+  padding-inline: 0 8px;
   color: var(--muted-foreground);
   font-weight: 500;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 .merge-table td {
@@ -710,11 +714,11 @@ button.peek-value:hover {
   gap: 8px;
 }
 .board-add {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* The way to the help center from a list or a form. */
-.help-link { display: inline-flex; margin-left: 8px; color: var(--muted, #6b7280); vertical-align: middle; }
+.help-link { display: inline-flex; margin-inline-start: 8px; color: var(--muted, #6b7280); vertical-align: middle; }
 .help-link:hover, .help-link:focus-visible { color: var(--accent, #2563eb); }
 
 /* A date-and-time box on the workspace's clock, its zone named beside it. */

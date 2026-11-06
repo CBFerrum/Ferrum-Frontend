@@ -195,7 +195,7 @@ function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row
     <li className="relative">
       <Link
         to={PATHS.space(r.id)}
-        className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 pr-12 text-card-foreground shadow-xs transition-colors outline-none hover:bg-accent/50 hover:no-underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 pe-12 text-card-foreground shadow-xs transition-colors outline-none hover:bg-accent/50 hover:no-underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
           <SpaceIcon name={r.icon} className="size-5" />
@@ -212,7 +212,7 @@ function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row
           </span>
         </span>
       </Link>
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-2 end-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-sm" className={TAP} aria-label={`Actions for ${r.label}`} disabled={remove.isPending}>

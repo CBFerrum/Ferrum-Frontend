@@ -181,7 +181,7 @@ export function AcceptsEditor({
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium">
                 {def?.label || name}
-                {def && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{FILTER_TYPE_LABEL[def.type]}</span>}
+                {def && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{FILTER_TYPE_LABEL[def.type]}</span>}
               </span>
               {!def && (
                 <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove the setting for ${name}`} onClick={() => set(name, undefined)}>

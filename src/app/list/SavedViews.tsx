@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { t } from "../../lib/i18n";
 import { Button, confirmDialog, Dialog, Field } from "../../ui/kit";
 import { sortedViews, viewNameError, type SavedView } from "./settings";
 
@@ -74,7 +75,7 @@ export function SavedViews(p: Props) {
           aria-label={`Saved views: ${a ? a.name : "standard view"}${p.modified ? ", with unsaved changes" : ""}`}
         >
           <Bookmark className="size-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">{a ? a.name : "Views"}</span>
+          <span className="truncate">{a ? a.name : t("Views")}</span>
           {p.modified && <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />}
           <ChevronDown className="size-4 shrink-0 opacity-60" aria-hidden="true" />
         </DropdownMenuTrigger>

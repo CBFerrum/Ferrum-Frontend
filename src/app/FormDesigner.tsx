@@ -316,7 +316,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
             <TriangleAlert aria-hidden="true" />
             <AlertTitle>The server skipped customizations of {meta.label}</AlertTitle>
             <AlertDescription>
-              <ul className="list-disc pl-4">
+              <ul className="list-disc ps-4">
                 {warnings.map((w, i) => (
                   <li key={i}>{w}</li>
                 ))}
@@ -356,7 +356,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
             <TriangleAlert aria-hidden="true" />
             <AlertTitle>Fix these before saving</AlertTitle>
             <AlertDescription>
-              <ul className="list-disc pl-4">
+              <ul className="list-disc ps-4">
                 {problems.map((p, i) => (
                   <li key={i}>{p.message}</li>
                 ))}

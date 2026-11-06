@@ -646,7 +646,7 @@ function Editor({ record }: { record?: ReportRecord }) {
               <Button variant="outline" onClick={() => setPanelOpen(true)}>
                 <SlidersHorizontal /> Settings
                 {attention.length > 0 && (
-                  <Badge variant="destructive" className="ml-1" aria-label={`${attention.length} to fix`}>
+                  <Badge variant="destructive" className="ms-1" aria-label={`${attention.length} to fix`}>
                     {attention.length}
                   </Badge>
                 )}
@@ -660,7 +660,7 @@ function Editor({ record }: { record?: ReportRecord }) {
               </Label>
             )}
             {query.isFetching && (
-              <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+              <span className="ms-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
                 <Spinner /> Updating…
               </span>
             )}

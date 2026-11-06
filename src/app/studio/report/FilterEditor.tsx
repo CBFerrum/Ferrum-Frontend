@@ -201,7 +201,7 @@ function Single({ field, type, value, label, describedBy, onChange, end }: Value
       aria-describedby={describedBy}
       inputMode={numeric ? "decimal" : undefined}
       placeholder={numeric ? "0" : "Value"}
-      className={numeric ? "text-right tabular-nums" : undefined}
+      className={numeric ? "text-end tabular-nums" : undefined}
       value={text}
       onChange={(e) => onChange(e.target.value)}
     />
@@ -249,7 +249,7 @@ function MultiValue({ field, type, value, label, onChange }: ValueProps & { valu
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-1" aria-label={`${label}: chosen values`}>
           {value.map((v, i) => (
-            <li key={`${String(v)}-${i}`} className="flex max-w-full items-center gap-0.5 rounded bg-secondary py-0.5 pr-0.5 pl-1.5 text-xs">
+            <li key={`${String(v)}-${i}`} className="flex max-w-full items-center gap-0.5 rounded bg-secondary py-0.5 pe-0.5 ps-1.5 text-xs">
               <span className="truncate">{type === "link" && field?.to && typeof v === "string" ? <LinkName to={field.to} id={v} /> : String(v)}</span>
               <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={`Remove value ${i + 1}`} onClick={() => remove(i)}>
                 <X className="size-3" aria-hidden="true" />

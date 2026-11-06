@@ -76,9 +76,9 @@ export function Devices({
       <table className="shell-devices">
         <thead>
           <tr>
-            <th scope="col">Browser</th>
-            <th scope="col">Last active</th>
-            <th scope="col">Signed in</th>
+            <th scope="col">{t("Browser")}</th>
+            <th scope="col">{t("Last active")}</th>
+            <th scope="col">{t("Signed in")}</th>
             <th scope="col">
               <span className="sr-only">Actions</span>
             </th>
@@ -88,14 +88,14 @@ export function Devices({
           {q.data.sessions.map((d) => (
             <tr key={d.id}>
               <td>
-                {browserName(d.user_agent)} {d.current && <Badge tone="green">This one</Badge>}
+                {browserName(d.user_agent)} {d.current && <Badge tone="green">{t("This one")}</Badge>}
                 <div className="faint">{d.ip}</div>
               </td>
               <td title={formatDateTime(d.last_seen_at)}>{relativeTime(d.last_seen_at)}</td>
               <td>{formatDateTime(d.created_at)}</td>
               <td>
                 <Button size="sm" onClick={() => void signOut(d)}>
-                  Sign out
+                  {t("Sign out")}
                 </Button>
               </td>
             </tr>
@@ -363,7 +363,7 @@ function Language() {
   return (
     <div className="row" style={{ gap: 8 }}>
       <select className="select" aria-label={t("Language")} value={mine} disabled={busy || !q.data} onChange={(e) => void choose(e.target.value)}>
-        <option value="">The workspace&apos;s language</option>
+        <option value="">{t("The workspace's language")}</option>
         {LANGUAGES.map((l) => (
           <option key={l.tag} value={l.tag} lang={l.tag}>
             {l.name}
@@ -429,12 +429,12 @@ export function AccountPage() {
     <div className="shell-account">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Your account</h1>
+          <h1 className="page-title">{t("Your account")}</h1>
           <p className="page-sub">{me ? `${me.user.full_name} · ${me.user.email}` : "…"}</p>
         </div>
       </div>
       {me?.accounts ? (
-        <Section id="acct-signin" title="Signing in">
+        <Section id="acct-signin" title={t("Signing in")}>
           <p className="muted">
             You sign in with your Ferrum account, {me.user.email}. Its password, two-step sign-in and passkeys work for every workspace you have.
           </p>
@@ -446,39 +446,39 @@ export function AccountPage() {
         </Section>
       ) : (
         <>
-          <Section id="acct-password" title="Password">
+          <Section id="acct-password" title={t("Password")}>
             <div>
-              <Button onClick={() => setPassword(true)}>Change password</Button>
+              <Button onClick={() => setPassword(true)}>{t("Change password")}</Button>
             </div>
           </Section>
-          <Section id="acct-passkeys" title="Passkeys">
+          <Section id="acct-passkeys" title={t("Passkeys")}>
             <Passkeys />
           </Section>
-          <Section id="acct-2fa" title="Two-factor sign-in">
+          <Section id="acct-2fa" title={t("Two-factor sign-in")}>
             <TwoFactorSettings />
           </Section>
         </>
       )}
       <Section id="acct-language" title={t("Language")}>
-        <p className="muted">The interface&apos;s words where they are translated, which way its pages read, and how numbers and dates are written.</p>
+        <p className="muted">{t("The interface's words where they are translated, which way its pages read, and how numbers and dates are written.")}</p>
         <Language />
       </Section>
-      <Section id="acct-time-zone" title="Time zone">
-        <p className="muted">The clock your pages show times on. Due dates and what counts as today stay the workspace&apos;s.</p>
+      <Section id="acct-time-zone" title={t("Time zone")}>
+        <p className="muted">{t("The clock your pages show times on. Due dates and what counts as today stay the workspace's.")}</p>
         <TimeZone />
       </Section>
-      <Section id="acct-devices" title="Signed-in browsers">
+      <Section id="acct-devices" title={t("Signed-in browsers")}>
         <Devices />
       </Section>
-      <Section id="acct-keys" title="API keys">
+      <Section id="acct-keys" title={t("API keys")}>
         <ApiKeys />
       </Section>
       {comms && (
-        <Section id="acct-cal" title="Calendar and contacts apps">
+        <Section id="acct-cal" title={t("Calendar and contacts apps")}>
           <CalendarApps email={me?.user.email ?? ""} />
         </Section>
       )}
-      <Section id="acct-ai" title="Connect an AI assistant">
+      <Section id="acct-ai" title={t("Connect an AI assistant")}>
         <ConnectAi />
       </Section>
       <ChangePasswordDialog open={password} onClose={() => setPassword(false)} onSignedOut={() => location.assign("/login")} />

@@ -603,7 +603,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>The space wasn’t saved</AlertTitle>
           <AlertDescription>
-            <ul className="list-disc pl-4">
+            <ul className="list-disc ps-4">
               {generalServer.map((i, n) => (
                 <li key={n}>{i.message}</li>
               ))}
@@ -736,7 +736,7 @@ function SortableBlock({
           <button
             type="button"
             onClick={onSettings}
-            className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 text-left text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
+            className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 text-start text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
             aria-label={`Settings of ${title}`}
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />
@@ -900,7 +900,7 @@ function EmptyCanvas({ onAdd, onStarter }: { onAdd: (t: BlockType) => void; onSt
                         }}
                       >
                         {module.label}
-                        <span className="ml-auto text-xs text-muted-foreground">{starter.blocks.length} blocks</span>
+                        <span className="ms-auto text-xs text-muted-foreground">{starter.blocks.length} blocks</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -1066,7 +1066,7 @@ function RolesPicker({ id, value, onChange, errors }: { id: string; value: strin
         <ul className="flex flex-wrap gap-1.5" aria-label="Chosen roles">
           {value.map((r) => (
             <li key={r}>
-              <Badge variant="secondary" className="gap-1 py-1 pr-1">
+              <Badge variant="secondary" className="gap-1 py-1 pe-1">
                 {r}
                 <button type="button" aria-label={`Remove ${r}`} onClick={() => toggle(r)} className="rounded-sm p-0.5 hover:bg-background">
                   <X className="size-3" />

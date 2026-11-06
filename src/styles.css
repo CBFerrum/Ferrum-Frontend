@@ -66,7 +66,7 @@ a:hover {
   font-size: 12.5px;
 }
 .num {
-  text-align: right;
+  text-align: end;
   font-variant-numeric: tabular-nums;
 }
 .nowrap {
@@ -88,6 +88,11 @@ a:hover {
 }
 .icon {
   flex: none;
+}
+/* Right to left, an icon that points along the line points the other way: the kit's own and
+   Lucide's. `scale` composes with the rotation an open section gives its chevron. */
+[dir="rtl"] :is(.icon-dir, .lucide-chevron-right, .lucide-chevron-left, .lucide-chevrons-right, .lucide-chevrons-left, .lucide-arrow-left, .lucide-arrow-right, .lucide-undo-2, .lucide-redo-2, .lucide-panel-left) {
+  scale: -1 1;
 }
 
 .skip-link {
@@ -346,7 +351,7 @@ main:focus {
   margin-top: 2px;
 }
 .page-actions {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -364,7 +369,7 @@ main:focus {
   /* Phones: the actions go on their own line under the title. */
   .page-actions {
     flex-basis: 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
   .page-actions:empty {
     display: none;
@@ -462,7 +467,7 @@ main:focus {
   color: var(--primary);
   font: inherit;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 .link-btn:hover {
   text-decoration: underline;
@@ -494,7 +499,7 @@ main:focus {
   font-size: 12.5px;
 }
 .select {
-  padding-right: 6px;
+  padding-inline-end: 6px;
 }
 .input:focus,
 .select:focus,
@@ -519,7 +524,7 @@ main:focus {
   border-color: var(--danger);
 }
 .input.num {
-  text-align: right;
+  text-align: end;
 }
 input[type="checkbox"] {
   width: 16px;
@@ -549,7 +554,7 @@ input[type="color"] {
 }
 .req {
   color: var(--danger);
-  margin-left: 2px;
+  margin-inline-start: 2px;
 }
 .field-hint {
   font-size: 12px;
@@ -580,19 +585,19 @@ input[type="color"] {
   min-width: 0;
 }
 .combo .input {
-  padding-right: 54px;
+  padding-inline-end: 54px;
 }
 .combo-actions {
   position: absolute;
-  right: 3px;
+  inset-inline-end: 3px;
   display: flex;
 }
 .listbox {
   position: absolute;
   z-index: 30;
   top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   min-width: 220px;
   max-height: 280px;
   overflow-y: auto;
@@ -720,7 +725,7 @@ input[type="color"] {
 .table th,
 .table td {
   padding: 9px 12px;
-  text-align: left;
+  text-align: start;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
@@ -735,7 +740,7 @@ input[type="color"] {
 }
 .table th.num,
 .table td.num {
-  text-align: right;
+  text-align: end;
 }
 .table tbody tr:last-child td {
   border-bottom: 0;
@@ -796,7 +801,7 @@ input[type="color"] {
 .grid td {
   padding: 5px 6px;
   border-bottom: 1px solid var(--border);
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 .grid th {
@@ -895,7 +900,7 @@ input[type="color"] {
 .count-dot {
   position: absolute;
   top: 2px;
-  right: 1px;
+  inset-inline-end: 1px;
   min-width: 17px;
   height: 17px;
   padding: 0 4px;
@@ -942,7 +947,7 @@ input[type="color"] {
 }
 .alert ul {
   margin: 4px 0 0;
-  padding-left: 18px;
+  padding-inline-start: 18px;
 }
 
 .state {
@@ -1122,7 +1127,7 @@ input[type="color"] {
   place-items: center;
   min-width: 18px;
   height: 18px;
-  margin-left: 6px;
+  margin-inline-start: 6px;
   padding: 0 5px;
   border-radius: 9px;
   background: var(--danger);
@@ -1149,10 +1154,10 @@ input[type="color"] {
   box-shadow: var(--shadow);
 }
 .menu-end {
-  right: 0;
+  inset-inline-end: 0;
 }
 .menu-start {
-  left: 0;
+  inset-inline-start: 0;
 }
 .menu-item {
   display: flex;
@@ -1165,7 +1170,7 @@ input[type="color"] {
   background: none;
   color: var(--text);
   font: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 }
 .menu-item:hover,
@@ -1186,7 +1191,7 @@ input[type="color"] {
 .popover {
   position: absolute;
   z-index: 40;
-  right: 0;
+  inset-inline-end: 0;
   top: calc(100% + 6px);
   width: min(360px, calc(100vw - 24px));
   max-height: 70vh;
@@ -1201,8 +1206,8 @@ input[type="color"] {
   .popover {
     position: fixed;
     top: calc(var(--topbar-h) + env(safe-area-inset-top) + 4px);
-    left: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-right));
+    inset-inline-start: max(8px, env(safe-area-inset-left));
+    inset-inline-end: max(8px, env(safe-area-inset-right));
     width: auto;
   }
 }
@@ -1213,7 +1218,7 @@ input[type="color"] {
   border-bottom: 1px solid var(--border);
   background: none;
   padding: 10px 14px;
-  text-align: left;
+  text-align: start;
   font: inherit;
   color: var(--text);
   cursor: pointer;
@@ -1233,11 +1238,11 @@ input[type="color"] {
   max-width: 460px;
 }
 .search-box .input {
-  padding-left: 32px;
+  padding-inline-start: 32px;
 }
 .search-box > .icon {
   position: absolute;
-  left: 10px;
+  inset-inline-start: 10px;
   top: calc(50% - 8px);
   color: var(--faint);
   pointer-events: none;
@@ -1255,7 +1260,7 @@ input[type="color"] {
 }
 .search-box .kbd {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 8px;
   top: 8px;
 }
 @media (max-width: 720px) {
@@ -1321,7 +1326,7 @@ input[type="color"] {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding-left: 10px;
+  padding-inline-start: 10px;
   border-radius: 999px;
   background: var(--surface-2);
   font-size: 13px;
@@ -1405,14 +1410,15 @@ input[type="color"] {
 }
 .timeline > li {
   position: relative;
-  padding: 0 0 18px 22px;
-  border-left: 2px solid var(--border);
-  margin-left: 6px;
+  padding-block: 0 18px;
+  padding-inline: 22px 0;
+  border-inline-start: 2px solid var(--border);
+  margin-inline-start: 6px;
 }
 .timeline > li::before {
   content: "";
   position: absolute;
-  left: -7px;
+  inset-inline-start: -7px;
   top: 2px;
   width: 12px;
   height: 12px;
@@ -1464,7 +1470,7 @@ input[type="color"] {
 }
 .matrix td:first-child,
 .matrix th:first-child {
-  text-align: left;
+  text-align: start;
 }
 @media (max-width: 900px) {
   /* Reports and the permission matrix scroll sideways under their first column. */
@@ -1473,9 +1479,16 @@ input[type="color"] {
   .matrix th:first-child,
   .matrix td:first-child {
     position: sticky;
-    left: 0;
+    inset-inline-start: 0;
     z-index: 1;
     box-shadow: inset -1px 0 0 var(--border);
+  }
+  /* Right to left, the first column's edge is on its other side. */
+  [dir="rtl"] .report th:first-child,
+  [dir="rtl"] .report td:first-child,
+  [dir="rtl"] .matrix th:first-child,
+  [dir="rtl"] .matrix td:first-child {
+    box-shadow: inset 1px 0 0 var(--border);
   }
   .report tbody td:first-child,
   .matrix tbody td:first-child {
@@ -1539,7 +1552,7 @@ input[type="color"] {
 .toaster {
   position: fixed;
   z-index: 200;
-  right: max(16px, env(safe-area-inset-right));
+  inset-inline-end: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
@@ -1550,7 +1563,8 @@ input[type="color"] {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 8px 10px 14px;
+  padding-block: 10px 10px;
+  padding-inline: 14px 8px;
   border-radius: var(--radius);
   background: var(--text);
   color: var(--bg);
@@ -1570,7 +1584,7 @@ input[type="color"] {
   color: #fff;
 }
 .toast-success {
-  border-left: 4px solid var(--success);
+  border-inline-start: 4px solid var(--success);
 }
 @keyframes toast-in {
   from {
@@ -1603,7 +1617,7 @@ pre.code {
 }
 
 /* OAuth consent */
-.oauth-scope { margin: 12px 0; padding-left: 18px; display: grid; gap: 6px; }
+.oauth-scope { margin: 12px 0; padding-inline-start: 18px; display: grid; gap: 6px; }
 
 /* ── list views: board, calendar, timeline ── */
 
@@ -1627,7 +1641,7 @@ pre.code {
   cursor: pointer;
 }
 .segmented button + button {
-  border-left: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
 }
 .segmented button[aria-pressed="true"] {
   background: var(--primary-soft);
@@ -1753,12 +1767,12 @@ pre.code {
 .cal-day {
   min-height: 104px;
   padding: 4px;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   min-width: 0;
 }
 .cal-day:nth-child(7n) {
-  border-right: 0;
+  border-inline-end: 0;
 }
 .cal-day[data-other="true"] {
   background: var(--surface-2);
@@ -1879,14 +1893,15 @@ pre.code {
 }
 .tl-label {
   position: sticky;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 1;
   background: var(--surface);
-  padding: 6px 12px 6px 16px;
+  padding-block: 6px 6px;
+  padding-inline: 16px 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   align-self: stretch;
   display: flex;
   align-items: center;
@@ -1904,7 +1919,7 @@ pre.code {
   background: none;
 }
 .tl-week {
-  padding-left: 6px;
+  padding-inline-start: 6px;
   color: var(--muted-foreground);
 }
 .tl-bar {
@@ -1918,12 +1933,12 @@ pre.code {
   border: 1px solid var(--tone, var(--primary));
 }
 .tl-bar[data-before="true"] {
-  border-left-style: dashed;
+  border-inline-start-style: dashed;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 .tl-bar[data-after="true"] {
-  border-right-style: dashed;
+  border-inline-end-style: dashed;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -2068,7 +2083,7 @@ pre.code {
   position: absolute;
   z-index: 30;
   bottom: calc(100% - 70px);
-  left: 8px;
+  inset-inline-start: 8px;
   min-width: 240px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -2079,7 +2094,7 @@ pre.code {
 .mention-list button {
   display: block;
   width: 100%;
-  text-align: left;
+  text-align: start;
   padding: 6px 8px;
   border: 0;
   background: none;
@@ -2298,7 +2313,7 @@ main:has(> [data-fullbleed]) {
   }
 }
 .app-addon {
-  border-left: 3px solid var(--primary-soft);
+  border-inline-start: 3px solid var(--primary-soft);
 }
 
 /* A page of the workspace's portal: an app's, in one column under the portal's header. */

@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EMPTY, isWord, joinNumber, joinRange, PERIODS, SET, splitNumber, splitRange, type FilterState } from "../../lib/filters";
+import { t } from "../../lib/i18n";
 import type { Field } from "../../lib/meta";
 import { Field as FieldWrap, Icon, useDebounced } from "../../ui/kit";
 import { LinkInput, useLinkTitle } from "../widgets";
@@ -217,7 +218,7 @@ export function FilterChips({ fields, state, onChange }: { fields: Field[]; stat
           <PopoverTrigger asChild>
             <button type="button" className="chip-add">
               <Icon name="plus" size={13} />
-              Filter
+              {t("Filter")}
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="chip-picker">

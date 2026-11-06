@@ -200,14 +200,14 @@ export function ReportRun({ id }: { id: string }) {
         <Button variant="outline" aria-expanded={showFilters} aria-controls={`${id}-filters`} onClick={() => setShowFilters((x) => !x)}>
           <ListFilter /> Filters
           {!!runtime.filters?.length && (
-            <Badge variant="secondary" className="ml-0.5">
+            <Badge variant="secondary" className="ms-0.5">
               {runtime.filters.length}
             </Badge>
           )}
         </Button>
         <div className="relative min-w-40 flex-1 sm:max-w-64">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="pl-8" placeholder="Search…" aria-label="Search the report" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input type="search" className="ps-8" placeholder="Search…" aria-label="Search the report" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {data?.meta.date_range && <PeriodPicker key={`${runtime.from ?? ""}|${runtime.to ?? ""}`} rt={rt} setRt={setRt} saved={data.meta.date_range} fyStartMonth={fy} />}
         {active > 0 && (
@@ -216,7 +216,7 @@ export function ReportRun({ id }: { id: string }) {
           </Button>
         )}
         {run.isFetching && (
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+          <span className="ms-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
             <Spinner /> Updating…
           </span>
         )}
