@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installFakeShell, removeFakeShell } from "@ferrum/testing";
-import { ApiError, bootstrap, request, routeBase, shell } from "./index";
+import { ApiError, bootstrap, request, resetBootstrap, routeBase, shell, shownTimeZone } from "./index";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -14,6 +14,14 @@ describe("@ferrum/client", () => {
     installFakeShell();
     expect(bootstrap()?.workspace.slug).toBe("test");
     expect(routeBase("app")).toBe("/app/");
+  });
+
+  it("shows times on the workspace's clock from the page", () => {
+    installFakeShell();
+    bootstrap();
+    expect(shownTimeZone()).toBe("UTC");
+    resetBootstrap();
+    expect(shownTimeZone()).toBeUndefined();
   });
 
   it("falls back when no shell runs", () => {

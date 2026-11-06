@@ -2,6 +2,8 @@
 // its own: a working sign-in over a stale feed is not a healthy connection, and there is deliberately
 // no single "Connected" to show.
 
+import { formatDateTime } from "./format";
+
 export type Tone = "neutral" | "green" | "amber" | "red";
 
 export interface Fact {
@@ -51,7 +53,7 @@ export function connectionFacts(h: ConnectionHealth, now: Date): Fact[] {
     { label: "Last sync", value: h.freshness ? ago(h.freshness, now) : "Never", tone: seen ? (stale ? "amber" : "green") : "neutral" },
     {
       label: "Provider",
-      value: waiting ? `Left alone until ${waiting.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}` : failures ? `${failures} failed in a row` : "Answering",
+      value: waiting ? `Left alone until ${formatDateTime(waiting.toISOString())}` : failures ? `${failures} failed in a row` : "Answering",
       tone: waiting ? "amber" : failures ? "amber" : "green",
       detail: waiting ? (h.quota?.reason ?? undefined) : undefined,
     },

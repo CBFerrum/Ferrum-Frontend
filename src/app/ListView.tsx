@@ -54,7 +54,7 @@ import {
   type SavedView,
 } from "./list/settings";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
-import { CellValue } from "./widgets";
+import { CellValue, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
 
 const PAGE = 50;
@@ -80,6 +80,7 @@ const usePhone = () =>
 export function ListView() {
   const { entity = "" } = useParams();
   const meta = useEntityMeta(entity);
+  if (notInstalled(meta.error)) return <NotInstalled entity={entity} />;
   if (meta.error) return <ErrorState error={meta.error} onRetry={() => meta.refetch()} />;
   if (!meta.data) return <PageLoading />;
   if (singleRecord(meta.data)) return <OneRecord key={entity} entity={meta.data.name} />;
