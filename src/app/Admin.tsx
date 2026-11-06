@@ -1902,6 +1902,7 @@ interface Domain {
   target: string;
   is_primary: boolean;
   status: "verified" | "pending" | "failing" | "released";
+  verified_at?: string | null;
   checked_at: string | null;
   released_at: string | null;
 }
@@ -1936,10 +1937,11 @@ function Domains() {
     setBusy(true);
     setError(null);
     try {
-      await api.post("/api/admin/domains", { host: form.host.trim(), target: form.target });
+      const made = await api.post<Domain>("/api/admin/domains", { host: form.host.trim(), target: form.target });
       setAdding(false);
       setForm({ host: "", target: "shell" });
-      toast("Domain added: point it at Ferrum, and it starts working once checked");
+      // A name that can only reach this server (`*.localhost` on a developer's machine) works at once.
+      toast(made.verified_at ? "Domain added, and working" : "Domain added: point it at Ferrum, and it starts working once checked");
       void refresh();
     } catch (err) {
       setError(errorMessage(err));
