@@ -13,6 +13,7 @@ export {
   formatDate,
   formatDateTime,
   formatDecimal,
+  formatMoment,
   formatValue,
   fromZonedInput,
   humanize,
@@ -22,6 +23,7 @@ export {
   relativeTime,
   setTimeZone,
   shortId,
+  shownTimeZone,
   todayIso,
   toZonedInput,
   zoneLabel,
@@ -29,6 +31,7 @@ export {
 } from "../../../src/lib/format";
 export { addCatalog, applyLocale, currentLanguage, direction, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
 import { applyLocale } from "../../../src/lib/i18n";
+import { setTimeZone } from "../../../src/lib/format";
 
 export interface Bootstrap {
   v: 1;
@@ -99,8 +102,12 @@ export function bootstrap(): Bootstrap | null {
       cached = null;
     }
   }
-  // Read once per page: its words, direction and formats follow the person's language from here.
-  if (cached) applyLocale(cached.locale);
+  // Read once per page: its words, direction and formats follow the person's language from here,
+  // and its times the workspace's clock.
+  if (cached) {
+    applyLocale(cached.locale);
+    setTimeZone(cached.locale?.timezone);
+  }
   return cached;
 }
 
@@ -128,9 +135,10 @@ export async function renewOfflineLease(): Promise<OfflineLease | null> {
   }
 }
 
-/** Forgets the bootstrap read (tests). */
+/** Forgets the bootstrap read, and the clock it set (tests). */
 export function resetBootstrap(): void {
   cached = undefined;
+  setTimeZone(undefined);
 }
 
 /** The base path of one of the app's routes, `/crm/`, from the bootstrap (or `/{route}/`). */

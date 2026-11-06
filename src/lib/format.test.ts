@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { compareDecimal, formatDate, formatDateTime, formatDecimal, formatValue, fromZonedInput, humanize, setTimeZone, todayIso, toZonedInput, zoneLabel } from "./format";
+import { compareDecimal, formatDate, formatDateTime, formatDecimal, formatMoment, formatValue, fromZonedInput, humanize, setTimeZone, shownTimeZone, todayIso, toZonedInput, zoneLabel } from "./format";
 
 describe("formatDecimal", () => {
   it("groups digits and keeps the value's own precision by default", () => {
@@ -111,6 +111,19 @@ describe("times on the workspace's clock", () => {
     expect(fromZonedInput("2026-11-01T12:00")).toBe("2026-11-01T17:00:00.000Z");
     expect(toZonedInput("2026-03-08T16:00:00Z")).toBe("2026-03-08T12:00");
     expect([toZonedInput(""), fromZonedInput(""), fromZonedInput("tomorrow")]).toEqual(["", null, null]);
+  });
+
+  it("writes a moment in a page's own shape on the same clock", () => {
+    setTimeZone("Asia/Kolkata");
+    const at = "2026-11-06T01:04:00Z";
+    const shape = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" } as const;
+    expect(formatMoment(at, shape, "en-GB").startsWith("6 Nov, 06:34")).toBe(true);
+    expect(formatMoment(new Date(at), shape, "en-GB")).toBe(formatMoment(Date.parse(at), shape, "en-GB"));
+    expect(formatMoment(at, shape, "en-GB").endsWith(zoneLabel(new Date(at)))).toBe(true);
+    // A shape that names its zone is not named twice.
+    expect(formatMoment(at, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short" }, "en-GB")).toBe("06:34 GMT+5:30");
+    expect([formatMoment(null, shape), formatMoment("", shape), formatMoment("soon", shape)]).toEqual(["", "", "soon"]);
+    expect(shownTimeZone()).toBe("Asia/Kolkata");
   });
 
   it("keeps the browser's clock for a zone it does not know", () => {
