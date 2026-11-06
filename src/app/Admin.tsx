@@ -1920,9 +1920,12 @@ const DOMAIN_STATUS: Record<Domain["status"], { tone: "green" | "amber" | "red" 
  *  domain works once it points at the cluster: Ferrum checks it every few minutes (or now). */
 function Domains() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["admin", "domains"], queryFn: ({ signal }) => api.get<{ domains: Domain[]; point_to: string | null }>("/api/admin/domains", undefined, signal) });
-  const apps = useQuery({ queryKey: ["shell"], queryFn: ({ signal }) => api.get<{ apps: { app: string; title: string }[] }>("/api/shell", undefined, signal) });
-  const sites = [...new Map((apps.data?.apps ?? []).map((a) => [a.app, a])).values()];
+  const q = useQuery({
+    queryKey: ["admin", "domains"],
+    queryFn: ({ signal }) => api.get<{ domains: Domain[]; point_to: string | null; sites?: { app: string; title: string }[] }>("/api/admin/domains", undefined, signal),
+  });
+  // Only the apps that serve a public site: the server says which.
+  const sites = q.data?.sites ?? [];
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ host: "", target: "shell" });
   const [error, setError] = useState<string | null>(null);
