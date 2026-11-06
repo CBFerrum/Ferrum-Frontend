@@ -53,6 +53,7 @@ import {
   type ListPrefs,
   type SavedView,
 } from "./list/settings";
+import { t } from "../lib/i18n";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
@@ -404,27 +405,27 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           </h1>
           <p className="page-sub" aria-live="polite">
             {view === "board"
-              ? `Board by ${boardField!.label.toLowerCase()}`
+              ? t("Board by {field}", { field: boardField!.label.toLowerCase() })
               : view === "calendar"
-                ? `Calendar by ${calendarField!.label.toLowerCase()}`
+                ? t("Calendar by {field}", { field: calendarField!.label.toLowerCase() })
                 : view === "timeline"
-                  ? `Timeline from ${span![0].label.toLowerCase()} to ${span![1].label.toLowerCase()}`
+                  ? t("Timeline from {from} to {to}", { from: span![0].label.toLowerCase(), to: span![1].label.toLowerCase() })
                   : list.isLoading
-                    ? "Loading…"
+                    ? t("Loading…")
                     : total != null
-                      ? `${total.toLocaleString()} ${total === 1 ? "record" : "records"}${filtered ? " match" : ""}`
-                      : `${rows.length} shown`}
+                      ? t(total === 1 ? (filtered ? "1 record matches" : "1 record") : filtered ? "{n} records match" : "{n} records", { n: total.toLocaleString() })
+                      : t("{n} shown", { n: rows.length })}
           </p>
         </div>
         <div className="page-actions list-actions">
           {views.length > 1 && (
-            <div className="segmented" role="group" aria-label="View">
+            <div className="segmented" role="group" aria-label={t("View")}>
               {views.map((v) => (
                 <button
                   key={v}
                   type="button"
                   aria-pressed={view === v}
-                  title={VIEW_LABELS[v]}
+                  title={t(VIEW_LABELS[v])}
                   onClick={() =>
                     update((p) => {
                       p.delete("by");
@@ -434,7 +435,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                   }
                 >
                   <Icon name={v} />
-                  <span className="seg-label">{VIEW_LABELS[v]}</span>
+                  <span className="seg-label">{t(VIEW_LABELS[v])}</span>
                 </button>
               ))}
             </div>
@@ -442,38 +443,38 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           {me?.user.is_admin && (
             <Link className="btn btn-ghost btn-md" to={`/customize/${E}`}>
               <Icon name="edit" />
-              Customize
+              {t("Customize")}
             </Link>
           )}
           {can(meta.permissions, "export") && (
             <Button icon="download" onClick={() => void exportCsv()}>
-              Export CSV
+              {t("Export CSV")}
             </Button>
           )}
           {can(meta.permissions, "import") && canCreate && (
             <Button icon="upload" onClick={() => setImporting(true)}>
-              Import
+              {t("Import")}
             </Button>
           )}
           {canCreate && (
             <Link className="btn btn-primary btn-md" to={newHref}>
               <Icon name="plus" />
-              New {meta.label}
+              {t("New {label}", { label: meta.label })}
             </Link>
           )}
         </div>
       </div>
 
       <div className="card">
-        <div className="list-bar" role="search" aria-label={`Filter ${meta.label_plural}`}>
+        <div className="list-bar" role="search" aria-label={t("Filter {labels}", { labels: meta.label_plural })}>
           <div className="list-search">
             <Icon name="search" size={14} />
             <input
               id="list-search"
               className="input"
               type="search"
-              aria-label={`Search ${meta.label_plural.toLowerCase()}`}
-              placeholder="Search…"
+              aria-label={t("Search {labels}", { labels: meta.label_plural.toLowerCase() })}
+              placeholder={t("Search…")}
               value={search}
               autoComplete="off"
               onChange={(e) => setSearch(e.target.value)}

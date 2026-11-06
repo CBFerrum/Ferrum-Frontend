@@ -124,7 +124,7 @@ export function DashboardsPage() {
             <TabsTrigger value="charts">Charts</TabsTrigger>
             <TabsTrigger value="cards">Number cards</TabsTrigger>
           </TabsList>
-          <InputGroup className="h-9 w-full sm:ml-auto sm:w-64">
+          <InputGroup className="h-9 w-full sm:ms-auto sm:w-64">
             <InputGroupAddon>
               <Search />
             </InputGroupAddon>
@@ -281,7 +281,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
                 </Badge>
                 {r.is_standard && <Badge variant="secondary">Package</Badge>}
                 {r.mine && <Badge variant="secondary">Yours</Badge>}
-                <span className="ml-auto">{relativeTime(r.updated_at)}</span>
+                <span className="ms-auto">{relativeTime(r.updated_at)}</span>
               </div>
             </li>
           );
@@ -319,7 +319,7 @@ function NewDashboard({ open, onClose: close }: { open: boolean; onClose: () => 
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[min(90vh,48rem)] flex-col gap-0 p-0 sm:max-w-lg">
         <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
-          <DialogHeader className="border-b p-4 pr-12">
+          <DialogHeader className="border-b p-4 pe-12">
             <DialogTitle>New dashboard</DialogTitle>
             <DialogDescription>You add its widgets next.</DialogDescription>
           </DialogHeader>

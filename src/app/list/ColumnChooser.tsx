@@ -18,6 +18,7 @@ import { ChevronDown, ChevronUp, Columns3, GripVertical, RotateCcw } from "lucid
 import { useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { clampWidth, MAX_WIDTH, MIN_WIDTH, type Column } from "./settings";
 
@@ -100,19 +101,19 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
     <Popover onOpenChange={(open) => !open && setFind("")}>
       <PopoverTrigger className="btn btn-default btn-md">
         <Columns3 className="size-4" aria-hidden="true" />
-        Columns
+        {t("Columns")}
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        aria-label="Columns"
+        aria-label={t("Columns")}
         className="flex max-h-[min(36rem,var(--radix-popover-content-available-height))] w-[min(24rem,calc(100vw-2rem))] flex-col p-0"
         // Escape while moving a column with the keyboard cancels the move, not the chooser.
         onEscapeKeyDown={(e) => dragging && e.preventDefault()}
       >
         <header className="flex items-center gap-2 border-b border-border px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold">Columns</h2>
-            <p className="truncate text-xs text-muted-foreground">{viewName ? `Saved with the view “${viewName}”` : "Only you see these choices"}</p>
+            <h2 className="text-sm font-semibold">{t("Columns")}</h2>
+            <p className="truncate text-xs text-muted-foreground">{viewName ? t("Saved with the view “{view}”", { view: viewName }) : t("Only you see these choices")}</p>
           </div>
           {/* aria-disabled, not removed or disabled: focus stays on it after a reset. */}
           <button
@@ -253,7 +254,7 @@ function WidthInput({ label, width, onChange }: { label: string; width?: number;
       step={10}
       placeholder="Auto"
       aria-label={`Width of ${label} in pixels; empty for automatic`}
-      className="h-8 w-[4.75rem] shrink-0 rounded-md border border-input bg-transparent px-2 text-right text-sm tabular-nums placeholder:text-muted-foreground [@media(max-width:720px)]:hidden pointer-coarse:h-11"
+      className="h-8 w-[4.75rem] shrink-0 rounded-md border border-input bg-transparent px-2 text-end text-sm tabular-nums placeholder:text-muted-foreground [@media(max-width:720px)]:hidden pointer-coarse:h-11"
       value={draft ?? width ?? ""}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -309,7 +310,7 @@ export function ColumnResizer({
   return (
     <span
       aria-hidden="true"
-      className="absolute inset-y-0 right-0 z-[1] w-2.5 cursor-col-resize touch-none select-none after:absolute after:inset-y-2 after:right-0 after:w-px after:bg-border hover:after:w-0.5 hover:after:bg-primary"
+      className="absolute inset-y-0 end-0 z-[1] w-2.5 cursor-col-resize touch-none select-none after:absolute after:inset-y-2 after:end-0 after:w-px after:bg-border hover:after:w-0.5 hover:after:bg-primary"
       onPointerDown={down}
       onDoubleClick={() => onCommit(name, undefined)}
     />

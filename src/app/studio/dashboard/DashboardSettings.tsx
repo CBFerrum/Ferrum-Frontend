@@ -145,7 +145,7 @@ export function DashboardSettings({ open, onClose, value, onChange, issues }: { 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[min(90vh,56rem)] flex-col gap-0 p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b p-4 pr-12">
+        <DialogHeader className="border-b p-4 pe-12">
           <DialogTitle>Dashboard settings</DialogTitle>
           <DialogDescription>Changes apply to the dashboard you are editing; save it to keep them.</DialogDescription>
         </DialogHeader>

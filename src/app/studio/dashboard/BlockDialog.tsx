@@ -99,7 +99,7 @@ function BlockForm({ initial, onSave, onClose }: { initial: OwnBlock; onSave: (b
         submit();
       }}
     >
-      <DialogHeader className="border-b p-4 pr-12">
+      <DialogHeader className="border-b p-4 pe-12">
         <DialogTitle>{OWN_TITLE[b.type]}</DialogTitle>
         <DialogDescription className="sr-only">Settings of the widget</DialogDescription>
       </DialogHeader>

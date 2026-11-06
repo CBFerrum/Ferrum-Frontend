@@ -333,7 +333,7 @@ function Combo({
                   <CommandItem key={o.value} value={`${o.label} ${o.hint ?? ""} ${o.value}`} onSelect={() => pick(o.value)}>
                     <Check className={cn("size-4", o.value === value ? "opacity-100" : "opacity-0")} aria-hidden="true" />
                     <span className="truncate">{o.label}</span>
-                    {o.hint && <span className="ml-auto truncate pl-2 text-xs text-muted-foreground">{o.hint}</span>}
+                    {o.hint && <span className="ms-auto truncate ps-2 text-xs text-muted-foreground">{o.hint}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -650,7 +650,7 @@ function FieldsPicker({ id, meta, value, onChange, errors }: { id: string; meta:
         <ul className="flex flex-wrap gap-1.5" aria-label="Fields shown">
           {value.map((n) => (
             <li key={n}>
-              <Badge variant="secondary" className="gap-1 py-1 pr-1">
+              <Badge variant="secondary" className="gap-1 py-1 pe-1">
                 {label(n)}
                 <button type="button" aria-label={`Stop showing ${label(n)}`} onClick={() => onChange(value.filter((x) => x !== n))} className="rounded-sm p-0.5 hover:bg-background">
                   <X className="size-3" />
@@ -887,7 +887,7 @@ function MarkdownForm({ block: b, onChange, issues, id }: FormProps<Of<"markdown
         className="min-h-48 font-mono text-xs"
         {...aria(`${id}-content`, errors, true)}
       />
-      <span className={cn("text-right text-xs tabular-nums", length > 20_000 ? "text-destructive" : "text-muted-foreground")} aria-live="polite">
+      <span className={cn("text-end text-xs tabular-nums", length > 20_000 ? "text-destructive" : "text-muted-foreground")} aria-live="polite">
         {length.toLocaleString()} / 20,000
       </span>
     </Row>

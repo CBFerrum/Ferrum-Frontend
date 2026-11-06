@@ -28,6 +28,16 @@ export function direction(tag: string): Direction {
   return RTL.has(baseLanguage(tag)) ? "rtl" : "ltr";
 }
 
+/**
+ * The step an arrow key takes along the line, as the element reads: 1 on (Right, or Left right
+ * to left), -1 back, null for any other key.
+ */
+export function arrowStep(e: { key: string; currentTarget: Element }): 1 | -1 | null {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return null;
+  const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+  return e.key === "ArrowRight" !== rtl ? 1 : -1;
+}
+
 let language = "en";
 let catalog: Record<string, string> = {};
 

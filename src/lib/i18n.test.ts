@@ -1,6 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import ar from "../locales/ar";
+import hi from "../locales/hi";
 import { formatDate, formatDecimal } from "./format";
-import { addCatalog, applyLocale, baseLanguage, currentLanguage, direction, setLanguage, t } from "./i18n";
+import { addCatalog, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, setLanguage, t } from "./i18n";
 
 afterEach(() => applyLocale(null, undefined));
 
@@ -41,5 +45,31 @@ describe("the interface's language", () => {
     applyLocale({ language: "en" }, doc);
     // Nobody chose: the browser's.
     expect(formatDecimal("1234567.5", 2)).toBe(new Intl.NumberFormat(undefined, { minimumFractionDigits: 2 }).format(1234567.5));
+  });
+});
+
+describe("an arrow key along the line", () => {
+  it("steps on with Right left to right and with Left right to left", () => {
+    vi.stubGlobal("getComputedStyle", (el: { dir: string }) => ({ direction: el.dir }));
+    const step = (key: string, dir: string) => arrowStep({ key, currentTarget: { dir } as unknown as Element });
+    expect([step("ArrowRight", "ltr"), step("ArrowLeft", "ltr")]).toEqual([1, -1]);
+    expect([step("ArrowRight", "rtl"), step("ArrowLeft", "rtl")]).toEqual([-1, 1]);
+    expect(step("ArrowUp", "rtl")).toBeNull();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("the catalogs", () => {
+  // Every word the interface asks for by name is in each catalog, so a page in Arabic or Hindi
+  // has no English left among the words that are meant to be translated.
+  const files = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.name === "node_modules" || d.name === "dist" ? [] : d.isDirectory() ? files(join(dir, d.name)) : /\.tsx?$/.test(d.name) && !/\.test\./.test(d.name) ? [join(dir, d.name)] : [],
+    );
+  const asked = new Set(["src", "apps", "packages"].flatMap(files).flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\bt\("((?:[^"\\]|\\.)+)"/g)].map((m) => m[1])));
+
+  it("have every word the interface asks for", () => {
+    expect(asked.size).toBeGreaterThan(40);
+    for (const [name, words] of [["ar", ar], ["hi", hi]] as const) expect([...asked].filter((w) => !(w in words)), name).toEqual([]);
   });
 });

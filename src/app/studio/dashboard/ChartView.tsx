@@ -110,7 +110,7 @@ function SeriesTip({ active, payload, model }: { active?: boolean; payload?: rea
           <div key={s.key} className="flex items-center gap-2">
             <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
             <span className="text-muted-foreground">{s.label}</span>
-            <span className="ml-auto pl-3 font-mono font-medium tabular-nums text-foreground">{row.fmt[s.key] || "—"}</span>
+            <span className="ms-auto ps-3 font-mono font-medium tabular-nums text-foreground">{row.fmt[s.key] || "—"}</span>
           </div>
         ))}
     </div>
@@ -210,11 +210,11 @@ function SliceLegend({ slices, onPick }: { slices: Slice[]; onPick?: (s: Slice) 
         const inner = (
           <>
             <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
-            <span className="min-w-0 flex-1 truncate text-left" title={s.label}>
+            <span className="min-w-0 flex-1 truncate text-start" title={s.label}>
               {s.label}
             </span>
             <span className="font-mono text-xs tabular-nums">{s.text}</span>
-            <span className="w-12 text-right text-xs text-muted-foreground tabular-nums">{formatShare(s.share)}</span>
+            <span className="w-12 text-end text-xs text-muted-foreground tabular-nums">{formatShare(s.share)}</span>
           </>
         );
         return (
@@ -303,7 +303,7 @@ function PercentageChart({ data, o, title, onPoint }: { data: ResultLike; o: Cha
     <div className="flex h-full flex-col justify-center gap-3 overflow-auto p-1">
       <div className="flex h-5 w-full shrink-0 overflow-hidden rounded-full bg-muted" role="img" aria-label={sliceSummary(title, m.slices)}>
         {m.slices.map((s) => (
-          <div key={s.key} className="h-full border-r border-card last:border-r-0" style={{ width: `${s.share}%`, background: s.color }} title={`${s.label}: ${s.text} (${formatShare(s.share)})`} />
+          <div key={s.key} className="h-full border-e border-card last:border-e-0" style={{ width: `${s.share}%`, background: s.color }} title={`${s.label}: ${s.text} (${formatShare(s.share)})`} />
         ))}
       </div>
       <SliceLegend slices={m.slices} onPick={pick} />
@@ -338,9 +338,9 @@ function FunnelChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOp
             ) : (
               bar
             )}
-            <span className="text-right font-mono text-xs tabular-nums">
+            <span className="text-end font-mono text-xs tabular-nums">
               {s.text}
-              {i > 0 && <span className="ml-1.5 text-muted-foreground">{formatShare(ofFirst)}</span>}
+              {i > 0 && <span className="ms-1.5 text-muted-foreground">{formatShare(ofFirst)}</span>}
             </span>
           </li>
         );
@@ -493,7 +493,7 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
         <TableHeader className="sticky top-0 bg-card">
           <TableRow>
             {columns.map((c) => (
-              <TableHead key={c.name} className={isNumericColumn(c) ? "text-right" : undefined}>
+              <TableHead key={c.name} className={isNumericColumn(c) ? "text-end" : undefined}>
                 {columnLabel(c, o)}
               </TableHead>
             ))}
@@ -508,7 +508,7 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
             return (
               <TableRow key={i}>
                 {columns.map((c) => (
-                  <TableCell key={c.name} className={isNumericColumn(c) ? "text-right font-mono tabular-nums" : "max-w-64 truncate"}>
+                  <TableCell key={c.name} className={isNumericColumn(c) ? "text-end font-mono tabular-nums" : "max-w-64 truncate"}>
                     {formatCell(c, r[c.name], r, o)}
                   </TableCell>
                 ))}
@@ -529,7 +529,7 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
           <TableFooter>
             <TableRow>
               {totals.map((t, i) => (
-                <TableCell key={columns[i].name} className={isNumericColumn(columns[i]) ? "text-right font-mono tabular-nums" : undefined}>
+                <TableCell key={columns[i].name} className={isNumericColumn(columns[i]) ? "text-end font-mono tabular-nums" : undefined}>
                   {t}
                 </TableCell>
               ))}

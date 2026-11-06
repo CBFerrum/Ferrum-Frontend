@@ -384,7 +384,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
           min={1}
           max={100}
           placeholder="20"
-          className="w-20 text-right tabular-nums"
+          className="w-20 text-end tabular-nums"
           value={pivot.max_columns ?? ""}
           onChange={(e) => {
             const n = Math.round(Number(e.target.value));
@@ -606,7 +606,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
           min={1}
           max={10000}
           placeholder="500"
-          className="w-24 text-right tabular-nums"
+          className="w-24 text-end tabular-nums"
           value={d.limit ?? ""}
           aria-invalid={issuesAt(issues, "limit").length ? true : undefined}
           onChange={(e) => {

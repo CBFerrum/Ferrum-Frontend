@@ -151,7 +151,7 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
               {m.roles.length > 0 && (
                 <ul className="flex flex-wrap gap-1" aria-label="Chosen roles">
                   {m.roles.map((r) => (
-                    <li key={r} className="flex items-center gap-0.5 rounded bg-secondary py-0.5 pr-0.5 pl-2 text-xs">
+                    <li key={r} className="flex items-center gap-0.5 rounded bg-secondary py-0.5 pe-0.5 ps-2 text-xs">
                       {r}
                       <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={`Remove role ${r}`} onClick={() => toggleRole(r)}>
                         <X className="size-3" aria-hidden="true" />
