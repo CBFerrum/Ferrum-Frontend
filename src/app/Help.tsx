@@ -6,7 +6,7 @@
 
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { search, topics } from "../lib/help";
+import { article, recordKind, search, takes, topics } from "../lib/help";
 import { humanize } from "../lib/format";
 import { useEntityMeta, useMetaIndex, type EntityMeta, type Field } from "../lib/meta";
 import { Badge, EmptyState, ErrorState, Icon, PageLoading } from "../ui/kit";
@@ -66,17 +66,19 @@ export function HelpPage() {
   );
 }
 
-/** What a field takes, in words. */
-function kind(f: Field, meta: EntityMeta): string {
-  if (f.type === "link" && f.to) return `a ${humanize(f.to).toLowerCase()}`;
+/** What a field takes, in words; a link by the label of what it picks. */
+function kind(f: Field, meta: EntityMeta, labelOf: (name: string) => string | undefined): string {
+  if (f.type === "link" && f.to) return recordKind(f.to, labelOf(f.to));
   if (f.type === "table") return `rows of ${meta.children[f.name]?.label ?? humanize(f.of ?? f.name)}`;
   if (f.type === "select" && f.options?.length) return `one of ${f.options.join(", ")}`;
-  return humanize(f.type).toLowerCase();
+  return takes(f.type);
 }
 
 export function HelpArticle() {
   const { entity } = useParams();
   const q = useEntityMeta(entity);
+  const index = useMetaIndex();
+  const labelOf = (name: string) => index.data?.entities.find((e) => e.name === name)?.label;
   if (q.error) return <ErrorState error={q.error} title="This help is not for you" />;
   const meta = q.data;
   if (!meta) return <PageLoading />;
@@ -103,9 +105,9 @@ export function HelpArticle() {
       <h2>How it works</h2>
       <ul>
         {meta.submittable ? (
-          <li>A {meta.label.toLowerCase()} is saved as a draft and changed freely until it is submitted. Submitting makes it count; a submitted one is cancelled (and amended), not edited.</li>
+          <li>{article(meta.label) === "an" ? "An" : "A"} {meta.label.toLowerCase()} is saved as a draft and changed freely until it is submitted. Submitting makes it count; a submitted one is cancelled (and amended), not edited.</li>
         ) : (
-          <li>A {meta.label.toLowerCase()} counts as soon as it is saved, and can be changed later.</li>
+          <li>{article(meta.label) === "an" ? "An" : "A"} {meta.label.toLowerCase()} counts as soon as it is saved, and can be changed later.</li>
         )}
         {meta.numbering ? <li>Each gets its number when it is {meta.numbering.on === "submit" ? "submitted" : "saved"}: {meta.numbering.template}.</li> : null}
         {meta.company_scoped ? <li>It belongs to one company; people limited to some companies see only theirs.</li> : null}
@@ -129,7 +131,7 @@ export function HelpArticle() {
                     {f.label}
                     {f.required ? <span className="muted"> (required)</span> : f.required_if ? <span className="muted"> (sometimes required)</span> : null}
                   </td>
-                  <td>{kind(f, meta)}{f.read_only ? ", filled in for you" : ""}</td>
+                  <td>{kind(f, meta, labelOf)}{f.read_only ? ", filled in for you" : ""}</td>
                   <td>{f.description ?? ""}</td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EntitySummary, MetaIndex } from "./meta";
-import { search, topics } from "./help";
+import { article, recordKind, search, takes, topics } from "./help";
 
 const perms = (read: "all" | "none") =>
   ({ read, write: "none", create: "none", delete: "none", submit: "none", cancel: "none", export: "none", import: "none" }) as EntitySummary["permissions"];
@@ -39,3 +39,17 @@ describe("the help center", () => {
     expect(search(all, "  ")).toHaveLength(3);
   });
 });
+
+describe("the help's words", () => {
+  it("speaks of a record type by its label, with the article its sound takes", () => {
+    expect(recordKind("AppointmentType", "Appointment Type")).toBe("an appointment type");
+    expect(recordKind("FeeValidity")).toBe("a fee validity");
+    expect(recordKind("SalesInvoice", undefined)).toBe("a sales invoice");
+    expect([article("Appointment"), article("Fee")]).toEqual(["an", "a"]);
+  });
+
+  it("says what a field takes as a person would", () => {
+    expect([takes("data"), takes("int"), takes("check"), takes("currency")]).toEqual(["a line of text", "a whole number", "yes or no", "an amount"]);
+  });
+});
+
