@@ -82,16 +82,19 @@ const DECIMAL_TYPES = new Set(["decimal", "currency", "percent"]);
  * filtered list), else field defaults (literal `default`, or a simple `default_expr` such as
  * `today`). The server applies its own defaults again on save and in `_calc`.
  */
-function prefill(meta: EntityMeta, sp: URLSearchParams, user: unknown): Doc {
+export function prefill(meta: EntityMeta, sp: URLSearchParams, user: unknown): Doc {
   const doc: Doc = {};
   for (const f of meta.fields) {
     if (f.type === "table") continue;
     const v = f.can_write === true ? sp.get(f.name) : null;
     let value: unknown;
-    if (v !== null) value = f.type === "check" ? v === "1" || v === "true" : f.type === "int" && /^-?\d+$/.test(v) ? Number(v) : v;
+    if (v !== null) value = f.type === "int" && /^-?\d+$/.test(v) ? Number(v) : v;
     else if (f.default !== undefined && f.default !== null) value = f.default;
     else if (f.default_expr) value = evaluateValue(f.default_expr, { doc, user });
     if (value === undefined || value === null) continue;
+    // A box is ticked by true, 1 or "1" alike (`default: 1`, `?public=1`), as the server stores them:
+    // left a number, it would show unticked and save ticked.
+    if (f.type === "check") value = value === true || value === 1 || value === "1" || value === "true";
     doc[f.name] = DECIMAL_TYPES.has(f.type) && typeof value === "number" ? String(value) : value;
   }
   return doc;
