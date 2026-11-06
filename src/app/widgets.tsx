@@ -4,6 +4,8 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Fragment,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -52,6 +54,8 @@ export interface ControlProps {
 }
 
 const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+// Studio's builder, loaded only by a form that has a query to build.
+const QueryInput = lazy(() => import("./QueryInput"));
 const orNull = (s: string) => (s === "" ? null : s);
 
 export function FieldControl(p: ControlProps) {
@@ -167,7 +171,13 @@ export function FieldControl(p: ControlProps) {
         />
       );
     case "json":
-      return <JsonInput {...p} />;
+      return f.widget === "studio_query" ? (
+        <Suspense fallback={<Spinner />}>
+          <QueryInput {...p} />
+        </Suspense>
+      ) : (
+        <JsonInput {...p} />
+      );
     case "attach":
       return <AttachInput {...p} />;
     case "color": {
@@ -520,7 +530,7 @@ function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId 
 
 // ── JSON ──
 
-function JsonInput({ value, onChange, id, disabled, invalid, describedBy, compact, label }: ControlProps) {
+export function JsonInput({ value, onChange, id, disabled, invalid, describedBy, compact, label }: ControlProps) {
   const pretty = (v: unknown) => (v === null || v === undefined ? "" : JSON.stringify(v, null, 2));
   const [draft, setDraft] = useState(() => pretty(value));
   const [error, setError] = useState<string | null>(null);
