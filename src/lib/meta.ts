@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { evaluate } from "./expr";
 import { humanize, setDisplayZone, setTimeZone, shortId } from "./format";
+import { t as tr } from "@ferrum/client";
 
 export type FieldType =
   | "data" | "text" | "markdown" | "code" | "int" | "decimal" | "currency" | "percent" | "date" | "datetime"
@@ -304,7 +305,7 @@ export function recordTitle(meta: (Pick<EntityMeta, "title_field"> & Partial<Pic
   // Settings are named by what they are (one to a company at most), not by an id.
   if (meta?.kind === "settings" && meta.label) return meta.label;
   // A draft numbered when it is submitted has no number yet: it is a draft of its kind.
-  if (meta?.numbering?.on === "submit" && meta.label && (row.docstatus ?? 0) === 0) return `Draft ${meta.label}`;
+  if (meta?.numbering?.on === "submit" && meta.label && (row.docstatus ?? 0) === 0) return tr("Draft {label}", { label: meta.label });
   return shortId(row.id);
 }
 

@@ -290,7 +290,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       blocks.splice(at > 0 ? at : blocks.length, 0, { key, block: newBlock(type) });
       return { ...d, blocks };
     });
-    setSaid(`${BLOCK_KINDS[type].label} added.`);
+    setSaid(tr("{label} added.", { label: BLOCK_KINDS[type].label }));
     select(key, true);
   };
   const removeBlock = (key: string) => {
@@ -304,7 +304,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       setSheetOpen(false);
     }
     setServerIssues((list) => list.filter((x) => x.key !== key));
-    setSaid(`${titleOf(b.block)} removed. Press ${MOD}Z to undo.`);
+    setSaid(tr("{value} removed. Press {MOD}Z to undo.", { value: titleOf(b.block), MOD }));
     const next = draft.blocks[i + 1] ?? draft.blocks[i - 1];
     requestAnimationFrame(() => document.getElementById(next ? `handle-${next.key}` : "add-block")?.focus());
   };
@@ -312,14 +312,14 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
     const from = draft.blocks.findIndex((b) => b.key === key);
     if (from < 0 || to < 0 || to >= draft.blocks.length || from === to) return;
     change((d) => ({ ...d, blocks: arrayMove(d.blocks, from, to) }));
-    setSaid(`${titleOf(draft.blocks[from].block)} moved to position ${to + 1} of ${draft.blocks.length}.`);
+    setSaid(tr("{value} moved to position {value2} of {length}.", { value: titleOf(draft.blocks[from].block), value2: to + 1, length: draft.blocks.length }));
   };
   const duplicateBlock = (key: string) => {
     const i = draft.blocks.findIndex((b) => b.key === key);
     if (i < 0) return;
     const copy: EditorBlock = { key: nextKey(), block: structuredClone(draft.blocks[i].block) };
     change((d) => ({ ...d, blocks: [...d.blocks.slice(0, i + 1), copy, ...d.blocks.slice(i + 1)] }));
-    setSaid(`${titleOf(copy.block)} duplicated.`);
+    setSaid(tr("{value} duplicated.", { value: titleOf(copy.block) }));
     select(copy.key, true);
   };
   const setWidth = (key: string, width: number | undefined) => {
@@ -330,7 +330,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
   };
   const applyStarter = (s: ReturnType<typeof starterSpace>) => {
     change((d) => ({ ...d, label: d.label || s.label, icon: d.icon || s.icon, module: d.module || s.module, blocks: [...d.blocks, ...s.blocks.map((block) => ({ key: nextKey(), block }))] }));
-    setSaid(`${s.blocks.length} blocks added.`);
+    setSaid(tr("{length} blocks added.", { length: s.blocks.length }));
   };
   const step = (fn: typeof undo) => {
     const next = fn(hist);
@@ -465,10 +465,10 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
   };
   const position = (id: UniqueIdentifier) => keys.indexOf(String(id)) + 1;
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${nameAt(active.id)}, position ${position(active.id)} of ${keys.length}.`,
-    onDragOver: ({ active, over }) => (over ? `${nameAt(active.id)} is over position ${position(over.id)} of ${keys.length}.` : `${nameAt(active.id)} is not over a position.`),
-    onDragEnd: ({ active, over }) => (over ? `${nameAt(active.id)} dropped at position ${position(over.id)} of ${keys.length}.` : `${nameAt(active.id)} dropped.`),
-    onDragCancel: ({ active }) => `Moving ${nameAt(active.id)} was cancelled.`,
+    onDragStart: ({ active }) => tr("Picked up {value}, position {value2} of {length}.", { value: nameAt(active.id), value2: position(active.id), length: keys.length }),
+    onDragOver: ({ active, over }) => (over ? tr("{value} is over position {value2} of {length}.", { value: nameAt(active.id), value2: position(over.id), length: keys.length }) : tr("{value} is not over a position.", { value: nameAt(active.id) })),
+    onDragEnd: ({ active, over }) => (over ? tr("{value} dropped at position {value2} of {length}.", { value: nameAt(active.id), value2: position(over.id), length: keys.length }) : tr("{value} dropped.", { value: nameAt(active.id) })),
+    onDragCancel: ({ active }) => tr("Moving {value} was cancelled.", { value: nameAt(active.id) }),
   };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) change((d) => ({ ...d, blocks: arrayMove(d.blocks, keys.indexOf(String(active.id)), keys.indexOf(String(over.id))) }));

@@ -125,7 +125,7 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
       setBusy(false);
     }
   };
-  const given = need.given ? ` The licence given ${need.last_error ? `could not be checked: ${need.last_error}` : "has lapsed: renew it in the store"}.` : "";
+  const given = need.given ? (need.last_error ? tr(" The licence given could not be checked: {error}.", { error: need.last_error }) : tr(" The licence given has lapsed: renew it in the store.")) : "";
   return (
     <form className="stack" onSubmit={(e) => void give(e)}>
       <Alert tone="info">{tr("{app} is sold in the store at {value}: give the licence you bought for this workspace, from Your purchases there.{given}", { app: need.app, value: storeHost(need.store), given })}</Alert>

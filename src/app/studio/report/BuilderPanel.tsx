@@ -162,7 +162,7 @@ interface SectionProps {
 function ColumnsSection({ d, setDraft, fields, fieldLabel, issues }: SectionProps & { fieldLabel: (p: string) => string }) {
   const used = new Set(d.fields.map((f) => f.field));
   const ids = d.fields.map((_, i) => `f${i}`);
-  const labels = d.fields.map((f, i) => fieldLabel(f.field) || `column ${i + 1}`);
+  const labels = d.fields.map((f, i) => fieldLabel(f.field) || t("column {value}", { value: i + 1 }));
   const moveTo = (from: number, to: number) => setDraft((x) => ({ ...x, fields: move(x.fields, from, to) }));
   return (
     <PanelSection title={t("Columns")} hint={d.fields.length ? undefined : t("Showing the list's usual columns. Add columns to choose your own.")}>
@@ -216,7 +216,7 @@ function BucketSelect({ field, value, onChange, label, allowNone = true }: { fie
 function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: SectionProps & { byPath: Map<string, CatalogField>; fieldLabel: (p: string) => string }) {
   const groupable = useMemo(() => fields.filter((f) => f.groupable), [fields]);
   const ids = d.group_by.map((_, i) => `g${i}`);
-  const labels = d.group_by.map((g, i) => fieldLabel(g.field) || `group ${i + 1}`);
+  const labels = d.group_by.map((g, i) => fieldLabel(g.field) || t("group {value}", { value: i + 1 }));
   const moveTo = (from: number, to: number) => setDraft((x) => ({ ...x, group_by: move(x.group_by, from, to) }));
   const pick = (f: CatalogField) => ({ field: f.path, ...(f.buckets.length ? { bucket: "month" as Bucket } : {}) });
   return (
@@ -306,7 +306,7 @@ function FormulasSection({ d, setDraft, columns, issues }: Omit<SectionProps, "f
 
 function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionProps & { fieldLabel: (p: string) => string }) {
   const ids = d.measures.map((_, i) => `m${i}`);
-  const labels = d.measures.map((m) => (m.field ? `${AGG_LABEL[m.fn]} of ${fieldLabel(m.field)}` : AGG_LABEL[m.fn]));
+  const labels = d.measures.map((m) => (m.field ? t("{value} of {value2}", { value: AGG_LABEL[m.fn], value2: fieldLabel(m.field) }) : AGG_LABEL[m.fn]));
   const moveTo = (from: number, to: number) => setDraft((x) => ({ ...x, measures: move(x.measures, from, to) }));
   const set = (i: number, m: SpecDraft["measures"][number]) => setDraft((x) => ({ ...x, measures: x.measures.map((y, j) => (j === i ? m : y)) }));
   const addMeasure = () => setDraft((x) => ({ ...x, measures: [...x.measures, x.measures.some((m) => m.fn === "count" && !m.field) ? { fn: "sum" } : { fn: "count" }] }));
@@ -585,7 +585,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
     const m = CALL.exec(name);
     if (!m) return fieldLabel(name);
     if (m[1] in BUCKET_LABEL) return `${fieldLabel(m[2])} (${BUCKET_LABEL[m[1] as Bucket]})`;
-    return m[1] in AGG_LABEL ? `${AGG_LABEL[m[1] as Agg]} of ${fieldLabel(m[2])}` : name;
+    return m[1] in AGG_LABEL ? t("{value} of {value2}", { value: AGG_LABEL[m[1] as Agg], value2: fieldLabel(m[2]) }) : name;
   };
   const ids = d.sort.map((_, i) => `s${i}`);
   const labels = d.sort.map((s) => labelOf(s.by));

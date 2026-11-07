@@ -7,6 +7,7 @@ import type { DashboardDraft } from "./DashboardSettings";
 import { cleanFilterDef } from "./filters";
 import { stableJson } from "./history";
 import { normalize, withIds, type Placed } from "./layout";
+import { t } from "@ferrum/client";
 
 const CHART_TYPES: ChartType[] = ["bar", "stacked_bar", "line", "area", "pie", "donut", "percentage", "heatmap", "scatter", "funnel", "number"];
 
@@ -70,7 +71,7 @@ export function chartIssuesLocal({ rec, query }: ChartDraft, catalog: FieldCatal
   if (rec.source === "report") return rec.report ? [] : [{ path: "report", message: "Choose a saved report" }];
   if (rec.source === "builtin") {
     if (!rec.builtin_report) return [{ path: "builtin_report", message: "Choose a report" }];
-    return requiredParams.filter((p) => !rec.builtin_params?.[p]?.trim()).map((p) => ({ path: "builtin_params", message: `Enter ${p.replace(/_/g, " ")}: the report needs it` }));
+    return requiredParams.filter((p) => !rec.builtin_params?.[p]?.trim()).map((p) => ({ path: "builtin_params", message: t("Enter {p}: the report needs it", { p: p.replace(/_/g, " ") }) }));
   }
   if (!query.entity) return [{ path: "spec.entity", message: "Choose what to report on" }];
   return [...specIssues(buildSpec(query), catalog).map((i) => ({ ...i, path: `spec.${i.path}` })), ...incompleteFilters(query.filters)];

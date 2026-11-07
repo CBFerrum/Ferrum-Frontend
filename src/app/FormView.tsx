@@ -74,7 +74,7 @@ function ShownOnce({ items, note }: { items: { name: string; value: string }[]; 
 
 export function actionToast(label: string, res: unknown): string {
   const message = res && typeof res === "object" ? (res as { message?: unknown }).message : undefined;
-  return typeof message === "string" && message.trim() ? message : `${label}: done`;
+  return typeof message === "string" && message.trim() ? message : tr("{label}: done", { label });
 }
 
 export function FormView() {

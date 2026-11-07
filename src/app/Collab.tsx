@@ -99,7 +99,7 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
           <h3 className="field-label">{tr("Assigned to")}</h3>
           <ul className="people">
             {open.map((a) => (
-              <li key={a.id} className="person" title={[a.note, a.due_date && `Due ${formatDate(a.due_date)}`].filter(Boolean).join(" · ")}>
+              <li key={a.id} className="person" title={[a.note, a.due_date && tr("Due {value}", { value: formatDate(a.due_date) })].filter(Boolean).join(" · ")}>
                 <span className="avatar" aria-hidden="true">
                   {isolate(initials(a.user_name ?? "?"))}
                 </span>
@@ -382,7 +382,7 @@ function Attachments({ entity, id, files, onChanged }: { entity: string; id: str
             <Icon name="file" size={14} />
             <span className="attachment-name">{isolate(f.file_name)}</span>
           </button>
-          <span className="faint nowrap">{tr("{Math} KB", { Math: Math.max(1, Math.round(f.size_bytes / 1024)) })}</span>
+          <span className="faint nowrap">{tr("{n} KB", { n: Math.max(1, Math.round(f.size_bytes / 1024)) })}</span>
           <button type="button" className="icon-btn" aria-label={tr("Delete {file_name}", { file_name: f.file_name })} onClick={() => void remove(f)}>
             <Icon name="trash" size={14} />
           </button>

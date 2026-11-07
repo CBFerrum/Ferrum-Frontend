@@ -32,12 +32,12 @@ const REFRESH: { value: number; label: string }[] = [
 const TYPES: FilterType[] = ["link", "date_range", "select", "data", "check", "date"];
 
 /** How often, in words. */
-export const refreshLabel = (s: number | null | undefined) => REFRESH.find((r) => r.value === (s ?? 0))?.label ?? `Every ${s} seconds`;
+export const refreshLabel = (s: number | null | undefined) => REFRESH.find((r) => r.value === (s ?? 0))?.label ?? tr("Every {s} seconds", { s: String(s) });
 
 function FilterRow({ def, index, count, taken, issues, onChange, onMove, onRemove }: { def: FilterDef; index: number; count: number; taken: string[]; issues: Issue[]; onChange: (d: FilterDef, key?: string) => void; onMove: (by: number) => void; onRemove: () => void }) {
   const id = useId();
   const at = (p: string) => issuesAt(issues, `filters[${index}]${p}`);
-  const label = def.label || def.name || `Filter ${index + 1}`;
+  const label = def.label || def.name || tr("Filter {value}", { value: index + 1 });
   return (
     <fieldset className="grid gap-2 rounded-lg border p-3">
       <legend className="sr-only">{isolate(label)}</legend>

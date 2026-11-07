@@ -15,7 +15,7 @@ function initial(v: unknown): string {
  * would otherwise show nowhere. */
 export function splitErrors(fields: FieldError[], params: ActionParam[]): { own: FieldError[]; others: string } {
   const mine = (f: FieldError) => !f.row && params.some((p) => p.name === f.field);
-  const others = fields.filter((f) => !mine(f)).map((f) => (f.row ? `row ${f.row[1] + 1} ` : "") + `${f.field}: ${f.message}`);
+  const others = fields.filter((f) => !mine(f)).map((f) => (f.row ? t("row {value} ", { value: f.row[1] + 1 }) : "") + `${f.field}: ${f.message}`);
   return { own: fields.filter(mine), others: others.join("; ") };
 }
 

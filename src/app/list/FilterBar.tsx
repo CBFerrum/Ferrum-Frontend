@@ -24,11 +24,11 @@ export function chipText(f: Field, value: string): string {
     const word = PERIODS.find(([k]) => k === value);
     if (word) return word[1];
     const [from, to] = splitRange(value);
-    return from && to ? (from === to ? from : `${from} – ${to}`) : from ? `from ${from}` : to ? `until ${to}` : "";
+    return from && to ? (from === to ? from : `${from} – ${to}`) : from ? tr("from {from}", { from }) : to ? tr("until {to}", { to }) : "";
   }
   if (NUMBERS.has(f.type)) {
     const { op, a, b } = splitNumber(value);
-    if (op === "..") return a && b ? `${a} – ${b}` : a ? `at least ${a}` : b ? `at most ${b}` : "";
+    if (op === "..") return a && b ? `${a} – ${b}` : a ? tr("at least {a}", { a }) : b ? tr("at most {b}", { b }) : "";
     return op === "=" ? a : `${NUMBER_WORDS[op]} ${a}`;
   }
   return value;

@@ -144,7 +144,7 @@ export function FilterEditor({ catalog, filters, onChange, errors = {} }: { cata
       {filters.map(([path, op, value], i) => {
         const field = byPath.get(path);
         const ops = opsFor(field?.type);
-        const label = `Condition ${i + 1}`;
+        const label = tr("Condition {value}", { value: i + 1 });
         return (
           <div key={i} className="grid gap-1">
             <div className={cn("grid grid-cols-[minmax(0,1fr)_auto] gap-1.5 rounded-md border p-2 sm:grid-cols-[minmax(0,1.2fr)_9rem_minmax(0,1fr)_auto]", errors[i]?.length && "border-destructive")}>
