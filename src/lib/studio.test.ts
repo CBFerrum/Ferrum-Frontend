@@ -136,6 +136,12 @@ describe("buildSpec", () => {
     });
   });
 
+  it("names a pivot's columns when its values are chosen", () => {
+    const d: SpecDraft = { ...emptyDraft("SalesInvoice", "pivot"), group_by: [{ field: "customer" }], pivot: { field: "status", values: ["Paid", "Overdue"] } };
+    expect(buildSpec(d).pivot).toEqual({ field: "status", values: ["Paid", "Overdue"] });
+    expect(buildSpec({ ...d, pivot: { field: "status", values: [] } }).pivot).toEqual({ field: "status" });
+  });
+
   it("round-trips saved specs, converting object filters to the list form", () => {
     const spec = {
       entity: "SalesInvoice",
