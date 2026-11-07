@@ -16,6 +16,18 @@ import { defineConfig } from "vite";
 /** This checkout of Ferrum-Frontend (ends with a separator). */
 export const web = fileURLToPath(new URL("../../", import.meta.url));
 
+/** Ferrum-Frontend's modules that act as they load: the page's bootstrap and words, its appearance,
+ *  its offline worker and the shell's guard on leaving. Every other module of it only declares, so a
+ *  build leaves out one nothing is imported from: an app that takes one primitive from a barrel
+ *  (@ferrum/kit/primitives, @ferrum/records) does not carry the rest. vite.test.ts keeps the list in step. */
+export const ACTS_ON_LOAD = ["packages/client/src/index.ts", "src/app/Shell.tsx", "src/lib/pwa.ts", "src/lib/theme.ts"];
+
+/** Whether a module is kept when nothing is imported from it: the app's own and the libraries' (as
+ *  their package.json says), style sheets, and those of Ferrum-Frontend's that act as they load. */
+export function sideEffects(id) {
+  return !id.startsWith(web) || id.includes("/node_modules/") || /\.css($|\?)/.test(id) || ACTS_ON_LOAD.some((p) => id === web + p);
+}
+
 /** Library imports of the app's files resolve from Ferrum-Frontend; `@/…` is Ferrum-Frontend's own. */
 function resolveLikeTheKit(root) {
   // As if a file at Ferrum-Frontend's root imported them (only its directory counts).
@@ -55,6 +67,7 @@ export function ferrumApp(configUrl, { outDir = "dist" } = {}) {
       // A release names its files by digest; inline assets would only grow the entry chunk.
       assetsInlineLimit: 0,
       rollupOptions: {
+        treeshake: { moduleSideEffects: sideEffects },
         onwarn(warning, warn) {
           // react-query and the shadcn components carry "use client" for React Server Components.
           if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;

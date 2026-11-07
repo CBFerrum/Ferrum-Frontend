@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Navigate, RouterProvider, useLocation, useRouteError, type RouteObject } from "react-router";
-import { shell, t } from "@ferrum/client";
+import { shell, t, wordsReady } from "@ferrum/client";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
@@ -99,12 +99,15 @@ const router = createBrowserRouter([
 
 setUnauthorizedHandler(() => shell().session.reauthenticate());
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster />
-      <ConfirmHost />
-    </QueryClientProvider>
-  </StrictMode>,
+// Drawn once the page's words are in (its language's catalogs, fetched as the page starts).
+void wordsReady().then(() =>
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster />
+        <ConfirmHost />
+      </QueryClientProvider>
+    </StrictMode>,
+  ),
 );
