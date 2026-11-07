@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, errorMessage, parseApiError, queryString, withPrintCsp } from "./api";
+import { ApiError, errorMessage, isStale, parseApiError, queryString, withPrintCsp } from "./api";
 
 describe("parseApiError", () => {
   it("parses validation errors with child rows", () => {
@@ -27,6 +27,15 @@ describe("parseApiError", () => {
     expect(e.code).toBe("conflict");
     expect(e.message).toBe("changed by someone else");
     expect(e.fields).toEqual([]);
+  });
+
+  it("tells a record changed since it was read from a value another record has", () => {
+    const stale = parseApiError(409, { error: "conflict", message: "this record was changed by someone else after you opened it; reload and try again" });
+    expect(isStale(stale)).toBe(true);
+    expect(isStale(parseApiError(409, null)), "no body: the version check's words").toBe(true);
+    expect(isStale(parseApiError(412, null))).toBe(true);
+    expect(isStale(parseApiError(409, { error: "conflict", message: "another Permit Type already has this Type Name" }))).toBe(false);
+    expect(isStale(new Error("changed by someone else"))).toBe(false);
   });
 
   it("appends the error id of internal errors", () => {

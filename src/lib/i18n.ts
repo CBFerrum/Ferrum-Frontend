@@ -9,6 +9,16 @@ import hi from "../locales/hi";
 
 export type Direction = "ltr" | "rtl";
 
+/** The interface's own words in a language (its catalog; nothing for English, the source). */
+export function builtInWords(tag: string): Record<string, string> {
+  return CATALOGS[baseLanguage(tag)] ?? {};
+}
+
+/** Every word the interface asks for: each catalog holds them all (a test keeps it so). */
+export function interfaceWords(): string[] {
+  return Object.keys(CATALOGS.ar).sort((a, b) => a.localeCompare(b));
+}
+
 /** The languages the interface offers, by their own names. */
 export const LANGUAGES: { tag: string; name: string }[] = [
   { tag: "en", name: "English" },
@@ -73,11 +83,13 @@ export function t(english: string, vars?: Record<string, string | number>): stri
  * they keep the browser's).
  */
 export function applyLocale(
-  locale: { language?: string; dir?: Direction; chosen?: boolean } | null | undefined,
+  locale: { language?: string; dir?: Direction; chosen?: boolean; words?: Record<string, string> } | null | undefined,
   doc: Document | undefined = globalThis.document,
 ): void {
   const tag = locale?.language || "en";
   setLanguage(tag);
+  // The workspace's own words in the language stand over the catalog's.
+  if (locale?.words) addCatalog(tag, locale.words);
   setFormatLocale(locale?.chosen ? tag : undefined);
   if (!doc?.documentElement) return;
   doc.documentElement.lang = tag;

@@ -4,7 +4,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
-import { api, ApiError, docPath, download, errorMessage, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
+import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
@@ -273,8 +273,13 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   useLiveEntity(isNew ? undefined : E, onLive);
 
   const fail = (e: unknown) => {
-    if (e instanceof ApiError && e.status === 409) {
+    if (isStale(e)) {
       setConflict(true);
+      return;
+    }
+    // Refused for what it says, such as a value another record already has.
+    if (e instanceof ApiError && e.status === 409) {
+      setBanner(e.message);
       return;
     }
     if (e instanceof ApiError && e.fields.length) {

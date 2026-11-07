@@ -73,3 +73,10 @@ describe("the catalogs", () => {
     for (const [name, words] of [["ar", ar], ["hi", hi]] as const) expect([...asked].filter((w) => !(w in words)), name).toEqual([]);
   });
 });
+
+describe("a workspace's own words", () => {
+  it("stand over the catalog's in the page's language, and give the words it lacks", () => {
+    applyLocale({ language: "ar", words: { Save: "احفظه", "Nothing like this in any catalog": "لا شيء مثله" } }, undefined);
+    expect([t("Save"), t("Nothing like this in any catalog"), t("Cancel")]).toEqual(["احفظه", "لا شيء مثله", "إلغاء"]);
+  });
+});
