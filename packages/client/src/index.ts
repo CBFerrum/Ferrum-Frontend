@@ -5,7 +5,7 @@
 
 import { ApiError, parseApiError } from "./errors";
 
-export { ApiError, errorMessage, parseApiError, refusal, type FieldError } from "./errors";
+export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
 export { cacheName, currentLease, mayKeep, pendingName, stale, sweep, type OfflineEnv, type OfflineLease } from "./offline";
 import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
@@ -61,7 +61,8 @@ export interface Bootstrap {
    *  (shapes B and C), where the person signs in and finds their other workspaces. */
   api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
-  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean };
+  /** `words`: the workspace's own words in the language (Admin, Interface words), over the catalogs. */
+  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string> };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;

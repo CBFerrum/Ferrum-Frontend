@@ -89,6 +89,19 @@ a:hover {
 .icon {
   flex: none;
 }
+/* An attachment that is a picture, shown as itself above the way to download it. */
+.attach-value {
+  gap: 6px;
+}
+.attach-picture {
+  display: block;
+  max-width: min(100%, 240px);
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-2);
+}
 /* Right to left, an icon that points along the line points the other way: the kit's own and
    Lucide's. `scale` composes with the rotation an open section gives its chevron. */
 [dir="rtl"] :is(.icon-dir, .lucide-chevron-right, .lucide-chevron-left, .lucide-chevrons-right, .lucide-chevrons-left, .lucide-arrow-left, .lucide-arrow-right, .lucide-undo-2, .lucide-redo-2, .lucide-panel-left) {

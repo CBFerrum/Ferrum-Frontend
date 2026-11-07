@@ -64,6 +64,12 @@ export function refusal(e: unknown): string {
   return e instanceof ApiError && e.fields.length ? e.fields.map((f) => f.message).join("; ") : errorMessage(e);
 }
 
+/** Whether a write was refused because the record changed after it was read (the server's version
+ * check), rather than for what it says: a value another record already has is a 409 as well. */
+export function isStale(e: unknown): e is ApiError {
+  return e instanceof ApiError && (e.status === 412 || (e.status === 409 && /changed by someone else|changed elsewhere/.test(e.message)));
+}
+
 export function errorMessage(e: unknown, withFields = true): string {
   if (e instanceof ApiError) {
     if (withFields && e.fields.length) {

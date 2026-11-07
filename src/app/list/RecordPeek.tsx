@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router";
-import { api, ApiError, docPath, errorMessage } from "../../lib/api";
+import { api, docPath, errorMessage, isStale } from "../../lib/api";
 import { evaluate } from "../../lib/expr";
 import { formSections } from "../../lib/formTabs";
 import { can, fieldState, recordTitle, useCurrencyPrecision, useMe, userScope, type Doc, type EntityMeta, type Field } from "../../lib/meta";
@@ -117,7 +117,7 @@ export function useRecord(meta: EntityMeta, id: string) {
       void qc.invalidateQueries({ queryKey: ["view", E] });
     } catch (e) {
       // What was on screen is out of date: show what is true now rather than the failed edit.
-      if (e instanceof ApiError && (e.status === 409 || e.status === 412)) {
+      if (isStale(e)) {
         toast("Someone else changed this record; here it is as it stands now.", "error");
         void qc.invalidateQueries({ queryKey: key });
       } else toast(errorMessage(e), "error");

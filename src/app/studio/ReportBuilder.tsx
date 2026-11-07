@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { api, ApiError, errorMessage, saveBlob } from "@/lib/api";
+import { api, ApiError, errorMessage, isStale, saveBlob } from "@/lib/api";
 import { todayIso } from "@/lib/format";
 import { can, useMe, useMetaIndex, type Access, type EntityMeta } from "@/lib/meta";
 import {
@@ -293,7 +293,7 @@ function Editor({ record }: { record?: ReportRecord }) {
       setRec(saved);
       setSavedKey(sentKey);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && !asNew && rec) {
+      if (isStale(e) && !asNew && rec) {
         setDialog(null);
         setConflict(m);
         return;
