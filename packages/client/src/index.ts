@@ -30,7 +30,7 @@ export {
   zoneLabel,
   type FormatOptions,
 } from "../../../src/lib/format";
-export { addCatalog, applyLocale, currentLanguage, direction, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
+export { addCatalog, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
 import { applyLocale } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 

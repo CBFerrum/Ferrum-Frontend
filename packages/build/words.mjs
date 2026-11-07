@@ -2,7 +2,7 @@
 // where a file has a t of its own): written to dist/words.json by the build, so a workspace's
 // administrators can put them in their language (Admin, Interface words).
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const CALL = /\b(?:t|tr)\(\s*"((?:[^"\\\n]|\\.)*)"/g;
@@ -22,3 +22,34 @@ export function wordsOf(dir) {
   walk(dir);
   return [...out].sort();
 }
+
+const places = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+
+/**
+ * What is wrong with the app's own catalogs (`src/locales/<language>.json`, English → its words):
+ * a word its sources no longer give t(), a translation that is not text, or one whose `{places}`
+ * are not the English's. None when it has no catalogs.
+ */
+export function catalogIssues(src) {
+  const dir = join(src, "locales");
+  if (!existsSync(dir)) return [];
+  const words = new Set(wordsOf(src));
+  const out = [];
+  for (const name of readdirSync(dir).sort()) {
+    if (!name.endsWith(".json")) continue;
+    let catalog;
+    try {
+      catalog = JSON.parse(readFileSync(join(dir, name), "utf8"));
+    } catch (e) {
+      out.push(`locales/${name}: not JSON (${e.message})`);
+      continue;
+    }
+    for (const [english, words_] of Object.entries(catalog)) {
+      if (!words.has(english)) out.push(`locales/${name}: "${english}" is not a word its pages ask for`);
+      else if (typeof words_ !== "string" || !words_.trim()) out.push(`locales/${name}: "${english}" has no words`);
+      else if (places(words_) !== places(english)) out.push(`locales/${name}: "${english}" keeps other places than {${places(english)}}`);
+    }
+  }
+  return out;
+}
+

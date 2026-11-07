@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ar from "../locales/ar";
 import hi from "../locales/hi";
 import { formatDate, formatDecimal } from "./format";
-import { addCatalog, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, setLanguage, t } from "./i18n";
+import { addCatalog, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t } from "./i18n";
 
 afterEach(() => applyLocale(null, undefined));
 
@@ -36,6 +36,13 @@ describe("the interface's language", () => {
     expect(t("Cancel")).toBe("إلغاء");
     setLanguage("hi");
     expect(t("Every open job has a time.")).toBe("Every open job has a time.");
+  });
+
+  it("sets text shown as it is apart on a page that reads right to left", () => {
+    setLanguage("ar");
+    expect([isolate("15 KB"), isolate("")]).toEqual(["\u206815 KB\u2069", ""]);
+    setLanguage("en");
+    expect(isolate("15 KB")).toBe("15 KB");
   });
 
   it("knows which scripts read right to left", () => {
@@ -88,5 +95,11 @@ describe("a workspace's own words", () => {
   it("stand over the catalog's in the page's language, and give the words it lacks", () => {
     applyLocale({ language: "ar", words: { Save: "احفظه", "Nothing like this in any catalog": "لا شيء مثله" } }, undefined);
     expect([t("Save"), t("Nothing like this in any catalog"), t("Cancel")]).toEqual(["احفظه", "لا شيء مثله", "إلغاء"]);
+  });
+
+  it("stand over an app's own catalog, whenever the app adds it", () => {
+    applyLocale({ language: "ar", words: { "New event": "حدث جديد للمساحة" } }, undefined);
+    addCatalog("ar", { "New event": "حدث جديد", "All day": "طوال اليوم" });
+    expect([t("New event"), t("All day")]).toEqual(["حدث جديد للمساحة", "طوال اليوم"]);
   });
 });

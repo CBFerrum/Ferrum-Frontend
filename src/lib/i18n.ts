@@ -58,16 +58,24 @@ export function currentLanguage(): string {
 
 export function setLanguage(tag: string | undefined | null): void {
   language = tag?.trim() || "en";
-  catalog = { ...(CATALOGS[baseLanguage(language)] ?? {}), ...(extra.get(baseLanguage(language)) ?? {}) };
+  merge();
 }
 
 const extra = new Map<string, Record<string, string>>();
+/** The workspace's own words in the page's language (its InterfaceWord records): over every catalog. */
+let workspace: Record<string, string> = {};
 
-/** An app's own words in a language (merged over the interface's). */
+/** The interface's catalog, an app's own over it, and the workspace's words over both. */
+function merge(): void {
+  const base = baseLanguage(language);
+  catalog = { ...(CATALOGS[base] ?? {}), ...(extra.get(base) ?? {}), ...workspace };
+}
+
+/** An app's own words in a language (merged over the interface's, under the workspace's). */
 export function addCatalog(tag: string, words: Record<string, string>): void {
   const base = baseLanguage(tag);
   extra.set(base, { ...(extra.get(base) ?? {}), ...words });
-  if (base === baseLanguage(language)) catalog = { ...catalog, ...words };
+  if (base === baseLanguage(language)) merge();
 }
 
 /** A word or sentence in the interface's language, with `{name}` filled in from `vars`. */
@@ -80,6 +88,15 @@ export function t(english: string, vars?: Record<string, string | number>): stri
 }
 
 /**
+ * Text a page shows as it is (a name, a size, a count built in code), set apart in its own direction
+ * on a page that reads right to left (U+2068 … U+2069), so its punctuation and numbers keep their
+ * order. Elsewhere it is returned as it is.
+ */
+export function isolate(text: string): string {
+  return direction(language) === "rtl" && text ? `\u2068${text}\u2069` : text;
+}
+
+/**
  * What a page does with the bootstrap's locale: its words and direction, the document's `lang`, and
  * numbers and dates written in that locale when the person or the workspace chose it (otherwise
  * they keep the browser's).
@@ -89,9 +106,9 @@ export function applyLocale(
   doc: Document | undefined = globalThis.document,
 ): void {
   const tag = locale?.language || "en";
+  // The workspace's own words in the language stand over every catalog, an app's own among them.
+  workspace = locale?.words ?? {};
   setLanguage(tag);
-  // The workspace's own words in the language stand over the catalog's.
-  if (locale?.words) addCatalog(tag, locale.words);
   setFormatLocale(locale?.chosen ? tag : undefined);
   if (!doc?.documentElement) return;
   doc.documentElement.lang = tag;

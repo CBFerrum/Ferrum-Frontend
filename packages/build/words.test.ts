@@ -15,3 +15,19 @@ describe("an interface's own words", () => {
     expect(wordsOf(dir)).toEqual(["Organized by {by}", "Save", 'Saved "x"']);
   });
 });
+
+describe("an app's own catalogs", () => {
+  it("hold only words its pages ask for, each keeping its places", async () => {
+    const { catalogIssues } = await import("./words.mjs");
+    const dir = mkdtempSync(join(tmpdir(), "ferrum-catalog-"));
+    mkdirSync(join(dir, "locales"));
+    writeFileSync(join(dir, "Home.tsx"), `t("Save"); t("Organized by {by}", { by }); t("Close")`);
+    writeFileSync(join(dir, "locales", "ar.json"), JSON.stringify({ Save: "حفظ", "Organized by {by}": "نظّمه {by}", Close: "" }));
+    writeFileSync(join(dir, "locales", "hi.json"), JSON.stringify({ "Organized by {by}": "आयोजक", Gone: "गया" }));
+    expect(catalogIssues(dir)).toEqual([
+      'locales/ar.json: "Close" has no words',
+      'locales/hi.json: "Organized by {by}" keeps other places than {by}',
+      'locales/hi.json: "Gone" is not a word its pages ask for',
+    ]);
+  });
+});
