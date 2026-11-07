@@ -100,7 +100,7 @@ describe("the catalogs", () => {
     readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
       d.name === "node_modules" || d.name === "dist" ? [] : d.isDirectory() ? files(join(dir, d.name)) : /\.tsx?$/.test(d.name) && !/\.test\./.test(d.name) ? [join(dir, d.name)] : [],
     );
-  const asked = new Set(["src", "apps", "packages"].flatMap(files).flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\bt\("((?:[^"\\]|\\.)+)"/g)].map((m) => m[1])));
+  const asked = new Set(["src", "apps", "packages"].flatMap(files).flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\bt\("((?:[^"\\]|\\.)+)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)));
 
   it("have every word the interface asks for", () => {
     expect(asked.size).toBeGreaterThan(40);

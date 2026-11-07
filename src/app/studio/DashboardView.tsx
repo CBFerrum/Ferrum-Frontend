@@ -378,8 +378,8 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     const w = resolved.get(it.i);
     if (w?.type === "chart") return w.chart.label;
     if (w?.type === "card") return w.card.label;
-    if (it.type === "heading") return `heading ${it.text}`;
-    if (it.type === "shortcut") return `shortcut ${it.label}`;
+    if (it.type === "heading") return tr("heading {text}", { text: it.text });
+    if (it.type === "shortcut") return tr("shortcut {label}", { label: it.label });
     if (it.type === "list") return it.label || "record list";
     return it.type === "markdown" ? "text" : it.type === "chart" ? "chart" : "number card";
   };
@@ -397,23 +397,23 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     const [layout, i] = addItem(items, block);
     setLayout(layout);
     setFocusId(i);
-    say(`Added the ${block.type === "card" ? "number card" : block.type} at ${describePlace(layout.find((x) => x.i === i)!)}.`);
+    say((block.type === "card" ? tr("Added the number card at {place}.", { place: describePlace(layout.find((x) => x.i === i)!) }) : tr("Added the {type} at {place}.", { type: String(block.type), place: describePlace(layout.find((x) => x.i === i)!) })));
   };
   const moveItem = (it: Placed, dx: number, dy: number) => {
     const next = moveBy(items, it.i, dx, dy);
     setLayout(next, `move-${it.i}`);
     const now = next.find((x) => x.i === it.i)!;
-    say(now.x === it.x && now.y === it.y ? "It cannot move further that way." : `Moved ${titleOf(it)} to ${describePlace(now)}.`);
+    say(now.x === it.x && now.y === it.y ? "It cannot move further that way." : tr("Moved {it} to {now}.", { it: titleOf(it), now: describePlace(now) }));
   };
   const resizeItem = (it: Placed, dw: number, dh: number) => {
     const next = resizeBy(items, it.i, dw, dh);
     setLayout(next, `size-${it.i}`);
     const now = next.find((x) => x.i === it.i)!;
-    say(now.w === it.w && now.h === it.h ? "It cannot change size further that way." : `Resized ${titleOf(it)}: ${describePlace(now)}.`);
+    say(now.w === it.w && now.h === it.h ? "It cannot change size further that way." : tr("Resized {it}: {now}.", { it: titleOf(it), now: describePlace(now) }));
   };
   const removeIt = (it: Placed) => {
     setLayout(removeItem(items, it.i));
-    say(`Removed ${titleOf(it)}.`);
+    say(tr("Removed {it}.", { it: titleOf(it) }));
     addRef.current?.focus();
   };
 

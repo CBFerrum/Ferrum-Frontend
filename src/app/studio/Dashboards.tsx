@@ -36,7 +36,12 @@ export { dashboardNav } from "./nav";
 
 type Tab = "dashboards" | "charts" | "cards";
 const ENTITY: Record<Tab, string> = { dashboards: "Dashboard", charts: "DashboardChart", cards: "NumberCard" };
-const NOUN: Record<Tab, string> = { dashboards: "dashboard", charts: "chart", cards: "number card" };
+/** What each tab says about what it lists, in whole sentences. */
+const WORDS: Record<Tab, { failed: () => string; none: () => string; add: () => string; noMatch: (q: string) => string; list: () => string; search: () => string }> = {
+  dashboards: { failed: () => tr("Could not load the dashboards"), none: () => tr("No dashboards yet"), add: () => tr("New dashboard"), noMatch: (q) => tr("No dashboards match “{q}”.", { q }), list: () => tr("Dashboards"), search: () => tr("Search dashboards") },
+  charts: { failed: () => tr("Could not load the charts"), none: () => tr("No charts yet"), add: () => tr("New chart"), noMatch: (q) => tr("No charts match “{q}”.", { q }), list: () => tr("Charts"), search: () => tr("Search charts") },
+  cards: { failed: () => tr("Could not load the number cards"), none: () => tr("No number cards yet"), add: () => tr("New number card"), noMatch: (q) => tr("No number cards match “{q}”.", { q }), list: () => tr("Number cards"), search: () => tr("Search number cards") },
+};
 const SHARING: Record<Sharing, { label: string; icon: LucideIcon }> = {
   private: { get label() { return tr("Only me"); }, icon: Lock },
   roles: { get label() { return tr("Roles"); }, icon: Users },
@@ -129,7 +134,7 @@ export function DashboardsPage() {
             <InputGroupAddon>
               <Search />
             </InputGroupAddon>
-            <InputGroupInput type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Search {value}s", { value: NOUN[tab] })} aria-label={tr("Search {value}s", { value: NOUN[tab] })} />
+            <InputGroupInput type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={WORDS[tab].search()} aria-label={WORDS[tab].search()} />
           </InputGroup>
         </div>
         {(["dashboards", "charts", "cards"] as Tab[]).map((t) => (
@@ -157,7 +162,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
   const { confirm, dialog } = useConfirm();
   const [busy, setBusy] = useState<string | null>(null);
   const rows = useMemo(() => (list.data ?? []).filter((r) => matches(r, q)), [list.data, q]);
-  const noun = NOUN[tab];
+  const words = WORDS[tab];
 
   const copy = async (r: StudioListRow) => {
     setBusy(r.id);
@@ -174,7 +179,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
   const del = async (r: StudioListRow) => {
     const ok = await confirm({
       title: tr("Delete “{label}”?", { label: r.label }),
-      message: tab === "dashboards" ? "The dashboard is removed for everyone. Its charts and number cards stay." : `The ${noun} is removed for everyone. Dashboards and spaces that show it must drop it first.`,
+      message: tab === "dashboards" ? tr("The dashboard is removed for everyone. Its charts and number cards stay.") : tab === "charts" ? tr("The chart is removed for everyone. Dashboards and spaces that show it must drop it first.") : tr("The number card is removed for everyone. Dashboards and spaces that show it must drop it first."),
       confirmLabel: tr("Delete"),
       danger: true,
     });
@@ -187,7 +192,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
     }
   };
 
-  if (list.error) return <ErrorBlock error={list.error} onRetry={() => list.refetch()} title={tr("Could not load the {noun}s", { noun })} />;
+  if (list.error) return <ErrorBlock error={list.error} onRetry={() => list.refetch()} title={words.failed()} />;
   if (!list.data)
     return (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label={tr("Loading")}>
@@ -200,7 +205,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
     return (
       <EmptyBlock
         icon={tab === "dashboards" ? LayoutDashboard : tab === "charts" ? ChartColumn : Hash}
-        title={tr("No {noun}s yet", { noun })}
+        title={words.none()}
         action={
           p.create(tab) &&
           (tab === "dashboards" ? (
@@ -210,7 +215,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
           ) : (
             <Button asChild>
               <Link to={hrefOf(tab, "new")} className={cn(plainLink, "text-primary-foreground")}>
-                <Plus /> {tr("New {noun}", { noun })}
+                <Plus /> {words.add()}
               </Link>
             </Button>
           ))
@@ -219,12 +224,12 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
         {tab === "dashboards" ? tr("A dashboard puts charts, number cards and notes on one page, with filters for all of them.") : tab === "charts" ? tr("A chart plots a query, a saved report or a built-in report.") : tr("A number card shows one count or total, with its change since the last period.")}
       </EmptyBlock>
     );
-  if (!rows.length) return <p className="py-10 text-center text-sm text-muted-foreground">{tr("No {noun}s match “{q}”.", { noun, q })}</p>;
+  if (!rows.length) return <p className="py-10 text-center text-sm text-muted-foreground">{words.noMatch(q)}</p>;
 
   return (
     <>
       {dialog}
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={`${noun}s`}>
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={words.list()}>
         {rows.map((r) => {
           const s = SHARING[r.sharing] ?? SHARING.private;
           const type = tab === "charts" ? (r as StudioListRow<"charts">).chart_type : undefined;

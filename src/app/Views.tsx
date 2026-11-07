@@ -141,7 +141,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
             <section
               key={col}
               className="board-col"
-              aria-label={`${col || `No ${field.label}`}: ${items.length}`}
+              aria-label={`${col || t("No {label}", { label: field.label })}: ${items.length}`}
               data-over={over === col}
               onDragOver={(e) => {
                 if (!dragging) return;
@@ -447,7 +447,7 @@ export function TimelineView({ meta, start, end, onOpen, ...rest }: ViewProps & 
             {rows.map((r) => {
               const b = bar(dayOf(r[start.name]), dayOf(r[end.name]), from, days);
               const pct = progress ? Math.max(0, Math.min(100, Number(r[progress.name] ?? 0))) : null;
-              const label = `${recordTitle(meta, r)}: ${dayOf(r[start.name]) ?? "?"} – ${dayOf(r[end.name]) ?? "?"}${pct != null ? `, ${pct}% complete` : ""}`;
+              const label = `${recordTitle(meta, r)}: ${dayOf(r[start.name]) ?? "?"} – ${dayOf(r[end.name]) ?? "?"}${pct != null ? t(", {pct}% complete", { pct }) : ""}`;
               return (
                 <div key={String(r.id)} className="tl-row">
                   <RecordLink className="tl-label cell-title" meta={meta} id={String(r.id)} onOpen={onOpen} title={recordTitle(meta, r)}>

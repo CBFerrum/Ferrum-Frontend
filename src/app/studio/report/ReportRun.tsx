@@ -107,7 +107,7 @@ export function ReportRun({ id }: { id: string }) {
   const duplicate = () => {
     const s = record.data && stateFromRecord(record.data);
     if (!s || !record.data) return;
-    navigate(`/studio/reports/new?q=${encodeParam({ ...recordFromState(s), view: s.view, label: `Copy of ${record.data.label}`.slice(0, 140) })}`);
+    navigate(`/studio/reports/new?q=${encodeParam({ ...recordFromState(s), view: s.view, label: t("Copy of {label}", { label: record.data.label }).slice(0, 140) })}`);
   };
   const reset = () => {
     setFilters([]);
@@ -270,7 +270,7 @@ export function ReportRun({ id }: { id: string }) {
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {isolate(data.meta.row_count.toLocaleString())} {data.meta.row_count === 1 ? t("row") : t("rows")} {t("· computed in {Math} ms", { Math: Math.round(data.meta.sql_ms) })}
+            {isolate(data.meta.row_count.toLocaleString())} {data.meta.row_count === 1 ? t("row") : t("rows")} {t("· computed in {n} ms", { n: Math.round(data.meta.sql_ms) })}
           </p>
         </div>
       )}

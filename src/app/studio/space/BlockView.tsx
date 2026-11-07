@@ -212,7 +212,7 @@ function ShortcutTile({ w, pending }: { w: ShortcutWidget; pending?: boolean }) 
   return (
     <SmartLink
       target={target}
-      aria-label={[w.label, count && `${count} records`, sub].filter(Boolean).join(", ")}
+      aria-label={[w.label, count && t("{count} records", { count }), sub].filter(Boolean).join(", ")}
       className={cn(
         "group flex h-full min-h-24 flex-col justify-between gap-3 rounded-xl border bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent hover:no-underline",
         FOCUS,
@@ -382,7 +382,7 @@ function Onboarding({ w }: { w: Extract<ResolvedWidget, { type: "onboarding" }> 
       <Progress
         value={total ? (done / total) * 100 : 0}
         aria-valuenow={total ? Math.round((done / total) * 100) : 0}
-        aria-valuetext={`${done} of ${total} steps done`}
+        aria-valuetext={t("{done} of {total} steps done", { done, total })}
         aria-label={t("Progress")}
         className="mb-3 h-1.5"
       />

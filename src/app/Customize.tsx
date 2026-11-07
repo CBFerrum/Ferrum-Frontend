@@ -577,20 +577,20 @@ export function describeOp(op: Record<string, unknown>): string {
   switch (op.op) {
     case "add_field": {
       const f = op.field as { name?: string; type?: string } | undefined;
-      return `Add field ${f?.name ?? "?"} (${f?.type ?? "?"})${op.after ? ` after ${String(op.after)}` : ""}`;
+      return (op.after ? tr("Add field {name} ({type}) after {after}", { name: f?.name ?? "?", type: f?.type ?? "?", after: String(op.after) }) : tr("Add field {name} ({type})", { name: f?.name ?? "?", type: f?.type ?? "?" }));
     }
     case "set_property":
       return `Set ${String(op.field)}.${String(op.property)} = ${JSON.stringify(op.value)}`;
     case "add_rule":
-      return `Add rule ${name(op.rule)}`;
+      return tr("Add rule {value}", { value: name(op.rule) });
     case "add_options":
-      return `Add options to ${String(op.field)}: ${Array.isArray(op.options) ? op.options.join(", ") : ""}`;
+      return tr("Add options to {field}: {options}", { field: String(op.field), options: Array.isArray(op.options) ? op.options.join(", ") : "" });
     case "set_entity_property":
-      return `Set entity ${String(op.property)}`;
+      return tr("Set entity {value}", { value: String(op.property) });
     case "define_entity":
-      return `Define entity ${name(op.entity)}`;
+      return tr("Define entity {value}", { value: name(op.entity) });
     case "set_workflow":
-      return `Set workflow ${name(op.workflow)}`;
+      return tr("Set workflow {value}", { value: name(op.workflow) });
     case "set_print_template":
       return "Replace print template";
     default:

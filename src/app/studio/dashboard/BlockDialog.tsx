@@ -309,31 +309,30 @@ function ListForm({ b, onChange, id }: { b: ListBlock; onChange: (b: ListBlock) 
 /** A saved chart or number card to place, or a new one. */
 export function WidgetPicker({ kind, onPick, onNew, onClose }: { kind: "charts" | "cards" | null; onPick: (id: string) => void; onNew: () => void; onClose: () => void }) {
   const list = useStudioList(kind ?? "charts");
-  const noun = kind === "cards" ? "number card" : "chart";
   return (
     <Dialog open={!!kind} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="sr-only">
-          <DialogTitle>{tr("Add a {noun}", { noun })}</DialogTitle>
-          <DialogDescription>{tr("Choose a saved {noun}, or create one.", { noun })}</DialogDescription>
+          <DialogTitle>{(kind === "cards" ? tr("Add a number card") : tr("Add a chart"))}</DialogTitle>
+          <DialogDescription>{(kind === "cards" ? tr("Choose a saved number card, or create one.") : tr("Choose a saved chart, or create one."))}</DialogDescription>
         </DialogHeader>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-input-wrapper]]:h-12">
-          <CommandInput placeholder={tr("Search {noun}s…", { noun })} />
+          <CommandInput placeholder={(kind === "cards" ? tr("Search number cards…") : tr("Search charts…"))} />
           <CommandList className="max-h-[min(60vh,26rem)]">
             <CommandGroup>
               <CommandItem value="__new" onSelect={onNew}>
-                <Plus /> {tr("Create a new {noun}", { noun })}
+                <Plus /> {(kind === "cards" ? tr("Create a new number card") : tr("Create a new chart"))}
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
             {list.isLoading ? (
               <p className="p-4 text-center text-sm text-muted-foreground">{tr("Loading…")}</p>
             ) : list.error ? (
-              <p className="p-4 text-center text-sm text-destructive">{tr("Could not load the {noun}s.", { noun })}</p>
+              <p className="p-4 text-center text-sm text-destructive">{(kind === "cards" ? tr("Could not load the number cards.") : tr("Could not load the charts."))}</p>
             ) : (
               <>
-                <CommandEmpty>{tr("No {noun}s match.", { noun })}</CommandEmpty>
-                <CommandGroup heading={`Saved ${noun}s`}>
+                <CommandEmpty>{(kind === "cards" ? tr("No number cards match.") : tr("No charts match."))}</CommandEmpty>
+                <CommandGroup heading={(kind === "cards" ? tr("Saved number cards") : tr("Saved charts"))}>
                   {(list.data ?? []).map((r) => {
                     const type = "chart_type" in r ? r.chart_type : undefined;
                     const Icon = type ? CHART_ICON[type] : Hash;
