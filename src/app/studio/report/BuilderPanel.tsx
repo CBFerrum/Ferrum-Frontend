@@ -25,6 +25,7 @@ import {
   type Agg,
   type Bucket,
   type CatalogField,
+  type PivotValue,
   type CompareKind,
   type FieldCatalog,
   type FormulaSel,
@@ -358,13 +359,35 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
   );
 }
 
+/** Values a pivot's columns may be named by: a field's options, yes and no, or what is typed (not ids or dates). */
+function pivotChoices(field: CatalogField | undefined, bucket: Bucket | undefined): { value: PivotValue; label: string }[] | "typed" | null {
+  if (!field || bucket) return null;
+  if (field.options?.length) return field.options.map((o) => ({ value: o, label: o }));
+  if (field.type === "check") return [{ value: true, label: "Yes" }, { value: false, label: "No" }];
+  return ["link", "dynamic_link", "user", "date", "datetime", "time"].includes(field.type) ? null : "typed";
+}
+
 function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps, "fields"> & { fields: CatalogField[]; byPath: Map<string, CatalogField> }) {
   const id = useId();
+  const valuesId = useId();
   const pivot = d.pivot ?? { field: "" };
   const groupable = useMemo(() => fields.filter((f) => f.groupable), [fields]);
   const set = (next: typeof pivot, key?: string) => setDraft((x) => ({ ...x, pivot: next }), key);
+  const field = byPath.get(pivot.field);
+  const choices = pivotChoices(field, pivot.bucket);
+  const declared = pivot.values ?? [];
+  const declare = (values: PivotValue[], key?: string) => set(values.length ? { field: pivot.field, values } : { field: pivot.field }, key);
+  const typed = (text: string) =>
+    text
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .map((v) => (field?.type === "int" && /^-?\d+$/.test(v) ? Number(v) : v));
   return (
-    <PanelSection title="Pivot columns" hint="Each value of this field becomes a column, with totals at the end.">
+    <PanelSection
+      title="Pivot columns"
+      hint={declared.length ? "Only the values chosen become columns, in their order, whatever the records hold; the totals count every value." : "Each value of this field becomes a column, with totals at the end."}
+    >
       <FieldPicker
         fields={groupable}
         value={pivot.field}
@@ -373,6 +396,29 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
         onChange={(f) => set({ field: f.path, ...(f.buckets.length ? { bucket: "month" as Bucket } : {}), ...(pivot.max_columns ? { max_columns: pivot.max_columns } : {}) })}
       />
       <BucketSelect field={byPath.get(pivot.field)} value={pivot.bucket} label="Pivot columns: period" onChange={(bucket) => set({ field: pivot.field, ...(bucket ? { bucket } : {}), ...(pivot.max_columns ? { max_columns: pivot.max_columns } : {}) })} />
+      {Array.isArray(choices) && (
+        <fieldset className="grid gap-1">
+          <legend className="text-xs text-muted-foreground">Only these values (none: every value)</legend>
+          {choices.map((c) => (
+            <Label key={String(c.value)} className="font-normal">
+              <Checkbox
+                checked={declared.includes(c.value)}
+                onCheckedChange={(on) => declare(on === true ? choices.filter((x) => x.value === c.value || declared.includes(x.value)).map((x) => x.value) : declared.filter((v) => v !== c.value))}
+              />
+              {c.label}
+            </Label>
+          ))}
+        </fieldset>
+      )}
+      {choices === "typed" && (
+        <div className="grid gap-1">
+          <Label htmlFor={valuesId} className="text-xs font-normal text-muted-foreground">
+            Only these values, separated by commas (none: every value)
+          </Label>
+          <Input id={valuesId} defaultValue={declared.join(", ")} key={pivot.field} placeholder="North, South" onBlur={(e) => declare(typed(e.target.value), "pivot-values")} />
+        </div>
+      )}
+      {!declared.length && (
       <div className="flex items-center gap-2">
         <Label htmlFor={id} className="shrink-0 font-normal">
           Show up to
@@ -394,6 +440,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
         />
         <span className="text-sm text-muted-foreground">columns (the largest)</span>
       </div>
+      )}
       <Issues messages={issuesAt(issues, "pivot")} />
     </PanelSection>
   );

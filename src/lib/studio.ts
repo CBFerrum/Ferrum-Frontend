@@ -64,7 +64,11 @@ export interface Pivot {
   bucket?: Bucket;
   /** 1 to 100 (default 20): the largest columns are kept. */
   max_columns?: number;
+  /** The columns themselves, in this order, whatever the records hold (not with a bucket or max_columns). */
+  values?: PivotValue[];
 }
+
+export type PivotValue = string | number | boolean;
 
 /** `by`: a column name (`customer`, `month(posting_date)`, `sum(grand_total)`), a group-by path or a label. */
 export interface Sort {
@@ -857,8 +861,8 @@ export function buildSpec(d: SpecDraft): Spec {
         return labelled({ fn: m.fn, ...(field ? { field } : {}) }, m.label);
       });
     if (d.kind === "pivot" && d.pivot) {
-      const { bucket, max_columns } = d.pivot;
-      spec.pivot = { field: d.pivot.field.trim(), ...(bucket ? { bucket } : {}), ...(max_columns ? { max_columns } : {}) };
+      const { bucket, max_columns, values } = d.pivot;
+      spec.pivot = { field: d.pivot.field.trim(), ...(bucket ? { bucket } : {}), ...(max_columns ? { max_columns } : {}), ...(values?.length ? { values } : {}) };
     }
   }
   const from = clean(d.period?.from);
