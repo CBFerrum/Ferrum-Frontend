@@ -86,12 +86,12 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const at = (id: UniqueIdentifier) => `position ${shown.indexOf(String(id)) + 1} of ${shown.length}`;
+  const at = (id: UniqueIdentifier) => tr("position {value} of {length}", { value: shown.indexOf(String(id)) + 1, length: shown.length });
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${label(active.id)}, at ${at(active.id)}.`,
-    onDragOver: ({ active, over }) => (over ? `${label(active.id)} is over ${at(over.id)}.` : `${label(active.id)} is outside the list.`),
-    onDragEnd: ({ active, over }) => (over ? `${label(active.id)} dropped at ${at(over.id)}.` : `${label(active.id)} put back.`),
-    onDragCancel: ({ active }) => `Moving ${label(active.id)} was cancelled.`,
+    onDragStart: ({ active }) => tr("Picked up {value}, at {value2}.", { value: label(active.id), value2: at(active.id) }),
+    onDragOver: ({ active, over }) => (over ? tr("{value} is over {value2}.", { value: label(active.id), value2: at(over.id) }) : tr("{value} is outside the list.", { value: label(active.id) })),
+    onDragEnd: ({ active, over }) => (over ? tr("{value} dropped at {value2}.", { value: label(active.id), value2: at(over.id) }) : tr("{value} put back.", { value: label(active.id) })),
+    onDragCancel: ({ active }) => tr("Moving {value} was cancelled.", { value: label(active.id) }),
   };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDragging(false);

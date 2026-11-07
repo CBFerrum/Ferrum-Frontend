@@ -12,17 +12,17 @@ import { useReducedMotion } from "./hooks";
 import { t, isolate } from "@ferrum/client";
 
 const TYPE_LABEL: Record<ChartType, string> = {
-  bar: "Bar",
-  stacked_bar: "Stacked bar",
-  line: "Line",
-  area: "Area",
-  pie: "Pie",
-  donut: "Donut",
-  percentage: "Percentage",
-  heatmap: "Heatmap",
-  scatter: "Scatter",
-  funnel: "Funnel",
-  number: "Number",
+  get bar() { return t("Bar"); },
+  get stacked_bar() { return t("Stacked bar"); },
+  get line() { return t("Line"); },
+  get area() { return t("Area"); },
+  get pie() { return t("Pie"); },
+  get donut() { return t("Donut"); },
+  get percentage() { return t("Percentage"); },
+  get heatmap() { return t("Heatmap"); },
+  get scatter() { return t("Scatter"); },
+  get funnel() { return t("Funnel"); },
+  get number() { return t("Number"); },
 };
 
 const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });

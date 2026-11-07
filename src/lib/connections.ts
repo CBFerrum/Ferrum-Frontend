@@ -28,11 +28,17 @@ const DAY = 86_400_000;
 /** "5 minutes ago", for a past moment. */
 export function ago(at: string, now: Date): string {
   const seconds = Math.max(0, (now.getTime() - new Date(at).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const unit = (n: number, name: string) => `${n} ${name}${n === 1 ? "" : "s"} ago`;
-  if (seconds < 3600) return unit(Math.floor(seconds / 60), "minute");
-  if (seconds < 86_400) return unit(Math.floor(seconds / 3600), "hour");
-  return unit(Math.floor(seconds / 86_400), "day");
+  if (seconds < 60) return t("just now");
+  if (seconds < 3600) {
+    const n = Math.floor(seconds / 60);
+    return n === 1 ? t("1 minute ago") : t("{n} minutes ago", { n });
+  }
+  if (seconds < 86_400) {
+    const n = Math.floor(seconds / 3600);
+    return n === 1 ? t("1 hour ago") : t("{n} hours ago", { n });
+  }
+  const n = Math.floor(seconds / 86_400);
+  return n === 1 ? t("1 day ago") : t("{n} days ago", { n });
 }
 
 const SIGN_IN: Record<string, [string, Tone]> = {
@@ -80,7 +86,7 @@ export interface Run {
 /** What a run was, in words, and its tone: a failed one is what someone tries again. */
 export function runWords(r: Run): { what: string; tone: Tone; again: boolean } {
   const what =
-    r.kind === "platform.connector.sync" ? "Read" : r.kind === "platform.connector.deliver" ? `Sent${r.stream ? ` on ${r.stream}` : ""}` : r.kind === "platform.connector.reconcile" ? "Compared" : r.kind;
+    r.kind === "platform.connector.sync" ? "Read" : r.kind === "platform.connector.deliver" ? `Sent${r.stream ? t(" on {stream}", { stream: r.stream }) : ""}` : r.kind === "platform.connector.reconcile" ? "Compared" : r.kind;
   const tone: Tone = r.status === "done" ? "green" : r.status === "failed" ? "red" : r.status === "cancelled" ? "neutral" : "amber";
   return { what, tone, again: r.status === "failed" };
 }

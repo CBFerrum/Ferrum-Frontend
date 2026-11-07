@@ -227,12 +227,12 @@ export const shortLabel = (s: string, max = 14) => (s.length > max ? `${s.slice(
 /** One sentence for screen readers: what is plotted and the first few values. */
 export function describeChart(type: ChartType, model: ChartModel, title: string, o: { locale?: string } = {}): string {
   const kind = CHART_TYPE_LABEL[type].toLowerCase();
-  if (!model.rows.length || !model.series.length) return `${title}: ${kind} chart with no data.`;
+  if (!model.rows.length || !model.series.length) return tr("{title}: {kind} chart with no data.", { title, kind });
   const what = model.series.map((s) => s.label).join(", ");
-  const by = model.x ? ` by ${columnLabel(model.x, o)}` : "";
+  const by = model.x ? tr(" by {value}", { value: columnLabel(model.x, o) }) : "";
   const shown = model.rows.slice(0, 6).map((r) => `${r.label} ${model.series.map((s) => r.fmt[s.key] || "none").join(" / ")}`);
-  const more = model.rows.length > shown.length ? `, and ${model.rows.length - shown.length} more` : "";
-  return `${title}: ${kind} chart of ${what}${by}. ${shown.join("; ")}${more}.`;
+  const more = model.rows.length > shown.length ? tr(", and {value} more", { value: model.rows.length - shown.length }) : "";
+  return tr("{title}: {kind} chart of {what}{by}. {shown}{more}.", { title, kind, what, by, shown: shown.join("; "), more });
 }
 
 /** A period's last day: the bucket start plus its length, minus a day. */
@@ -256,7 +256,7 @@ export function formatPeriod(from: string | null | undefined, to: string | null 
       return `${formatDate(from, locale)} – ${formatDate(to, locale)}`;
     }
   }
-  if (from) return `From ${formatDate(from, locale)}`;
-  if (to) return `Until ${formatDate(to, locale)}`;
+  if (from) return tr("From {from}", { from: formatDate(from, locale) });
+  if (to) return tr("Until {to}", { to: formatDate(to, locale) });
   return "";
 }

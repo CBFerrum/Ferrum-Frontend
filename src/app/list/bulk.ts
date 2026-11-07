@@ -4,6 +4,7 @@
 
 import type { FieldError } from "../../lib/api";
 import { can, fieldLabel, type EntityMeta, type Field, type Me } from "../../lib/meta";
+import { t as tr } from "@ferrum/client";
 
 export const MAX_BULK = 500;
 
@@ -128,7 +129,7 @@ export function describeOp(op: BulkOp): { running: (what: string) => string; don
     case "remove_tags":
       return plain("Removing tags from", "untagged");
     case "workflow":
-      return { running: (w) => `Applying “${op.action}” to ${w}…`, done: (w) => `“${op.action}” applied to ${w}` };
+      return { running: (w) => tr("Applying “{action}” to {w}…", { action: op.action, w }), done: (w) => tr("“{action}” applied to {w}", { action: op.action, w }) };
   }
 }
 
@@ -137,7 +138,7 @@ export function rowErrorText(meta: EntityMeta, e: BulkRowError | undefined): str
   if (!e) return "Failed.";
   const fields = (e.fields ?? []).map((f) => `${fieldLabel(meta, f.field)}: ${f.message}`);
   const text = fields.length ? fields.join("; ") : e.message;
-  return e.error_id ? `${text} (reference ${e.error_id})` : text;
+  return e.error_id ? tr("{text} (reference {error_id})", { text, error_id: e.error_id }) : text;
 }
 
 export function chunk<T>(xs: T[], size = MAX_BULK): T[][] {

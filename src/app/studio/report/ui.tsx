@@ -80,12 +80,12 @@ interface SortableListProps {
 export function SortableList({ ids, labels, onMove, children, className }: SortableListProps) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   const name = (id: unknown) => labels[ids.indexOf(String(id))] ?? "item";
-  const position = (id: unknown) => `position ${ids.indexOf(String(id)) + 1} of ${ids.length}`;
+  const position = (id: unknown) => t("position {value} of {length}", { value: ids.indexOf(String(id)) + 1, length: ids.length });
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${name(active.id)}.`,
-    onDragOver: ({ active, over }) => (over ? `${name(active.id)} is over ${position(over.id)}.` : `${name(active.id)} is no longer over a position.`),
-    onDragEnd: ({ active, over }) => (over ? `${name(active.id)} was dropped at ${position(over.id)}.` : `${name(active.id)} was dropped.`),
-    onDragCancel: ({ active }) => `Moving ${name(active.id)} was cancelled.`,
+    onDragStart: ({ active }) => t("Picked up {value}.", { value: name(active.id) }),
+    onDragOver: ({ active, over }) => (over ? t("{value} is over {value2}.", { value: name(active.id), value2: position(over.id) }) : t("{value} is no longer over a position.", { value: name(active.id) })),
+    onDragEnd: ({ active, over }) => (over ? t("{value} was dropped at {value2}.", { value: name(active.id), value2: position(over.id) }) : t("{value} was dropped.", { value: name(active.id) })),
+    onDragCancel: ({ active }) => t("Moving {value} was cancelled.", { value: name(active.id) }),
   };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) onMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));

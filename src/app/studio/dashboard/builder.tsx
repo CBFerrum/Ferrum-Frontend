@@ -27,7 +27,7 @@ export function editable<T extends object>(r: T): T {
 
 /** A copy to customize (package records cannot be changed): no id, a new title. */
 export function duplicateOf<T extends { label: string }>(r: T): T {
-  return { ...editable(r), label: `Copy of ${r.label}`.slice(0, 140) };
+  return { ...editable(r), label: t("Copy of {label}", { label: r.label }).slice(0, 140) };
 }
 
 export interface Conflict {

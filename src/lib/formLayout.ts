@@ -3,6 +3,7 @@
 // (known fields, each placed once, 1 to 4 columns) so mistakes show while editing.
 
 import type { Section } from "./meta";
+import { t } from "@ferrum/client";
 
 export interface LayoutSection {
   key: string;
@@ -130,8 +131,8 @@ export function checkLayout(layout: LayoutSection[], meta: Pick<Meta, "fields">)
   for (const s of layout) {
     if (!Number.isInteger(s.columns) || s.columns < 1 || s.columns > 4) out.push({ section: s.key, message: "A section has 1 to 4 columns." });
     for (const f of s.fields) {
-      if (!known.has(f)) out.push({ section: s.key, message: `The field ${f} no longer exists.` });
-      else if (seen.has(f)) out.push({ section: s.key, message: `${f} is placed twice.` });
+      if (!known.has(f)) out.push({ section: s.key, message: t("The field {f} no longer exists.", { f }) });
+      else if (seen.has(f)) out.push({ section: s.key, message: t("{f} is placed twice.", { f }) });
       seen.add(f);
     }
   }

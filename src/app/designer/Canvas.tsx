@@ -313,25 +313,25 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
 
   const describe = (d: DragData | undefined): string => {
     if (!d) return "item";
-    if (d.type === "field") return `field ${fields.get(d.name)?.label ?? d.name}`;
-    if (d.type === "tab") return `tab ${tabLabel(d.tab)}`;
+    if (d.type === "field") return tr("field {value}", { value: fields.get(d.name)?.label ?? d.name });
+    if (d.type === "tab") return tr("tab {value}", { value: tabLabel(d.tab) });
     if (d.key === "palette") return "unplaced fields";
     const s = (draftRef.current ?? layout).find((x) => x.key === d.key);
-    return `section ${s ? sectionTitle(s) : ""}`;
+    return tr("section {title}", { title: s ? sectionTitle(s) : "" });
   };
   const position = (d: DragData | undefined): string => {
     if (d?.type !== "field") return describe(d);
     const cur = draftRef.current ?? layout;
     const s = cur.find((x) => x.key === containerOf(cur, d.name));
-    return s ? `${describe(d)}, place ${s.fields.indexOf(d.name) + 1} of ${s.fields.length} in section ${sectionTitle(s)}` : `${describe(d)} in unplaced fields`;
+    return s ? tr("{d}, place {value} of {length} in section {s}", { d: describe(d), value: s.fields.indexOf(d.name) + 1, length: s.fields.length, s: sectionTitle(s) }) : tr("{d} in unplaced fields", { d: describe(d) });
   };
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${describe(dataOf(active))}.`,
+    onDragStart: ({ active }) => tr("Picked up {value}.", { value: describe(dataOf(active)) }),
     onDragOver: ({ active, over }) =>
-      over ? `${cap(describe(dataOf(active)))} is over ${position(dataOf(over))}.` : `${cap(describe(dataOf(active)))} is not over a place to drop.`,
+      over ? tr("{value} is over {value2}.", { value: cap(describe(dataOf(active))), value2: position(dataOf(over)) }) : tr("{value} is not over a place to drop.", { value: cap(describe(dataOf(active))) }),
     onDragEnd: ({ active, over }) =>
-      over ? `${cap(describe(dataOf(active)))} was dropped on ${describe(dataOf(over))}.` : `${cap(describe(dataOf(active)))} was put back.`,
+      over ? tr("{value} was dropped on {value2}.", { value: cap(describe(dataOf(active))), value2: describe(dataOf(over)) }) : tr("{value} was put back.", { value: cap(describe(dataOf(active))) }),
     onDragCancel: ({ active }) => `Moving ${describe(dataOf(active))} was cancelled; it is back where it was.`,
   };
 

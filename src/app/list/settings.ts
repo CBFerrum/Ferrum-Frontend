@@ -6,6 +6,7 @@
 import { newKey } from "../../lib/api";
 import { humanize } from "../../lib/format";
 import { SYSTEM_FIELD_LABELS, type EntityMeta, type Field } from "../../lib/meta";
+import { t } from "@ferrum/client";
 
 export interface Column {
   name: string;
@@ -178,7 +179,7 @@ export function viewNameError(name: string, views: Record<string, SavedView>, ex
   if (!n) return "Enter a name.";
   if (n.length > 60) return "Use at most 60 characters.";
   const taken = Object.values(views).some((v) => v.id !== exceptId && v.name.toLowerCase() === n.toLowerCase());
-  return taken ? `You already have a view named “${n}”.` : null;
+  return taken ? t("You already have a view named “{n}”.", { n }) : null;
 }
 
 // ── the list's URL state ──

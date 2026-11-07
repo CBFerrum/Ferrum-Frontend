@@ -3,6 +3,7 @@
 // fills in each filter's default and applies the values to every widget that accepts them.
 
 import type { FilterDef, FilterType, FilterValues, Issue } from "@/lib/studio";
+import { t } from "@ferrum/client";
 
 const PREFIX = "f.";
 
@@ -93,7 +94,7 @@ export function filterDefIssues(defs: readonly FilterDef[]): Issue[] {
   defs.forEach((d, n) => {
     const at = `filters[${n}]`;
     if (!IDENT.test(d.name)) out.push({ path: `${at}.name`, message: "Use a lower-case name such as company or period" });
-    else if (seen.has(d.name)) out.push({ path: `${at}.name`, message: `“${d.name}” is used twice` });
+    else if (seen.has(d.name)) out.push({ path: `${at}.name`, message: t("“{name}” is used twice", { name: d.name }) });
     seen.add(d.name);
     if (d.type === "link" && !d.to) out.push({ path: `${at}.to`, message: "Choose what it links to" });
     if (d.type === "select" && !d.options?.length) out.push({ path: `${at}.options`, message: "List the choices" });
