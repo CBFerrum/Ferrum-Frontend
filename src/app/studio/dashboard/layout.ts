@@ -6,6 +6,7 @@
 import { bottom, cloneLayout, moveElement, verticalCompactor, type LayoutItem } from "react-grid-layout/core";
 import type { DashboardBlock, GridItem } from "@/lib/studio";
 import { stableJson } from "./history";
+import { t as tr } from "@ferrum/client";
 
 export const COLS = 12;
 /** Height of one grid row and the gap between widgets, in pixels. */
@@ -170,7 +171,7 @@ export const phoneSpan = (w: number) => (w <= 4 ? 1 : 2);
 
 /** Where a widget is, in words, for announcements after a keyboard move. */
 export const describePlace = (it: { x: number; y: number; w: number; h: number }) =>
-  `column ${it.x + 1}, row ${it.y + 1}, ${it.w} column${it.w === 1 ? "" : "s"} wide and ${it.h} row${it.h === 1 ? "" : "s"} tall`;
+  tr("column {x}, row {y}, {wide} and {tall}", { x: it.x + 1, y: it.y + 1, wide: it.w === 1 ? tr("1 column wide") : tr("{n} columns wide", { n: it.w }), tall: it.h === 1 ? tr("1 row tall") : tr("{n} rows tall", { n: it.h }) });
 
 // ───────────────────────────── merging with a newer version ─────────────────────────────
 

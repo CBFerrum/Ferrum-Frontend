@@ -148,7 +148,7 @@ function PersonalData() {
   const erase = async () => {
     if (!found) return;
     const what = `${found.records.length} ${found.records.length === 1 ? "record" : "records"}${found.account ? " and the login account" : ""}`;
-    const message = `The person's details leave ${what}, and their history. The workspace's stored exports, copies from before, are deleted too. This cannot be undone.`;
+    const message = tr("The person's details leave {what}, and their history. The workspace's stored exports, copies from before, are deleted too. This cannot be undone.", { what });
     if (!(await confirmDialog({ title: tr("Erase {email}?", { email: found.email }), message, confirmLabel: tr("Erase"), danger: true })))
       return;
     setBusy("erase");
@@ -420,7 +420,7 @@ function WorkspaceExport() {
         <p className="muted">{tr("Every record with its rows, the files, the history and the settings, never a password or secret, in zip files you download here.")}</p>
         {making && (
           <p role="status">
-            {tr("Being made")}{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? ` (${latest.progress.done ?? 0} of ${latest.progress.total})` : ""}` : ""}…
+            {tr("Being made")}{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? tr(" ({value} of {total})", { value: latest.progress.done ?? 0, total: latest.progress.total }) : ""}` : ""}…
           </p>
         )}
         {latest?.status === "failed" && <Alert tone="error">{tr("The last export failed: {last_error}", { last_error: latest.last_error ?? "" })}</Alert>}
@@ -1501,7 +1501,7 @@ function RoleConflicts({ roles }: { roles: string[] }) {
   const add = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const ok = await attempt(() => api.put("/api/admin/role-conflicts", { role_a: a, role_b: b, reason }), `No one is given both ${a} and ${b} from now`);
+    const ok = await attempt(() => api.put("/api/admin/role-conflicts", { role_a: a, role_b: b, reason }), tr("No one is given both {a} and {b} from now", { a, b }));
     setBusy(false);
     if (ok) {
       setA("");
@@ -1713,7 +1713,7 @@ function ExplainAccess({ roles, entities }: { roles: string[]; entities: { name:
                 <li key={i}>
                   {isolate(r.role)}: {r.entity === "*" ? tr("every entity") : r.entity}
                   {r.if_owner && tr(", their own records")}
-                  {r.where && tr(", where {JSON}", { JSON: JSON.stringify(r.where) })}
+                  {r.where && tr(", where {value}", { value: JSON.stringify(r.where) })}
                 </li>
               ))}
             </ul>
@@ -1753,7 +1753,7 @@ function Packages() {
     });
     if (!ok) return;
     setBusy(p.name);
-    if (await attempt(() => api.post("/api/admin/packages", { packages: [p.name] }), `${p.label ?? p.name} installed`)) {
+    if (await attempt(() => api.post("/api/admin/packages", { packages: [p.name] }), tr("{value} installed", { value: p.label ?? p.name }))) {
       await Promise.all(["admin", "meta", "me", "reports"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
     }
     setBusy(null);
@@ -1820,7 +1820,7 @@ function Backfills() {
     const ok = await confirmDialog({ title: tr("Run {key} again?", { key }), message: tr("It runs from the start at the next upkeep, over the rows that still need it."), confirmLabel: tr("Run again") });
     if (!ok) return;
     setBusy(key);
-    if (await attempt(() => api.post(`/api/admin/backfills/${encodeURIComponent(b.package)}/${encodeURIComponent(b.name)}/rerun`, {}), `${key} runs again at the next upkeep`)) {
+    if (await attempt(() => api.post(`/api/admin/backfills/${encodeURIComponent(b.package)}/${encodeURIComponent(b.name)}/rerun`, {}), tr("{key} runs again at the next upkeep", { key }))) {
       await qc.invalidateQueries({ queryKey: ["admin", "backfills"] });
     }
     setBusy(null);
@@ -1961,7 +1961,7 @@ function Domains() {
     void refresh();
   };
   const primary = async (d: Domain) => {
-    if (await attempt(() => api.put(`/api/admin/domains/${encodeURIComponent(d.host)}/primary`), `${d.host} is now the main address`)) void refresh();
+    if (await attempt(() => api.put(`/api/admin/domains/${encodeURIComponent(d.host)}/primary`), tr("{host} is now the main address", { host: d.host }))) void refresh();
   };
   const remove = async (d: Domain) => {
     const ok = await confirmDialog({
@@ -2209,7 +2209,7 @@ function Webhooks() {
       <SecretDialog
         secret={secret?.secret ?? null}
         title={tr("Webhook signing secret")}
-        note={`This secret is shown only once. ${secret?.note ?? "Use it to verify the X-Ferrum-Signature header."}`}
+        note={tr("This secret is shown only once. {value}", { value: secret?.note ?? "Use it to verify the X-Ferrum-Signature header." })}
         onClose={() => setSecret(null)}
       />
     </section>
@@ -2846,8 +2846,8 @@ export function pluginUses(m: PluginManifest | null | undefined): string[] {
     n(m.subscriptions?.length, "subscription"),
     n(m.schedules?.length, "schedule"),
     n(m.entities?.length, "entity", "entities"),
-    publicCount ? `${publicCount} public` : null,
-    m.http_hosts?.length ? `calls ${m.http_hosts.join(", ")}` : null,
+    publicCount ? tr("{publicCount} public", { publicCount }) : null,
+    m.http_hosts?.length ? tr("calls {value}", { value: m.http_hosts.join(", ") }) : null,
   ].filter((x): x is string => !!x);
 }
 
@@ -2885,7 +2885,7 @@ function PluginAccess({ m }: { m: PluginManifest }) {
       )),
     ]);
   if (m.subscriptions?.length) rows.push(["Listens to", m.subscriptions.join(", ")]);
-  if (m.schedules?.length) rows.push(["Schedules", m.schedules.map((s) => `${s.name} every ${Math.round(s.every_seconds / 60)} min`).join("; ")]);
+  if (m.schedules?.length) rows.push(["Schedules", m.schedules.map((s) => tr("{name} every {n} min", { name: s.name, n: Math.round(s.every_seconds / 60) })).join("; ")]);
   rows.push(["Calls out to", m.http_hosts?.length ? m.http_hosts.join(", ") : "nothing (no network access)"]);
   return (
     <dl className="kv">
@@ -2909,7 +2909,7 @@ function Plugins() {
 
   const toggle = async (p: Plugin) => {
     setPending(p.id);
-    if (await attempt(() => api.put(`/api/admin/plugins/${p.id}/enabled`, { enabled: !p.enabled }), p.enabled ? `${p.name} disabled` : `${p.name} enabled`))
+    if (await attempt(() => api.put(`/api/admin/plugins/${p.id}/enabled`, { enabled: !p.enabled }), p.enabled ? tr("{name} disabled", { name: p.name }) : tr("{name} enabled", { name: p.name })))
       await refresh();
     setPending(null);
   };
@@ -3015,7 +3015,7 @@ export function parseManifest(text: string): { manifest?: Record<string, unknown
     if (typeof (v as { name?: unknown }).name !== "string" || !(v as { name: string }).name.trim()) return { error: "The manifest needs a name." };
     return { manifest: v as Record<string, unknown> };
   } catch (e) {
-    return { error: `Not valid JSON: ${(e as Error).message}` };
+    return { error: tr("Not valid JSON: {message}", { message: (e as Error).message }) };
   }
 }
 
@@ -3045,7 +3045,7 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!parsed.manifest) return setMessage(parsed.error ?? "Check the manifest.");
-    if (value?.id && parsed.manifest.name !== value.name) return setMessage(`A new version must keep the name ${value.name}.`);
+    if (value?.id && parsed.manifest.name !== value.name) return setMessage(tr("A new version must keep the name {name}.", { name: String(value.name) }));
     if (!file) return setMessage("Choose the plugin module (.wasm, or .wat text).");
     if (file.size > 8 * 1024 * 1024) return setMessage("Plugin modules are limited to 8 MB.");
     setBusy(true);
@@ -3155,7 +3155,7 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
         try {
           config[key] = JSON.parse(r.value);
         } catch {
-          return setMessage(`The value of ${key} is not valid JSON.`);
+          return setMessage(tr("The value of {key} is not valid JSON.", { key }));
         }
       } else config[key] = r.value;
     }

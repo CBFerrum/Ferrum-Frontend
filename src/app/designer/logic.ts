@@ -5,6 +5,7 @@
 import { evaluate } from "../../lib/expr";
 import { moveField, renameTab, tabsOf, type FormSection, type LayoutSection } from "../../lib/formLayout";
 import { SYSTEM_FIELD_LABELS } from "../../lib/meta";
+import { t as tr } from "@ferrum/client";
 
 /** A tab's label as the form shows it (`null` is the untitled first tab). */
 export const tabLabel = (tab: string | null) => tab ?? "Details";
@@ -177,12 +178,12 @@ export function conditionHint(src: string, fields: string[], entityLabel = "this
   const unknownFields = [...new Set([...code.matchAll(/(?<![\w.])doc\.([A-Za-z_]\w*)/g)].map((m) => m[1]).filter((f) => !known.has(f)))];
   if (unknownFields.length) {
     const list = unknownFields.map((f) => `doc.${f}`).join(", ");
-    return { tone: "warning", message: `${list} ${unknownFields.length === 1 ? "is not a field" : "are not fields"} of ${entityLabel}.` };
+    return { tone: "warning", message: (unknownFields.length === 1 ? tr("{list} is not a field of {entity}.", { list, entity: entityLabel }) : tr("{list} are not fields of {entity}.", { list, entity: entityLabel })) };
   }
   if (!MACRO.test(code)) {
     // Free names: not after a dot, not a function call, not a string prefix such as r'…'.
     const free = [...code.matchAll(/(?<![\w.])([A-Za-z_]\w*)(?![\w'"]|\()/g)].map((m) => m[1]).find((n) => !NAMES.has(n));
-    if (free) return { tone: "warning", message: `Unknown name “${free}”. A condition reads doc (this record), user, today and now.` };
+    if (free) return { tone: "warning", message: tr("Unknown name “{free}”. A condition reads doc (this record), user, today and now.", { free }) };
   }
   if (evaluate(src, { doc: {}, user: {} }) === undefined) {
     return {

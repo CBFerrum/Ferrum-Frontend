@@ -55,7 +55,7 @@ const clampWidth = (w: number) => Math.min(12, Math.max(1, Math.round(w) || 12))
 /** Columns of 12 the block takes on a wide screen: its own width, else its type's. */
 export const widthOf = (b: { type: BlockType; width?: number | null }) => clampWidth(b.width ?? BLOCK_KINDS[b.type].width);
 
-export const widthLabel = (w: number) => WIDTHS.find((x) => x.value === w)?.label ?? `${w} of 12 columns`;
+export const widthLabel = (w: number) => WIDTHS.find((x) => x.value === w)?.label ?? tr("{w} of 12 columns", { w });
 
 // Written out so Tailwind finds them. The grid answers to its container, not the window, so a space
 // looks the same in the editor's narrower canvas and on a module's home.
@@ -375,7 +375,7 @@ export function placeIssues(issues: Issue[], blocks: SpaceBlock[]): Issue[] {
     if (!m) return [i];
     const ids = m[2].split(",").map((s) => s.trim());
     const placed = blocks.flatMap((b, n) =>
-      refsOf(b).some((id) => ids.includes(id)) ? [{ path: `blocks[${n}]`, message: `${m[1]} not found: it was deleted, or it is not shared with you` }] : [],
+      refsOf(b).some((id) => ids.includes(id)) ? [{ path: `blocks[${n}]`, message: tr("{value} not found: it was deleted, or it is not shared with you", { value: m[1] }) }] : [],
     );
     return placed.length ? placed : [i];
   });

@@ -978,7 +978,7 @@ export interface CellOptions {
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-const fiscalYear = (year: number, startMonth: number) => (startMonth === 1 ? `FY ${year}` : `FY ${year}-${String((year + 1) % 100).padStart(2, "0")}`);
+const fiscalYear = (year: number, startMonth: number) => (startMonth === 1 ? tr("FY {year}", { year }) : tr("FY {year}-{value}", { year, value: String((year + 1) % 100).padStart(2, "0") }));
 
 /** A bucket start (`YYYY-MM-DD`) as a period: `Oct 2026`, `Q4 2026`, `Q3 FY 2026-27`, `Week of Oct 26, 2026`. */
 export function formatBucket(value: unknown, bucket: Bucket, fyStartMonth = 1, locale?: string): string {
@@ -990,7 +990,7 @@ export function formatBucket(value: unknown, bucket: Bucket, fyStartMonth = 1, l
     case "day":
       return formatDate(value, locale);
     case "week":
-      return `Week of ${formatDate(value, locale)}`;
+      return tr("Week of {value}", { value: formatDate(value, locale) });
     case "month":
       return new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(date);
     case "quarter":
@@ -1326,8 +1326,8 @@ export function chartIssues(type: ChartType, columns: ResultColumn[] | undefined
   if (!columns?.some((c) => c.role)) return errs;
   const dims = columns.filter((c) => c.role === "dimension").map((c) => c.name);
   const values = columns.filter((c) => c.role && VALUE_ROLES.has(c.role)).map((c) => c.name);
-  if (x && !dims.includes(x)) errs.push(`x: '${x}' is not a dimension of the query (one of: ${dims.join(", ")})`);
-  for (const v of y) if (!values.includes(v)) errs.push(`y: '${v}' is not a measure of the query (one of: ${values.join(", ")})`);
+  if (x && !dims.includes(x)) errs.push(tr("x: '{x}' is not a dimension of the query (one of: {dims})", { x, dims: dims.join(", ") }));
+  for (const v of y) if (!values.includes(v)) errs.push(tr("y: '{v}' is not a measure of the query (one of: {values})", { v, values: values.join(", ") }));
   const measures = y.length || columns.filter((c) => c.role === "measure").length;
   const dated = columns.some((c) => c.role === "dimension" && c.type === "date");
   if (type === "number" && (dims.length || measures !== 1)) errs.push("a number chart shows one measure without dimensions");

@@ -297,10 +297,10 @@ function HeaderRow({ headers, byName, sort, onSort, onSortTo, editor, setSizing,
         // Its live region is a <div>: inside <thead> it must live elsewhere.
         container: typeof document === "undefined" ? undefined : document.body,
         announcements: {
-          onDragStart: ({ active }) => `Picked up column ${label(active.id)}.`,
-          onDragOver: ({ active, over }) => (over ? `Column ${label(active.id)} is over ${label(over.id)}.` : `Column ${label(active.id)} is no longer over a column.`),
-          onDragEnd: ({ active, over }) => (over ? `Column ${label(active.id)} was dropped at ${label(over.id)}.` : `Column ${label(active.id)} was dropped.`),
-          onDragCancel: ({ active }) => `Moving column ${label(active.id)} was cancelled.`,
+          onDragStart: ({ active }) => t("Picked up column {value}.", { value: label(active.id) }),
+          onDragOver: ({ active, over }) => (over ? t("Column {value} is over {value2}.", { value: label(active.id), value2: label(over.id) }) : t("Column {value} is no longer over a column.", { value: label(active.id) })),
+          onDragEnd: ({ active, over }) => (over ? t("Column {value} was dropped at {value2}.", { value: label(active.id), value2: label(over.id) }) : t("Column {value} was dropped.", { value: label(active.id) })),
+          onDragCancel: ({ active }) => t("Moving column {value} was cancelled.", { value: label(active.id) }),
         },
       }}
     >

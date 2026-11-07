@@ -4,6 +4,7 @@
 
 import { isDecimalString } from "./format";
 import type { Field } from "./meta";
+import { t } from "@ferrum/client";
 
 /** Fields a person can fill from a file: not rows, files, or what the server works out. */
 export function importable(fields: Field[]): Field[] {
@@ -40,23 +41,23 @@ export function cellValue(f: Field, raw: string): { value: unknown } | { problem
   if (!v) return { value: null };
   switch (f.type) {
     case "int":
-      return /^-?\d+$/.test(v) ? { value: Number(v) } : { problem: `"${v}" is not a whole number` };
+      return /^-?\d+$/.test(v) ? { value: Number(v) } : { problem: t("\"{v}\" is not a whole number", { v }) };
     case "decimal":
     case "currency":
     case "percent": {
       const plain = v.replace(/,/g, "");
-      return isDecimalString(plain) ? { value: plain } : { problem: `"${v}" is not a number` };
+      return isDecimalString(plain) ? { value: plain } : { problem: t("\"{v}\" is not a number", { v }) };
     }
     case "check":
       if (TRUE.has(v.toLowerCase())) return { value: true };
-      return FALSE.has(v.toLowerCase()) ? { value: false } : { problem: `"${v}" is not yes or no` };
+      return FALSE.has(v.toLowerCase()) ? { value: false } : { problem: t("\"{v}\" is not yes or no", { v }) };
     case "date":
-      return /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) ? { value: v } : { problem: `"${v}" is not a date as YYYY-MM-DD` };
+      return /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) ? { value: v } : { problem: t("\"{v}\" is not a date as YYYY-MM-DD", { v }) };
     case "datetime":
-      return Number.isNaN(Date.parse(v)) ? { problem: `"${v}" is not a date and time` } : { value: new Date(v).toISOString() };
+      return Number.isNaN(Date.parse(v)) ? { problem: t("\"{v}\" is not a date and time", { v }) } : { value: new Date(v).toISOString() };
     case "select": {
       const match = f.options?.find((o) => o.toLowerCase() === v.toLowerCase());
-      return match ? { value: match } : { problem: `"${v}" is not one of ${(f.options ?? []).join(", ")}` };
+      return match ? { value: match } : { problem: t("\"{v}\" is not one of {value}", { v, value: (f.options ?? []).join(", ") }) };
     }
     default:
       return { value: v };
@@ -85,7 +86,7 @@ export function buildRecords(rows: string[][], mapping: (string | null)[], field
       if (f.type === "link" && raw.trim()) {
         const id = links[f.name]?.get(raw.trim().toLowerCase());
         if (id) doc[f.name] = id;
-        else wrong.push({ row, field: f.label, message: `no record called "${raw.trim()}"` });
+        else wrong.push({ row, field: f.label, message: t("no record called \"{raw}\"", { raw: raw.trim() }) });
         return;
       }
       const cell = cellValue(f, raw);

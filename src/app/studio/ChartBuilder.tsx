@@ -588,7 +588,7 @@ function ColorsSettings({ colors, labels, onChange, issues }: { colors: string[]
     >
       <div className="flex flex-wrap gap-2">
         {Array.from({ length: custom ? count : Math.min(count, 8) }, (_, i) => {
-          const label = labels[i] ?? `Series ${i + 1}`;
+          const label = labels[i] ?? tr("Series {value}", { value: i + 1 });
           return custom ? (
             <label key={i} className="flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-xs">
               <input

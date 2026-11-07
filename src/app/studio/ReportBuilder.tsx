@@ -502,7 +502,7 @@ function Editor({ record }: { record?: ReportRecord }) {
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {isolate(result.meta.row_count.toLocaleString())} {result.meta.row_count === 1 ? tr("row") : tr("rows")} {tr("· computed in {Math} ms", { Math: Math.round(result.meta.sql_ms) })}
+            {isolate(result.meta.row_count.toLocaleString())} {result.meta.row_count === 1 ? tr("row") : tr("rows")} {tr("· computed in {n} ms", { n: Math.round(result.meta.sql_ms) })}
           </p>
         </div>
       </div>
@@ -692,7 +692,7 @@ function Editor({ record }: { record?: ReportRecord }) {
         <SaveDialog
           key={dialog}
           mode={dialog}
-          initial={dialog === "copy" ? { ...metaOf(rec), label: rec ? `Copy of ${rec.label}`.slice(0, 140) : "", sharing: "private", roles: [] } : metaOf(rec, start.copyLabel)}
+          initial={dialog === "copy" ? { ...metaOf(rec), label: rec ? tr("Copy of {label}", { label: rec.label }).slice(0, 140) : "", sharing: "private", roles: [] } : metaOf(rec, start.copyLabel)}
           busy={save.isPending}
           issues={metaIssues}
           general={general}

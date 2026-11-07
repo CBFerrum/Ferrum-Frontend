@@ -261,11 +261,11 @@ function Home() {
 // ───────────────────────── entering a workspace ─────────────────────────
 
 const HEADINGS: Record<EnterRequest["need"], (name: string) => string> = {
-  continue: (name) => `Continue to ${name}`,
-  join: (name) => `Add ${name} to your account`,
-  sso: (name) => `Sign in to ${name}`,
-  two_factor: (name) => `${name} asks for two-factor sign-in`,
-  no_access: (name) => `No access to ${name}`,
+  continue: (name) => t("Continue to {name}", { name }),
+  join: (name) => t("Add {name} to your account", { name }),
+  sso: (name) => t("Sign in to {name}", { name }),
+  two_factor: (name) => t("{name} asks for two-factor sign-in", { name }),
+  no_access: (name) => t("No access to {name}", { name }),
 };
 
 function Enter({ request }: { request: EnterRequest }) {
