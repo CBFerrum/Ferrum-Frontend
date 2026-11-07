@@ -10,13 +10,14 @@ import { article, recordKind, search, takes, topics } from "../lib/help";
 import { humanize } from "../lib/format";
 import { useEntityMeta, useMetaIndex, type EntityMeta, type Field } from "../lib/meta";
 import { Badge, EmptyState, ErrorState, Icon, PageLoading } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 const KIND: Record<string, string> = {
-  document: "Document",
-  master: "Master record",
-  settings: "Settings",
-  ledger: "Ledger",
-  child: "Table rows",
+  get document() { return tr("Document"); },
+  get master() { return tr("Master record"); },
+  get settings() { return tr("Settings"); },
+  get ledger() { return tr("Ledger"); },
+  get child() { return tr("Table rows"); },
 };
 
 export function HelpPage() {
@@ -35,27 +36,27 @@ export function HelpPage() {
     <div className="help">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Help</h1>
-          <p className="muted">What each kind of record is for and how it works, in this workspace.</p>
+          <h1 className="page-title">{tr("Help")}</h1>
+          <p className="muted">{tr("What each kind of record is for and how it works, in this workspace.")}</p>
         </div>
       </div>
       <label className="help-search">
         <Icon name="search" />
-        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: invoice, leave, stock…" aria-label="Search help" autoFocus />
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={tr("Search: invoice, leave, stock…")} aria-label={tr("Search help")} autoFocus />
       </label>
       {!found.length ? (
-        <EmptyState title="Nothing matches" icon="search">
-          <p className="muted">Try another word, or fewer of them.</p>
+        <EmptyState title={tr("Nothing matches")} icon="search">
+          <p className="muted">{tr("Try another word, or fewer of them.")}</p>
         </EmptyState>
       ) : (
         [...byModule].map(([module, list]) => (
           <section key={module} className="help-module">
-            <h2>{module}</h2>
+            <h2>{isolate(module)}</h2>
             <ul>
               {list.map(({ entity }) => (
                 <li key={entity.name}>
-                  <Link to={`/help/${encodeURIComponent(entity.name)}`}>{entity.label_plural}</Link>
-                  {entity.description ? <span className="muted"> — {entity.description}</span> : null}
+                  <Link to={`/help/${encodeURIComponent(entity.name)}`}>{isolate(entity.label_plural)}</Link>
+                  {entity.description ? <span className="muted"> — {isolate(entity.description)}</span> : null}
                 </li>
               ))}
             </ul>
@@ -69,8 +70,8 @@ export function HelpPage() {
 /** What a field takes, in words; a link by the label of what it picks. */
 function kind(f: Field, meta: EntityMeta, labelOf: (name: string) => string | undefined): string {
   if (f.type === "link" && f.to) return recordKind(f.to, labelOf(f.to));
-  if (f.type === "table") return `rows of ${meta.children[f.name]?.label ?? humanize(f.of ?? f.name)}`;
-  if (f.type === "select" && f.options?.length) return `one of ${f.options.join(", ")}`;
+  if (f.type === "table") return tr("rows of {value}", { value: meta.children[f.name]?.label ?? humanize(f.of ?? f.name) });
+  if (f.type === "select" && f.options?.length) return tr("one of {value}", { value: f.options.join(", ") });
   return takes(f.type);
 }
 
@@ -79,7 +80,7 @@ export function HelpArticle() {
   const q = useEntityMeta(entity);
   const index = useMetaIndex();
   const labelOf = (name: string) => index.data?.entities.find((e) => e.name === name)?.label;
-  if (q.error) return <ErrorState error={q.error} title="This help is not for you" />;
+  if (q.error) return <ErrorState error={q.error} title={tr("This help is not for you")} />;
   const meta = q.data;
   if (!meta) return <PageLoading />;
   const fields = meta.fields.filter((f) => !f.hidden);
@@ -89,49 +90,49 @@ export function HelpArticle() {
     <article className="help-article">
       <p>
         <Link to="/help">
-          <Icon name="left" size={14} /> Help
+          <Icon name="left" size={14} /> {tr("Help")}
         </Link>
       </p>
       <div className="page-head">
         <div>
-          <h1 className="page-title">{meta.label_plural}</h1>
+          <h1 className="page-title">{isolate(meta.label_plural)}</h1>
           <p>
-            <Badge>{KIND[meta.kind] ?? humanize(meta.kind)}</Badge> {meta.module ? <span className="muted">{humanize(meta.module)}</span> : null}
+            <Badge>{KIND[meta.kind] ?? humanize(meta.kind)}</Badge> {meta.module ? <span className="muted">{isolate(humanize(meta.module))}</span> : null}
           </p>
         </div>
-        {meta.kind !== "child" ? <Link className="btn" to={`/e/${encodeURIComponent(meta.name)}`}>Open {meta.label_plural}</Link> : null}
+        {meta.kind !== "child" ? <Link className="btn" to={`/e/${encodeURIComponent(meta.name)}`}>{tr("Open {label_plural}", { label_plural: meta.label_plural })}</Link> : null}
       </div>
-      {meta.description ? <p className="help-lead">{meta.description}</p> : null}
-      <h2>How it works</h2>
+      {meta.description ? <p className="help-lead">{isolate(meta.description)}</p> : null}
+      <h2>{tr("How it works")}</h2>
       <ul>
         {meta.submittable ? (
-          <li>{article(meta.label) === "an" ? "An" : "A"} {meta.label.toLowerCase()} is saved as a draft and changed freely until it is submitted. Submitting makes it count; a submitted one is cancelled (and amended), not edited.</li>
+          <li>{article(meta.label) === "an" ? tr("An") : "A"} {tr("{value} is saved as a draft and changed freely until it is submitted. Submitting makes it count; a submitted one is cancelled (and amended), not edited.", { value: meta.label.toLowerCase() })}</li>
         ) : (
-          <li>{article(meta.label) === "an" ? "An" : "A"} {meta.label.toLowerCase()} counts as soon as it is saved, and can be changed later.</li>
+          <li>{article(meta.label) === "an" ? tr("An") : "A"} {tr("{value} counts as soon as it is saved, and can be changed later.", { value: meta.label.toLowerCase() })}</li>
         )}
-        {meta.numbering ? <li>Each gets its number when it is {meta.numbering.on === "submit" ? "submitted" : "saved"}: {meta.numbering.template}.</li> : null}
-        {meta.company_scoped ? <li>It belongs to one company; people limited to some companies see only theirs.</li> : null}
-        {meta.workflow ? <li>It goes through {meta.workflow.states.map((s) => s.name).join(", then ")}, as the people allowed to move it decide.</li> : null}
+        {meta.numbering ? <li>{tr("Each gets its number when it is")} {meta.numbering.on === "submit" ? tr("submitted") : tr("saved")}: {isolate(meta.numbering.template)}.</li> : null}
+        {meta.company_scoped ? <li>{tr("It belongs to one company; people limited to some companies see only theirs.")}</li> : null}
+        {meta.workflow ? <li>{tr("It goes through {value}, as the people allowed to move it decide.", { value: meta.workflow.states.map((s) => s.name).join(", then ") })}</li> : null}
       </ul>
       {fields.length ? (
         <>
-          <h2>Fields</h2>
+          <h2>{tr("Fields")}</h2>
           <table className="table help-fields">
             <thead>
               <tr>
-                <th scope="col">Field</th>
-                <th scope="col">Takes</th>
-                <th scope="col">What it means</th>
+                <th scope="col">{tr("Field")}</th>
+                <th scope="col">{tr("Takes")}</th>
+                <th scope="col">{tr("What it means")}</th>
               </tr>
             </thead>
             <tbody>
               {fields.map((f) => (
                 <tr key={f.name}>
                   <td>
-                    {f.label}
-                    {f.required ? <span className="muted"> (required)</span> : f.required_if ? <span className="muted"> (sometimes required)</span> : null}
+                    {isolate(f.label)}
+                    {f.required ? <span className="muted"> {tr("(required)")}</span> : f.required_if ? <span className="muted"> {tr("(sometimes required)")}</span> : null}
                   </td>
-                  <td>{kind(f, meta, labelOf)}{f.read_only ? ", filled in for you" : ""}</td>
+                  <td>{isolate(kind(f, meta, labelOf))}{f.read_only ? tr(", filled in for you") : ""}</td>
                   <td>{f.description ?? ""}</td>
                 </tr>
               ))}
@@ -141,13 +142,13 @@ export function HelpArticle() {
       ) : null}
       {actions.length ? (
         <>
-          <h2>What you can do with one</h2>
+          <h2>{tr("What you can do with one")}</h2>
           <ul>
             {actions.map((a) => (
               <li key={a.name}>
-                <strong>{a.label}</strong>
-                {a.docstatus.length === 1 ? <span className="muted"> ({a.docstatus[0] === 0 ? "on a draft" : a.docstatus[0] === 1 ? "once submitted" : "once cancelled"})</span> : null}
-                {a.confirm ? <span className="muted"> — {a.confirm}</span> : null}
+                <strong>{isolate(a.label)}</strong>
+                {a.docstatus.length === 1 ? <span className="muted"> ({a.docstatus[0] === 0 ? tr("on a draft") : a.docstatus[0] === 1 ? tr("once submitted") : tr("once cancelled")})</span> : null}
+                {a.confirm ? <span className="muted"> — {isolate(a.confirm)}</span> : null}
               </li>
             ))}
           </ul>
@@ -155,21 +156,21 @@ export function HelpArticle() {
       ) : null}
       {rules.length ? (
         <>
-          <h2>Rules it keeps</h2>
+          <h2>{tr("Rules it keeps")}</h2>
           <ul>
             {rules.map((r) => (
-              <li key={r.name}>{r.message}</li>
+              <li key={r.name}>{isolate(r.message)}</li>
             ))}
           </ul>
         </>
       ) : null}
       {Object.values(meta.children).length ? (
         <>
-          <h2>Its tables</h2>
+          <h2>{tr("Its tables")}</h2>
           <ul>
             {Object.values(meta.children).map((c) => (
               <li key={c.entity}>
-                <strong>{c.label}</strong>: {c.fields.filter((f) => !f.hidden).map((f) => f.label).join(", ")}
+                <strong>{isolate(c.label)}</strong>: {isolate(c.fields.filter((f) => !f.hidden).map((f) => f.label).join(", "))}
               </li>
             ))}
           </ul>

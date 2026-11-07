@@ -9,6 +9,7 @@ import { api, errorMessage } from "@/lib/api";
 import { EmptyState, Spinner } from "@/ui/kit";
 import { MyWork, type WorkProvider } from "./MyWork";
 import "./shell.css";
+import { t, isolate } from "@ferrum/client";
 
 interface LauncherEntry {
   id: string;
@@ -47,39 +48,39 @@ export function tileColour(e: Pick<LauncherEntry, "color" | "title">): string {
 export function ShellHome() {
   const info = useQuery({ queryKey: ["shell"], queryFn: ({ signal }) => api.get<ShellInfo>("/api/shell", undefined, signal) });
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? t("Good morning") : hour < 18 ? t("Good afternoon") : t("Good evening");
   const first = info.data?.person.name.split(" ")[0];
   return (
     <div className="shell-home">
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            {greeting}
+            {isolate(greeting)}
             {first ? `, ${first}` : ""}
           </h1>
-          <p className="page-sub">{info.data?.workspace.name}</p>
+          <p className="page-sub">{isolate(info.data?.workspace.name ?? "")}</p>
         </div>
       </div>
       <FirstRun />
       {info.error ? (
-        <EmptyState title="Your apps cannot be shown">
-          <p className="muted">{errorMessage(info.error)}</p>
+        <EmptyState title={t("Your apps cannot be shown")}>
+          <p className="muted">{isolate(errorMessage(info.error))}</p>
         </EmptyState>
       ) : !info.data ? (
-        <Spinner label="Loading your apps" />
+        <Spinner label={t("Loading your apps")} />
       ) : info.data.apps.length ? (
-        <nav aria-label="Apps" className="shell-apps">
+        <nav aria-label={t("Apps")} className="shell-apps">
           {info.data.apps.map((a) => (
             <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={a.description ?? undefined}>
               <AppIcon name={a.icon} color={tileColour(a)} title={a.title} tile size={30} />
-              <span className="shell-app-title">{a.title}</span>
-              {a.classic && <span className="faint shell-app-note">classic</span>}
+              <span className="shell-app-title">{isolate(a.title)}</span>
+              {a.classic && <span className="faint shell-app-note">{t("classic")}</span>}
             </a>
           ))}
         </nav>
       ) : (
-        <EmptyState title="No apps for you yet">
-          <p className="muted">{info.data.person.admin ? <a href="/store/">Install apps</a> : "Ask an administrator to give you access to an app."}</p>
+        <EmptyState title={t("No apps for you yet")}>
+          <p className="muted">{info.data.person.admin ? <a href="/store/">{t("Install apps")}</a> : t("Ask an administrator to give you access to an app.")}</p>
         </EmptyState>
       )}
       {info.data && <MyWork providers={info.data.work ?? []} apps={info.data.apps} />}

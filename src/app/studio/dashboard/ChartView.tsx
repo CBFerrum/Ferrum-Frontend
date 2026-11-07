@@ -29,6 +29,7 @@ import {
 import { compactTick, describeChart, formatShare, shortLabel, toHeat, toScatter, toSingle, toSlices, type Slice } from "./charts";
 import type { DrillPoint } from "./drill";
 import { useReducedMotion } from "./ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 export interface ChartViewProps {
   type: ChartType;
@@ -63,7 +64,7 @@ export function ChartView({ type, data, x, y, colors, title, onPoint, className 
   const o = useChartOptions(x, y, colors);
   const reduced = useReducedMotion();
   const body = (() => {
-    if (!data.rows.length && type !== "number") return <Center>No data for these filters and this period.</Center>;
+    if (!data.rows.length && type !== "number") return <Center>{tr("No data for these filters and this period.")}</Center>;
     switch (type) {
       case "pie":
       case "donut":
@@ -81,9 +82,9 @@ export function ChartView({ type, data, x, y, colors, title, onPoint, className 
         return (
           <div className="flex h-full flex-col items-center justify-center gap-1 @container">
             <span className="text-3xl font-semibold tabular-nums @xs:text-5xl" title={s.column ? columnLabel(s.column, o) : undefined}>
-              {s.text}
+              {isolate(s.text)}
             </span>
-            {s.column && <span className="text-xs text-muted-foreground">{columnLabel(s.column, o)}</span>}
+            {s.column && <span className="text-xs text-muted-foreground">{isolate(columnLabel(s.column, o))}</span>}
           </div>
         );
       }
@@ -103,13 +104,13 @@ function SeriesTip({ active, payload, model }: { active?: boolean; payload?: rea
   const keys = new Set(payload.map((p) => String(p.dataKey)));
   return (
     <div className="grid min-w-32 gap-1.5 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
-      <div className="font-medium">{row.label}</div>
+      <div className="font-medium">{isolate(row.label)}</div>
       {model.series
         .filter((s) => keys.has(s.key))
         .map((s) => (
           <div key={s.key} className="flex items-center gap-2">
             <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
-            <span className="text-muted-foreground">{s.label}</span>
+            <span className="text-muted-foreground">{isolate(s.label)}</span>
             <span className="ms-auto ps-3 font-mono font-medium tabular-nums text-foreground">{row.fmt[s.key] || "—"}</span>
           </div>
         ))}
@@ -119,7 +120,7 @@ function SeriesTip({ active, payload, model }: { active?: boolean; payload?: rea
 
 function CartesianChart({ type, data, o, title, reduced, onPoint }: { type: ChartType; data: ResultLike; o: ChartOptions; title: string; reduced: boolean; onPoint?: ChartViewProps["onPoint"] }) {
   const model = useMemo(() => toChart(data, o), [data, o]);
-  if (!model.series.length) return <Center>Nothing to plot: the result has no number columns.</Center>;
+  if (!model.series.length) return <Center>{tr("Nothing to plot: the result has no number columns.")}</Center>;
   const drillable = !!onPoint && model.x?.role === "dimension" && !!model.x.field;
   const pointsAt = (row: ChartRow | undefined, dims?: Record<string, unknown>): DrillPoint[] | null => {
     if (!row || !model.x) return null;
@@ -196,7 +197,7 @@ function CartesianChart({ type, data, o, title, reduced, onPoint }: { type: Char
       <ChartContainer config={model.config} className="aspect-auto min-h-0 w-full flex-1" role="img" aria-label={describeChart(type, model, title, o)}>
         {chart}
       </ChartContainer>
-      {model.truncated && <p className="pt-1 text-center text-xs text-muted-foreground">Showing the largest series only.</p>}
+      {model.truncated && <p className="pt-1 text-center text-xs text-muted-foreground">{tr("Showing the largest series only.")}</p>}
     </div>
   );
 }
@@ -211,16 +212,16 @@ function SliceLegend({ slices, onPick }: { slices: Slice[]; onPick?: (s: Slice) 
           <>
             <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
             <span className="min-w-0 flex-1 truncate text-start" title={s.label}>
-              {s.label}
+              {isolate(s.label)}
             </span>
-            <span className="font-mono text-xs tabular-nums">{s.text}</span>
-            <span className="w-12 text-end text-xs text-muted-foreground tabular-nums">{formatShare(s.share)}</span>
+            <span className="font-mono text-xs tabular-nums">{isolate(s.text)}</span>
+            <span className="w-12 text-end text-xs text-muted-foreground tabular-nums">{isolate(formatShare(s.share))}</span>
           </>
         );
         return (
           <li key={s.key}>
             {onPick && s.row ? (
-              <button type="button" className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => onPick(s)} title={`View the records for ${s.label}`}>
+              <button type="button" className="flex w-full items-center gap-2 rounded px-1 py-0.5 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => onPick(s)} title={tr("View the records for {label}", { label: s.label })}>
                 {inner}
               </button>
             ) : (
@@ -241,7 +242,7 @@ function useSlices(data: ResultLike, o: ChartOptions, kind: "pie" | "funnel") {
 
 function SliceChart({ data, o, donut, title, reduced, onPoint }: { data: ResultLike; o: ChartOptions; donut: boolean; title: string; reduced: boolean; onPoint?: ChartViewProps["onPoint"] }) {
   const m = useSlices(data, o, "pie");
-  if (!m.slices.length) return <Center>No positive values to show.</Center>;
+  if (!m.slices.length) return <Center>{tr("No positive values to show.")}</Center>;
   const config = Object.fromEntries(m.slices.map((s) => [s.key, { label: s.label, color: s.color }]));
   const pick = onPoint
     ? (s: Slice) => {
@@ -259,9 +260,9 @@ function SliceChart({ data, o, donut, title, reduced, onPoint }: { data: ResultL
                 const s = p.active ? (p.payload?.[0]?.payload as Slice | undefined) : undefined;
                 return s ? (
                   <div className="rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                    <div className="font-medium">{s.label}</div>
+                    <div className="font-medium">{isolate(s.label)}</div>
                     <div className="font-mono tabular-nums">
-                      {s.text} · {formatShare(s.share)}
+                      {isolate(s.text)} · {isolate(formatShare(s.share))}
                     </div>
                   </div>
                 ) : null;
@@ -277,8 +278,8 @@ function SliceChart({ data, o, donut, title, reduced, onPoint }: { data: ResultL
         {donut && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-center" aria-hidden="true">
             <div>
-              <div className="text-xs text-muted-foreground">Total</div>
-              <div className="text-sm font-semibold tabular-nums @xs:text-base">{m.total}</div>
+              <div className="text-xs text-muted-foreground">{tr("Total")}</div>
+              <div className="text-sm font-semibold tabular-nums @xs:text-base">{isolate(m.total)}</div>
             </div>
           </div>
         )}
@@ -292,7 +293,7 @@ function SliceChart({ data, o, donut, title, reduced, onPoint }: { data: ResultL
 
 function PercentageChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOptions; title: string; onPoint?: ChartViewProps["onPoint"] }) {
   const m = useSlices(data, o, "pie");
-  if (!m.slices.length) return <Center>No positive values to show.</Center>;
+  if (!m.slices.length) return <Center>{tr("No positive values to show.")}</Center>;
   const pick = onPoint
     ? (s: Slice) => {
         const p = rowPoints(data.columns, s.row);
@@ -313,11 +314,11 @@ function PercentageChart({ data, o, title, onPoint }: { data: ResultLike; o: Cha
 
 function FunnelChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOptions; title: string; onPoint?: ChartViewProps["onPoint"] }) {
   const m = useSlices(data, o, "funnel");
-  if (!m.slices.length) return <Center>Nothing to plot.</Center>;
+  if (!m.slices.length) return <Center>{tr("Nothing to plot.")}</Center>;
   const max = Math.max(...m.slices.map((s) => s.value), 0);
   const first = m.slices[0]?.value ?? 0;
   return (
-    <ol className="flex h-full flex-col justify-center gap-1.5 overflow-auto p-1" aria-label={`${title}: funnel`}>
+    <ol className="flex h-full flex-col justify-center gap-1.5 overflow-auto p-1" aria-label={tr("{title}: funnel", { title })}>
       {m.slices.map((s, i) => {
         const ofFirst = first > 0 ? (s.value / first) * 100 : 0;
         const p = onPoint ? rowPoints(data.columns, s.row) : null;
@@ -329,18 +330,18 @@ function FunnelChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOp
         return (
           <li key={s.key} className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-2 text-sm @md:grid-cols-[minmax(0,10rem)_1fr_auto]">
             <span className="truncate" title={s.label}>
-              {s.label}
+              {isolate(s.label)}
             </span>
             {p ? (
-              <button type="button" className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => onPoint?.(p)} aria-label={`View the records for ${s.label}`}>
+              <button type="button" className="rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" onClick={() => onPoint?.(p)} aria-label={tr("View the records for {label}", { label: s.label })}>
                 {bar}
               </button>
             ) : (
               bar
             )}
             <span className="text-end font-mono text-xs tabular-nums">
-              {s.text}
-              {i > 0 && <span className="ms-1.5 text-muted-foreground">{formatShare(ofFirst)}</span>}
+              {isolate(s.text)}
+              {i > 0 && <span className="ms-1.5 text-muted-foreground">{isolate(formatShare(ofFirst))}</span>}
             </span>
           </li>
         );
@@ -356,7 +357,7 @@ const WEEKDAYS = ["Mon", "", "Wed", "", "Fri", "", ""];
 
 function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOptions; title: string; onPoint?: ChartViewProps["onPoint"] }) {
   const h = useMemo(() => toHeat(data, o), [data, o]);
-  if (!h.cells.length || !h.dim || !h.column) return <Center>A heatmap needs a date dimension with values.</Center>;
+  if (!h.cells.length || !h.dim || !h.column) return <Center>{tr("A heatmap needs a date dimension with values.")}</Center>;
   const base = chartColor(0, o.colors);
   const fill = (level: number) => (level === 0 ? "var(--muted)" : `color-mix(in oklab, ${base} ${LEVEL_MIX[level]}%, var(--muted))`);
   const click = onPoint
@@ -368,7 +369,7 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
   const size = 12;
   const step = size + 3;
   const cellLabel = (date: string, text: string) => `${h.dim?.bucket ? formatBucket(date, h.dim.bucket, o.fyStartMonth) : formatCell(h.dim!, date)}: ${text}`;
-  const total = `${title}: ${columnLabel(h.column, o)} per ${h.dim.bucket ?? "day"}, highest ${h.cells.reduce((a, c) => (c.value > a.value ? c : a), h.cells[0]).text}.`;
+  const total = tr("{title}: {value} per {value2}, highest {text}.", { title, value: columnLabel(h.column, o), value2: h.dim.bucket ?? "day", text: h.cells.reduce((a, c) => (c.value > a.value ? c : a), h.cells[0]).text });
   if (!h.calendar) {
     const cells = h.weeks[0] ?? [];
     return (
@@ -378,7 +379,7 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
             c ? (
               <g key={c.date} className={click && c.row ? "cursor-pointer" : undefined} onClick={click ? () => click(c.row) : undefined}>
                 <rect x={i * step} y={0} width={size} height={size} rx={2} style={{ fill: fill(c.level) }}>
-                  <title>{cellLabel(c.date, c.text)}</title>
+                  <title>{isolate(cellLabel(c.date, c.text))}</title>
                 </rect>
               </g>
             ) : null,
@@ -401,13 +402,13 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
       <svg viewBox={`0 0 ${width} ${14 + 7 * step}`} className="h-auto max-h-full w-full min-w-64" role="img" aria-label={total}>
         {months.map((m) => (
           <text key={`${m.x}-${m.label}`} x={m.x} y={10} className="fill-muted-foreground" fontSize={9}>
-            {m.label}
+            {isolate(m.label)}
           </text>
         ))}
         {WEEKDAYS.map((d, i) =>
           d ? (
             <text key={d} x={0} y={14 + i * step + size - 2} className="fill-muted-foreground" fontSize={9}>
-              {d}
+              {isolate(d)}
             </text>
           ) : null,
         )}
@@ -425,7 +426,7 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
                 className={click && c.row ? "cursor-pointer" : undefined}
                 onClick={click && c.row ? () => click(c.row) : undefined}
               >
-                <title>{cellLabel(c.date, c.text)}</title>
+                <title>{isolate(cellLabel(c.date, c.text))}</title>
               </rect>
             ) : null,
           ),
@@ -439,8 +440,8 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
 
 function ScatterView({ data, o, title, reduced, onPoint }: { data: ResultLike; o: ChartOptions; title: string; reduced: boolean; onPoint?: ChartViewProps["onPoint"] }) {
   const s = useMemo(() => toScatter(data, o), [data, o]);
-  if (!s.x || !s.y) return <Center>A scatter chart needs two measures: one for each axis.</Center>;
-  if (!s.points.length) return <Center>No rows have both values.</Center>;
+  if (!s.x || !s.y) return <Center>{tr("A scatter chart needs two measures: one for each axis.")}</Center>;
+  if (!s.points.length) return <Center>{tr("No rows have both values.")}</Center>;
   const color = chartColor(0, o.colors);
   const config = { s0: { label: columnLabel(s.y, o), color } };
   const pick = onPoint
@@ -450,7 +451,7 @@ function ScatterView({ data, o, title, reduced, onPoint }: { data: ResultLike; o
       }
     : undefined;
   return (
-    <ChartContainer config={config} className="aspect-auto h-full w-full" role="img" aria-label={`${title}: ${columnLabel(s.y, o)} against ${columnLabel(s.x, o)} for ${s.points.length} points.`}>
+    <ChartContainer config={config} className="aspect-auto h-full w-full" role="img" aria-label={tr("{title}: {value} against {value2} for {length} points.", { title, value: columnLabel(s.y, o), value2: columnLabel(s.x, o), length: s.points.length })}>
       <ScatterChart margin={{ top: 8, right: 12, bottom: 4, left: 0 }} accessibilityLayer>
         <CartesianGrid />
         <XAxis type="number" dataKey="x" name={columnLabel(s.x, o)} tickLine={false} axisLine={false} tickFormatter={(v) => compactTick(v, o.locale)} />
@@ -461,12 +462,12 @@ function ScatterView({ data, o, title, reduced, onPoint }: { data: ResultLike; o
             const pt = p.active ? (p.payload?.[0]?.payload as (typeof s.points)[number] | undefined) : undefined;
             return pt ? (
               <div className="grid gap-1 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                {pt.label && <div className="font-medium">{pt.label}</div>}
+                {pt.label && <div className="font-medium">{isolate(pt.label)}</div>}
                 <div>
-                  <span className="text-muted-foreground">{columnLabel(s.x!, o)}</span> <span className="font-mono tabular-nums">{pt.xText}</span>
+                  <span className="text-muted-foreground">{isolate(columnLabel(s.x!, o))}</span> <span className="font-mono tabular-nums">{isolate(pt.xText)}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">{columnLabel(s.y!, o)}</span> <span className="font-mono tabular-nums">{pt.yText}</span>
+                  <span className="text-muted-foreground">{isolate(columnLabel(s.y!, o))}</span> <span className="font-mono tabular-nums">{isolate(pt.yText)}</span>
                 </div>
               </div>
             ) : null;
@@ -494,11 +495,11 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
           <TableRow>
             {columns.map((c) => (
               <TableHead key={c.name} className={isNumericColumn(c) ? "text-end" : undefined}>
-                {columnLabel(c, o)}
+                {isolate(columnLabel(c, o))}
               </TableHead>
             ))}
             {onRow && <TableHead className="w-0">
-              <span className="sr-only">Records</span>
+              <span className="sr-only">{tr("Records")}</span>
             </TableHead>}
           </TableRow>
         </TableHeader>
@@ -509,14 +510,14 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
               <TableRow key={i}>
                 {columns.map((c) => (
                   <TableCell key={c.name} className={isNumericColumn(c) ? "text-end font-mono tabular-nums" : "max-w-64 truncate"}>
-                    {formatCell(c, r[c.name], r, o)}
+                    {isolate(formatCell(c, r[c.name], r, o))}
                   </TableCell>
                 ))}
                 {onRow && (
                   <TableCell className="py-0">
                     {p && (
                       <Button variant="ghost" size="xs" onClick={() => onRow(p)}>
-                        Records
+                        {tr("Records")}
                       </Button>
                     )}
                   </TableCell>
@@ -530,7 +531,7 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
             <TableRow>
               {totals.map((t, i) => (
                 <TableCell key={columns[i].name} className={isNumericColumn(columns[i]) ? "text-end font-mono tabular-nums" : undefined}>
-                  {t}
+                  {isolate(t)}
                 </TableCell>
               ))}
               {onRow && <TableCell />}
@@ -538,7 +539,7 @@ export function ResultTable({ data, onRow, max = 200, className }: { data: Resul
           </TableFooter>
         )}
       </Table>
-      {data.rows.length > rows.length && <p className="p-2 text-center text-xs text-muted-foreground">Showing the first {rows.length} of {data.rows.length} rows.</p>}
+      {data.rows.length > rows.length && <p className="p-2 text-center text-xs text-muted-foreground">{tr("Showing the first {length} of {length2} rows.", { length: rows.length, length2: data.rows.length })}</p>}
     </div>
   );
 }

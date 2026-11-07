@@ -3,6 +3,7 @@ import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import type { ActionDef, ActionParam, Doc } from "../lib/meta";
 import { Alert, Button, Dialog, Field } from "../ui/kit";
 import { LinkInput } from "./widgets";
+import { t, isolate } from "@ferrum/client";
 
 function initial(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -72,10 +73,10 @@ export function ActionDialog({
       case "select":
         return (
           <select id={id} className="select" value={value} onChange={(e) => set(e.target.value)} required={p.required}>
-            <option value="">{p.required ? "Choose…" : "—"}</option>
+            <option value="">{p.required ? t("Choose…") : "—"}</option>
             {(p.options ?? []).map((o) => (
               <option key={o} value={o}>
-                {o}
+                {isolate(o)}
               </option>
             ))}
           </select>
@@ -94,17 +95,17 @@ export function ActionDialog({
   return (
     <Dialog open onClose={onClose} title={action.label}>
       <form className="stack" onSubmit={submit}>
-        {action.confirm && <p className="muted">{action.confirm}</p>}
-        {error && <Alert tone="error">{error}</Alert>}
+        {action.confirm && <p className="muted">{isolate(action.confirm)}</p>}
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
         {params.map((p) => (
           <Field key={p.name} label={p.label} htmlFor={`action-${p.name}`} required={p.required} error={fieldError(p.name)} hint={p.description ?? undefined}>
             {control(p)}
           </Field>
         ))}
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            {action.label}
+            {isolate(action.label)}
           </Button>
         </div>
       </form>

@@ -15,6 +15,7 @@ import { removeSection, setSectionTab, tabsOf, updateSection, type LayoutProblem
 import type { EntityMeta } from "../../lib/meta";
 import { TabNameDialog } from "./Canvas";
 import { conditionHint, plural, sectionTitle, tabLabel, type Hint, type SaveProblem } from "./logic";
+import { t as tr, isolate } from "@ferrum/client";
 
 const DETAILS = "\u0000details";
 const NEW_TAB = "\u0000new";
@@ -54,8 +55,8 @@ export function SectionInspector({
   if (!s) {
     return (
       <div className={cn(framed && "rounded-lg border bg-card p-4", "text-sm text-muted-foreground")}>
-        {framed && <h2 className="mb-2 text-sm font-semibold text-foreground">Section settings</h2>}
-        Select a section to change its label, columns, tab and condition.
+        {framed && <h2 className="mb-2 text-sm font-semibold text-foreground">{tr("Section settings")}</h2>}
+        {tr("Select a section to change its label, columns, tab and condition.")}
       </div>
     );
   }
@@ -74,25 +75,25 @@ export function SectionInspector({
     <div className={cn("flex flex-col gap-5", framed && "rounded-lg border bg-card p-4")}>
       {framed && (
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold">Section settings</h2>
-          <p className="truncate text-sm text-muted-foreground">{sectionTitle(s)}</p>
+          <h2 className="text-sm font-semibold">{tr("Section settings")}</h2>
+          <p className="truncate text-sm text-muted-foreground">{isolate(sectionTitle(s))}</p>
         </div>
       )}
       {mine.length > 0 && (
         <ul className="list-disc rounded-md border border-destructive bg-destructive-soft px-6 py-2 text-sm text-destructive">
           {mine.map((p, i) => (
-            <li key={i}>{p.message}</li>
+            <li key={i}>{isolate(p.message)}</li>
           ))}
         </ul>
       )}
 
       <div className="grid gap-2">
-        <Label htmlFor="fd-insp-label">Label</Label>
-        <Input id="fd-insp-label" value={s.label ?? ""} placeholder="No title" onChange={(e) => set({ label: e.target.value || null }, `label:${s.key}`)} />
+        <Label htmlFor="fd-insp-label">{tr("Label")}</Label>
+        <Input id="fd-insp-label" value={s.label ?? ""} placeholder={tr("No title")} onChange={(e) => set({ label: e.target.value || null }, `label:${s.key}`)} />
       </div>
 
       <div className="grid gap-2">
-        <Label id="fd-insp-cols-label">Columns</Label>
+        <Label id="fd-insp-cols-label">{tr("Columns")}</Label>
         <ToggleGroup
           type="single"
           variant="outline"
@@ -107,14 +108,14 @@ export function SectionInspector({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <p className="text-xs text-muted-foreground">Phones always show one column.</p>
+        <p className="text-xs text-muted-foreground">{tr("Phones always show one column.")}</p>
       </div>
 
       <div className="flex items-start justify-between gap-3">
         <div className="grid gap-1">
-          <Label htmlFor="fd-insp-collapsible">Collapsible</Label>
+          <Label htmlFor="fd-insp-collapsible">{tr("Collapsible")}</Label>
           <p id="fd-insp-collapsible-hint" className="text-xs text-muted-foreground">
-            Starts closed; opens by itself when one of its fields has an error.
+            {tr("Starts closed; opens by itself when one of its fields has an error.")}
           </p>
         </div>
         <Switch
@@ -127,7 +128,7 @@ export function SectionInspector({
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="fd-insp-tab">Tab</Label>
+        <Label htmlFor="fd-insp-tab">{tr("Tab")}</Label>
         <Select
           value={tabValue(s.tab || null)}
           onValueChange={(v) => (v === NEW_TAB ? setNewTab(true) : moveToTab(v === DETAILS ? null : v.slice(4)))}
@@ -136,26 +137,26 @@ export function SectionInspector({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={DETAILS}>{tabLabel(null)}</SelectItem>
+            <SelectItem value={DETAILS}>{isolate(tabLabel(null))}</SelectItem>
             {tabs.map((t) => (
               <SelectItem key={t} value={tabValue(t)}>
-                {t}
+                {isolate(t)}
               </SelectItem>
             ))}
             <SelectSeparator />
-            <SelectItem value={NEW_TAB}>New tab…</SelectItem>
+            <SelectItem value={NEW_TAB}>{tr("New tab…")}</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Moving a section to another tab puts it at the end of that tab.</p>
+        <p className="text-xs text-muted-foreground">{tr("Moving a section to another tab puts it at the end of that tab.")}</p>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="fd-insp-cond">Show only if</Label>
+        <Label htmlFor="fd-insp-cond">{tr("Show only if")}</Label>
         <Textarea
           id="fd-insp-cond"
           className="min-h-20 font-mono text-sm"
           value={s.visible_if ?? ""}
-          placeholder="doc.status == 'Open'"
+          placeholder={tr("doc.status == 'Open'")}
           spellCheck={false}
           autoCapitalize="none"
           autoCorrect="off"
@@ -166,19 +167,19 @@ export function SectionInspector({
         <div id="fd-insp-cond-help" aria-live="polite" className="text-xs">
           {serverError ? (
             <>
-              <p className="font-medium text-destructive">The server rejected this condition:</p>
+              <p className="font-medium text-destructive">{tr("The server rejected this condition:")}</p>
               <pre className="mt-1 max-h-48 overflow-auto rounded-md bg-destructive-soft p-2 font-mono text-[11px] whitespace-pre-wrap text-destructive">
-                {serverError}
+                {isolate(serverError)}
               </pre>
             </>
           ) : hint && HintIcon ? (
             <p className={cn("flex gap-1.5", HINT_STYLE[hint.tone].className)}>
               <HintIcon className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-              <span>{hint.message}</span>
+              <span>{isolate(hint.message)}</span>
             </p>
           ) : (
             <p className="text-muted-foreground">
-              A condition on <code className="font-mono">doc</code> (this record), such as <code className="font-mono">doc.is_return</code>. Empty: always shown.
+              {tr("A condition on")} <code className="font-mono">{tr("doc")}</code> {tr("(this record), such as")} <code className="font-mono">{tr("doc.is_return")}</code>{tr(". Empty: always shown.")}
             </p>
           )}
         </div>
@@ -186,7 +187,7 @@ export function SectionInspector({
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
         <span className="text-sm text-muted-foreground">
-          {plural(s.fields.length, "field")} in {tabLabel(s.tab || null)}
+          {tr("{value} in {value2}", { value: plural(s.fields.length, "field"), value2: tabLabel(s.tab || null) })}
         </span>
         <Button
           variant="outline"
@@ -197,14 +198,14 @@ export function SectionInspector({
             document.getElementById("fd-add-section")?.focus();
           }}
         >
-          <Trash2 aria-hidden="true" /> Delete section
+          <Trash2 aria-hidden="true" /> {tr("Delete section")}
         </Button>
       </div>
 
       {newTab && (
         <TabNameDialog
           layout={layout}
-          state={{ title: "Move to a new tab", action: "Move", initial: "", returnTo: "fd-insp-tab", onSubmit: (name) => moveToTab(name) }}
+          state={{ title: tr("Move to a new tab"), action: "Move", initial: "", returnTo: "fd-insp-tab", onSubmit: (name) => moveToTab(name) }}
           onClose={() => setNewTab(false)}
         />
       )}

@@ -13,11 +13,12 @@ import { LinkInput, useLinkTitle } from "../../widgets";
 import { FieldPicker } from "./pickers";
 import { dayValue, NUMBER_TYPES, opLabel, opsFor, valueForOp } from "./state";
 import { Issues } from "./ui";
+import { t, isolate } from "@ferrum/client";
 
 /** The catalog's fields plus the tag filter, which every entity takes. */
 export function filterFields(catalog: FieldCatalog | undefined): CatalogField[] {
   if (!catalog) return [];
-  const tag: CatalogField = { path: catalog.filters.tag, label: "Tag", type: "data", group: catalog.label, groupable: false, aggregates: [], buckets: [], bucket_required: false };
+  const tag: CatalogField = { path: catalog.filters.tag, label: t("Tag"), type: "data", group: catalog.label, groupable: false, aggregates: [], buckets: [], bucket_required: false };
   return [...catalog.fields, tag];
 }
 
@@ -48,7 +49,7 @@ export function FilterEditor({ filters, fields, onChange, issues = [], at = "fil
   };
   return (
     <div className="grid gap-1.5">
-      {filters.length > 1 && <p className="text-xs text-muted-foreground">Rows match all of these conditions. Use “is any of” to allow several values.</p>}
+      {filters.length > 1 && <p className="text-xs text-muted-foreground">{t("Rows match all of these conditions. Use “is any of” to allow several values.")}</p>}
       {filters.length > 0 && (
         <ul className="grid gap-1.5">
           {filters.map((f, i) => (
@@ -66,7 +67,7 @@ export function FilterEditor({ filters, fields, onChange, issues = [], at = "fil
         </ul>
       )}
       <div>
-        <FieldPicker add="Add filter" label="Add filter" fields={fields} onChange={add} disabled={disabled || !fields.length} />
+        <FieldPicker add="Add filter" label={t("Add filter")} fields={fields} onChange={add} disabled={disabled || !fields.length} />
       </div>
     </div>
   );
@@ -98,26 +99,26 @@ function FilterRow({ index, filter: [path, op, value], field, fields, messages, 
   return (
     <li className="grid gap-1.5 rounded-md border border-border bg-card p-1.5">
       <div className="flex min-w-0 gap-1">
-        <FieldPicker fields={fields} value={path} label={`Filter ${n}: field`} onChange={setField} invalid={!field && !!path} />
-        <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Remove filter ${n}`} onClick={onRemove}>
+        <FieldPicker fields={fields} value={path} label={t("Filter {n}: field", { n })} onChange={setField} invalid={!field && !!path} />
+        <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("Remove filter {n}", { n })} onClick={onRemove}>
           <X />
         </Button>
       </div>
       <div className="flex min-w-0 gap-1">
         <Select value={op} onValueChange={(o) => setOp(o as FilterOp)}>
-          <SelectTrigger className="max-w-[45%] shrink-0" aria-label={`Filter ${n}: condition`}>
+          <SelectTrigger className="max-w-[45%] shrink-0" aria-label={t("Filter {n}: condition", { n })}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {(ops.includes(op) ? ops : [...ops, op]).map((o) => (
               <SelectItem key={o} value={o}>
-                {opLabel(o, type)}
+                {isolate(opLabel(o, type))}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <div className="min-w-0 flex-1">
-          <ValueInput field={field} type={type} op={op} value={value} label={`Filter ${n}: value`} describedBy={messages.length ? id : undefined} onChange={(v) => onChange([path, op, v], `filter-${index}`)} />
+          <ValueInput field={field} type={type} op={op} value={value} label={t("Filter {n}: value", { n })} describedBy={messages.length ? id : undefined} onChange={(v) => onChange([path, op, v], `filter-${index}`)} />
         </div>
       </div>
       <Issues id={id} messages={messages} />
@@ -144,8 +145,8 @@ function ValueInput(p: ValueProps) {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="set">set (has a value)</SelectItem>
-          <SelectItem value="not set">not set (empty)</SelectItem>
+          <SelectItem value="set">{t("set (has a value)")}</SelectItem>
+          <SelectItem value="not set">{t("not set (empty)")}</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -154,8 +155,8 @@ function ValueInput(p: ValueProps) {
     const [a, b] = Array.isArray(value) && value.length === 2 ? value : ["", ""];
     return (
       <div className="grid grid-cols-2 gap-1">
-        <Single {...p} label={`${label} (from)`} value={a} end={false} onChange={(v) => onChange([v, b])} />
-        <Single {...p} label={`${label} (to)`} value={b} end onChange={(v) => onChange([a, v])} />
+        <Single {...p} label={t("{label} (from)", { label })} value={a} end={false} onChange={(v) => onChange([v, b])} />
+        <Single {...p} label={t("{label} (to)", { label })} value={b} end onChange={(v) => onChange([a, v])} />
       </div>
     );
   }
@@ -171,8 +172,8 @@ function Single({ field, type, value, label, describedBy, onChange, end }: Value
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="yes">Yes</SelectItem>
-          <SelectItem value="no">No</SelectItem>
+          <SelectItem value="yes">{t("Yes")}</SelectItem>
+          <SelectItem value="no">{t("No")}</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -181,12 +182,12 @@ function Single({ field, type, value, label, describedBy, onChange, end }: Value
     return (
       <Select value={text || undefined} onValueChange={onChange}>
         <SelectTrigger className="w-full" aria-label={label} aria-describedby={describedBy}>
-          <SelectValue placeholder="Choose…" />
+          <SelectValue placeholder={t("Choose…")} />
         </SelectTrigger>
         <SelectContent>
           {field.options.map((o) => (
             <SelectItem key={o} value={o}>
-              {o}
+              {isolate(o)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -200,7 +201,7 @@ function Single({ field, type, value, label, describedBy, onChange, end }: Value
       aria-label={label}
       aria-describedby={describedBy}
       inputMode={numeric ? "decimal" : undefined}
-      placeholder={numeric ? "0" : "Value"}
+      placeholder={numeric ? "0" : t("Value")}
       className={numeric ? "text-end tabular-nums" : undefined}
       value={text}
       onChange={(e) => onChange(e.target.value)}
@@ -224,14 +225,14 @@ function MultiValue({ field, type, value, label, onChange }: ValueProps & { valu
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full min-w-0 justify-between px-2.5 font-normal" aria-label={`${label}: ${value.length ? value.join(", ") : "none chosen"}`}>
-            <span className={value.length ? "truncate" : "truncate text-muted-foreground"}>{value.length ? value.join(", ") : "Choose…"}</span>
+            <span className={value.length ? "truncate" : "truncate text-muted-foreground"}>{value.length ? value.join(", ") : t("Choose…")}</span>
             <ChevronDown className="opacity-50" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-72">
           {field.options.map((o) => (
             <DropdownMenuCheckboxItem key={o} checked={value.includes(o)} onSelect={(e) => e.preventDefault()} onCheckedChange={(on) => onChange(on ? [...value, o] : value.filter((x) => x !== o))}>
-              {o}
+              {isolate(o)}
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuContent>
@@ -247,11 +248,11 @@ function MultiValue({ field, type, value, label, onChange }: ValueProps & { valu
   return (
     <div className="grid gap-1">
       {value.length > 0 && (
-        <ul className="flex flex-wrap gap-1" aria-label={`${label}: chosen values`}>
+        <ul className="flex flex-wrap gap-1" aria-label={t("{label}: chosen values", { label })}>
           {value.map((v, i) => (
             <li key={`${String(v)}-${i}`} className="flex max-w-full items-center gap-0.5 rounded bg-secondary py-0.5 pe-0.5 ps-1.5 text-xs">
               <span className="truncate">{type === "link" && field?.to && typeof v === "string" ? <LinkName to={field.to} id={v} /> : String(v)}</span>
-              <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={`Remove value ${i + 1}`} onClick={() => remove(i)}>
+              <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={t("Remove value {value}", { value: i + 1 })} onClick={() => remove(i)}>
                 <X className="size-3" aria-hidden="true" />
               </button>
             </li>
@@ -259,11 +260,11 @@ function MultiValue({ field, type, value, label, onChange }: ValueProps & { valu
         </ul>
       )}
       {type === "link" && field?.to ? (
-        <LinkInput to={field.to} value={null} label={`${label}: add a value`} placeholder="Add a value…" onChange={(v) => v && add(v)} />
+        <LinkInput to={field.to} value={null} label={t("{label}: add a value", { label })} placeholder={t("Add a value…")} onChange={(v) => v && add(v)} />
       ) : (
         <Input
-          aria-label={`${label}: add a value`}
-          placeholder="Type a value, press Enter"
+          aria-label={t("{label}: add a value", { label })}
+          placeholder={t("Type a value, press Enter")}
           inputMode={NUMBER_TYPES.has(type) ? "decimal" : undefined}
           value={text}
           onChange={(e) => setText(e.target.value)}

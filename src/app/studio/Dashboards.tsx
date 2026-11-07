@@ -28,6 +28,7 @@ import { CHART_ICON } from "./dashboard/icons";
 
 import { SharingFields } from "./dashboard/RecordFields";
 import { EmptyBlock, ErrorBlock, Messages, PageHeader, plainLink, useConfirm } from "./dashboard/ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 
 /** Charts and number cards are tabs of the dashboards page (`?tab=charts`, `?tab=cards`). */
@@ -37,9 +38,9 @@ type Tab = "dashboards" | "charts" | "cards";
 const ENTITY: Record<Tab, string> = { dashboards: "Dashboard", charts: "DashboardChart", cards: "NumberCard" };
 const NOUN: Record<Tab, string> = { dashboards: "dashboard", charts: "chart", cards: "number card" };
 const SHARING: Record<Sharing, { label: string; icon: LucideIcon }> = {
-  private: { label: "Only me", icon: Lock },
-  roles: { label: "Roles", icon: Users },
-  everyone: { label: "Everyone", icon: Globe },
+  private: { get label() { return tr("Only me"); }, icon: Lock },
+  roles: { get label() { return tr("Roles"); }, icon: Users },
+  everyone: { get label() { return tr("Everyone"); }, icon: Globe },
 };
 
 function usePermissions() {
@@ -67,29 +68,29 @@ export function DashboardsPage() {
   return (
     <div>
       <PageHeader
-        title="Dashboards"
-        description="Charts, number cards, shortcuts and notes on one page, with filters that apply to all of them."
+        title={tr("Dashboards")}
+        description={tr("Charts, number cards, shortcuts and notes on one page, with filters that apply to all of them.")}
         actions={
           <>
             {(p.create("charts") || p.create("cards")) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    <Plus /> New…
+                    <Plus /> {tr("New…")}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {p.create("charts") && (
                     <DropdownMenuItem asChild>
                       <Link to="/studio/charts/new" className={plainLink}>
-                        <ChartColumn /> Chart
+                        <ChartColumn /> {tr("Chart")}
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {p.create("cards") && (
                     <DropdownMenuItem asChild>
                       <Link to="/studio/cards/new" className={plainLink}>
-                        <Hash /> Number card
+                        <Hash /> {tr("Number card")}
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -98,7 +99,7 @@ export function DashboardsPage() {
             )}
             {p.create("dashboards") && (
               <Button onClick={() => setCreating(true)}>
-                <LayoutDashboard /> New dashboard
+                <LayoutDashboard /> {tr("New dashboard")}
               </Button>
             )}
           </>
@@ -120,15 +121,15 @@ export function DashboardsPage() {
       >
         <div className="flex flex-wrap items-center gap-3">
           <TabsList>
-            <TabsTrigger value="dashboards">Dashboards</TabsTrigger>
-            <TabsTrigger value="charts">Charts</TabsTrigger>
-            <TabsTrigger value="cards">Number cards</TabsTrigger>
+            <TabsTrigger value="dashboards">{tr("Dashboards")}</TabsTrigger>
+            <TabsTrigger value="charts">{tr("Charts")}</TabsTrigger>
+            <TabsTrigger value="cards">{tr("Number cards")}</TabsTrigger>
           </TabsList>
           <InputGroup className="h-9 w-full sm:ms-auto sm:w-64">
             <InputGroupAddon>
               <Search />
             </InputGroupAddon>
-            <InputGroupInput type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${NOUN[tab]}s`} aria-label={`Search ${NOUN[tab]}s`} />
+            <InputGroupInput type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Search {value}s", { value: NOUN[tab] })} aria-label={tr("Search {value}s", { value: NOUN[tab] })} />
           </InputGroup>
         </div>
         {(["dashboards", "charts", "cards"] as Tab[]).map((t) => (
@@ -162,7 +163,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
     setBusy(r.id);
     try {
       const made = await copyOf(tab, r.id);
-      toast("Copy made");
+      toast(tr("Copy made"));
       navigate(tab === "dashboards" ? `/studio/dashboards/${made}?edit=1` : hrefOf(tab, made ?? ""));
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -172,24 +173,24 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
   };
   const del = async (r: StudioListRow) => {
     const ok = await confirm({
-      title: `Delete “${r.label}”?`,
+      title: tr("Delete “{label}”?", { label: r.label }),
       message: tab === "dashboards" ? "The dashboard is removed for everyone. Its charts and number cards stay." : `The ${noun} is removed for everyone. Dashboards and spaces that show it must drop it first.`,
-      confirmLabel: "Delete",
+      confirmLabel: tr("Delete"),
       danger: true,
     });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: r.id });
-      toast(`Deleted “${r.label}”`);
+      toast(tr("Deleted “{label}”", { label: r.label }));
     } catch (e) {
       toast(errorMessage(e), "error");
     }
   };
 
-  if (list.error) return <ErrorBlock error={list.error} onRetry={() => list.refetch()} title={`Could not load the ${noun}s`} />;
+  if (list.error) return <ErrorBlock error={list.error} onRetry={() => list.refetch()} title={tr("Could not load the {noun}s", { noun })} />;
   if (!list.data)
     return (
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Loading">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label={tr("Loading")}>
         {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-28 rounded-xl" />
         ))}
@@ -199,26 +200,26 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
     return (
       <EmptyBlock
         icon={tab === "dashboards" ? LayoutDashboard : tab === "charts" ? ChartColumn : Hash}
-        title={`No ${noun}s yet`}
+        title={tr("No {noun}s yet", { noun })}
         action={
           p.create(tab) &&
           (tab === "dashboards" ? (
             <Button onClick={onNew}>
-              <Plus /> New dashboard
+              <Plus /> {tr("New dashboard")}
             </Button>
           ) : (
             <Button asChild>
               <Link to={hrefOf(tab, "new")} className={cn(plainLink, "text-primary-foreground")}>
-                <Plus /> New {noun}
+                <Plus /> {tr("New {noun}", { noun })}
               </Link>
             </Button>
           ))
         }
       >
-        {tab === "dashboards" ? "A dashboard puts charts, number cards and notes on one page, with filters for all of them." : tab === "charts" ? "A chart plots a query, a saved report or a built-in report." : "A number card shows one count or total, with its change since the last period."}
+        {tab === "dashboards" ? tr("A dashboard puts charts, number cards and notes on one page, with filters for all of them.") : tab === "charts" ? tr("A chart plots a query, a saved report or a built-in report.") : tr("A number card shows one count or total, with its change since the last period.")}
       </EmptyBlock>
     );
-  if (!rows.length) return <p className="py-10 text-center text-sm text-muted-foreground">No {noun}s match “{q}”.</p>;
+  if (!rows.length) return <p className="py-10 text-center text-sm text-muted-foreground">{tr("No {noun}s match “{q}”.", { noun, q })}</p>;
 
   return (
     <>
@@ -238,7 +239,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
                 </span>
                 <div className="min-w-0 flex-1">
                   <Link to={hrefOf(tab, r.id)} className={cn(plainLink, "block truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none")}>
-                    {r.label}
+                    {isolate(r.label)}
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
                     {[type && CHART_TYPE_LABEL[type], entity, tab === "dashboards" && (r as StudioListRow<"dashboards">).refresh_interval ? "auto-refresh" : ""].filter(Boolean).join(" · ") || " "}
@@ -246,7 +247,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" className="relative z-10 text-muted-foreground" aria-label={`Actions for ${r.label}`} disabled={busy === r.id}>
+                    <Button variant="ghost" size="icon-sm" className="relative z-10 text-muted-foreground" aria-label={tr("Actions for {label}", { label: r.label })} disabled={busy === r.id}>
                       {busy === r.id ? <Spinner /> : <Ellipsis />}
                     </Button>
                   </DropdownMenuTrigger>
@@ -254,34 +255,34 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
                     {canEdit && (
                       <DropdownMenuItem asChild>
                         <Link to={tab === "dashboards" ? `/studio/dashboards/${r.id}?edit=1` : hrefOf(tab, r.id)} className={plainLink}>
-                          <Pencil /> Edit
+                          <Pencil /> {tr("Edit")}
                         </Link>
                       </DropdownMenuItem>
                     )}
                     {p.create(tab) && (
                       <DropdownMenuItem onSelect={() => void copy(r)}>
-                        <Copy /> Make a copy
+                        <Copy /> {tr("Make a copy")}
                       </DropdownMenuItem>
                     )}
                     {p.remove(tab) && !r.is_standard && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive" onSelect={() => void del(r)}>
-                          <Trash2 /> Delete
+                          <Trash2 /> {tr("Delete")}
                         </DropdownMenuItem>
                       </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {r.description && <p className="line-clamp-2 text-sm text-muted-foreground">{r.description}</p>}
+              {r.description && <p className="line-clamp-2 text-sm text-muted-foreground">{isolate(r.description)}</p>}
               <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1 text-xs text-muted-foreground">
                 <Badge variant="outline" className="gap-1">
-                  <s.icon aria-hidden="true" /> {s.label}
+                  <s.icon aria-hidden="true" /> {isolate(s.label)}
                 </Badge>
-                {r.is_standard && <Badge variant="secondary">Package</Badge>}
-                {r.mine && <Badge variant="secondary">Yours</Badge>}
-                <span className="ms-auto">{relativeTime(r.updated_at)}</span>
+                {r.is_standard && <Badge variant="secondary">{tr("Package")}</Badge>}
+                {r.mine && <Badge variant="secondary">{tr("Yours")}</Badge>}
+                <span className="ms-auto">{isolate(relativeTime(r.updated_at))}</span>
               </div>
             </li>
           );
@@ -320,19 +321,19 @@ function NewDashboard({ open, onClose: close }: { open: boolean; onClose: () => 
       <DialogContent className="flex max-h-[min(90vh,48rem)] flex-col gap-0 p-0 sm:max-w-lg">
         <form onSubmit={(e) => void submit(e)} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="border-b p-4 pe-12">
-            <DialogTitle>New dashboard</DialogTitle>
-            <DialogDescription>You add its widgets next.</DialogDescription>
+            <DialogTitle>{tr("New dashboard")}</DialogTitle>
+            <DialogDescription>{tr("You add its widgets next.")}</DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 flex-1 gap-4 overflow-auto p-4">
             <div className="grid gap-1.5">
               <Label htmlFor="new-dash-label">
-                Title <span className="text-destructive" aria-hidden="true">*</span>
+                {tr("Title")} <span className="text-destructive" aria-hidden="true">*</span>
               </Label>
               <Input id="new-dash-label" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={140} required autoFocus aria-invalid={issuesAt(issues, "label").length > 0 || undefined} />
               <Messages list={issuesAt(issues, "label")} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="new-dash-desc">Description</Label>
+              <Label htmlFor="new-dash-desc">{tr("Description")}</Label>
               <Textarea id="new-dash-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <SharingFields value={{ label, ...sharing }} onChange={(patch) => setSharing((s) => ({ ...s, ...(patch as Partial<typeof s>) }))} issues={issues} />
@@ -340,10 +341,10 @@ function NewDashboard({ open, onClose: close }: { open: boolean; onClose: () => 
           </div>
           <DialogFooter className="border-t p-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button type="submit" disabled={!label.trim() || save.isPending}>
-              {save.isPending && <Spinner />} Create
+              {save.isPending && <Spinner />} {tr("Create")}
             </Button>
           </DialogFooter>
         </form>

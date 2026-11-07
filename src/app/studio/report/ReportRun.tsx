@@ -20,6 +20,7 @@ import { ErrorState, PageLoading, toast, useDebounced } from "@/ui/kit";
 import { filterFields, FilterEditor } from "./FilterEditor";
 import { fileStem, NoRows, ResultNotices, ResultView, ViewToggle } from "./Preview";
 import { decodeParam, defaultChart, displayColumns, encodeParam, filterIssues, recordFromState, sanitizeFilters, sanitizeRuntime, stateFromRecord, type RunState } from "./state";
+import { t, isolate } from "@ferrum/client";
 
 export function ReportRun({ id }: { id: string }) {
   const navigate = useNavigate();
@@ -98,9 +99,9 @@ export function ReportRun({ id }: { id: string }) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast(Object.keys(runtime).length ? "Link copied, with these filters" : "Link copied");
+      toast(Object.keys(runtime).length ? t("Link copied, with these filters") : t("Link copied"));
     } catch {
-      toast("The link could not be copied; copy it from the address bar.", "error");
+      toast(t("The link could not be copied; copy it from the address bar."), "error");
     }
   };
   const duplicate = () => {
@@ -119,21 +120,21 @@ export function ReportRun({ id }: { id: string }) {
       const gone = run.error instanceof ApiError && run.error.status === 404;
       return (
         <div className="grid gap-3">
-          <ErrorState title={gone ? "This report does not exist or is not shared with you" : "The report could not be run"} error={run.error} onRetry={gone ? undefined : () => void run.refetch()} />
+          <ErrorState title={gone ? t("This report does not exist or is not shared with you") : t("The report could not be run")} error={run.error} onRetry={gone ? undefined : () => void run.refetch()} />
           <p className="flex justify-center gap-4 text-sm">
             <Link className="text-primary underline-offset-4 hover:underline" to="/studio/reports">
-              All reports
+              {t("All reports")}
             </Link>
             {canEdit && (
               <Link className="text-primary underline-offset-4 hover:underline" to={`/studio/reports/${encodeURIComponent(id)}?edit=1`}>
-                Edit the report
+                {t("Edit the report")}
               </Link>
             )}
           </p>
         </div>
       );
     }
-    return <PageLoading label="Running the report…" />;
+    return <PageLoading label={t("Running the report…")} />;
   }
 
   const runIssues = run.error ? fieldIssues(run.error) : [];
@@ -143,51 +144,51 @@ export function ReportRun({ id }: { id: string }) {
     <div className="grid gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11 pointer-coarse:[&_[data-slot=select-trigger]]:min-h-11">
       <header className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <nav aria-label="Breadcrumb" className="mb-1 text-xs text-muted-foreground">
+          <nav aria-label={t("Breadcrumb")} className="mb-1 text-xs text-muted-foreground">
             <Link to="/studio/reports" className="hover:text-foreground hover:underline">
-              Reports
+              {t("Reports")}
             </Link>
-            {entityInfo && <> · {entityInfo.label_plural}</>}
+            {entityInfo && <> · {isolate(entityInfo.label_plural)}</>}
           </nav>
-          <h1 className="truncate text-xl font-semibold">{report?.label}</h1>
-          {report?.description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{report.description}</p>}
+          <h1 className="truncate text-xl font-semibold">{isolate(report?.label ?? "")}</h1>
+          {report?.description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{isolate(report.description)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canExport && (
             <>
-              <Button variant="outline" disabled={exporting || !data?.rows.length} onClick={() => void exportAs("csv")} title="Every row (up to 10,000) as CSV, with the filters applied">
-                {exporting ? <Spinner /> : <Download />} CSV
+              <Button variant="outline" disabled={exporting || !data?.rows.length} onClick={() => void exportAs("csv")} title={t("Every row (up to 10,000) as CSV, with the filters applied")}>
+                {exporting ? <Spinner /> : <Download />} {t("CSV")}
               </Button>
               <Button
                 variant="outline"
                 disabled={exporting || !data?.rows.length}
                 onClick={() => void exportAs("xlsx")}
-                title="Every row (up to 10,000) as an Excel workbook, with the filters applied"
+                title={t("Every row (up to 10,000) as an Excel workbook, with the filters applied")}
               >
-                {exporting ? <Spinner /> : <Download />} Excel
+                {exporting ? <Spinner /> : <Download />} {t("Excel")}
               </Button>
             </>
           )}
           {canEdit && (
             <Button asChild>
               <Link to={`/studio/reports/${encodeURIComponent(id)}?edit=1`}>
-                <Pencil /> Edit
+                <Pencil /> {t("Edit")}
               </Link>
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More actions">
+              <Button variant="outline" size="icon" aria-label={t("More actions")}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => void copyLink()}>
-                <Link2 /> Copy link
+                <Link2 /> {t("Copy link")}
               </DropdownMenuItem>
               {canCopy && (
                 <DropdownMenuItem onSelect={duplicate}>
-                  <Copy /> Duplicate to customize
+                  <Copy /> {t("Duplicate to customize")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -195,10 +196,10 @@ export function ReportRun({ id }: { id: string }) {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Run settings">
+      <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label={t("Run settings")}>
         {grouped && <ViewToggle value={viewMode} onChange={(v) => setRt({ ...rt, view: v })} chartable />}
         <Button variant="outline" aria-expanded={showFilters} aria-controls={`${id}-filters`} onClick={() => setShowFilters((x) => !x)}>
-          <ListFilter /> Filters
+          <ListFilter /> {t("Filters")}
           {!!runtime.filters?.length && (
             <Badge variant="secondary" className="ms-0.5">
               {runtime.filters.length}
@@ -207,35 +208,35 @@ export function ReportRun({ id }: { id: string }) {
         </Button>
         <div className="relative min-w-40 flex-1 sm:max-w-64">
           <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="ps-8" placeholder="Search…" aria-label="Search the report" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input type="search" className="ps-8" placeholder={t("Search…")} aria-label={t("Search the report")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         {data?.meta.date_range && <PeriodPicker key={`${runtime.from ?? ""}|${runtime.to ?? ""}`} rt={rt} setRt={setRt} saved={data.meta.date_range} fyStartMonth={fy} />}
         {active > 0 && (
           <Button variant="ghost" onClick={reset}>
-            <RotateCcw /> Reset
+            <RotateCcw /> {t("Reset")}
           </Button>
         )}
         {run.isFetching && (
           <span className="ms-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
-            <Spinner /> Updating…
+            <Spinner /> {t("Updating…")}
           </span>
         )}
       </div>
 
       {showFilters && (
         <div id={`${id}-filters`} className="max-w-2xl rounded-lg border border-border bg-card p-3">
-          <p className="mb-2 text-xs text-muted-foreground">These filters narrow this run only; the saved report keeps its own.</p>
+          <p className="mb-2 text-xs text-muted-foreground">{t("These filters narrow this run only; the saved report keeps its own.")}</p>
           <FilterEditor filters={filters} fields={filterFields(catalog.data)} issues={incomplete} onChange={setFilters} disabled={!catalog.data} />
         </div>
       )}
 
       {!!run.error && (
         <Alert variant="destructive">
-          <AlertTitle>These run settings could not be applied</AlertTitle>
+          <AlertTitle>{t("These run settings could not be applied")}</AlertTitle>
           <AlertDescription>
             {runIssues.length ? runIssues.map((i) => i.message).join(" ") : errorMessage(run.error)}
             <Button size="sm" variant="outline" className="mt-1" onClick={reset}>
-              Reset the run settings
+              {t("Reset the run settings")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -248,7 +249,7 @@ export function ReportRun({ id }: { id: string }) {
             <NoRows>
               {active > 0 && (
                 <Button variant="outline" onClick={reset}>
-                  <RotateCcw /> Reset the run settings
+                  <RotateCcw /> {t("Reset the run settings")}
                 </Button>
               )}
             </NoRows>
@@ -265,11 +266,11 @@ export function ReportRun({ id }: { id: string }) {
               subtotalRows={data.subtotals}
               options={options}
               entity={report?.kind === "table" ? (entity ?? undefined) : undefined}
-              title={report?.label ?? "Report"}
+              title={report?.label ?? t("Report")}
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {data.meta.row_count.toLocaleString()} {data.meta.row_count === 1 ? "row" : "rows"} · computed in {Math.round(data.meta.sql_ms)} ms
+            {isolate(data.meta.row_count.toLocaleString())} {data.meta.row_count === 1 ? t("row") : t("rows")} {t("· computed in {Math} ms", { Math: Math.round(data.meta.sql_ms) })}
           </p>
         </div>
       )}
@@ -292,7 +293,7 @@ function PeriodPicker({ rt, setRt, saved, fyStartMonth }: PeriodPickerProps) {
   const [from, setFrom] = useState(rt.from ?? "");
   const [to, setTo] = useState(rt.to ?? "");
   const bad = (v: string) => !!v.trim() && !resolveDate(v, todayIso(), fyStartMonth);
-  const savedLabel = saved.from || saved.to ? `${saved.from ? formatDate(saved.from) : "…"} – ${saved.to ? formatDate(saved.to) : "…"}` : "all time";
+  const savedLabel = saved.from || saved.to ? `${saved.from ? formatDate(saved.from) : "…"} – ${saved.to ? formatDate(saved.to) : "…"}` : t("all time");
   const apply = (e: FormEvent) => {
     e.preventDefault();
     if (bad(from) || bad(to)) return;
@@ -309,26 +310,26 @@ function PeriodPicker({ rt, setRt, saved, fyStartMonth }: PeriodPickerProps) {
           setRt({ ...rt, from: p?.from, to: p?.to });
         }}
       >
-        <SelectTrigger className="w-auto min-w-44" aria-label="Period">
+        <SelectTrigger className="w-auto min-w-44" aria-label={t("Period")}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="saved">Saved period ({savedLabel})</SelectItem>
+          <SelectItem value="saved">{t("Saved period ({savedLabel})", { savedLabel })}</SelectItem>
           {DATE_PRESETS.map((p) => (
             <SelectItem key={p.id} value={p.id}>
-              {p.label}
+              {isolate(p.label)}
             </SelectItem>
           ))}
-          <SelectItem value="custom">Custom range…</SelectItem>
+          <SelectItem value="custom">{t("Custom range…")}</SelectItem>
         </SelectContent>
       </Select>
       {custom && (
-        <form className="flex flex-wrap items-center gap-1.5" onSubmit={apply} aria-label="Custom period">
-          <Input id={`${id}-from`} className="w-36" aria-label="From (a date or an expression such as today-30d)" placeholder="From" value={from} aria-invalid={bad(from) || undefined} onChange={(e) => setFrom(e.target.value)} />
-          <span className="text-sm text-muted-foreground">to</span>
-          <Input id={`${id}-to`} className="w-36" aria-label="To (a date or an expression such as today)" placeholder="To" value={to} aria-invalid={bad(to) || undefined} onChange={(e) => setTo(e.target.value)} />
+        <form className="flex flex-wrap items-center gap-1.5" onSubmit={apply} aria-label={t("Custom period")}>
+          <Input id={`${id}-from`} className="w-36" aria-label={t("From (a date or an expression such as today-30d)")} placeholder={t("From")} value={from} aria-invalid={bad(from) || undefined} onChange={(e) => setFrom(e.target.value)} />
+          <span className="text-sm text-muted-foreground">{t("to")}</span>
+          <Input id={`${id}-to`} className="w-36" aria-label={t("To (a date or an expression such as today)")} placeholder={t("To")} value={to} aria-invalid={bad(to) || undefined} onChange={(e) => setTo(e.target.value)} />
           <Button type="submit" variant="outline" disabled={bad(from) || bad(to)}>
-            Apply
+            {t("Apply")}
           </Button>
         </form>
       )}

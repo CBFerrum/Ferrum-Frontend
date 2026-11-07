@@ -8,6 +8,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClie
 import { api, ApiError, docPath, download, newKey, type FieldError } from "./api";
 import { compareDecimal, formatDate, formatDecimal, formatValue, isDecimalString, NUMERIC_TYPES, todayIso } from "./format";
 import type { Doc, ReportDef } from "./meta";
+import { t as tr } from "@ferrum/client";
 
 // ───────────────────────────── query spec (spec.rs) ─────────────────────────────
 
@@ -1428,22 +1429,22 @@ export interface DatePreset {
 
 /** Periods to date end today; "last" periods are whole. */
 export const DATE_PRESETS: DatePreset[] = [
-  { id: "today", label: "Today", from: "today", to: "today" },
-  { id: "yesterday", label: "Yesterday", from: "today-1d", to: "today-1d" },
-  { id: "last_7_days", label: "Last 7 days", from: "today-6d", to: "today" },
-  { id: "last_30_days", label: "Last 30 days", from: "today-29d", to: "today" },
-  { id: "last_90_days", label: "Last 90 days", from: "today-89d", to: "today" },
-  { id: "this_week", label: "This week", from: "start_of_week", to: "today" },
-  { id: "last_week", label: "Last week", from: "start_of_week-1w", to: "start_of_week-1d" },
-  { id: "this_month", label: "This month", from: "start_of_month", to: "today" },
-  { id: "last_month", label: "Last month", from: "start_of_month-1m", to: "start_of_month-1d" },
-  { id: "this_quarter", label: "This quarter", from: "start_of_quarter", to: "today" },
-  { id: "last_quarter", label: "Last quarter", from: "start_of_quarter-1q", to: "start_of_quarter-1d" },
-  { id: "last_12_months", label: "Last 12 months", from: "start_of_month-11m", to: "today" },
-  { id: "this_year", label: "This year", from: "start_of_year", to: "today" },
-  { id: "last_year", label: "Last year", from: "start_of_year-1y", to: "start_of_year-1d" },
-  { id: "this_fiscal_year", label: "This fiscal year", from: "start_of_fiscal_year", to: "today" },
-  { id: "last_fiscal_year", label: "Last fiscal year", from: "start_of_fiscal_year-1y", to: "start_of_fiscal_year-1d" },
+  { id: "today", get label() { return tr("Today"); }, from: "today", to: "today" },
+  { id: "yesterday", get label() { return tr("Yesterday"); }, from: "today-1d", to: "today-1d" },
+  { id: "last_7_days", get label() { return tr("Last 7 days"); }, from: "today-6d", to: "today" },
+  { id: "last_30_days", get label() { return tr("Last 30 days"); }, from: "today-29d", to: "today" },
+  { id: "last_90_days", get label() { return tr("Last 90 days"); }, from: "today-89d", to: "today" },
+  { id: "this_week", get label() { return tr("This week"); }, from: "start_of_week", to: "today" },
+  { id: "last_week", get label() { return tr("Last week"); }, from: "start_of_week-1w", to: "start_of_week-1d" },
+  { id: "this_month", get label() { return tr("This month"); }, from: "start_of_month", to: "today" },
+  { id: "last_month", get label() { return tr("Last month"); }, from: "start_of_month-1m", to: "start_of_month-1d" },
+  { id: "this_quarter", get label() { return tr("This quarter"); }, from: "start_of_quarter", to: "today" },
+  { id: "last_quarter", get label() { return tr("Last quarter"); }, from: "start_of_quarter-1q", to: "start_of_quarter-1d" },
+  { id: "last_12_months", get label() { return tr("Last 12 months"); }, from: "start_of_month-11m", to: "today" },
+  { id: "this_year", get label() { return tr("This year"); }, from: "start_of_year", to: "today" },
+  { id: "last_year", get label() { return tr("Last year"); }, from: "start_of_year-1y", to: "start_of_year-1d" },
+  { id: "this_fiscal_year", get label() { return tr("This fiscal year"); }, from: "start_of_fiscal_year", to: "today" },
+  { id: "last_fiscal_year", get label() { return tr("Last fiscal year"); }, from: "start_of_fiscal_year-1y", to: "start_of_fiscal_year-1d" },
 ];
 
 /** The preset a period is, if any. */

@@ -38,6 +38,7 @@ import { CellValue } from "../../widgets";
 import { ChartView, Sparkline } from "./ChartView";
 import { parseMarkdown, type Inline, type MdBlock } from "./markdown";
 import { listHref, PATHS, spanClass, urlTarget, widthOf, type BlockType, type Target } from "./model";
+import { t, isolate } from "@ferrum/client";
 
 export const BLOCK_ICON: Record<BlockType, LucideIcon> = {
   shortcut: ArrowUpRight,
@@ -67,10 +68,10 @@ export function SmartLink({ target, children, ...rest }: { target: Target | null
       href={target.href}
       {...(target.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       {...rest}
-      aria-label={label && target.external ? `${label} (opens in a new tab)` : label}
+      aria-label={label && target.external ? t("{label} (opens in a new tab)", { label }) : label}
     >
       {children}
-      {target.external && <span className="sr-only"> (opens in a new tab)</span>}
+      {target.external && <span className="sr-only"> {t("(opens in a new tab)")}</span>}
     </a>
   );
 }
@@ -151,7 +152,7 @@ export function BlockView({ widget: w, pending }: { widget: ResolvedWidget; pend
     case "heading": {
       const level = Math.min(Math.max(Math.trunc(w.level) || 2, 1), 3);
       const H = (["h2", "h3", "h4"] as const)[level - 1];
-      return <H className={cn("pt-3 font-semibold tracking-tight", ["text-xl", "text-lg", "text-base"][level - 1])}>{w.text}</H>;
+      return <H className={cn("pt-3 font-semibold tracking-tight", ["text-xl", "text-lg", "text-base"][level - 1])}>{isolate(w.text)}</H>;
     }
     case "onboarding":
       return <Onboarding w={w} />;
@@ -184,9 +185,9 @@ export function BlockError({ title, error }: { title?: string; error: WidgetErro
     <div className="flex h-full min-h-24 flex-col gap-1 rounded-xl border border-dashed bg-card p-4 text-sm">
       <span className="flex items-center gap-2 font-medium">
         <TriangleAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />
-        {title || "This block can’t be shown"}
+        {title || t("This block can’t be shown")}
       </span>
-      <span className="text-muted-foreground">{error.message}</span>
+      <span className="text-muted-foreground">{isolate(error.message)}</span>
     </div>
   );
 }
@@ -220,20 +221,20 @@ function ShortcutTile({ w, pending }: { w: ShortcutWidget; pending?: boolean }) 
       style={accent ? ({ borderLeftColor: accent } as CSSProperties) : undefined}
     >
       <span className="flex items-start justify-between gap-2">
-        <span className="font-medium leading-snug">{w.label}</span>
+        <span className="font-medium leading-snug">{isolate(w.label)}</span>
         <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" style={accent ? { color: accent } : undefined} aria-hidden="true" />
       </span>
       <span className="flex min-w-0 items-end justify-between gap-2">
         {count ? (
-          <span className="text-2xl font-semibold tracking-tight tabular-nums">{count}</span>
+          <span className="text-2xl font-semibold tracking-tight tabular-nums">{isolate(count)}</span>
         ) : w.error ? (
-          <span className="text-xs text-destructive">{w.error.message}</span>
+          <span className="text-xs text-destructive">{isolate(w.error.message)}</span>
         ) : pending ? (
           <Skeleton className="h-7 w-12" />
         ) : (
           <span />
         )}
-        <span className="truncate text-xs text-muted-foreground">{sub}</span>
+        <span className="truncate text-xs text-muted-foreground">{isolate(sub)}</span>
       </span>
     </SmartLink>
   );
@@ -262,7 +263,7 @@ function LinksCard({ w }: { w: Extract<ResolvedWidget, { type: "links" }> }) {
                 className={cn("flex min-h-9 items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent hover:no-underline pointer-coarse:min-h-11", FOCUS)}
               >
                 <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span className="min-w-0 truncate">{l.label}</span>
+                <span className="min-w-0 truncate">{isolate(l.label)}</span>
               </SmartLink>
             </li>
           );
@@ -284,17 +285,17 @@ function NumberCard({ w }: { w: Extract<ResolvedWidget, { type: "card"; error?: 
   return (
     <SmartLink
       target={target}
-      aria-label={`${card.label}: ${value}${change ? `, ${change} ${vs}` : ""}. Open the records.`}
+      aria-label={t("{label}: {value}{value2}. Open the records.", { label: card.label, value, value2: change ? `, ${change} ${vs}` : "" })}
       className={cn("flex h-full min-h-24 flex-col gap-1.5 rounded-xl border bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent/60 hover:no-underline", FOCUS, accent && "border-t-[3px]")}
       style={accent ? { borderTopColor: accent } : undefined}
     >
-      <span className="text-sm font-medium text-muted-foreground">{card.label}</span>
-      <span className="text-2xl font-semibold tracking-tight tabular-nums @xl:text-3xl">{value}</span>
+      <span className="text-sm font-medium text-muted-foreground">{isolate(card.label)}</span>
+      <span className="text-2xl font-semibold tracking-tight tabular-nums @xl:text-3xl">{isolate(value)}</span>
       {change && (
         <span className={cn("flex flex-wrap items-center gap-1 text-xs font-medium", tone)}>
           <Trend className="size-3.5" aria-hidden="true" />
-          {change}
-          <span className="font-normal text-muted-foreground">{vs}</span>
+          {isolate(change)}
+          <span className="font-normal text-muted-foreground">{isolate(vs)}</span>
         </span>
       )}
       {w.sparkline && w.sparkline.length > 1 && (
@@ -330,21 +331,21 @@ function QuickList({ w }: { w: Extract<ResolvedWidget, { type: "list"; error?: u
       title={w.label || label(w.entity)}
       action={
         <Link to={PATHS.list(w.entity)} className={cn("rounded-sm text-xs font-medium", FOCUS)}>
-          View all
+          {t("View all")}
         </Link>
       }
     >
       {!w.rows.length ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">No records yet.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{t("No records yet.")}</p>
       ) : (
         <div className="-mx-4 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="ps-4">{headField?.label ?? meta?.fields.find((f) => f.name === meta.title_field)?.label ?? meta?.label ?? "Record"}</TableHead>
+                <TableHead className="ps-4">{headField?.label ?? meta?.fields.find((f) => f.name === meta.title_field)?.label ?? meta?.label ?? t("Record")}</TableHead>
                 {columns.map((f) => (
                   <TableHead key={f.name} className={cn(["int", "decimal", "currency", "percent"].includes(f.type) && "text-end", "last:pe-4")}>
-                    {f.label}
+                    {isolate(f.label)}
                   </TableHead>
                 ))}
               </TableRow>
@@ -376,13 +377,13 @@ function Onboarding({ w }: { w: Extract<ResolvedWidget, { type: "onboarding" }> 
   const done = w.steps.filter((s) => s.done).length;
   const total = w.steps.length;
   return (
-    <BlockCard title={w.title || "Get started"} description={`${done} of ${total} done`}>
+    <BlockCard title={w.title || t("Get started")} description={t("{done} of {total} done", { done, total })}>
       {/* The wrapper draws `value` but does not hand it to the progressbar role: set it here. */}
       <Progress
         value={total ? (done / total) * 100 : 0}
         aria-valuenow={total ? Math.round((done / total) * 100) : 0}
         aria-valuetext={`${done} of ${total} steps done`}
-        aria-label="Progress"
+        aria-label={t("Progress")}
         className="mb-3 h-1.5"
       />
       <ol className="-mx-2 grid gap-0.5">
@@ -397,15 +398,15 @@ function Onboarding({ w }: { w: Extract<ResolvedWidget, { type: "onboarding" }> 
               )}
               <div className="min-w-0 flex-1">
                 <p className={cn("text-sm font-medium", s.done && "text-muted-foreground line-through")}>
-                  {s.label}
-                  <span className="sr-only">{s.done ? " (done)" : " (to do)"}</span>
+                  {isolate(s.label)}
+                  <span className="sr-only">{s.done ? t(" (done)") : t(" (to do)")}</span>
                 </p>
-                {s.description && <p className="text-xs text-muted-foreground">{s.description}</p>}
-                {s.error && <p className="text-xs text-destructive">{s.error.message}</p>}
+                {s.description && <p className="text-xs text-muted-foreground">{isolate(s.description)}</p>}
+                {s.error && <p className="text-xs text-destructive">{isolate(s.error.message)}</p>}
               </div>
               {action && (
                 <SmartLink target={action} className={cn("shrink-0 rounded-sm text-xs font-medium", FOCUS)}>
-                  {s.url ? "Open" : "Create"}
+                  {s.url ? t("Open") : t("Create")}
                 </SmartLink>
               )}
             </li>
@@ -460,7 +461,7 @@ function mdBlock(b: MdBlock, key: number): ReactNode {
     case "code":
       return (
         <pre key={key} className="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs">
-          <code>{b.v}</code>
+          <code>{isolate(b.v)}</code>
         </pre>
       );
     case "hr":
@@ -478,7 +479,7 @@ function inlines(list: Inline[]): ReactNode {
       case "code":
         return (
           <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]">
-            {x.v}
+            {isolate(x.v)}
           </code>
         );
       case "strong":

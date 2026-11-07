@@ -8,6 +8,7 @@ import { useMe } from "../lib/meta";
 import { SCREEN_PROTOCOL, screenTheme, screenUrl, serveScreen, useContributions, type Contribution, type Slot } from "../lib/screens";
 import { useResolvedTheme } from "../lib/theme";
 import { EmptyState, Spinner, confirmDialog, toast } from "../ui/kit";
+import { t, isolate } from "@ferrum/client";
 
 export function ScreenFrame({ c, slot, record, fill }: { c: Contribution; slot: Slot; record?: { entity: string; id: string; version?: number }; fill?: boolean }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -74,13 +75,13 @@ export function ScreenFrame({ c, slot, record, fill }: { c: Contribution; slot: 
 
 function ScreenRoute({ slot, title, find }: { slot: Slot; title: string; find: (c: Contribution) => boolean }) {
   const q = useContributions(slot);
-  if (q.isPending) return <Spinner label="Loading" />;
+  if (q.isPending) return <Spinner label={t("Loading")} />;
   const c = q.data?.find(find);
   if (!c) {
     return (
-      <EmptyState title={`${title} is not available`} icon="apps">
+      <EmptyState title={t("{title} is not available", { title })} icon="apps">
         <p className="muted">
-          The app that adds it may be disabled or removed. <Link to="/apps">Open Apps</Link>
+          {t("The app that adds it may be disabled or removed.")} <Link to="/apps">{t("Open Apps")}</Link>
         </p>
       </EmptyState>
     );
@@ -95,13 +96,13 @@ function ScreenRoute({ slot, title, find }: { slot: Slot; title: string; find: (
 /** `/x/:app/:page`: an app's page. */
 export function ScreenPage() {
   const { app, page } = useParams();
-  return <ScreenRoute slot="ui.page" title="This page" find={(c) => c.app === app && c.id === page} />;
+  return <ScreenRoute slot="ui.page" title={t("This page")} find={(c) => c.app === app && c.id === page} />;
 }
 
 /** `/apps/:app/settings`: an app's own settings page. */
 export function AppSettingsPage() {
   const { app } = useParams();
-  return <ScreenRoute slot="ui.settings" title="This app's settings" find={(c) => c.app === app} />;
+  return <ScreenRoute slot="ui.settings" title={t("This app's settings")} find={(c) => c.app === app} />;
 }
 
 /** Apps' widgets, on a 12-column grid. */
@@ -113,7 +114,7 @@ export function ScreenWidgets() {
       {widgets.map((w) => (
         <section key={`${w.app}/${w.id}`} className="card" style={{ gridColumn: `span ${w.size?.[0] ?? 4}` }} aria-label={w.title}>
           <div className="card-head">
-            <h2>{w.title}</h2>
+            <h2>{isolate(w.title ?? "")}</h2>
           </div>
           <ScreenFrame c={w} slot="ui.widget" />
         </section>

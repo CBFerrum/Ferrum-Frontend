@@ -10,6 +10,7 @@ import { useStudioSources, type Agg, type CatalogField, type FieldCatalog } from
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { t, isolate } from "@ferrum/client";
 
 export interface PickOption {
   value: string;
@@ -64,15 +65,15 @@ export function SearchSelect({ id, value, options, onChange, onClear, placeholde
             disabled={disabled}
             className={cn("h-9 min-w-0 flex-1 justify-between px-3 font-normal", !text && "text-muted-foreground")}
           >
-            <span className="truncate">{loading ? "Loading…" : (text ?? placeholder)}</span>
+            <span className="truncate">{loading ? t("Loading…") : (text ?? placeholder)}</span>
             <ChevronsUpDown className="opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[min(24rem,calc(100vw-2rem))] min-w-[var(--radix-popover-trigger-width)] p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search…" />
+            <CommandInput placeholder={t("Search…")} />
             <CommandList className="max-h-72">
-              <CommandEmpty>{loading ? "Loading…" : "No matches."}</CommandEmpty>
+              <CommandEmpty>{loading ? t("Loading…") : t("No matches.")}</CommandEmpty>
               {groups.map(([g, list]) => (
                 <CommandGroup key={g} heading={g || undefined}>
                   {list.map((o) => (
@@ -85,8 +86,8 @@ export function SearchSelect({ id, value, options, onChange, onClear, placeholde
                         setOpen(false);
                       }}
                     >
-                      <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                      {o.hint && <span className="shrink-0 text-xs text-muted-foreground">{o.hint}</span>}
+                      <span className="min-w-0 flex-1 truncate">{isolate(o.label)}</span>
+                      {o.hint && <span className="shrink-0 text-xs text-muted-foreground">{isolate(o.hint)}</span>}
                       <Check className={cn("size-4", o.value === value ? "opacity-100" : "opacity-0")} />
                     </CommandItem>
                   ))}
@@ -97,7 +98,7 @@ export function SearchSelect({ id, value, options, onChange, onClear, placeholde
         </PopoverContent>
       </Popover>
       {onClear && value && !disabled && (
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Clear ${label ?? "the choice"}`} onClick={onClear}>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={t("Clear {value}", { value: label ?? "the choice" })} onClick={onClear}>
           <X />
         </Button>
       )}
@@ -114,7 +115,7 @@ const TYPE_HINT: Record<string, string> = {
   datetime: "date-time",
   link: "link",
   select: "choice",
-  check: "yes/no",
+  get check() { return t("yes/no"); },
 };
 
 export type FieldFilter = "any" | "groupable" | "date" | Agg;
@@ -128,7 +129,7 @@ export function catalogOptions(catalog: FieldCatalog | undefined, which: FieldFi
 
 export function FieldPicker({ catalog, which, ...rest }: Omit<SearchSelectProps, "options" | "fallbackLabel"> & { catalog: FieldCatalog | undefined; which: FieldFilter }) {
   const options = useMemo(() => catalogOptions(catalog, which), [catalog, which]);
-  return <SearchSelect {...rest} options={options} loading={!catalog} placeholder={rest.placeholder ?? "Choose a field…"} />;
+  return <SearchSelect {...rest} options={options} loading={!catalog} placeholder={rest.placeholder ?? t("Choose a field…")} />;
 }
 
 /** The entities the viewer can report on, by module. */
@@ -141,5 +142,5 @@ export function EntityPicker(props: Omit<SearchSelectProps, "options">) {
       .map((e) => ({ value: e.name, label: e.label, group: (e.module && (label.get(e.module) ?? humanize(e.module))) || "Other" }))
       .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
   }, [sources.data, modules]);
-  return <SearchSelect {...props} options={options} loading={sources.isLoading} placeholder={props.placeholder ?? "Choose what to report on…"} />;
+  return <SearchSelect {...props} options={options} loading={sources.isLoading} placeholder={props.placeholder ?? t("Choose what to report on…")} />;
 }

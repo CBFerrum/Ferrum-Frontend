@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { clampWidth, MAX_WIDTH, MIN_WIDTH, type Column } from "./settings";
+import { t as tr, isolate } from "@ferrum/client";
 
 interface Props {
   /** Every column that can be shown. */
@@ -120,16 +121,16 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
             type="button"
             className="btn btn-ghost btn-sm aria-disabled:cursor-default aria-disabled:opacity-50"
             aria-disabled={!customized || undefined}
-            title={customized ? "Back to the default columns and widths" : "The default columns are shown"}
+            title={customized ? tr("Back to the default columns and widths") : tr("The default columns are shown")}
             onClick={() => customized && onReset()}
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            Reset
+            {tr("Reset")}
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
           <h3 id={`${uid}-shown`} className="px-2 pt-1 pb-1.5 text-xs font-medium text-muted-foreground">
-            Shown
+            {tr("Shown")}
           </h3>
           <DndContext
             sensors={sensors}
@@ -161,15 +162,15 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
           </DndContext>
 
           <h3 id={`${uid}-hidden`} className="px-2 pt-4 pb-1.5 text-xs font-medium text-muted-foreground">
-            Hidden
+            {tr("Hidden")}
           </h3>
           {(hidden.length > 8 || find !== "") && (
             <div className="px-2 pb-2">
               <Input
                 type="search"
                 className="h-8 pointer-coarse:h-11"
-                placeholder="Find a column…"
-                aria-label="Find a hidden column"
+                placeholder={tr("Find a column…")}
+                aria-label={tr("Find a hidden column")}
                 value={find}
                 onChange={(e) => setFind(e.target.value)}
               />
@@ -180,11 +181,11 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
               <li key={c.name}>
                 <label className="flex min-h-8 items-center gap-2 rounded-md px-2 text-sm hover:bg-accent pointer-coarse:min-h-11">
                   <input id={boxId("off", c.name)} type="checkbox" checked={false} onChange={() => show(c.name)} />
-                  <span className="min-w-0 truncate">{c.label}</span>
+                  <span className="min-w-0 truncate">{isolate(c.label)}</span>
                 </label>
               </li>
             ))}
-            {!matches.length && <li className="px-2 py-1.5 text-sm text-muted-foreground">{hidden.length ? "No hidden column matches." : "Every column is shown."}</li>}
+            {!matches.length && <li className="px-2 py-1.5 text-sm text-muted-foreground">{hidden.length ? tr("No hidden column matches.") : tr("Every column is shown.")}</li>}
           </ul>
         </div>
       </PopoverContent>
@@ -217,19 +218,19 @@ function ShownColumn(p: {
         className={cn(ICON_BTN, "cursor-grab touch-none active:cursor-grabbing")}
         {...attributes}
         {...listeners}
-        aria-label={`Move ${p.label}`}
+        aria-label={tr("Move {label}", { label: p.label })}
       >
         <GripVertical className="size-4" aria-hidden="true" />
       </button>
-      <label className="flex min-h-8 min-w-0 flex-1 items-center gap-2 text-sm pointer-coarse:min-h-11" title={p.only ? "A list shows at least one column" : undefined}>
+      <label className="flex min-h-8 min-w-0 flex-1 items-center gap-2 text-sm pointer-coarse:min-h-11" title={p.only ? tr("A list shows at least one column") : undefined}>
         <input id={p.boxId} type="checkbox" checked aria-disabled={p.only || undefined} onChange={p.onHide} />
-        <span className="min-w-0 truncate">{p.label}</span>
+        <span className="min-w-0 truncate">{isolate(p.label)}</span>
       </label>
       <WidthInput label={p.label} width={p.width} onChange={p.onWidth} />
-      <button type="button" className={ICON_BTN} aria-label={`Move ${p.label} up`} aria-disabled={p.first || undefined} onClick={() => !p.first && p.onMove(-1)}>
+      <button type="button" className={ICON_BTN} aria-label={tr("Move {label} up", { label: p.label })} aria-disabled={p.first || undefined} onClick={() => !p.first && p.onMove(-1)}>
         <ChevronUp className="size-4" aria-hidden="true" />
       </button>
-      <button type="button" className={ICON_BTN} aria-label={`Move ${p.label} down`} aria-disabled={p.last || undefined} onClick={() => !p.last && p.onMove(1)}>
+      <button type="button" className={ICON_BTN} aria-label={tr("Move {label} down", { label: p.label })} aria-disabled={p.last || undefined} onClick={() => !p.last && p.onMove(1)}>
         <ChevronDown className="size-4" aria-hidden="true" />
       </button>
     </li>
@@ -252,8 +253,8 @@ function WidthInput({ label, width, onChange }: { label: string; width?: number;
       min={MIN_WIDTH}
       max={MAX_WIDTH}
       step={10}
-      placeholder="Auto"
-      aria-label={`Width of ${label} in pixels; empty for automatic`}
+      placeholder={tr("Auto")}
+      aria-label={tr("Width of {label} in pixels; empty for automatic", { label })}
       className="h-8 w-[4.75rem] shrink-0 rounded-md border border-input bg-transparent px-2 text-end text-sm tabular-nums placeholder:text-muted-foreground [@media(max-width:720px)]:hidden pointer-coarse:h-11"
       value={draft ?? width ?? ""}
       onChange={(e) => setDraft(e.target.value)}

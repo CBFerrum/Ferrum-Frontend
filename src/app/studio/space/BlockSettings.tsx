@@ -39,6 +39,7 @@ import {
   type FilterKind,
   type LinkTarget,
 } from "./model";
+import { t as tr, isolate } from "@ferrum/client";
 
 type Of<T extends BlockType> = Extract<SpaceBlock, { type: T }>;
 type Change = (b: SpaceBlock, tag?: string) => void;
@@ -61,7 +62,7 @@ export function BlockSettings({ block, ...p }: FormProps<SpaceBlock>) {
     case "chart":
       return (
         <FieldGroup className="gap-3">
-          <Row id={`${p.id}-chart`} label="Chart" errors={issuesAt(p.issues, "chart")} hint="Any chart you can open; viewers see its data with their own permissions.">
+          <Row id={`${p.id}-chart`} label={tr("Chart")} errors={issuesAt(p.issues, "chart")} hint={tr("Any chart you can open; viewers see its data with their own permissions.")}>
             <RecordPicker kind="charts" id={`${p.id}-chart`} value={block.chart} onChange={(chart) => p.onChange({ ...block, chart })} errors={issuesAt(p.issues, "chart")} />
           </Row>
           <BuilderLinks open={block.chart ? PATHS.chart(block.chart) : undefined} create={PATHS.chart("new")} what="chart" />
@@ -70,7 +71,7 @@ export function BlockSettings({ block, ...p }: FormProps<SpaceBlock>) {
     case "card":
       return (
         <FieldGroup className="gap-3">
-          <Row id={`${p.id}-card`} label="Number card" errors={issuesAt(p.issues, "card")} hint="Any number card you can open; viewers see it with their own permissions.">
+          <Row id={`${p.id}-card`} label={tr("Number card")} errors={issuesAt(p.issues, "card")} hint={tr("Any number card you can open; viewers see it with their own permissions.")}>
             <RecordPicker kind="cards" id={`${p.id}-card`} value={block.card} onChange={(card) => p.onChange({ ...block, card })} errors={issuesAt(p.issues, "card")} />
           </Row>
           <BuilderLinks open={block.card ? PATHS.card(block.card) : undefined} create={PATHS.card("new")} what="number card" />
@@ -96,14 +97,14 @@ function BuilderLinks({ open, create, what }: { open?: string; create?: string; 
     <div className="flex flex-wrap gap-x-4 gap-y-1">
       {open && (
         <Link to={open} target="_blank" rel="noopener" className={link}>
-          <ExternalLink className="size-3.5" aria-hidden="true" /> Open the {what}
-          <span className="sr-only"> (opens in a new tab)</span>
+          <ExternalLink className="size-3.5" aria-hidden="true" /> {tr("Open the {what}", { what })}
+          <span className="sr-only"> {tr("(opens in a new tab)")}</span>
         </Link>
       )}
       {create && (
         <Link to={create} target="_blank" rel="noopener" className={link}>
-          <Plus className="size-3.5" aria-hidden="true" /> Make a new {what}
-          <span className="sr-only"> (opens in a new tab)</span>
+          <Plus className="size-3.5" aria-hidden="true" /> {tr("Make a new {what}", { what })}
+          <span className="sr-only"> {tr("(opens in a new tab)")}</span>
         </Link>
       )}
     </div>
@@ -115,10 +116,10 @@ export function Row({ id, label, hint, errors = [], optional, children }: { id: 
     <Field className="gap-1.5" data-invalid={errors.length ? true : undefined}>
       <FieldLabel htmlFor={id} id={`${id}-label`}>
         {label}
-        {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+        {optional && <span className="font-normal text-muted-foreground">{tr("(optional)")}</span>}
       </FieldLabel>
       {children}
-      {errors.length ? <FieldError id={`${id}-error`}>{errors.join(" ")}</FieldError> : hint ? <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription> : null}
+      {errors.length ? <FieldError id={`${id}-error`}>{isolate(errors.join(" "))}</FieldError> : hint ? <FieldDescription id={`${id}-hint`}>{hint}</FieldDescription> : null}
     </Field>
   );
 }
@@ -209,7 +210,7 @@ export function IntInput({
 /** Problems with a list setting as a whole (none, too many), not with one of its entries. */
 function ListError({ issues, path }: { issues: Issue[]; path: string }) {
   const messages = issues.filter((i) => i.path === path).map((i) => i.message);
-  return messages.length ? <p className="text-xs text-destructive">{messages.join(" ")}</p> : null;
+  return messages.length ? <p className="text-xs text-destructive">{isolate(messages.join(" "))}</p> : null;
 }
 
 /** Move up, move down and remove for one entry of a list setting; focus follows the moved entry. */
@@ -223,7 +224,7 @@ function ItemActions({ id, index, count, name, onMove, onRemove }: { id: string;
   };
   return (
     <div className="flex items-center gap-0.5">
-      <Button id={`${id}-${index}-up`} type="button" variant="ghost" size="icon-sm" className={TAP} disabled={index === 0} aria-label={`Move ${name} up`} onClick={() => move(index - 1, "up")}>
+      <Button id={`${id}-${index}-up`} type="button" variant="ghost" size="icon-sm" className={TAP} disabled={index === 0} aria-label={tr("Move {name} up", { name })} onClick={() => move(index - 1, "up")}>
         <ArrowUp />
       </Button>
       <Button
@@ -233,12 +234,12 @@ function ItemActions({ id, index, count, name, onMove, onRemove }: { id: string;
         size="icon-sm"
         className={TAP}
         disabled={index === count - 1}
-        aria-label={`Move ${name} down`}
+        aria-label={tr("Move {name} down", { name })}
         onClick={() => move(index + 1, "down")}
       >
         <ArrowDown />
       </Button>
-      <Button type="button" variant="ghost" size="icon-sm" className={cn("text-muted-foreground hover:text-destructive", TAP)} aria-label={`Remove ${name}`} onClick={onRemove}>
+      <Button type="button" variant="ghost" size="icon-sm" className={cn("text-muted-foreground hover:text-destructive", TAP)} aria-label={tr("Remove {name}", { name })} onClick={onRemove}>
         <Trash2 />
       </Button>
     </div>
@@ -310,20 +311,20 @@ function Combo({
           {...aria(id, errors)}
           className={cn("w-full justify-between font-normal", TAP)}
         >
-          <span className={cn("truncate", !current && "text-muted-foreground")}>{current?.label ?? (value ? (loading ? "Loading…" : "Not available to you") : placeholder)}</span>
+          <span className={cn("truncate", !current && "text-muted-foreground")}>{current?.label ?? (value ? (loading ? tr("Loading…") : tr("Not available to you")) : placeholder)}</span>
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) min-w-64 p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search…" />
+          <CommandInput placeholder={tr("Search…")} />
           <CommandList>
-            <CommandEmpty>{loading ? "Loading…" : error ? `Could not load the choices: ${errorMessage(error)}` : emptyText}</CommandEmpty>
+            <CommandEmpty>{loading ? tr("Loading…") : error ? tr("Could not load the choices: {error}", { error: errorMessage(error) }) : emptyText}</CommandEmpty>
             {noneLabel && value && (
               <CommandGroup>
                 <CommandItem value="__none__" onSelect={() => pick("")}>
                   <X className="size-4" aria-hidden="true" />
-                  {noneLabel}
+                  {isolate(noneLabel)}
                 </CommandItem>
               </CommandGroup>
             )}
@@ -332,8 +333,8 @@ function Combo({
                 {list.map((o) => (
                   <CommandItem key={o.value} value={`${o.label} ${o.hint ?? ""} ${o.value}`} onSelect={() => pick(o.value)}>
                     <Check className={cn("size-4", o.value === value ? "opacity-100" : "opacity-0")} aria-hidden="true" />
-                    <span className="truncate">{o.label}</span>
-                    {o.hint && <span className="ms-auto truncate ps-2 text-xs text-muted-foreground">{o.hint}</span>}
+                    <span className="truncate">{isolate(o.label)}</span>
+                    {o.hint && <span className="ms-auto truncate ps-2 text-xs text-muted-foreground">{isolate(o.hint)}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -355,15 +356,15 @@ function EntityPicker(p: { id: string; value: string; onChange: (v: string) => v
       .map((e) => ({ value: e.name, label: e.label, group: (e.module && label.get(e.module)) || "Other" }))
       .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
   }, [sources.data, modules]);
-  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder="Choose a list" emptyText="No list matches." />;
+  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a list")} emptyText="No list matches." />;
 }
 
 const RECORD_TEXT: Record<StudioKind, { placeholder: string; empty: string }> = {
-  reports: { placeholder: "Choose a report", empty: "No saved reports yet." },
-  charts: { placeholder: "Choose a chart", empty: "No charts yet. Make one in the chart builder." },
-  cards: { placeholder: "Choose a number card", empty: "No number cards yet. Make one in the card builder." },
-  dashboards: { placeholder: "Choose a dashboard", empty: "No dashboards yet." },
-  spaces: { placeholder: "Choose a space", empty: "No spaces yet." },
+  reports: { get placeholder() { return tr("Choose a report"); }, get empty() { return tr("No saved reports yet."); } },
+  charts: { get placeholder() { return tr("Choose a chart"); }, get empty() { return tr("No charts yet. Make one in the chart builder."); } },
+  cards: { get placeholder() { return tr("Choose a number card"); }, get empty() { return tr("No number cards yet. Make one in the card builder."); } },
+  dashboards: { get placeholder() { return tr("Choose a dashboard"); }, get empty() { return tr("No dashboards yet."); } },
+  spaces: { get placeholder() { return tr("Choose a space"); }, get empty() { return tr("No spaces yet."); } },
 };
 
 function RecordPicker({ kind, ...p }: { kind: StudioKind; id: string; value: string; onChange: (v: string) => void; errors?: string[] }) {
@@ -384,7 +385,7 @@ function BuiltinPicker(p: { id: string; value: string; onChange: (v: string) => 
     const label = new Map(modules?.map((m) => [m.name, m.label]));
     return (sources.data?.builtin ?? []).map((r) => ({ value: r.name, label: r.label, group: (r.module && label.get(r.module)) || "Other" }));
   }, [sources.data, modules]);
-  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder="Choose a report" emptyText="No report matches." />;
+  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a report")} emptyText="No report matches." />;
 }
 
 /** The control for a shortcut's or link's target of a kind. */
@@ -403,7 +404,7 @@ function TargetRow({ kind, id, value, onChange, errors }: { kind: LinkTarget; id
       <Input id={id} value={value} placeholder="/app/e/SalesInvoice or https://…" inputMode="url" onChange={(e) => onChange(e.target.value)} className={TAP} {...aria(id, errors, true)} />
     );
   return (
-    <Row id={id} label={TARGET_LABEL[kind]} errors={errors} hint={kind === "url" ? "An app path opens here; other addresses open in a new tab." : undefined}>
+    <Row id={id} label={TARGET_LABEL[kind]} errors={errors} hint={kind === "url" ? tr("An app path opens here; other addresses open in a new tab.") : undefined}>
       {control}
     </Row>
   );
@@ -425,7 +426,7 @@ function ColorPicker({ id, value, onChange }: { id: string; value: string; onCha
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <ToggleGroup id={id} type="single" spacing={1} value={value || "none"} onValueChange={(v) => v && onChange(v === "none" ? "" : v)} aria-labelledby={`${id}-label`} className="flex-wrap">
-        <ToggleGroupItem value="none" aria-label="No accent" title="No accent" className="size-8 p-0 pointer-coarse:size-11">
+        <ToggleGroupItem value="none" aria-label={tr("No accent")} title={tr("No accent")} className="size-8 p-0 pointer-coarse:size-11">
           <Ban className="size-4 text-muted-foreground" />
         </ToggleGroupItem>
         {SWATCHES.map(([c, name]) => (
@@ -436,7 +437,7 @@ function ColorPicker({ id, value, onChange }: { id: string; value: string; onCha
       </ToggleGroup>
       <label
         className={cn("relative inline-flex size-8 cursor-pointer items-center justify-center rounded-md border hover:bg-accent pointer-coarse:size-11", custom && "ring-2 ring-ring")}
-        title="Another color"
+        title={tr("Another color")}
         style={custom ? { background: value } : undefined}
       >
         <input
@@ -444,7 +445,7 @@ function ColorPicker({ id, value, onChange }: { id: string; value: string; onCha
           value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#2f5bea"}
           onChange={(e) => onChange(e.target.value.toLowerCase())}
           className="absolute inset-0 size-full cursor-pointer opacity-0"
-          aria-label="Another color"
+          aria-label={tr("Another color")}
         />
         {!custom && <Palette className="size-4 text-muted-foreground" aria-hidden="true" />}
       </label>
@@ -485,15 +486,15 @@ function FilterEditor({ entity, value, onChange, issues, path, id }: { entity: s
   const set = (i: number, row: SpecFilter) => onChange(rows.map((r, j) => (j === i ? row : r)));
   return (
     <fieldset className="grid gap-2">
-      <legend className="mb-1.5 text-sm font-medium">Filters</legend>
-      {!rows.length && <p className="text-xs text-muted-foreground">Every record is included. Add a filter to narrow it down.</p>}
+      <legend className="mb-1.5 text-sm font-medium">{tr("Filters")}</legend>
+      {!rows.length && <p className="text-xs text-muted-foreground">{tr("Every record is included. Add a filter to narrow it down.")}</p>}
       {rows.map((r, i) => {
         const field = fields.find((f) => f.name === r[0]);
         const kind = kindOf(field);
         const errors = issuesAt(issues, `${path}[${i}]`);
         const rid = `${id}-${i}`;
         return (
-          <div key={i} role="group" aria-label={`Filter ${i + 1}`} className={cn("grid gap-2 rounded-lg border p-2", errors.length && "border-destructive")}>
+          <div key={i} role="group" aria-label={tr("Filter {value}", { value: i + 1 })} className={cn("grid gap-2 rounded-lg border p-2", errors.length && "border-destructive")}>
             <div className="flex items-center gap-2">
               <Select
                 value={r[0] ?? ""}
@@ -502,31 +503,31 @@ function FilterEditor({ entity, value, onChange, issues, path, id }: { entity: s
                   set(i, [name, OPS[k][0], initialValue(k, OPS[k][0])]);
                 }}
               >
-                <SelectTrigger aria-label="Field" className={cn("min-w-0 flex-1", TAP)} {...aria(rid, errors)}>
-                  <SelectValue placeholder={meta.isLoading ? "Loading fields…" : "Field"} />
+                <SelectTrigger aria-label={tr("Field")} className={cn("min-w-0 flex-1", TAP)} {...aria(rid, errors)}>
+                  <SelectValue placeholder={meta.isLoading ? tr("Loading fields…") : tr("Field")} />
                 </SelectTrigger>
                 <SelectContent>
                   {fields.map((f) => (
                     <SelectItem key={f.name} value={f.name}>
-                      {f.label}
+                      {isolate(f.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="ghost" size="icon-sm" className={TAP} aria-label={`Remove filter ${i + 1}`} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+              <Button type="button" variant="ghost" size="icon-sm" className={TAP} aria-label={tr("Remove filter {value}", { value: i + 1 })} onClick={() => onChange(rows.filter((_, j) => j !== i))}>
                 <X />
               </Button>
             </div>
             {field && (
               <div className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-2">
                 <Select value={r[1]} onValueChange={(op) => set(i, [r[0], op as FilterOp, initialValue(kind, op as FilterOp)])}>
-                  <SelectTrigger aria-label="Condition" className={cn("w-full", TAP)}>
+                  <SelectTrigger aria-label={tr("Condition")} className={cn("w-full", TAP)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {[...new Set([...OPS[kind], r[1]])].map((op) => (
                       <SelectItem key={op} value={op}>
-                        {opLabel(op, kind)}
+                        {isolate(opLabel(op, kind))}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -536,14 +537,14 @@ function FilterEditor({ entity, value, onChange, issues, path, id }: { entity: s
             )}
             {errors.length > 0 && (
               <p id={`${rid}-error`} className="text-xs text-destructive">
-                {errors.join(" ")}
+                {isolate(errors.join(" "))}
               </p>
             )}
           </div>
         );
       })}
       <Button type="button" variant="outline" size="sm" className={cn("justify-self-start", TAP)} disabled={!entity || rows.length >= 50} onClick={() => onChange([...rows, ["", "=", ""]])}>
-        <Plus /> Add filter
+        <Plus /> {tr("Add filter")}
       </Button>
     </fieldset>
   );
@@ -552,13 +553,13 @@ function FilterEditor({ entity, value, onChange, issues, path, id }: { entity: s
 function FilterValueInput({ id, field, kind, op, value, onChange }: { id: string; field: MetaField; kind: FilterKind; op: FilterOp; value: unknown; onChange: (v: unknown) => void }) {
   const choice = (current: string, options: [string, string][], pick: (v: string) => void) => (
     <Select value={current} onValueChange={pick}>
-      <SelectTrigger id={id} aria-label="Value" className={cn("w-full", TAP)}>
-        <SelectValue placeholder="Choose" />
+      <SelectTrigger id={id} aria-label={tr("Value")} className={cn("w-full", TAP)}>
+        <SelectValue placeholder={tr("Choose")} />
       </SelectTrigger>
       <SelectContent>
         {options.map(([v, label]) => (
           <SelectItem key={v} value={v}>
-            {label}
+            {isolate(label)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -596,12 +597,12 @@ function FilterValueInput({ id, field, kind, op, value, onChange }: { id: string
       onChange,
     );
   if (kind === "link" && field.to)
-    return <LinkInput id={id} to={field.to} value={typeof value === "string" && value ? value : null} label="Value" placeholder="Choose" onChange={(v) => onChange(v ?? "")} />;
+    return <LinkInput id={id} to={field.to} value={typeof value === "string" && value ? value : null} label={tr("Value")} placeholder={tr("Choose")} onChange={(v) => onChange(v ?? "")} />;
   const dated = kind === "date" || kind === "datetime";
   return (
     <Input
       id={id}
-      aria-label="Value"
+      aria-label={tr("Value")}
       type={dated ? "date" : "text"}
       inputMode={kind === "number" ? "decimal" : undefined}
       value={filterInput(field.type, op, value)}
@@ -615,22 +616,22 @@ function MultiChoice({ id, options, value, onChange }: { id: string; options: st
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button id={id} type="button" variant="outline" aria-label={`Values: ${value.join(", ") || "none chosen"}`} className={cn("w-full justify-between font-normal", TAP)}>
-          <span className={cn("truncate", !value.length && "text-muted-foreground")}>{value.length ? value.join(", ") : "Choose"}</span>
+        <Button id={id} type="button" variant="outline" aria-label={tr("Values: {value}", { value: value.join(", ") || "none chosen" })} className={cn("w-full justify-between font-normal", TAP)}>
+          <span className={cn("truncate", !value.length && "text-muted-foreground")}>{value.length ? value.join(", ") : tr("Choose")}</span>
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
         <Command>
           <CommandList>
-            <CommandEmpty>No options.</CommandEmpty>
+            <CommandEmpty>{tr("No options.")}</CommandEmpty>
             {options.map((o) => {
               const on = value.includes(o);
               return (
                 <CommandItem key={o} value={o} onSelect={() => onChange(on ? value.filter((x) => x !== o) : [...value, o])}>
                   <Check className={cn("size-4", on ? "opacity-100" : "opacity-0")} aria-hidden="true" />
-                  {o}
-                  {on && <span className="sr-only"> (chosen)</span>}
+                  {isolate(o)}
+                  {on && <span className="sr-only"> {tr("(chosen)")}</span>}
                 </CommandItem>
               );
             })}
@@ -647,12 +648,12 @@ function FieldsPicker({ id, meta, value, onChange, errors }: { id: string; meta:
   return (
     <div className="grid gap-2">
       {value.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="Fields shown">
+        <ul className="flex flex-wrap gap-1.5" aria-label={tr("Fields shown")}>
           {value.map((n) => (
             <li key={n}>
               <Badge variant="secondary" className="gap-1 py-1 pe-1">
-                {label(n)}
-                <button type="button" aria-label={`Stop showing ${label(n)}`} onClick={() => onChange(value.filter((x) => x !== n))} className="rounded-sm p-0.5 hover:bg-background">
+                {isolate(label(n))}
+                <button type="button" aria-label={tr("Stop showing {n}", { n: label(n) })} onClick={() => onChange(value.filter((x) => x !== n))} className="rounded-sm p-0.5 hover:bg-background">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -663,14 +664,14 @@ function FieldsPicker({ id, meta, value, onChange, errors }: { id: string; meta:
       <Popover>
         <PopoverTrigger asChild>
           <Button id={id} type="button" variant="outline" size="sm" disabled={!meta} aria-labelledby={`${id}-label ${id}`} {...aria(id, errors, true)} className={cn("justify-self-start", TAP)}>
-            <Plus /> {value.length ? "Change fields" : "Choose fields"}
+            <Plus /> {value.length ? tr("Change fields") : tr("Choose fields")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search fields…" />
+            <CommandInput placeholder={tr("Search fields…")} />
             <CommandList>
-              <CommandEmpty>No field matches.</CommandEmpty>
+              <CommandEmpty>{tr("No field matches.")}</CommandEmpty>
               {choices.map((f) => {
                 const on = value.includes(f.name);
                 return (
@@ -681,8 +682,8 @@ function FieldsPicker({ id, meta, value, onChange, errors }: { id: string; meta:
                     onSelect={() => onChange(on ? value.filter((x) => x !== f.name) : [...value, f.name])}
                   >
                     <Check className={cn("size-4", on ? "opacity-100" : "opacity-0")} aria-hidden="true" />
-                    {f.label}
-                    {on && <span className="sr-only"> (shown)</span>}
+                    {isolate(f.label)}
+                    {on && <span className="sr-only"> {tr("(shown)")}</span>}
                   </CommandItem>
                 );
               })}
@@ -707,19 +708,19 @@ function SortPicker({ id, meta, value, onChange }: { id: string; meta: EntityMet
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={DEFAULT_ORDER}>The list’s usual order</SelectItem>
+          <SelectItem value={DEFAULT_ORDER}>{tr("The list’s usual order")}</SelectItem>
           {options.map((f) => (
             <SelectItem key={f.name} value={f.name}>
-              {f.label}
+              {isolate(f.label)}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <ToggleGroup type="single" variant="outline" value={field ? dir : ""} disabled={!field} onValueChange={(d) => d && field && onChange(`${field} ${d}`)} aria-label="Direction">
-        <ToggleGroupItem value="asc" aria-label="Ascending" title="Ascending" className={TAP}>
+      <ToggleGroup type="single" variant="outline" value={field ? dir : ""} disabled={!field} onValueChange={(d) => d && field && onChange(`${field} ${d}`)} aria-label={tr("Direction")}>
+        <ToggleGroupItem value="asc" aria-label={tr("Ascending")} title={tr("Ascending")} className={TAP}>
           <ArrowUp />
         </ToggleGroupItem>
-        <ToggleGroupItem value="desc" aria-label="Descending" title="Descending" className={TAP}>
+        <ToggleGroupItem value="desc" aria-label={tr("Descending")} title={tr("Descending")} className={TAP}>
           <ArrowDown />
         </ToggleGroupItem>
       </ToggleGroup>
@@ -735,8 +736,8 @@ function ShortcutForm({ block: b, onChange, issues, id }: FormProps<Of<"shortcut
   const e = (path: string) => issuesAt(issues, path);
   return (
     <FieldGroup className="gap-5">
-      <TextRow id={`${id}-label`} label="Label" value={b.label} placeholder="Unpaid invoices" errors={e("label")} onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
-      <Row id={`${id}-opens`} label="Opens">
+      <TextRow id={`${id}-label`} label={tr("Label")} value={b.label} placeholder={tr("Unpaid invoices")} errors={e("label")} onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
+      <Row id={`${id}-opens`} label={tr("Opens")}>
         <Select value={kind} onValueChange={(k) => onChange(retarget(b, SHORTCUT_TARGETS, k))}>
           <SelectTrigger id={`${id}-opens`} className={cn("w-full", TAP)}>
             <SelectValue />
@@ -744,7 +745,7 @@ function ShortcutForm({ block: b, onChange, issues, id }: FormProps<Of<"shortcut
           <SelectContent>
             {SHORTCUT_TARGETS.map((k) => (
               <SelectItem key={k} value={k}>
-                {TARGET_LABEL[k]}
+                {isolate(TARGET_LABEL[k])}
               </SelectItem>
             ))}
           </SelectContent>
@@ -768,12 +769,12 @@ function ShortcutForm({ block: b, onChange, issues, id }: FormProps<Of<"shortcut
           <Field orientation="horizontal" className="items-center">
             <Switch id={`${id}-count`} checked={!!b.show_count} onCheckedChange={(show_count) => onChange({ ...b, show_count })} />
             <FieldLabel htmlFor={`${id}-count`} className="font-normal">
-              Show a live count of the matching records
+              {tr("Show a live count of the matching records")}
             </FieldLabel>
           </Field>
         </>
       )}
-      <Row id={`${id}-color`} label="Accent color" optional errors={e("color")}>
+      <Row id={`${id}-color`} label={tr("Accent color")} optional errors={e("color")}>
         <ColorPicker id={`${id}-color`} value={b.color ?? ""} onChange={(color) => onChange({ ...b, color })} />
       </Row>
     </FieldGroup>
@@ -787,18 +788,18 @@ function LinksForm({ block: b, onChange, issues, id }: FormProps<Of<"links">>) {
   const nameOf = (kind: LinkTarget, v: string) => (kind === "entity" ? labels(v) : kind === "builtin" ? (sources?.builtin.find((r) => r.name === v)?.label ?? "") : "");
   return (
     <FieldGroup className="gap-5">
-      <TextRow id={`${id}-label`} label="Title" value={b.label} placeholder="Documents" errors={issuesAt(issues, "label")} onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
+      <TextRow id={`${id}-label`} label={tr("Title")} value={b.label} placeholder={tr("Documents")} errors={issuesAt(issues, "label")} onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
       <fieldset className="grid gap-3">
-        <legend className="mb-1.5 text-sm font-medium">Links</legend>
+        <legend className="mb-1.5 text-sm font-medium">{tr("Links")}</legend>
         <ListError issues={issues} path="items" />
         {b.items.map((l, i) => {
           const kind = targetOf(l, LINK_TARGETS);
           const iid = `${id}-item-${i}`;
           const setItem = (item: typeof l, tag?: string) => setItems(b.items.map((x, j) => (j === i ? item : x)), tag);
           return (
-            <div key={i} role="group" aria-label={`Link ${i + 1}`} className="grid gap-3 rounded-lg border p-3">
+            <div key={i} role="group" aria-label={tr("Link {value}", { value: i + 1 })} className="grid gap-3 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Link {i + 1}</span>
+                <span className="text-xs font-medium text-muted-foreground">{tr("Link")} {i + 1}</span>
                 <ItemActions
                   id={`${id}-item`}
                   index={i}
@@ -808,8 +809,8 @@ function LinksForm({ block: b, onChange, issues, id }: FormProps<Of<"links">>) {
                   onRemove={() => setItems(b.items.filter((_, j) => j !== i))}
                 />
               </div>
-              <TextRow id={`${iid}-label`} label="Label" value={l.label} errors={issuesAt(issues, `items[${i}].label`)} onChange={(label) => setItem({ ...l, label }, `${iid}:label`)} />
-              <Row id={`${iid}-opens`} label="Opens">
+              <TextRow id={`${iid}-label`} label={tr("Label")} value={l.label} errors={issuesAt(issues, `items[${i}].label`)} onChange={(label) => setItem({ ...l, label }, `${iid}:label`)} />
+              <Row id={`${iid}-opens`} label={tr("Opens")}>
                 <Select value={kind} onValueChange={(k) => setItem(retarget(l, LINK_TARGETS, k))}>
                   <SelectTrigger id={`${iid}-opens`} className={cn("w-full", TAP)}>
                     <SelectValue />
@@ -817,7 +818,7 @@ function LinksForm({ block: b, onChange, issues, id }: FormProps<Of<"links">>) {
                   <SelectContent>
                     {LINK_TARGETS.map((k) => (
                       <SelectItem key={k} value={k}>
-                        {TARGET_LABEL[k]}
+                        {isolate(TARGET_LABEL[k])}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -834,7 +835,7 @@ function LinksForm({ block: b, onChange, issues, id }: FormProps<Of<"links">>) {
           );
         })}
         <Button type="button" variant="outline" size="sm" className={cn("justify-self-start", TAP)} disabled={b.items.length >= 50} onClick={() => setItems([...b.items, { label: "", entity: "" }])}>
-          <Plus /> Add link
+          <Plus /> {tr("Add link")}
         </Button>
       </fieldset>
     </FieldGroup>
@@ -846,7 +847,7 @@ function ListForm({ block: b, onChange, issues, id }: FormProps<Of<"list">>) {
   const e = (path: string) => issuesAt(issues, path);
   return (
     <FieldGroup className="gap-5">
-      <Row id={`${id}-entity`} label="List" errors={e("entity")}>
+      <Row id={`${id}-entity`} label={tr("List")} errors={e("entity")}>
         <EntityPicker
           id={`${id}-entity`}
           value={b.entity}
@@ -855,16 +856,16 @@ function ListForm({ block: b, onChange, issues, id }: FormProps<Of<"list">>) {
           onChange={(entity) => onChange(entity === b.entity ? b : { ...b, entity, fields: [], filters: [], sort: "updated_at desc" })}
         />
       </Row>
-      <TextRow id={`${id}-label`} label="Title" optional value={b.label} placeholder={meta ? `Recent ${meta.label_plural.toLowerCase()}` : "Recent records"} hint="Defaults to the list’s name." onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
+      <TextRow id={`${id}-label`} label={tr("Title")} optional value={b.label} placeholder={meta ? tr("Recent {value}", { value: meta.label_plural.toLowerCase() }) : tr("Recent records")} hint={tr("Defaults to the list’s name.")} onChange={(label) => onChange({ ...b, label }, `${id}:label`)} />
       {b.entity && (
         <>
-          <Row id={`${id}-fields`} label="Fields" optional errors={e("fields")} hint="Up to 12. Without a choice, the list’s usual columns show.">
+          <Row id={`${id}-fields`} label={tr("Fields")} optional errors={e("fields")} hint={tr("Up to 12. Without a choice, the list’s usual columns show.")}>
             <FieldsPicker id={`${id}-fields`} meta={meta} value={b.fields ?? []} errors={e("fields")} onChange={(fields) => onChange({ ...b, fields })} />
           </Row>
-          <Row id={`${id}-sort`} label="Order" errors={e("sort")}>
+          <Row id={`${id}-sort`} label={tr("Order")} errors={e("sort")}>
             <SortPicker id={`${id}-sort`} meta={meta} value={b.sort ?? ""} onChange={(sort) => onChange({ ...b, sort })} />
           </Row>
-          <Row id={`${id}-limit`} label="Records shown" errors={e("limit")} hint="1 to 50.">
+          <Row id={`${id}-limit`} label={tr("Records shown")} errors={e("limit")} hint={tr("1 to 50.")}>
             <IntInput id={`${id}-limit`} nullable value={b.limit} placeholder="5" errors={e("limit")} hint onChange={(limit) => onChange({ ...b, limit }, `${id}:limit`)} className="w-28" />
           </Row>
           <FilterEditor entity={b.entity} value={b.filters} onChange={(filters) => onChange({ ...b, filters }, `${id}:filters`)} issues={issues} path="filters" id={`${id}-filters`} />
@@ -878,7 +879,7 @@ function MarkdownForm({ block: b, onChange, issues, id }: FormProps<Of<"markdown
   const errors = issuesAt(issues, "content");
   const length = [...(b.content ?? "")].length;
   return (
-    <Row id={`${id}-content`} label="Text" errors={errors} hint="**bold**, *italic*, [a link](/app/e/Customer), # a heading, - a list, > a quote.">
+    <Row id={`${id}-content`} label={tr("Text")} errors={errors} hint="**bold**, *italic*, [a link](/app/e/Customer), # a heading, - a list, > a quote.">
       <Textarea
         id={`${id}-content`}
         rows={12}
@@ -888,7 +889,7 @@ function MarkdownForm({ block: b, onChange, issues, id }: FormProps<Of<"markdown
         {...aria(`${id}-content`, errors, true)}
       />
       <span className={cn("text-end text-xs tabular-nums", length > 20_000 ? "text-destructive" : "text-muted-foreground")} aria-live="polite">
-        {length.toLocaleString()} / 20,000
+        {isolate(length.toLocaleString())} / 20,000
       </span>
     </Row>
   );
@@ -897,8 +898,8 @@ function MarkdownForm({ block: b, onChange, issues, id }: FormProps<Of<"markdown
 function HeadingForm({ block: b, onChange, issues, id }: FormProps<Of<"heading">>) {
   return (
     <FieldGroup className="gap-5">
-      <TextRow id={`${id}-text`} label="Heading" value={b.text} maxLength={200} placeholder="Overview" errors={issuesAt(issues, "text")} onChange={(text) => onChange({ ...b, text }, `${id}:text`)} />
-      <Row id={`${id}-level`} label="Size" errors={issuesAt(issues, "level")}>
+      <TextRow id={`${id}-text`} label={tr("Heading")} value={b.text} maxLength={200} placeholder={tr("Overview")} errors={issuesAt(issues, "text")} onChange={(text) => onChange({ ...b, text }, `${id}:text`)} />
+      <Row id={`${id}-level`} label={tr("Size")} errors={issuesAt(issues, "level")}>
         <ToggleGroup
           id={`${id}-level`}
           type="single"
@@ -913,7 +914,7 @@ function HeadingForm({ block: b, onChange, issues, id }: FormProps<Of<"heading">
             ["3", "Small"],
           ].map(([v, label]) => (
             <ToggleGroupItem key={v} value={v} className={TAP}>
-              {label}
+              {isolate(label)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
@@ -927,17 +928,17 @@ function OnboardingForm({ block: b, onChange, issues, id }: FormProps<Of<"onboar
   const setSteps = (steps: Of<"onboarding">["steps"], tag?: string) => onChange({ ...b, steps }, tag);
   return (
     <FieldGroup className="gap-5">
-      <TextRow id={`${id}-title`} label="Title" optional value={b.title} placeholder="Get started" onChange={(title) => onChange({ ...b, title }, `${id}:title`)} />
+      <TextRow id={`${id}-title`} label={tr("Title")} optional value={b.title} placeholder={tr("Get started")} onChange={(title) => onChange({ ...b, title }, `${id}:title`)} />
       <fieldset className="grid gap-3">
-        <legend className="mb-1.5 text-sm font-medium">Steps</legend>
+        <legend className="mb-1.5 text-sm font-medium">{tr("Steps")}</legend>
         <ListError issues={issues} path="steps" />
         {b.steps.map((s, i) => {
           const sid = `${id}-step-${i}`;
           const setStep = (step: typeof s, tag?: string) => setSteps(b.steps.map((x, j) => (j === i ? step : x)), tag);
           return (
-            <div key={i} role="group" aria-label={`Step ${i + 1}`} className="grid gap-3 rounded-lg border p-3">
+            <div key={i} role="group" aria-label={tr("Step {value}", { value: i + 1 })} className="grid gap-3 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Step {i + 1}</span>
+                <span className="text-xs font-medium text-muted-foreground">{tr("Step")} {i + 1}</span>
                 <ItemActions
                   id={`${id}-step`}
                   index={i}
@@ -947,14 +948,14 @@ function OnboardingForm({ block: b, onChange, issues, id }: FormProps<Of<"onboar
                   onRemove={() => setSteps(b.steps.filter((_, j) => j !== i))}
                 />
               </div>
-              <TextRow id={`${sid}-label`} label="Step" value={s.label} placeholder="Add your first customer" errors={issuesAt(issues, `steps[${i}].label`)} onChange={(label) => setStep({ ...s, label }, `${sid}:label`)} />
-              <TextRow id={`${sid}-description`} label="Description" optional maxLength={500} value={s.description} onChange={(description) => setStep({ ...s, description }, `${sid}:description`)} />
-              <Row id={`${sid}-entity`} label="Done when a record exists in" optional hint="Leave empty for a step that is never ticked off on its own.">
+              <TextRow id={`${sid}-label`} label={tr("Step")} value={s.label} placeholder={tr("Add your first customer")} errors={issuesAt(issues, `steps[${i}].label`)} onChange={(label) => setStep({ ...s, label }, `${sid}:label`)} />
+              <TextRow id={`${sid}-description`} label={tr("Description")} optional maxLength={500} value={s.description} onChange={(description) => setStep({ ...s, description }, `${sid}:description`)} />
+              <Row id={`${sid}-entity`} label={tr("Done when a record exists in")} optional hint={tr("Leave empty for a step that is never ticked off on its own.")}>
                 <EntityPicker
                   id={`${sid}-entity`}
                   value={s.entity ?? ""}
                   noneLabel="No list"
-                  onChange={(entity) => setStep({ ...s, entity, filters: entity === s.entity ? s.filters : [], label: s.label.trim() || (entity ? `Add your first ${labels(entity).toLowerCase()}` : "") })}
+                  onChange={(entity) => setStep({ ...s, entity, filters: entity === s.entity ? s.filters : [], label: s.label.trim() || (entity ? tr("Add your first {value}", { value: labels(entity).toLowerCase() }) : "") })}
                 />
               </Row>
               {s.entity && (
@@ -962,11 +963,11 @@ function OnboardingForm({ block: b, onChange, issues, id }: FormProps<Of<"onboar
               )}
               <TextRow
                 id={`${sid}-url`}
-                label="Opens"
+                label={tr("Opens")}
                 optional
                 value={s.url}
-                placeholder={s.entity ? `/app/e/${s.entity}/new` : "/app/…"}
-                hint="Without an address, a step with a list opens a new record of it."
+                placeholder={s.entity ? tr("/app/e/{entity}/new", { entity: s.entity }) : tr("/app/…")}
+                hint={tr("Without an address, a step with a list opens a new record of it.")}
                 errors={issuesAt(issues, `steps[${i}].url`)}
                 onChange={(url) => setStep({ ...s, url }, `${sid}:url`)}
               />
@@ -974,7 +975,7 @@ function OnboardingForm({ block: b, onChange, issues, id }: FormProps<Of<"onboar
           );
         })}
         <Button type="button" variant="outline" size="sm" className={cn("justify-self-start", TAP)} disabled={b.steps.length >= 20} onClick={() => setSteps([...b.steps, { label: "", entity: "" }])}>
-          <Plus /> Add step
+          <Plus /> {tr("Add step")}
         </Button>
       </fieldset>
     </FieldGroup>

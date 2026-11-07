@@ -9,6 +9,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { t, isolate } from "@ferrum/client";
 
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
@@ -46,7 +47,7 @@ export function Issues({ id, messages }: { id?: string; messages: string[] }) {
   return (
     <div id={id} className="grid gap-0.5 text-xs text-destructive">
       {messages.map((m, i) => (
-        <p key={i}>{m}</p>
+        <p key={i}>{isolate(m)}</p>
       ))}
     </div>
   );
@@ -56,7 +57,7 @@ export function PanelSection({ title, action, children, hint }: { title: string;
   return (
     <section className="grid gap-2 border-b border-border px-4 py-3 last:border-b-0" aria-label={title}>
       <div className="flex min-h-7 items-center gap-2">
-        <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h3>
+        <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{isolate(title)}</h3>
         <span className="ms-auto flex items-center gap-1">{action}</span>
       </div>
       {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
@@ -111,8 +112,8 @@ export function SortableItem({ id, label, children, className }: { id: string; l
         type="button"
         {...attributes}
         {...listeners}
-        aria-label={`Move ${label}`}
-        title="Drag to reorder (or focus and press Space, then the arrow keys)"
+        aria-label={t("Move {label}", { label })}
+        title={t("Drag to reorder (or focus and press Space, then the arrow keys)")}
         className="mt-1.5 grid size-6 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none active:cursor-grabbing pointer-coarse:mt-0 pointer-coarse:size-11"
       >
         <GripVertical className="size-4" aria-hidden="true" />
@@ -127,21 +128,21 @@ export function RowMenu({ label, index, count, onMove, onRemove, children }: { l
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="mt-0.5 shrink-0" aria-label={`${label}: more actions`}>
+        <Button variant="ghost" size="icon-sm" className="mt-0.5 shrink-0" aria-label={t("{label}: more actions", { label })}>
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {children}
         <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(index - 1)}>
-          <ArrowUp /> Move up
+          <ArrowUp /> {t("Move up")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={index === count - 1} onSelect={() => onMove(index + 1)}>
-          <ArrowDown /> Move down
+          <ArrowDown /> {t("Move down")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={onRemove}>
-          <Trash2 /> Remove
+          <Trash2 /> {t("Remove")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
