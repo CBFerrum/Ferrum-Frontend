@@ -69,6 +69,12 @@ describe("sanitizeSpec", () => {
     });
   });
 
+  it("keeps a pivot's declared values: text, numbers, yes and no", () => {
+    const s = sanitizeSpec({ entity: "SalesInvoice", measures: [{ fn: "count" }], pivot: { field: "status", values: ["Paid", 3, true, null, { x: 1 }] } });
+    expect(s?.pivot).toEqual({ field: "status", values: ["Paid", 3, true] });
+    expect(sanitizeSpec({ entity: "SalesInvoice", measures: [{ fn: "count" }], pivot: { field: "status", values: [] } })?.pivot).toEqual({ field: "status" });
+  });
+
   it("reads the kernel's operator spellings and short filters", () => {
     expect(sanitizeSpec({ entity: "X", filters: [["a", "EQ", 1], ["b", "not_in", [2]], ["c", 3], ["d", "~", 4], [5, "=", 6]] })?.filters).toEqual([
       ["a", "=", 1],

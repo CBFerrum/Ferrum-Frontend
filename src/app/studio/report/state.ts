@@ -24,6 +24,7 @@ import {
   type FormatStyle,
   type Issue,
   type Measure,
+  type PivotValue,
   type ReportKind,
   type ResultColumn,
   type ResultRow,
@@ -118,7 +119,8 @@ export function sanitizeSpec(v: unknown): Spec | null {
   if (isObj(v.pivot) && typeof v.pivot.field === "string") {
     const bucket = pick(v.pivot.bucket, BUCKETS);
     const max = int(v.pivot.max_columns, 1, 100);
-    s.pivot = { field: v.pivot.field, ...(bucket ? { bucket } : {}), ...(max ? { max_columns: max } : {}) };
+    const values = Array.isArray(v.pivot.values) ? v.pivot.values.filter((x): x is PivotValue => ["string", "number", "boolean"].includes(typeof x)) : [];
+    s.pivot = { field: v.pivot.field, ...(bucket ? { bucket } : {}), ...(max ? { max_columns: max } : {}), ...(values.length ? { values } : {}) };
   }
   const sort = each(v.sort, (o): Sort | undefined => (nonEmpty(o.by) ? { by: o.by, dir: o.dir === "desc" ? "desc" : "asc" } : undefined));
   if (sort.length) s.sort = sort;
