@@ -4,7 +4,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Copy, Lock, Redo2, Save, Undo2 } from "lucide-react";
-import { ApiError, errorMessage } from "@/lib/api";
+import { errorMessage, isStale } from "@/lib/api";
 import { fieldIssues, studio, useSaveStudioRecord, type Issue, type StudioRecords } from "@/lib/studio";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,7 @@ export function useBuilder<K extends Kind, D>({
       onSaved?.(saved, !base.id);
       return saved;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && base.id) {
+      if (isStale(e) && base.id) {
         // Someone saved first: their version becomes the base, my changes are replayed onto it.
         try {
           const latest = await studio.get(kind, base.id);

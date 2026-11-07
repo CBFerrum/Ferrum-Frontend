@@ -29,7 +29,7 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import { ApiError, errorMessage } from "@/lib/api";
+import { errorMessage, isStale } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -428,7 +428,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
       toast("Dashboard saved");
       onExit(allowLeave);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && base.id) {
+      if (isStale(e) && base.id) {
         try {
           const latest = await studio.get("dashboards", base.id);
           const merged = mergeRecord(toBody(toDraft(base)), toBody(draft), toBody(toDraft(latest)), {

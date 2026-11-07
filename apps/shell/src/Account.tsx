@@ -56,9 +56,9 @@ export function Devices({
   };
   const signOutEverywhere = async () => {
     const ok = await confirmDialog({
-      title: "Sign out everywhere?",
+      title: t("Sign out everywhere?"),
       message: everywhere.message,
-      confirmLabel: "Sign out everywhere",
+      confirmLabel: t("Sign out everywhere"),
       danger: true,
     });
     if (!ok) return;
@@ -70,7 +70,7 @@ export function Devices({
     }
   };
   if (q.error) return <p className="muted">{errorMessage(q.error)}</p>;
-  if (!q.data) return <Spinner label="Loading your devices" />;
+  if (!q.data) return <Spinner label={t("Loading your devices")} />;
   return (
     <>
       <table className="shell-devices">
@@ -104,7 +104,7 @@ export function Devices({
       </table>
       <div>
         <Button size="sm" variant="danger" onClick={() => void signOutEverywhere()}>
-          Sign out everywhere
+          {t("Sign out everywhere")}
         </Button>
       </div>
     </>
@@ -224,7 +224,7 @@ export function Passkeys() {
       const r = cred.response as AuthenticatorAttestationResponse;
       const response = { clientDataJSON: b64.encode(r.clientDataJSON), attestationObject: b64.encode(r.attestationObject), transports: r.getTransports?.() ?? [] };
       await api.post("/api/auth/passkeys", { request: options.request, name: browserName(navigator.userAgent), credential: { id: cred.id, rawId: b64.encode(cred.rawId), type: cred.type, response } });
-      toast("Passkey added: next time, sign in with it");
+      toast(t("Passkey added: next time, sign in with it"));
       refresh();
     } catch (e) {
       const kind = (e as { name?: string } | null)?.name;
@@ -240,7 +240,7 @@ export function Passkeys() {
     if (!ok) return;
     try {
       await api.del(`/api/auth/passkeys/${p.id}`);
-      toast("Passkey removed");
+      toast(t("Passkey removed"));
       refresh();
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -258,7 +258,7 @@ export function Passkeys() {
     }
   };
   if (q.error) return <p className="muted">{errorMessage(q.error)}</p>;
-  if (!q.data) return <Spinner label="Loading your passkeys" />;
+  if (!q.data) return <Spinner label={t("Loading your passkeys")} />;
   const here = location.hostname;
   return (
     <>
@@ -267,9 +267,9 @@ export function Passkeys() {
         <table className="shell-devices">
           <thead>
             <tr>
-              <th scope="col">Passkey</th>
-              <th scope="col">Last used</th>
-              <th scope="col">Added</th>
+              <th scope="col">{t("Passkey")}</th>
+              <th scope="col">{t("Last used")}</th>
+              <th scope="col">{t("Added")}</th>
               <th scope="col">
                 <span className="sr-only">Actions</span>
               </th>
@@ -397,8 +397,8 @@ function TimeZone() {
   };
   return (
     <div className="row" style={{ gap: 8 }}>
-      <select className="select" aria-label="Time zone" value={mine} disabled={busy || !q.data} onChange={(e) => void choose(e.target.value)}>
-        <option value="">{workspace ? `The workspace's (${workspace})` : "The workspace's"}</option>
+      <select className="select" aria-label={t("Time zone")} value={mine} disabled={busy || !q.data} onChange={(e) => void choose(e.target.value)}>
+        <option value="">{workspace ? t("The workspace's ({zone})", { zone: workspace }) : t("The workspace's")}</option>
         {[...new Set([mine, ...zones])].filter(Boolean).map((z) => (
           <option key={z} value={z}>
             {z.replaceAll("_", " ")}
@@ -436,11 +436,11 @@ export function AccountPage() {
       {me?.accounts ? (
         <Section id="acct-signin" title={t("Signing in")}>
           <p className="muted">
-            You sign in with your Ferrum account, {me.user.email}. Its password, two-step sign-in and passkeys work for every workspace you have.
+            {t("You sign in with your Ferrum account, {email}. Its password, two-step sign-in and passkeys work for every workspace you have.", { email: me.user.email })}
           </p>
           <div>
             <a className="btn btn-default btn-md" href={`${me.accounts}/`}>
-              Manage your Ferrum account
+              {t("Manage your Ferrum account")}
             </a>
           </div>
         </Section>
