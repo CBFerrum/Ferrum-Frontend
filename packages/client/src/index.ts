@@ -31,7 +31,7 @@ export {
   type FormatOptions,
 } from "../../../src/lib/format";
 export { addCatalog, addCatalogs, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
-import { applyLocale, wordsReady } from "../../../src/lib/i18n";
+import { applyLocale } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
 export interface Bootstrap {
@@ -724,9 +724,8 @@ export async function uploadInParts(
   return stored;
 }
 
-// The page's words before anything is drawn: the bootstrap is read as the page starts and its
-// language's catalog fetched; every module that imports this one waits for it.
-if (typeof document !== "undefined") {
-  bootstrap();
-  await wordsReady();
-}
+// The bootstrap is read as the page starts and its language's catalog fetched; an app draws once
+// they are in: `void wordsReady().then(() => createRoot(…).render(…))`. (A top-level await here would
+// wait for every app, but Rollup then splits whatever an app's lazy pages share with its entry into
+// chunks of their own, all of them loaded at the start.)
+if (typeof document !== "undefined") bootstrap();

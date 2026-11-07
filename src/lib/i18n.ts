@@ -2,8 +2,9 @@
 // read, and the locale numbers and dates are written in. English is the source and the key: a word
 // without a translation stays English, so a catalog can be partial. Each language's catalog
 // (src/locales) is a file of its own, fetched only for a page in that language: it holds every word
-// of the interface, too many to send to everyone. A page waits for it before it is drawn
-// (@ferrum/client does). An app's own words come in with addCatalogs (or addCatalog).
+// of the interface, too many to send to everyone. A page is drawn once wordsReady() settles
+// (@ferrum/client starts the fetch as the page starts). An app's own words come in with addCatalogs
+// (or addCatalog).
 
 import { setFormatLocale } from "./format";
 
@@ -49,8 +50,8 @@ function load(loaders: Record<string, Loader>[] = appLoaders): Promise<void> {
 
 /**
  * An app's own words, a loader for each language's (`{ ar: () => import("./locales/ar.json") }`):
- * the page's language is fetched now, another when the page switches to it. Await it before the
- * app is drawn.
+ * the page's language is fetched now, another when the page switches to it. The app is drawn once
+ * wordsReady() settles, which waits for these too.
  */
 export function addCatalogs(loaders: Record<string, Loader>): Promise<void> {
   appLoaders.push(loaders);
