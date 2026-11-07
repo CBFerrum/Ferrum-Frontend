@@ -1,7 +1,9 @@
 // Admin → Interface words (FERRUM-UX-006): the workspace's own words for its interface in a
-// language. Every word the interface asks for is listed with the interface's own translation; what
-// is written here stands over it, or gives what the catalog lacks, and each page reads it as it
-// loads. Kept as InterfaceWord records, one per language and English words.
+// language. Every word the interface asks for is listed with the interface's own translation, and
+// each app's own words (its build's words.json, from /api/shell/words) under the app; what is
+// written here stands over the translation, or gives what the catalog lacks, and each page reads it
+// as it loads. Kept as InterfaceWord records, one per language and English words, whichever app
+// asks for them.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -11,6 +13,13 @@ import type { Doc, ListResponse } from "../lib/meta";
 import { Button, EmptyState, Spinner, toast } from "../ui/kit";
 
 const E = "InterfaceWord";
+
+/** An app's own words, as its interface asks t() for them. */
+export interface AppWords {
+  app: string;
+  title: string;
+  words: string[];
+}
 
 /** The workspace's words in `language`, by their English, every page of them. */
 async function ownWords(language: string, signal?: AbortSignal): Promise<Map<string, Doc>> {
@@ -43,15 +52,17 @@ export function InterfaceWords() {
   const [language, setLanguage] = useState(offered[0]?.tag ?? "ar");
   const [other, setOther] = useState("");
   const [find, setFind] = useState("");
+  const [of, setOf] = useState("");
+  const apps = useQuery({ queryKey: ["app-words"], queryFn: ({ signal }) => api.get<{ apps: AppWords[] }>("/api/shell/words", undefined, signal), staleTime: 60_000 });
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const own = useQuery({ queryKey: ["interface-words", language], queryFn: ({ signal }) => ownWords(language, signal) });
   const builtIn = builtInWords(language);
   const words = useMemo(() => {
-    const all = interfaceWords();
+    const all = of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : interfaceWords();
     const q = find.trim().toLowerCase();
     return q ? all.filter((w) => w.toLowerCase().includes(q) || (builtIn[w] ?? "").toLowerCase().includes(q)) : all;
-  }, [find, builtIn]);
+  }, [find, builtIn, of, apps.data]);
   const written = (w: string) => draft[w] ?? (typeof own.data?.get(w)?.words === "string" ? String(own.data.get(w)?.words) : "");
   const pending = Object.keys(draft).filter((w) => change(own.data?.get(w), draft[w]) !== null);
 
@@ -73,7 +84,7 @@ export function InterfaceWords() {
         done++;
       }
       setDraft({});
-      toast(t("Saved {n} words: pages read them as they load", { n: done }));
+      toast(done === 1 ? t("Saved 1 word: pages read it as they load") : t("Saved {n} words: pages read them as they load", { n: done }));
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -105,10 +116,18 @@ export function InterfaceWords() {
           onChange={(e) => setOther(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(other.trim()) && pick(other.trim())}
         />
+        <select className="select" aria-label={t("Words of")} value={of} onChange={(e) => setOf(e.target.value)}>
+          <option value="">{t("The interface")}</option>
+          {(apps.data?.apps ?? []).map((a) => (
+            <option key={a.app} value={a.app}>
+              {a.title}
+            </option>
+          ))}
+        </select>
         <input className="input" type="search" style={{ maxWidth: 260 }} aria-label={t("Find a word")} placeholder={t("Search…")} value={find} onChange={(e) => setFind(e.target.value)} />
         <span className="spacer" />
         <Button variant="primary" disabled={!pending.length || busy} loading={busy} onClick={() => void save()}>
-          {pending.length ? t("Save {n} words", { n: pending.length }) : t("Save")}
+          {pending.length === 1 ? t("Save 1 word") : pending.length ? t("Save {n} words", { n: pending.length }) : t("Save")}
         </Button>
       </div>
       {own.isLoading ? (

@@ -412,6 +412,8 @@ interface ConfirmRequest {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** Only to read: one button, no Cancel. */
+  noCancel?: boolean;
   resolve: (ok: boolean) => void;
 }
 const confirmStore = createStore<ConfirmRequest | null>(null);
@@ -435,7 +437,7 @@ export function ConfirmHost() {
       title={req?.title ?? ""}
       footer={
         <>
-          <Button onClick={() => close(false)}>{req?.cancelLabel ?? t("Cancel")}</Button>
+          {!req?.noCancel && <Button onClick={() => close(false)}>{req?.cancelLabel ?? t("Cancel")}</Button>}
           <Button variant={req?.danger ? "danger" : "primary"} data-autofocus onClick={() => close(true)}>
             {req?.confirmLabel ?? t("Confirm")}
           </Button>

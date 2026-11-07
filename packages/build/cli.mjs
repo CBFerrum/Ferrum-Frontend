@@ -4,7 +4,8 @@
 //   node ../../ferrum/web/packages/build/cli.mjs <command>      (run in the app's ui/, whose
 //                                                               vite.config.mjs uses ./vite.mjs)
 //
-//   build      vite build into dist/, then dist/.source: a digest of the sources it was built from
+//   build      vite build into dist/, then dist/.source: a digest of the sources it was built from,
+//              and dist/words.json: the words its sources give t(), for a workspace to translate
 //   check      fails unless dist/ was built from the sources as they are now (run in CI): the
 //              app's crate carries dist/, so a source change without a build would ship stale files;
 //              and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
@@ -21,6 +22,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { measure } from "./budgets.mjs";
+import { wordsOf } from "./words.mjs";
 
 const web = fileURLToPath(new URL("../../", import.meta.url));
 const ui = process.cwd();
@@ -73,7 +75,9 @@ switch (process.argv[2]) {
     await build({ ...(await appConfig()), configFile: false });
     const stamp = { sources: sourceDigest(), frontend: webCommit() };
     writeFileSync(join(ui, "dist", ".source"), `${JSON.stringify(stamp, null, 2)}\n`);
-    console.log(`ferrum-ui: dist/ built from sources ${stamp.sources.slice(0, 12)}`);
+    const words = existsSync(join(ui, "src")) ? wordsOf(join(ui, "src")) : [];
+    if (words.length) writeFileSync(join(ui, "dist", "words.json"), `${JSON.stringify(words)}\n`);
+    console.log(`ferrum-ui: dist/ built from sources ${stamp.sources.slice(0, 12)}${words.length ? `, ${words.length} words for t()` : ""}`);
     break;
   }
   case "check": {

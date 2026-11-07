@@ -73,8 +73,10 @@ export function addCatalog(tag: string, words: Record<string, string>): void {
 /** A word or sentence in the interface's language, with `{name}` filled in from `vars`. */
 export function t(english: string, vars?: Record<string, string | number>): string {
   const text = catalog[english] ?? english;
-  if (!vars) return text;
-  return text.replace(/\{(\w+)\}/g, (whole, key: string) => (key in vars ? String(vars[key]) : whole));
+  const filled = vars ? text.replace(/\{(\w+)\}/g, (whole, key: string) => (key in vars ? String(vars[key]) : whole)) : text;
+  // English left in a page that reads right to left keeps its own order (a sentence's full stop
+  // at its end), isolated as a run of its own (U+2068 … U+2069).
+  return english in catalog || direction(language) === "ltr" ? filled : `\u2068${filled}\u2069`;
 }
 
 /**
