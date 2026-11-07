@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/ui/kit";
 import { mergeRecord, stableJson, useHistory } from "./history";
+import { t, isolate } from "@ferrum/client";
 
 type Kind = "charts" | "cards";
 const SERVER_KEYS = ["id", "version", "created_at", "created_by", "updated_at", "updated_by", "_titles", "base_entity", "is_standard", "docstatus", "amended_from", "number", "workflow_state"] as const;
@@ -68,7 +69,7 @@ export function useBuilder<K extends Kind, D>({
       setConflict(null);
       setBase(saved);
       history.reset(toDraft(saved));
-      toast(`${noun.charAt(0).toUpperCase()}${noun.slice(1)} saved`);
+      toast(t("{value}{noun} saved", { value: noun.charAt(0).toUpperCase(), noun: noun.slice(1) }));
       onSaved?.(saved, !base.id);
       return saved;
     } catch (e) {
@@ -88,7 +89,7 @@ export function useBuilder<K extends Kind, D>({
       }
       const issues = fieldIssues(e);
       setServerIssues(issues);
-      toast(issues.length ? `The ${noun} was not saved: please correct the highlighted settings.` : errorMessage(e), "error");
+      toast(issues.length ? t("The {noun} was not saved: please correct the highlighted settings.", { noun }) : errorMessage(e), "error");
       return null;
     }
   };
@@ -123,7 +124,7 @@ function IconAction({ label, keys, onClick, disabled, children }: { label: strin
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {label} <span className="opacity-70">{keys}</span>
+          {isolate(label)} <span className="opacity-70">{isolate(keys)}</span>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -163,21 +164,21 @@ export function BuilderToolbar({
 }) {
   return (
     <>
-      <IconAction label="Undo" keys={KEYS.undo} onClick={undo} disabled={!canUndo}>
+      <IconAction label={t("Undo")} keys={KEYS.undo} onClick={undo} disabled={!canUndo}>
         <Undo2 />
       </IconAction>
-      <IconAction label="Redo" keys={KEYS.redo} onClick={redo} disabled={!canRedo}>
+      <IconAction label={t("Redo")} keys={KEYS.redo} onClick={redo} disabled={!canRedo}>
         <Redo2 />
       </IconAction>
       {extra}
       {onCancel && (
         <Button type="button" variant="outline" onClick={onCancel}>
-          {cancelLabel}
+          {isolate(cancelLabel)}
         </Button>
       )}
       <Button type="button" onClick={onSave} disabled={saving || standard || !dirty} aria-busy={saving || undefined}>
         {saving ? <Spinner /> : <Save />}
-        {saveLabel}
+        {isolate(saveLabel)}
       </Button>
     </>
   );
@@ -188,11 +189,11 @@ export function StandardNotice({ noun, onDuplicate }: { noun: string; onDuplicat
   return (
     <Alert className="mb-4">
       <Lock />
-      <AlertTitle>This {noun} comes with a package</AlertTitle>
+      <AlertTitle>{t("This {noun} comes with a package", { noun })}</AlertTitle>
       <AlertDescription>
-        <p>It cannot be changed here. Make a copy to customize it.</p>
+        <p>{t("It cannot be changed here. Make a copy to customize it.")}</p>
         <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onDuplicate}>
-          <Copy /> Make a copy
+          <Copy /> {t("Make a copy")}
         </Button>
       </AlertDescription>
     </Alert>
@@ -203,14 +204,14 @@ export function StandardNotice({ noun, onDuplicate }: { noun: string; onDuplicat
 export function ConflictNotice({ conflict, noun, onDismiss }: { conflict: Conflict; noun: string; onDismiss: () => void }) {
   return (
     <Alert className="mb-4 border-warning">
-      <AlertTitle>Someone else saved this {noun} while you were editing</AlertTitle>
+      <AlertTitle>{t("Someone else saved this {noun} while you were editing", { noun })}</AlertTitle>
       <AlertDescription>
         <p>
-          Their changes are now combined with yours.
-          {conflict.fields.length > 0 && ` You both changed ${conflict.fields.join(", ")}: your version is kept.`} Review the preview, then save again.
+          {t("Their changes are now combined with yours.")}
+          {conflict.fields.length > 0 && t(" You both changed {value}: your version is kept.", { value: conflict.fields.join(", ") })} {t("Review the preview, then save again.")}
         </p>
         <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onDismiss}>
-          Got it
+          {t("Got it")}
         </Button>
       </AlertDescription>
     </Alert>

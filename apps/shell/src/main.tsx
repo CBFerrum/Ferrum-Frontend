@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Outlet, RouterProvider, useParams, useRouteError, type RouteObject } from "react-router";
-import { bootstrap, routeBase, shell } from "@ferrum/client";
+import { bootstrap, routeBase, shell, t } from "@ferrum/client";
 import { recordsRoutes } from "@/app/recordsRoutes";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
@@ -28,8 +28,8 @@ function RouteError() {
 
 function NotFound() {
   return (
-    <EmptyState title="Page not found">
-      <a href="/">Go to Home</a>
+    <EmptyState title={t("Page not found")}>
+      <a href="/">{t("Go to Home")}</a>
     </EmptyState>
   );
 }
@@ -86,9 +86,9 @@ const pages: Record<string, RouteObject[]> = {
 
 function DataIndex() {
   return (
-    <EmptyState title="Records">
+    <EmptyState title={t("Records")}>
       <p className="muted">
-        Open a list from an app, or from <Link to="/e/User">people</Link>.
+        {t("Open a list from an app, or from")} <Link to="/e/User">{t("people")}</Link>.
       </p>
     </EmptyState>
   );

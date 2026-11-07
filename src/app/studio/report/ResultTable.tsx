@@ -24,6 +24,7 @@ import {
 import { columnLabel, formatCell, groupRows, isNumericColumn, ruleColor, toNumber, type CellOptions, type ColumnSetting, type ResultColumn, type ResultRow, type Sort } from "@/lib/studio";
 import { arrowStep } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { t, isolate } from "@ferrum/client";
 
 export interface ColumnEditor {
   hidden: ResultColumn[];
@@ -77,7 +78,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
     let n = 0;
     for (const g of groupRows({ columns, rows, subtotals: subtotalRows }, groupBy, options)) {
       for (const row of g.rows) out.push({ kind: "row", row, n: ++n });
-      out.push({ kind: "subtotal", label: `${g.label} total`, totals: g.totals });
+      out.push({ kind: "subtotal", label: t("{label} total", { label: g.label }), totals: g.totals });
     }
     return out;
   }, [rows, columns, groupBy, options, subtotalRows]);
@@ -149,12 +150,12 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
       <div
         ref={scrollRef}
         role="region"
-        aria-label={`${caption}: results`}
+        aria-label={t("{caption}: results", { caption })}
         tabIndex={0}
         className="max-h-[min(70vh,760px)] overflow-auto rounded-lg border border-border bg-card focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
       >
         <table className="border-separate border-spacing-0 text-sm" style={{ width, minWidth: "100%", tableLayout: "fixed" }} aria-rowcount={display.length + 1 + (totalsShown ? 1 : 0)}>
-          <caption className="sr-only">{caption}</caption>
+          <caption className="sr-only">{isolate(caption)}</caption>
           <colgroup>
             <col style={{ width: 52 }} />
             {headers.map((h) => (
@@ -182,7 +183,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
                 >
                   <td className="border-b border-border px-2 py-[var(--cell-py)] text-end text-xs text-muted-foreground tabular-nums">
                     {d.kind === "row" && entity && d.row._id ? (
-                      <Link to={`/e/${entity}/${d.row._id}`} className="inline-flex items-center gap-0.5 rounded hover:text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none" aria-label={`Open record ${d.n}`}>
+                      <Link to={`/e/${entity}/${d.row._id}`} className="inline-flex items-center gap-0.5 rounded hover:text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none" aria-label={t("Open record {n}", { n: d.n })}>
                         {d.n}
                         <SquareArrowOutUpRight className="size-3 opacity-0 group-hover/row:opacity-100" aria-hidden="true" />
                       </Link>
@@ -214,7 +215,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
                 <td className="sticky bottom-0 z-10 border-t border-border bg-muted px-2 py-2" />
                 {columns.map((c, i) => (
                   <td key={c.name} className={cn("sticky bottom-0 z-10 truncate border-t border-border bg-muted px-3 py-2 font-semibold", isNumericColumn(c) && "text-end tabular-nums")}>
-                    {c.name in totals ? formatCell(c, totals[c.name], undefined, options) : i === 0 ? "Total" : ""}
+                    {c.name in totals ? formatCell(c, totals[c.name], undefined, options) : i === 0 ? t("Total") : ""}
                   </td>
                 ))}
               </tr>
@@ -236,7 +237,7 @@ function BodyCell({ c, row, options, max }: { c: ResultColumn; row: ResultRow; o
   if (c.to && title && typeof v === "string")
     content = (
       <Link to={`/e/${c.to}/${v}`} className="hover:text-primary hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none">
-        {text}
+        {isolate(text)}
       </Link>
     );
   if (max !== undefined) {
@@ -245,7 +246,7 @@ function BodyCell({ c, row, options, max }: { c: ResultColumn; row: ResultRow; o
     content = (
       <span className="relative block">
         <span aria-hidden="true" className={cn("absolute inset-y-0 start-0 rounded-sm", n !== null && n < 0 ? "bg-destructive/20" : "bg-primary/20")} style={{ width: `${pct}%` }} />
-        <span className="relative">{text}</span>
+        <span className="relative">{isolate(text)}</span>
       </span>
     );
   }
@@ -279,7 +280,7 @@ function HeaderRow({ headers, byName, sort, onSort, onSortTo, editor, setSizing,
     <tr>
       <th scope="col" className="sticky top-0 z-20 border-b border-border bg-muted px-2 py-2 text-end text-xs font-medium text-muted-foreground">
         <span aria-hidden="true">#</span>
-        <span className="sr-only">Row number</span>
+        <span className="sr-only">{t("Row number")}</span>
       </th>
       {headers.map((h, i) => {
         const c = byName.get(h.id);
@@ -354,8 +355,8 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
             type="button"
             {...attributes}
             {...listeners}
-            aria-label={`Move column ${label}`}
-            title="Drag to move the column"
+            aria-label={t("Move column {label}", { label })}
+            title={t("Drag to move the column")}
             className="grid size-6 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground opacity-60 group-hover/head:opacity-100 hover:bg-accent focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none pointer-coarse:size-9"
           >
             <GripVertical className="size-3.5" aria-hidden="true" />
@@ -369,31 +370,31 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
             "flex min-w-0 flex-1 items-center gap-1 rounded px-1 py-1 enabled:hover:text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-default",
             numeric && "flex-row-reverse text-end",
           )}
-          title={canSort ? `${label}: sort` : label}
+          title={canSort ? t("{label}: sort", { label }) : label}
         >
-          <span className="truncate">{label}</span>
+          <span className="truncate">{isolate(label)}</span>
           {active === "asc" ? <ArrowUp className="size-3.5 shrink-0" aria-hidden="true" /> : active === "desc" ? <ArrowDown className="size-3.5 shrink-0" aria-hidden="true" /> : canSort ? <ArrowUpDown className="size-3.5 shrink-0 opacity-0 group-hover/head:opacity-40" aria-hidden="true" /> : null}
         </button>
         {editor && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-xs" className="shrink-0 opacity-60 group-hover/head:opacity-100 focus-visible:opacity-100 pointer-coarse:size-9" aria-label={`Column ${label}: actions`}>
+              <Button variant="ghost" size="icon-xs" className="shrink-0 opacity-60 group-hover/head:opacity-100 focus-visible:opacity-100 pointer-coarse:size-9" aria-label={t("Column {label}: actions", { label })}>
                 <Columns3 aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align={numeric ? "end" : "start"}>
-              <DropdownMenuLabel className="max-w-64 truncate">{label}</DropdownMenuLabel>
+              <DropdownMenuLabel className="max-w-64 truncate">{isolate(label)}</DropdownMenuLabel>
               {canSort && onSortTo && (
                 <>
                   <DropdownMenuItem onSelect={() => onSortTo([{ by: c.name, dir: "asc" }])}>
-                    <ArrowUp /> Sort ascending
+                    <ArrowUp /> {t("Sort ascending")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => onSortTo([{ by: c.name, dir: "desc" }])}>
-                    <ArrowDown /> Sort descending
+                    <ArrowDown /> {t("Sort descending")}
                   </DropdownMenuItem>
                   {active && (
                     <DropdownMenuItem onSelect={() => onSortTo([])}>
-                      <X /> Clear sort
+                      <X /> {t("Clear sort")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -402,20 +403,20 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
               {movable && (
                 <>
                   <DropdownMenuItem disabled={index === 0} onSelect={() => editor.onMove?.(c.name, ids[index - 1])}>
-                    <ArrowLeft /> Move left
+                    <ArrowLeft /> {t("Move left")}
                   </DropdownMenuItem>
                   <DropdownMenuItem disabled={index === count - 1} onSelect={() => editor.onMove?.(c.name, ids[index + 1])}>
-                    <ArrowRight /> Move right
+                    <ArrowRight /> {t("Move right")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
               )}
               <DropdownMenuItem onSelect={() => editor.onFormat(c)}>
-                <Paintbrush /> {c.role === "pivot" ? "Format these columns…" : "Rename and format…"}
+                <Paintbrush /> {c.role === "pivot" ? t("Format these columns…") : t("Rename and format…")}
               </DropdownMenuItem>
               {c.role !== "pivot" && (
                 <DropdownMenuItem onSelect={() => editor.onPatch(c, { hidden: true })}>
-                  <EyeOff /> Hide column
+                  <EyeOff /> {t("Hide column")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -425,7 +426,7 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label={`Resize column ${label}`}
+        aria-label={t("Resize column {label}", { label })}
         aria-valuenow={Math.round(size)}
         aria-valuemin={40}
         aria-valuemax={2000}
@@ -434,7 +435,7 @@ function HeaderCell({ h, c, index, count, ids, sort, onSort, onSortTo, editor, s
         onTouchStart={h.getResizeHandler()}
         onDoubleClick={() => (editor ? commit(c.name, undefined) : setSizing((s) => ({ ...s, [c.name]: c.width ?? defaultWidth(c) })))}
         onKeyDown={onResizeKey}
-        title="Drag to resize (or focus and use the arrow keys); double-click to reset"
+        title={t("Drag to resize (or focus and use the arrow keys); double-click to reset")}
         className={cn(
           "absolute top-0 end-0 h-full w-2 cursor-col-resize touch-none select-none hover:bg-primary/30 focus-visible:bg-primary/50 focus-visible:outline-none pointer-coarse:w-4",
           h.column.getIsResizing() && "bg-primary/50",
@@ -454,14 +455,14 @@ function ColumnsMenu({ columns, editor }: { columns: ResultColumn[]; editor: Col
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            <Columns3 /> Columns{editor.hidden.length ? ` (${editor.hidden.length} hidden)` : ""}
+            <Columns3 /> {t("Columns")}{editor.hidden.length ? t(" ({length} hidden)", { length: editor.hidden.length }) : ""}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-80">
-          <DropdownMenuLabel>Shown columns</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("Shown columns")}</DropdownMenuLabel>
           {all.map((c) => (
             <DropdownMenuCheckboxItem key={c.name} checked={!hiddenNames.has(c.name)} onSelect={(e) => e.preventDefault()} onCheckedChange={(on) => editor.onPatch(c, { hidden: !on })}>
-              <span className="max-w-64 truncate">{c.label}</span>
+              <span className="max-w-64 truncate">{isolate(c.label)}</span>
             </DropdownMenuCheckboxItem>
           ))}
         </DropdownMenuContent>

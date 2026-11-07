@@ -16,6 +16,7 @@ import { SpaceBlocks, SpaceSkeleton } from "./space/BlockView";
 import { useSpace } from "./space/hooks";
 import { SpaceIcon } from "./space/icons";
 import { PATHS } from "./space/model";
+import { t, isolate } from "@ferrum/client";
 
 const TAP = "pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
@@ -24,7 +25,7 @@ export function AudienceBadge({ sharing, mine }: { sharing: Sharing; mine?: bool
   return (
     <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
       <Icon aria-hidden="true" />
-      {label}
+      {isolate(label)}
     </Badge>
   );
 }
@@ -38,7 +39,7 @@ export function SpaceView() {
 
   if (q.isLoading)
     return (
-      <div className="mx-auto grid w-full max-w-screen-2xl gap-5" aria-busy="true" aria-label="Loading the space">
+      <div className="mx-auto grid w-full max-w-screen-2xl gap-5" aria-busy="true" aria-label={t("Loading the space")}>
         <div className="flex items-center gap-3">
           <Skeleton className="size-11 rounded-xl" />
           <Skeleton className="h-7 w-56" />
@@ -54,17 +55,17 @@ export function SpaceView() {
           <EmptyMedia variant="icon">
             <LayoutGrid />
           </EmptyMedia>
-          <EmptyTitle>{missing ? "This space doesn’t exist" : "The space could not be loaded"}</EmptyTitle>
-          <EmptyDescription>{missing ? "It may have been deleted, or it isn’t shared with you." : errorMessage(q.error)}</EmptyDescription>
+          <EmptyTitle>{missing ? t("This space doesn’t exist") : t("The space could not be loaded")}</EmptyTitle>
+          <EmptyDescription>{missing ? t("It may have been deleted, or it isn’t shared with you.") : errorMessage(q.error)}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent className="flex-row flex-wrap justify-center">
           {!missing && (
             <Button variant="outline" onClick={() => void q.refetch()}>
-              Try again
+              {t("Try again")}
             </Button>
           )}
           <Button variant="ghost" asChild>
-            <Link to={PATHS.spaces}>All spaces</Link>
+            <Link to={PATHS.spaces}>{t("All spaces")}</Link>
           </Button>
         </EmptyContent>
       </Empty>
@@ -82,22 +83,22 @@ export function SpaceView() {
           <SpaceIcon name={s.icon} className="size-5" />
         </span>
         <div className="min-w-0 flex-1 basis-56">
-          <h1 className="text-xl font-semibold tracking-tight break-words">{s.label}</h1>
-          {s.description && <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">{s.description}</p>}
+          <h1 className="text-xl font-semibold tracking-tight break-words">{isolate(s.label)}</h1>
+          {s.description && <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">{isolate(s.description)}</p>}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {module && <Badge variant="outline">{module.label}</Badge>}
+            {module && <Badge variant="outline">{isolate(module.label)}</Badge>}
             {s.sharing && <AudienceBadge sharing={s.sharing} mine={row?.mine} />}
-            {s.is_standard && <Badge variant="secondary">Standard</Badge>}
+            {s.is_standard && <Badge variant="secondary">{t("Standard")}</Badge>}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button variant="outline" size="icon" className={TAP} aria-label="Refresh" title="Refresh" disabled={q.isFetching} onClick={() => void q.refetch()}>
+          <Button variant="outline" size="icon" className={TAP} aria-label={t("Refresh")} title={t("Refresh")} disabled={q.isFetching} onClick={() => void q.refetch()}>
             <RefreshCw className={cn(q.isFetching && "animate-spin motion-reduce:animate-none")} />
           </Button>
           {canEdit ? (
             <Button asChild className={TAP}>
               <Link to={PATHS.editSpace(id)}>
-                <Pencil /> Edit
+                <Pencil /> {t("Edit")}
               </Link>
             </Button>
           ) : (
@@ -105,7 +106,7 @@ export function SpaceView() {
             canCopy && (
               <Button asChild variant="outline" className={TAP}>
                 <Link to={PATHS.copySpace(id)}>
-                  <Copy /> Customize a copy
+                  <Copy /> {t("Customize a copy")}
                 </Link>
               </Button>
             )
@@ -114,8 +115,8 @@ export function SpaceView() {
       </header>
       {q.error ? (
         <Alert className="mb-4">
-          <AlertTitle>Showing what was loaded before</AlertTitle>
-          <AlertDescription>The latest version could not be loaded: {errorMessage(q.error)}</AlertDescription>
+          <AlertTitle>{t("Showing what was loaded before")}</AlertTitle>
+          <AlertDescription>{t("The latest version could not be loaded: {value}", { value: errorMessage(q.error) })}</AlertDescription>
         </Alert>
       ) : null}
       {q.data.blocks.length ? (
@@ -126,14 +127,14 @@ export function SpaceView() {
             <EmptyMedia variant="icon">
               <LayoutGrid />
             </EmptyMedia>
-            <EmptyTitle>Nothing here yet</EmptyTitle>
-            <EmptyDescription>{canEdit ? "Add shortcuts, charts, number cards, recent records and checklists." : "This space has nothing you can see yet."}</EmptyDescription>
+            <EmptyTitle>{t("Nothing here yet")}</EmptyTitle>
+            <EmptyDescription>{canEdit ? t("Add shortcuts, charts, number cards, recent records and checklists.") : t("This space has nothing you can see yet.")}</EmptyDescription>
           </EmptyHeader>
           {canEdit && (
             <EmptyContent>
               <Button asChild>
                 <Link to={PATHS.editSpace(id)}>
-                  <Pencil /> Add blocks
+                  <Pencil /> {t("Add blocks")}
                 </Link>
               </Button>
             </EmptyContent>
@@ -151,11 +152,11 @@ export function SpaceContent({ id }: { id: string }) {
   if (!q.data)
     return (
       <Alert>
-        <AlertTitle>This module’s space could not be loaded</AlertTitle>
+        <AlertTitle>{t("This module’s space could not be loaded")}</AlertTitle>
         <AlertDescription>
-          {errorMessage(q.error)}{" "}
+          {isolate(errorMessage(q.error))}{isolate(" ")}
           <Button variant="link" className="h-auto p-0" onClick={() => void q.refetch()}>
-            Try again
+            {t("Try again")}
           </Button>
         </AlertDescription>
       </Alert>

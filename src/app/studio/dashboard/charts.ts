@@ -19,6 +19,7 @@ import {
   type ResultLike,
   type ResultRow,
 } from "@/lib/studio";
+import { t as tr } from "@ferrum/client";
 
 export const CHART_TYPE_LABEL: Record<ChartType, string> = {
   bar: "Bar",
@@ -97,7 +98,7 @@ export function toSlices(result: ResultLike, o: ChartOptions & { kind: "pie" | "
   if (rest.length) {
     const exact = sumDecimal(rest.map((x) => x.r[y.name]));
     const n = rest.reduce((s, x) => s + x.n, 0);
-    slices.push({ key: "other", label: `Other (${rest.length})`, value: n, text: formatCell(y, y.type === "int" ? Number(exact) : exact, undefined, o), share: plotted > 0 ? (n / plotted) * 100 : 0, color: "var(--chart-8)" });
+    slices.push({ key: "other", label: tr("Other ({length})", { length: rest.length }), value: n, text: formatCell(y, y.type === "int" ? Number(exact) : exact, undefined, o), share: plotted > 0 ? (n / plotted) * 100 : 0, color: "var(--chart-8)" });
   }
   const total = sumDecimal(rows.map((x) => x.r[y.name]));
   return { slices, total: total === null ? "" : formatCell(y, y.type === "int" ? Number(total) : total, undefined, o), column: y, folded: rest.length };

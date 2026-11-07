@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import { useMe, useMetaIndex } from "@/lib/meta";
 import { issuesAt, type Issue, type Sharing } from "@/lib/studio";
 import { Issues } from "./ui";
+import { t, isolate } from "@ferrum/client";
 
 export interface SaveMeta {
   label: string;
@@ -90,8 +91,8 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
     <Dialog open onOpenChange={(o) => !o && !busy && onCancel()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Whoever opens it sees only the records their own permissions allow.</DialogDescription>
+          <DialogTitle>{isolate(title)}</DialogTitle>
+          <DialogDescription>{t("Whoever opens it sees only the records their own permissions allow.")}</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={submit} noValidate>
           {general.length > 0 && (
@@ -99,14 +100,14 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
               <AlertDescription>
                 <ul className="grid gap-0.5">
                   {general.map((g, i) => (
-                    <li key={i}>{g}</li>
+                    <li key={i}>{isolate(g)}</li>
                   ))}
                 </ul>
               </AlertDescription>
             </Alert>
           )}
           <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-label`}>Name</Label>
+            <Label htmlFor={`${id}-label`}>{t("Name")}</Label>
             <Input
               id={`${id}-label`}
               required
@@ -120,11 +121,11 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
             <Issues id={`${id}-label-issues`} messages={labelIssues} />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-desc`}>Description</Label>
-            <Textarea id={`${id}-desc`} rows={2} value={m.description} placeholder="What it answers, for whoever opens it" onChange={(e) => setM({ ...m, description: e.target.value })} />
+            <Label htmlFor={`${id}-desc`}>{t("Description")}</Label>
+            <Textarea id={`${id}-desc`} rows={2} value={m.description} placeholder={t("What it answers, for whoever opens it")} onChange={(e) => setM({ ...m, description: e.target.value })} />
           </div>
           <fieldset className="grid gap-2">
-            <legend className="mb-1 text-sm font-medium">Who can open it</legend>
+            <legend className="mb-1 text-sm font-medium">{t("Who can open it")}</legend>
             <RadioGroup value={m.sharing} onValueChange={(v) => setM({ ...m, sharing: v as Sharing })} className="gap-2">
               {(
                 [
@@ -137,9 +138,9 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
                   <RadioGroupItem id={`${id}-${value}`} value={value} className="mt-0.5" />
                   <span className="grid gap-1">
                     <span className="flex items-center gap-1.5 font-medium">
-                      <Icon className="size-4 text-muted-foreground" aria-hidden="true" /> {text}
+                      <Icon className="size-4 text-muted-foreground" aria-hidden="true" /> {isolate(text)}
                     </span>
-                    {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+                    {hint && <span className="text-xs text-muted-foreground">{isolate(hint)}</span>}
                   </span>
                 </Label>
               ))}
@@ -147,13 +148,13 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
           </fieldset>
           {m.sharing === "roles" && (
             <div className="grid gap-1.5">
-              <Label id={`${id}-roles`}>Roles</Label>
+              <Label id={`${id}-roles`}>{t("Roles")}</Label>
               {m.roles.length > 0 && (
-                <ul className="flex flex-wrap gap-1" aria-label="Chosen roles">
+                <ul className="flex flex-wrap gap-1" aria-label={t("Chosen roles")}>
                   {m.roles.map((r) => (
                     <li key={r} className="flex items-center gap-0.5 rounded bg-secondary py-0.5 pe-0.5 ps-2 text-xs">
-                      {r}
-                      <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={`Remove role ${r}`} onClick={() => toggleRole(r)}>
+                      {isolate(r)}
+                      <button type="button" className="grid size-5 place-items-center rounded hover:bg-accent pointer-coarse:size-8" aria-label={t("Remove role {r}", { r })} onClick={() => toggleRole(r)}>
                         <X className="size-3" aria-hidden="true" />
                       </button>
                     </li>
@@ -161,15 +162,15 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
                 </ul>
               )}
               <Command className="rounded-md border border-input" aria-labelledby={`${id}-roles`}>
-                <CommandInput placeholder="Find a role…" aria-label="Find a role" />
+                <CommandInput placeholder={t("Find a role…")} aria-label={t("Find a role")} />
                 <CommandList className="max-h-44">
-                  <CommandEmpty>No role matches.</CommandEmpty>
+                  <CommandEmpty>{t("No role matches.")}</CommandEmpty>
                   <CommandGroup>
                     {options.map((r) => (
                       <CommandItem key={r} value={r} onSelect={() => toggleRole(r)} className="pointer-coarse:py-3">
                         <Check className={m.roles.includes(r) ? "opacity-100" : "opacity-0"} aria-hidden="true" />
-                        {r}
-                        <span className="sr-only">{m.roles.includes(r) ? "(chosen)" : ""}</span>
+                        {isolate(r)}
+                        <span className="sr-only">{m.roles.includes(r) ? t("(chosen)") : ""}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -179,30 +180,30 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
             </div>
           )}
           <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-module`}>Show in the menu of</Label>
+            <Label htmlFor={`${id}-module`}>{t("Show in the menu of")}</Label>
             <Select value={m.module || "__none__"} onValueChange={(v) => setM({ ...m, module: v === "__none__" ? "" : v })}>
               <SelectTrigger id={`${id}-module`} className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No module (the reports list only)</SelectItem>
+                <SelectItem value="__none__">{t("No module (the reports list only)")}</SelectItem>
                 {modules.map((x) => (
                   <SelectItem key={x.name} value={x.name}>
-                    {x.label}
+                    {isolate(x.label)}
                   </SelectItem>
                 ))}
-                {m.module && !modules.some((x) => x.name === m.module) && <SelectItem value={m.module}>{m.module}</SelectItem>}
+                {m.module && !modules.some((x) => x.name === m.module) && <SelectItem value={m.module}>{isolate(m.module)}</SelectItem>}
               </SelectContent>
             </Select>
             <Issues messages={issuesAt(issues, "module")} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button type="submit" disabled={busy || !m.label.trim()}>
               {busy && <Spinner />}
-              {action}
+              {isolate(action)}
             </Button>
           </DialogFooter>
         </form>
@@ -217,17 +218,17 @@ export function ConflictDialog({ open, busy, onOverwrite, onLoadTheirs, onCancel
     <AlertDialog open={open} onOpenChange={(o) => !o && !busy && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Someone else saved this report</AlertDialogTitle>
-          <AlertDialogDescription>It changed after you opened it. Save your version over theirs, or load theirs and drop your unsaved changes.</AlertDialogDescription>
+          <AlertDialogTitle>{t("Someone else saved this report")}</AlertDialogTitle>
+          <AlertDialogDescription>{t("It changed after you opened it. Save your version over theirs, or load theirs and drop your unsaved changes.")}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Keep editing</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{t("Keep editing")}</AlertDialogCancel>
           <Button variant="outline" disabled={busy} onClick={onLoadTheirs}>
-            Load their version
+            {t("Load their version")}
           </Button>
           <Button variant="destructive" disabled={busy} onClick={onOverwrite}>
             {busy && <Spinner />}
-            Save mine over it
+            {t("Save mine over it")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CellValue } from "../../widgets";
 import { listParams, pointFilters, type DrillTarget } from "./drill";
 import { ErrorBlock, LoadingBlock, plainLink } from "./ui";
+import { t, isolate } from "@ferrum/client";
 
 const LIMIT = 50;
 const SYSTEM_TYPES: Record<string, string> = { created_at: "datetime", updated_at: "datetime", docstatus: "int", version: "int" };
@@ -55,28 +56,28 @@ function DrillBody({ target }: { target: DrillTarget }) {
   return (
     <>
       <SheetHeader className="border-b pe-12">
-        <SheetTitle>{target.title}</SheetTitle>
+        <SheetTitle>{isolate(target.title)}</SheetTitle>
         <SheetDescription aria-live="polite">
-          {m ? `${m.label_plural}` : "Records"}
-          {rows.data ? ` · ${total ?? shown} record${(total ?? shown) === 1 ? "" : "s"}` : ""}
-          {target.points?.length ? ` · ${target.points.length === 1 ? "this point" : "this point's values"} only` : ""}
+          {m ? `${m.label_plural}` : t("Records")}
+          {rows.data ? t(" · {value} record{value2}", { value: total ?? shown, value2: (total ?? shown) === 1 ? "" : "s" }) : ""}
+          {target.points?.length ? t(" · {value} only", { value: target.points.length === 1 ? "this point" : "this point's values" }) : ""}
         </SheetDescription>
       </SheetHeader>
       <div className="min-h-0 flex-1 overflow-auto p-4">
         {meta.error ? (
-          <ErrorBlock error={meta.error} onRetry={() => meta.refetch()} title="Could not open these records" />
+          <ErrorBlock error={meta.error} onRetry={() => meta.refetch()} title={t("Could not open these records")} />
         ) : rows.error ? (
-          <ErrorBlock error={rows.error} onRetry={() => rows.refetch()} title="Could not load the records" />
+          <ErrorBlock error={rows.error} onRetry={() => rows.refetch()} title={t("Could not load the records")} />
         ) : !rows.data || !m ? (
           <LoadingBlock rows={5} />
         ) : !shown ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No records match.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("No records match.")}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 {columns.map((c) => (
-                  <TableHead key={c.name}>{fieldLabel(m, c.name)}</TableHead>
+                  <TableHead key={c.name}>{isolate(fieldLabel(m, c.name))}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -99,17 +100,17 @@ function DrillBody({ target }: { target: DrillTarget }) {
             </TableBody>
           </Table>
         )}
-        {rows.data && total != null && total > shown && <p className="pt-3 text-center text-xs text-muted-foreground">Showing the first {shown}.</p>}
+        {rows.data && total != null && total > shown && <p className="pt-3 text-center text-xs text-muted-foreground">{t("Showing the first {shown}.", { shown })}</p>}
       </div>
       <SheetFooter className="flex-row flex-wrap justify-end border-t">
         {params ? (
           <Button asChild variant="outline">
             <Link to={`/e/${target.entity}${params.size ? `?${params}` : ""}`} className={plainLink}>
-              <ExternalLink /> Open in the list
+              <ExternalLink /> {t("Open in the list")}
             </Link>
           </Button>
         ) : (
-          m && <p className="me-auto text-xs text-muted-foreground">The list page cannot apply all of these filters; the records are shown here.</p>
+          m && <p className="me-auto text-xs text-muted-foreground">{t("The list page cannot apply all of these filters; the records are shown here.")}</p>
         )}
       </SheetFooter>
     </>

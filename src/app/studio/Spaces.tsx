@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { confirmDialog, toast } from "@/ui/kit";
 import { SpaceIcon } from "./space/icons";
 import { PATHS } from "./space/model";
+import { t as tr, isolate } from "@ferrum/client";
 
 export { useModuleSpace, useSpace, useSpaceNav } from "./space/hooks";
 
@@ -58,15 +59,15 @@ export function SpacesPage() {
     <div className="mx-auto w-full max-w-screen-2xl">
       <header className="mb-5 flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1 basis-64">
-          <h1 className="text-xl font-semibold tracking-tight">Spaces</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{tr("Spaces")}</h1>
           <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">
-            Home pages for modules and teams: shortcuts with live counts, charts, number cards, recent records, notes and checklists.
+            {tr("Home pages for modules and teams: shortcuts with live counts, charts, number cards, recent records, notes and checklists.")}
           </p>
         </div>
         {canCreate && (
           <Button asChild className={TAP}>
             <Link to={PATHS.newSpace}>
-              <Plus /> New space
+              <Plus /> {tr("New space")}
             </Link>
           </Button>
         )}
@@ -78,10 +79,10 @@ export function SpacesPage() {
             <InputGroupAddon>
               <Search aria-hidden="true" />
             </InputGroupAddon>
-            <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search spaces" aria-label="Search spaces" />
+            <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Search spaces")} aria-label={tr("Search spaces")} />
             {search && (
               <InputGroupAddon align="inline-end">
-                <InputGroupButton size="icon-xs" aria-label="Clear the search" onClick={() => setSearch("")}>
+                <InputGroupButton size="icon-xs" aria-label={tr("Clear the search")} onClick={() => setSearch("")}>
                   <X />
                 </InputGroupButton>
               </InputGroupAddon>
@@ -89,11 +90,11 @@ export function SpacesPage() {
           </InputGroup>
           {modules.length > 1 && (
             <Select value={module} onValueChange={setModule}>
-              <SelectTrigger aria-label="Module" className={cn("w-48", TAP)}>
+              <SelectTrigger aria-label={tr("Module")} className={cn("w-48", TAP)}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All modules</SelectItem>
+                <SelectItem value={ALL}>{tr("All modules")}</SelectItem>
                 {modules.map((m) => (
                   <SelectItem key={m} value={m}>
                     {moduleLabel.get(m) ?? m}
@@ -106,7 +107,7 @@ export function SpacesPage() {
       )}
 
       {q.isLoading ? (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading spaces">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label={tr("Loading spaces")}>
           {Array.from({ length: 6 }, (_, i) => (
             <li key={i}>
               <Skeleton className="h-24 w-full rounded-xl" />
@@ -116,12 +117,12 @@ export function SpacesPage() {
       ) : q.error ? (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>Spaces could not be loaded</EmptyTitle>
-            <EmptyDescription>{errorMessage(q.error)}</EmptyDescription>
+            <EmptyTitle>{tr("Spaces could not be loaded")}</EmptyTitle>
+            <EmptyDescription>{isolate(errorMessage(q.error))}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button variant="outline" onClick={() => void q.refetch()}>
-              Try again
+              {tr("Try again")}
             </Button>
           </EmptyContent>
         </Empty>
@@ -131,18 +132,18 @@ export function SpacesPage() {
             <EmptyMedia variant="icon">
               <LayoutGrid />
             </EmptyMedia>
-            <EmptyTitle>No spaces yet</EmptyTitle>
+            <EmptyTitle>{tr("No spaces yet")}</EmptyTitle>
             <EmptyDescription>
               {canCreate
-                ? "A space gathers what a team needs on one page. Start from a module to get its shortcuts, links and recent records in one go."
-                : "No space has been shared with you yet."}
+                ? tr("A space gathers what a team needs on one page. Start from a module to get its shortcuts, links and recent records in one go.")
+                : tr("No space has been shared with you yet.")}
             </EmptyDescription>
           </EmptyHeader>
           {canCreate && (
             <EmptyContent className="flex-row flex-wrap justify-center">
               <Button asChild>
                 <Link to={PATHS.newSpace}>
-                  <Plus /> New space
+                  <Plus /> {tr("New space")}
                 </Link>
               </Button>
               <ModuleStart />
@@ -152,8 +153,8 @@ export function SpacesPage() {
       ) : !shown.length ? (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No space matches</EmptyTitle>
-            <EmptyDescription>Try other words, or another module.</EmptyDescription>
+            <EmptyTitle>{tr("No space matches")}</EmptyTitle>
+            <EmptyDescription>{tr("Try other words, or another module.")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button
@@ -163,7 +164,7 @@ export function SpacesPage() {
                 setModule(ALL);
               }}
             >
-              Clear the filters
+              {tr("Clear the filters")}
             </Button>
           </EmptyContent>
         </Empty>
@@ -181,16 +182,16 @@ export function SpacesPage() {
 function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row: Row; moduleLabel?: string; canEdit: boolean; canDelete: boolean; canCreate: boolean }) {
   const remove = useDeleteStudioRecord("spaces");
   const doDelete = async () => {
-    const ok = await confirmDialog({ title: `Delete “${r.label}”?`, message: "Everyone it is shared with loses it. This can’t be undone.", confirmLabel: "Delete", danger: true });
+    const ok = await confirmDialog({ title: tr("Delete “{label}”?", { label: r.label }), message: tr("Everyone it is shared with loses it. This can’t be undone."), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: r.id });
-      toast("Space deleted");
+      toast(tr("Space deleted"));
     } catch (e) {
       toast(errorMessage(e), "error");
     }
   };
-  const audience = r.sharing === "everyone" ? "Everyone" : r.sharing === "roles" ? "Shared with roles" : r.mine ? "Only you" : "Private";
+  const audience = r.sharing === "everyone" ? tr("Everyone") : r.sharing === "roles" ? tr("Shared with roles") : r.mine ? tr("Only you") : tr("Private");
   return (
     <li className="relative">
       <Link
@@ -201,41 +202,41 @@ function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row
           <SpaceIcon name={r.icon} className="size-5" />
         </span>
         <span className="grid min-w-0 gap-1">
-          <span className="truncate font-medium">{r.label}</span>
-          {r.description && <span className="line-clamp-2 text-sm text-muted-foreground">{r.description}</span>}
+          <span className="truncate font-medium">{isolate(r.label)}</span>
+          {r.description && <span className="line-clamp-2 text-sm text-muted-foreground">{isolate(r.description)}</span>}
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {moduleLabel && <Badge variant="outline">{moduleLabel}</Badge>}
-            {r.is_standard && <Badge variant="secondary">Standard</Badge>}
-            <span>{audience}</span>
+            {moduleLabel && <Badge variant="outline">{isolate(moduleLabel)}</Badge>}
+            {r.is_standard && <Badge variant="secondary">{tr("Standard")}</Badge>}
+            <span>{isolate(audience)}</span>
             <span aria-hidden="true">·</span>
-            <span>Updated {relativeTime(r.updated_at)}</span>
+            <span>{tr("Updated {value}", { value: relativeTime(r.updated_at) })}</span>
           </span>
         </span>
       </Link>
       <div className="absolute top-2 end-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className={TAP} aria-label={`Actions for ${r.label}`} disabled={remove.isPending}>
+            <Button variant="ghost" size="icon-sm" className={TAP} aria-label={tr("Actions for {label}", { label: r.label })} disabled={remove.isPending}>
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
               <Link to={PATHS.space(r.id)}>
-                <LayoutGrid /> Open
+                <LayoutGrid /> {tr("Open")}
               </Link>
             </DropdownMenuItem>
             {canEdit && (
               <DropdownMenuItem asChild>
                 <Link to={PATHS.editSpace(r.id)}>
-                  <Pencil /> Edit
+                  <Pencil /> {tr("Edit")}
                 </Link>
               </DropdownMenuItem>
             )}
             {canCreate && (
               <DropdownMenuItem asChild>
                 <Link to={PATHS.copySpace(r.id)}>
-                  <Copy /> {r.is_standard ? "Customize a copy" : "Duplicate"}
+                  <Copy /> {r.is_standard ? tr("Customize a copy") : tr("Duplicate")}
                 </Link>
               </DropdownMenuItem>
             )}
@@ -243,7 +244,7 @@ function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={() => void doDelete()}>
-                  <Trash2 /> Delete
+                  <Trash2 /> {tr("Delete")}
                 </DropdownMenuItem>
               </>
             )}
@@ -267,19 +268,19 @@ function ModuleStart() {
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="secondary">
-          <LayoutGrid /> Start from a module
+          <LayoutGrid /> {tr("Start from a module")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0">
         <Command>
-          <CommandInput placeholder="Search modules…" />
+          <CommandInput placeholder={tr("Search modules…")} />
           <CommandList>
-            <CommandEmpty>No module matches.</CommandEmpty>
+            <CommandEmpty>{tr("No module matches.")}</CommandEmpty>
             <CommandGroup>
               {modules.map((m) => (
                 <CommandItem key={m.name} value={`${m.label} ${m.name}`} onSelect={() => navigate(`${PATHS.newSpace}?module=${encodeURIComponent(m.name)}`)}>
                   <SpaceIcon name={m.icon} className="size-4" />
-                  {m.label}
+                  {isolate(m.label)}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useBlocker, useHref, type BlockerFunction, type NavigateFunction } from "react-router";
-import { bootstrap } from "@ferrum/client";
+import { bootstrap, t, isolate } from "@ferrum/client";
 import { AlertCircle, RefreshCw, type LucideIcon } from "lucide-react";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?:
 
 export function LoadingBlock({ rows = 3, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("grid gap-3", className)} role="status" aria-label="Loading">
+    <div className={cn("grid gap-3", className)} role="status" aria-label={t("Loading")}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-16 w-full" />
       ))}
@@ -66,13 +66,13 @@ export function ErrorBlock({ error, onRetry, title = "Something went wrong", cla
         <EmptyMedia variant="icon" className="text-destructive">
           <AlertCircle />
         </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{errorMessage(error)}</EmptyDescription>
+        <EmptyTitle>{isolate(title)}</EmptyTitle>
+        <EmptyDescription>{isolate(errorMessage(error))}</EmptyDescription>
       </EmptyHeader>
       {onRetry && (
         <EmptyContent>
           <Button variant="outline" onClick={onRetry}>
-            <RefreshCw /> Try again
+            <RefreshCw /> {t("Try again")}
           </Button>
         </EmptyContent>
       )}
@@ -87,7 +87,7 @@ export function EmptyBlock({ icon: Icon, title, children, action, className }: {
         <EmptyMedia variant="icon">
           <Icon />
         </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyTitle>{isolate(title)}</EmptyTitle>
         {children && <EmptyDescription>{children}</EmptyDescription>}
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
@@ -114,13 +114,13 @@ export function useConfirm() {
     <AlertDialog open={!!req} onOpenChange={(open) => !open && close(false)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{req?.title}</AlertDialogTitle>
+          <AlertDialogTitle>{isolate(req?.title ?? "")}</AlertDialogTitle>
           {req?.message && <AlertDialogDescription>{req.message}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => close(false)}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={() => close(false)}>{t("Cancel")}</AlertDialogCancel>
           <AlertDialogAction className={req?.danger ? "bg-destructive text-white hover:bg-destructive/90" : undefined} onClick={() => close(true)}>
-            {req?.confirmLabel ?? "Confirm"}
+            {req?.confirmLabel ?? t("Confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -151,7 +151,7 @@ export function useUnsavedGuard(dirty: boolean, when?: BlockerFunction): { allow
   useEffect(() => {
     if (blocker.state !== "blocked" || asked.current) return;
     asked.current = true;
-    void confirm({ title: "Discard your changes?", message: "You have unsaved changes. Leaving now discards them.", confirmLabel: "Discard", danger: true }).then((ok) => {
+    void confirm({ title: t("Discard your changes?"), message: "You have unsaved changes. Leaving now discards them.", confirmLabel: t("Discard"), danger: true }).then((ok) => {
       asked.current = false;
       if (ok) blocker.proceed();
       else blocker.reset();
@@ -184,9 +184,9 @@ export function SheetState({ title, onClose, children }: { title: string; onClos
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between gap-2 border-b p-4">
-        <span className="font-medium">{title}</span>
+        <span className="font-medium">{isolate(title)}</span>
         <Button type="button" variant="outline" onClick={onClose}>
-          Close
+          {t("Close")}
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
@@ -244,7 +244,7 @@ export function Section({ title, hint, children, action }: { title: string; hint
   return (
     <section className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className="text-sm font-medium">{isolate(title)}</h3>
         {action}
       </div>
       {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
@@ -259,7 +259,7 @@ export function Messages({ list, className }: { list: string[]; className?: stri
     <div className={cn("grid gap-0.5", className)} role="alert">
       {list.map((m) => (
         <p key={m} className="text-xs text-destructive">
-          {m}
+          {isolate(m)}
         </p>
       ))}
     </div>

@@ -7,6 +7,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, errorMessage } from "./api";
+import { t as tr } from "@ferrum/client";
 
 /** The bridge protocol version a screen receives in its `init` message. */
 export const SCREEN_PROTOCOL = 1;
@@ -130,7 +131,7 @@ async function handle(host: ScreenHost, method: string, p: Record<string, unknow
     }
     case "confirm":
       return host.confirm({
-        title: text(p.title, 120) || "Are you sure?",
+        title: text(p.title, 120) || tr("Are you sure?"),
         message: text(p.message, 600) || undefined,
         confirmLabel: text(p.confirmLabel, 40) || undefined,
         danger: p.danger === true,

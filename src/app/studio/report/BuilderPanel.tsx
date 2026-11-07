@@ -39,6 +39,7 @@ import { filterFields, FilterEditor } from "./FilterEditor";
 import { EntityPicker, FieldPicker } from "./pickers";
 import { AGGS, BUCKETS, measureName, move, specColumns, type BuilderState } from "./state";
 import { Issues, PanelSection, RowMenu, SortableItem, SortableList } from "./ui";
+import { t, isolate } from "@ferrum/client";
 
 type Update = (recipe: (s: BuilderState) => BuilderState, key?: string) => void;
 
@@ -86,26 +87,26 @@ export function BuilderPanel(p: BuilderPanelProps) {
 
   return (
     <div className="flex flex-col">
-      <PanelSection title="Data">
+      <PanelSection title={t("Data")}>
         <EntityPicker sources={p.sources} loading={p.sourcesLoading} value={d.entity} onChange={p.onPickEntity} />
         <Issues messages={exact(issues, "entity")} />
-        <ToggleGroup type="single" variant="outline" className="w-full" value={d.kind === "chart" ? "group_by" : d.kind} onValueChange={(k) => k && setShape(k as ReportKind)} aria-label="Report shape">
-          <ToggleGroupItem value="table" className="flex-1" aria-label="Records: one row per record">
-            <Rows3 /> Records
+        <ToggleGroup type="single" variant="outline" className="w-full" value={d.kind === "chart" ? "group_by" : d.kind} onValueChange={(k) => k && setShape(k as ReportKind)} aria-label={t("Report shape")}>
+          <ToggleGroupItem value="table" className="flex-1" aria-label={t("Records: one row per record")}>
+            <Rows3 /> {t("Records")}
           </ToggleGroupItem>
-          <ToggleGroupItem value="group_by" className="flex-1" aria-label="Summary: rows grouped and measured">
-            <Sigma /> Summary
+          <ToggleGroupItem value="group_by" className="flex-1" aria-label={t("Summary: rows grouped and measured")}>
+            <Sigma /> {t("Summary")}
           </ToggleGroupItem>
-          <ToggleGroupItem value="pivot" className="flex-1" aria-label="Pivot: values spread across columns">
-            <Grid3x3 /> Pivot
+          <ToggleGroupItem value="pivot" className="flex-1" aria-label={t("Pivot: values spread across columns")}>
+            <Grid3x3 /> {t("Pivot")}
           </ToggleGroupItem>
         </ToggleGroup>
         {!!p.catalogError && (
           <Alert variant="destructive">
             <AlertDescription className="flex flex-wrap items-center gap-2">
-              The fields could not be loaded: {errorMessage(p.catalogError)}
+              {t("The fields could not be loaded: {value}", { value: errorMessage(p.catalogError) })}
               <Button size="sm" variant="outline" onClick={p.onRetryCatalog}>
-                <RotateCcw /> Try again
+                <RotateCcw /> {t("Try again")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -113,7 +114,7 @@ export function BuilderPanel(p: BuilderPanelProps) {
       </PanelSection>
 
       {d.entity && p.catalogLoading ? (
-        <div className="grid gap-2 p-4" aria-busy="true" aria-label="Loading fields">
+        <div className="grid gap-2 p-4" aria-busy="true" aria-label={t("Loading fields")}>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-9" />
           ))}
@@ -129,12 +130,12 @@ export function BuilderPanel(p: BuilderPanelProps) {
               {d.kind === "pivot" && <PivotSection d={d} setDraft={setDraft} fields={fields} byPath={byPath} issues={issues} />}
             </>
           )}
-          <PanelSection title="Filters">
+          <PanelSection title={t("Filters")}>
             <FilterEditor filters={d.filters} fields={filterable} issues={issues} onChange={(filters, key) => setDraft((x) => ({ ...x, filters }), key)} />
             <Input
               type="search"
-              aria-label="Search the records"
-              placeholder="Search text…"
+              aria-label={t("Search the records")}
+              placeholder={t("Search text…")}
               value={d.search}
               onChange={(e) => {
                 const search = e.target.value;
@@ -164,7 +165,7 @@ function ColumnsSection({ d, setDraft, fields, fieldLabel, issues }: SectionProp
   const labels = d.fields.map((f, i) => fieldLabel(f.field) || `column ${i + 1}`);
   const moveTo = (from: number, to: number) => setDraft((x) => ({ ...x, fields: move(x.fields, from, to) }));
   return (
-    <PanelSection title="Columns" hint={d.fields.length ? undefined : "Showing the list's usual columns. Add columns to choose your own."}>
+    <PanelSection title={t("Columns")} hint={d.fields.length ? undefined : t("Showing the list's usual columns. Add columns to choose your own.")}>
       {d.fields.length > 0 && (
         <SortableList ids={ids} labels={labels} onMove={moveTo}>
           {d.fields.map((f, i) => (
@@ -173,7 +174,7 @@ function ColumnsSection({ d, setDraft, fields, fieldLabel, issues }: SectionProp
                 <FieldPicker
                   fields={fields}
                   value={f.field}
-                  label={`Column ${i + 1}`}
+                  label={t("Column {value}", { value: i + 1 })}
                   invalid={issuesAt(issues, `fields[${i}]`).length > 0}
                   onChange={(c) => setDraft((x) => ({ ...x, fields: x.fields.map((y, j) => (j === i ? { ...y, field: c.path } : y)) }))}
                 />
@@ -185,7 +186,7 @@ function ColumnsSection({ d, setDraft, fields, fieldLabel, issues }: SectionProp
         </SortableList>
       )}
       <div>
-        <FieldPicker add="Add column" label="Add column" fields={fields.filter((f) => !used.has(f.path))} onChange={(c) => setDraft((x) => ({ ...x, fields: [...x.fields, { field: c.path }] }))} />
+        <FieldPicker add="Add column" label={t("Add column")} fields={fields.filter((f) => !used.has(f.path))} onChange={(c) => setDraft((x) => ({ ...x, fields: [...x.fields, { field: c.path }] }))} />
       </div>
     </PanelSection>
   );
@@ -198,13 +199,13 @@ function BucketSelect({ field, value, onChange, label, allowNone = true }: { fie
   return (
     <Select value={value ?? (none ? "none" : undefined)} onValueChange={(v) => onChange(v === "none" ? undefined : (v as Bucket))}>
       <SelectTrigger className="w-full" aria-label={label} aria-invalid={!value && !none ? true : undefined}>
-        <SelectValue placeholder="Choose a period" />
+        <SelectValue placeholder={t("Choose a period")} />
       </SelectTrigger>
       <SelectContent>
-        {none && <SelectItem value="none">Each day</SelectItem>}
+        {none && <SelectItem value="none">{t("Each day")}</SelectItem>}
         {field.buckets.map((b) => (
           <SelectItem key={b} value={b}>
-            By {BUCKET_LABEL[b].toLowerCase()}
+            {t("By {value}", { value: BUCKET_LABEL[b].toLowerCase() })}
           </SelectItem>
         ))}
       </SelectContent>
@@ -219,7 +220,7 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
   const moveTo = (from: number, to: number) => setDraft((x) => ({ ...x, group_by: move(x.group_by, from, to) }));
   const pick = (f: CatalogField) => ({ field: f.path, ...(f.buckets.length ? { bucket: "month" as Bucket } : {}) });
   return (
-    <PanelSection title="Group by" hint={d.group_by.length ? undefined : d.time ? undefined : "Without groups the measures cover every row."}>
+    <PanelSection title={t("Group by")} hint={d.group_by.length ? undefined : d.time ? undefined : t("Without groups the measures cover every row.")}>
       {d.group_by.length > 0 && (
         <SortableList ids={ids} labels={labels} onMove={moveTo}>
           {d.group_by.map((g, i) => {
@@ -230,7 +231,7 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
                   <FieldPicker
                     fields={groupable}
                     value={g.field}
-                    label={`Group ${i + 1}: field`}
+                    label={t("Group {value}: field", { value: i + 1 })}
                     invalid={issuesAt(issues, `group_by[${i}]`).length > 0}
                     onChange={(c) => setDraft((x) => ({ ...x, group_by: x.group_by.map((y, j) => (j === i ? { ...pick(c), ...(y.label ? { label: y.label } : {}) } : y)) }))}
                   />
@@ -239,7 +240,7 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
                 <BucketSelect
                   field={f}
                   value={g.bucket}
-                  label={`Group ${i + 1}: period`}
+                  label={t("Group {value}: period", { value: i + 1 })}
                   onChange={(bucket) => setDraft((x) => ({ ...x, group_by: x.group_by.map((y, j) => (j === i ? { field: y.field, ...(bucket ? { bucket } : {}), ...(y.label ? { label: y.label } : {}) } : y)) }))}
                 />
                 <Issues messages={issuesAt(issues, `group_by[${i}]`)} />
@@ -249,7 +250,7 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
         </SortableList>
       )}
       <div>
-        <FieldPicker add="Add group" label="Add group" fields={groupable} onChange={(c) => setDraft((x) => ({ ...x, group_by: [...x.group_by, pick(c)] }))} />
+        <FieldPicker add="Add group" label={t("Add group")} fields={groupable} onChange={(c) => setDraft((x) => ({ ...x, group_by: [...x.group_by, pick(c)] }))} />
       </div>
     </PanelSection>
   );
@@ -262,11 +263,11 @@ function FormulasSection({ d, setDraft, columns, issues }: Omit<SectionProps, "f
   const set = (i: number, patch: Partial<FormulaSel>) => setDraft((x) => ({ ...x, formulas: x.formulas.map((f, j) => (j === i ? { ...f, ...patch } : f)) }), `formula${i}`);
   return (
     <PanelSection
-      title="Calculated columns"
+      title={t("Calculated columns")}
       hint={
         named.length ? (
           <span>
-            Refer to columns in brackets: {named.slice(0, 4).map((c) => `[${c.label}]`).join(", ")}. + − × ÷, round, abs, min, max and coalesce work.
+            {t("Refer to columns in brackets: {value}. + − × ÷, round, abs, min, max and coalesce work.", { value: named.slice(0, 4).map((c) => `[${c.label}]`).join(", ") })}
           </span>
         ) : undefined
       }
@@ -274,15 +275,15 @@ function FormulasSection({ d, setDraft, columns, issues }: Omit<SectionProps, "f
       {d.formulas.map((f, i) => (
         <div key={i} className="grid gap-1 rounded-md border p-2">
           <div className="flex min-w-0 gap-1">
-            <Input aria-label={`Calculated column ${i + 1}: name`} placeholder="Name, e.g. Margin" value={f.label} maxLength={100} onChange={(e) => set(i, { label: e.target.value })} />
-            <Button variant="ghost" size="icon" aria-label={`Remove calculated column ${f.label || i + 1}`} onClick={() => setDraft((x) => ({ ...x, formulas: x.formulas.filter((_, j) => j !== i) }))}>
+            <Input aria-label={t("Calculated column {value}: name", { value: i + 1 })} placeholder={t("Name, e.g. Margin")} value={f.label} maxLength={100} onChange={(e) => set(i, { label: e.target.value })} />
+            <Button variant="ghost" size="icon" aria-label={t("Remove calculated column {value}", { value: f.label || i + 1 })} onClick={() => setDraft((x) => ({ ...x, formulas: x.formulas.filter((_, j) => j !== i) }))}>
               <X />
             </Button>
           </div>
           <Input
             id={`${id}-${i}`}
-            aria-label={`Calculated column ${i + 1}: formula`}
-            placeholder="[Revenue] - [Cost]"
+            aria-label={t("Calculated column {value}: formula", { value: i + 1 })}
+            placeholder={t("[Revenue] - [Cost]")}
             className="font-mono text-xs"
             value={f.expr}
             maxLength={500}
@@ -295,7 +296,7 @@ function FormulasSection({ d, setDraft, columns, issues }: Omit<SectionProps, "f
       {d.formulas.length < 10 && (
         <div>
           <Button variant="outline" size="sm" onClick={() => setDraft((x) => ({ ...x, formulas: [...x.formulas, { label: "", expr: "" }] }))}>
-            <Plus /> Add calculated column
+            <Plus /> {t("Add calculated column")}
           </Button>
         </div>
       )}
@@ -311,10 +312,10 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
   const addMeasure = () => setDraft((x) => ({ ...x, measures: [...x.measures, x.measures.some((m) => m.fn === "count" && !m.field) ? { fn: "sum" } : { fn: "count" }] }));
   return (
     <PanelSection
-      title="Measures"
+      title={t("Measures")}
       action={
         <Button variant="ghost" size="sm" className="text-primary" onClick={addMeasure}>
-          <Plus /> Add measure
+          <Plus /> {t("Add measure")}
         </Button>
       }
     >
@@ -327,13 +328,13 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
               <SortableItem key={ids[i]} id={ids[i]} label={labels[i]}>
                 <div className="flex min-w-0 gap-1">
                   <Select value={m.fn} onValueChange={(fn) => set(i, { ...m, fn: fn as Agg })}>
-                    <SelectTrigger className="w-full" aria-label={`Measure ${i + 1}: function`}>
+                    <SelectTrigger className="w-full" aria-label={t("Measure {value}: function", { value: i + 1 })}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {AGGS.map((fn) => (
                         <SelectItem key={fn} value={fn}>
-                          {AGG_LABEL[fn]}
+                          {isolate(AGG_LABEL[fn])}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -343,9 +344,9 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
                 <FieldPicker
                   fields={measurable(fields, m.fn)}
                   value={m.field ?? ""}
-                  label={`Measure ${i + 1}: field`}
-                  placeholder={`Choose the field to ${m.fn === "count_distinct" ? "count" : AGG_LABEL[m.fn].toLowerCase()}`}
-                  none={m.fn === "count" ? { label: "Records", onSelect: () => set(i, { fn: m.fn, ...(m.label ? { label: m.label } : {}) }) } : undefined}
+                  label={t("Measure {value}: field", { value: i + 1 })}
+                  placeholder={t("Choose the field to {value}", { value: m.fn === "count_distinct" ? "count" : AGG_LABEL[m.fn].toLowerCase() })}
+                  none={m.fn === "count" ? { label: t("Records"), onSelect: () => set(i, { fn: m.fn, ...(m.label ? { label: m.label } : {}) }) } : undefined}
                   invalid={invalid}
                   onChange={(c) => set(i, { ...m, field: c.path })}
                 />
@@ -363,7 +364,7 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
 function pivotChoices(field: CatalogField | undefined, bucket: Bucket | undefined): { value: PivotValue; label: string }[] | "typed" | null {
   if (!field || bucket) return null;
   if (field.options?.length) return field.options.map((o) => ({ value: o, label: o }));
-  if (field.type === "check") return [{ value: true, label: "Yes" }, { value: false, label: "No" }];
+  if (field.type === "check") return [{ value: true, label: t("Yes") }, { value: false, label: t("No") }];
   return ["link", "dynamic_link", "user", "date", "datetime", "time"].includes(field.type) ? null : "typed";
 }
 
@@ -385,20 +386,20 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
       .map((v) => (field?.type === "int" && /^-?\d+$/.test(v) ? Number(v) : v));
   return (
     <PanelSection
-      title="Pivot columns"
-      hint={declared.length ? "Only the values chosen become columns, in their order, whatever the records hold; the totals count every value." : "Each value of this field becomes a column, with totals at the end."}
+      title={t("Pivot columns")}
+      hint={declared.length ? t("Only the values chosen become columns, in their order, whatever the records hold; the totals count every value.") : t("Each value of this field becomes a column, with totals at the end.")}
     >
       <FieldPicker
         fields={groupable}
         value={pivot.field}
-        label="Pivot columns: field"
+        label={t("Pivot columns: field")}
         invalid={issuesAt(issues, "pivot").length > 0}
         onChange={(f) => set({ field: f.path, ...(f.buckets.length ? { bucket: "month" as Bucket } : {}), ...(pivot.max_columns ? { max_columns: pivot.max_columns } : {}) })}
       />
-      <BucketSelect field={byPath.get(pivot.field)} value={pivot.bucket} label="Pivot columns: period" onChange={(bucket) => set({ field: pivot.field, ...(bucket ? { bucket } : {}), ...(pivot.max_columns ? { max_columns: pivot.max_columns } : {}) })} />
+      <BucketSelect field={byPath.get(pivot.field)} value={pivot.bucket} label={t("Pivot columns: period")} onChange={(bucket) => set({ field: pivot.field, ...(bucket ? { bucket } : {}), ...(pivot.max_columns ? { max_columns: pivot.max_columns } : {}) })} />
       {Array.isArray(choices) && (
         <fieldset className="grid gap-1">
-          <legend className="text-xs text-muted-foreground">Only these values (none: every value)</legend>
+          <legend className="text-xs text-muted-foreground">{t("Only these values (none: every value)")}</legend>
           {choices.map((c) => (
             <Label key={String(c.value)} className="font-normal">
               <Checkbox
@@ -406,7 +407,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
                 checked={declared.includes(c.value)}
                 onCheckedChange={(on) => declare(on === true ? choices.filter((x) => x.value === c.value || declared.includes(x.value)).map((x) => x.value) : declared.filter((v) => v !== c.value))}
               />
-              {c.label}
+              {isolate(c.label)}
             </Label>
           ))}
         </fieldset>
@@ -414,15 +415,15 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
       {choices === "typed" && (
         <div className="grid gap-1">
           <Label htmlFor={valuesId} className="text-xs font-normal text-muted-foreground">
-            Only these values, separated by commas (none: every value)
+            {t("Only these values, separated by commas (none: every value)")}
           </Label>
-          <Input id={valuesId} defaultValue={declared.join(", ")} key={pivot.field} placeholder="North, South" onBlur={(e) => declare(typed(e.target.value), "pivot-values")} />
+          <Input id={valuesId} defaultValue={declared.join(", ")} key={pivot.field} placeholder={t("North, South")} onBlur={(e) => declare(typed(e.target.value), "pivot-values")} />
         </div>
       )}
       {!declared.length && (
       <div className="flex items-center gap-2">
         <Label htmlFor={id} className="shrink-0 font-normal">
-          Show up to
+          {t("Show up to")}
         </Label>
         <Input
           id={id}
@@ -439,7 +440,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
             set(e.target.value && n >= 1 ? { ...rest, max_columns: Math.min(n, 100) } : rest, "pivot-max");
           }}
         />
-        <span className="text-sm text-muted-foreground">columns (the largest)</span>
+        <span className="text-sm text-muted-foreground">{t("columns (the largest)")}</span>
       </div>
       )}
       <Issues messages={issuesAt(issues, "pivot")} />
@@ -453,18 +454,18 @@ function DateExpr({ label, value, onChange, fyStartMonth, describedBy }: { label
   return (
     <div className="grid min-w-0 gap-1">
       <Label htmlFor={id} className="text-xs font-normal text-muted-foreground">
-        {label}
+        {isolate(label)}
       </Label>
       <Input
         id={id}
         value={value}
-        placeholder={label === "From" ? "Any time" : "Today and later"}
+        placeholder={label === "From" ? t("Any time") : t("Today and later")}
         aria-invalid={value.trim() && !resolved ? true : undefined}
         aria-describedby={`${id}-hint ${describedBy ?? ""}`.trim()}
         onChange={(e) => onChange(e.target.value)}
       />
       <p id={`${id}-hint`} className={value.trim() && !resolved ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
-        {!value.trim() ? " " : resolved ? (resolved === value.trim() ? formatDate(resolved) : `= ${formatDate(resolved)}`) : "Not a date"}
+        {!value.trim() ? " " : resolved ? (resolved === value.trim() ? formatDate(resolved) : `= ${formatDate(resolved)}`) : t("Not a date")}
       </p>
     </div>
   );
@@ -480,13 +481,13 @@ function PeriodSection({ d, setDraft, fields, issues, fyStartMonth }: SectionPro
   const setPeriod = (p: { from: string; to: string }, key?: string) => setDraft((x) => ({ ...x, period: { field, ...p } }), key);
   const issuePath = d.time ? "time_series" : "date_range";
   return (
-    <PanelSection title="Period" hint={field ? undefined : "Limit the report to a period of one of its dates."}>
+    <PanelSection title={t("Period")} hint={field ? undefined : t("Limit the report to a period of one of its dates.")}>
       <FieldPicker
         fields={dated}
         value={field}
-        label="Period: date field"
-        placeholder="No period"
-        none={{ label: "No period", onSelect: () => setDraft((x) => ({ ...x, period: null, time: null, compare: null })) }}
+        label={t("Period: date field")}
+        placeholder={t("No period")}
+        none={{ label: t("No period"), onSelect: () => setDraft((x) => ({ ...x, period: null, time: null, compare: null })) }}
         invalid={issuesAt(issues, `${issuePath}.field`).length > 0}
         onChange={(f) =>
           setDraft((x) => ({
@@ -506,24 +507,24 @@ function PeriodSection({ d, setDraft, fields, issues, fyStartMonth }: SectionPro
               setPeriod(p ? { from: p.from, to: p.to } : { from: "", to: "" });
             }}
           >
-            <SelectTrigger className="w-full" aria-label="Period: range">
+            <SelectTrigger className="w-full" aria-label={t("Period: range")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="all">{t("All time")}</SelectItem>
               {DATE_PRESETS.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {p.label}
+                  {isolate(p.label)}
                 </SelectItem>
               ))}
-              <SelectItem value="custom">Custom range</SelectItem>
+              <SelectItem value="custom">{t("Custom range")}</SelectItem>
             </SelectContent>
           </Select>
           <div className="grid grid-cols-2 gap-2">
-            <DateExpr label="From" value={from} fyStartMonth={fyStartMonth} onChange={(v) => setPeriod({ from: v, to }, "period-from")} />
-            <DateExpr label="To" value={to} fyStartMonth={fyStartMonth} onChange={(v) => setPeriod({ from, to: v }, "period-to")} />
+            <DateExpr label={t("From")} value={from} fyStartMonth={fyStartMonth} onChange={(v) => setPeriod({ from: v, to }, "period-from")} />
+            <DateExpr label={t("To")} value={to} fyStartMonth={fyStartMonth} onChange={(v) => setPeriod({ from, to: v }, "period-to")} />
           </div>
-          <p className="-mt-1 text-xs text-muted-foreground">Dates (YYYY-MM-DD) or expressions such as today-30d or start_of_month keep the report current.</p>
+          <p className="-mt-1 text-xs text-muted-foreground">{t("Dates (YYYY-MM-DD) or expressions such as today-30d or start_of_month keep the report current.")}</p>
           <Issues messages={[...issuesAt(issues, "date_range"), ...issuesAt(issues, "time_series")]} />
           {grouped && (
             <>
@@ -531,14 +532,14 @@ function PeriodSection({ d, setDraft, fields, issues, fyStartMonth }: SectionPro
                 value={d.time?.bucket ?? "off"}
                 onValueChange={(v) => setDraft((x) => ({ ...x, time: v === "off" ? null : { field, bucket: v as Bucket, fill_zero: x.time?.fill_zero ?? true } }))}
               >
-                <SelectTrigger className="w-full" aria-label="Trend over time">
+                <SelectTrigger className="w-full" aria-label={t("Trend over time")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="off">No trend over time</SelectItem>
+                  <SelectItem value="off">{t("No trend over time")}</SelectItem>
                   {BUCKETS.map((b) => (
                     <SelectItem key={b} value={b}>
-                      Trend by {BUCKET_LABEL[b].toLowerCase()}
+                      {t("Trend by {value}", { value: BUCKET_LABEL[b].toLowerCase() })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -546,22 +547,22 @@ function PeriodSection({ d, setDraft, fields, issues, fyStartMonth }: SectionPro
               {d.time && (
                 <Label className="font-normal">
                   <Checkbox checked={d.time.fill_zero} onCheckedChange={(c) => setDraft((x) => ({ ...x, time: x.time && { ...x.time, fill_zero: c === true } }))} />
-                  Show periods without data
+                  {t("Show periods without data")}
                 </Label>
               )}
               {d.kind !== "pivot" && (
                 <>
                   <Select value={d.compare ?? "none"} disabled={!(from.trim() && to.trim())} onValueChange={(v) => setDraft((x) => ({ ...x, compare: v === "none" ? null : (v as CompareKind) }))}>
-                    <SelectTrigger className="w-full" aria-label="Compare with">
+                    <SelectTrigger className="w-full" aria-label={t("Compare with")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No comparison</SelectItem>
-                      <SelectItem value="previous_period">Compare with the previous period</SelectItem>
-                      <SelectItem value="previous_year">Compare with the same period last year</SelectItem>
+                      <SelectItem value="none">{t("No comparison")}</SelectItem>
+                      <SelectItem value="previous_period">{t("Compare with the previous period")}</SelectItem>
+                      <SelectItem value="previous_year">{t("Compare with the same period last year")}</SelectItem>
                     </SelectContent>
                   </Select>
-                  {!(from.trim() && to.trim()) && <p className="-mt-1 text-xs text-muted-foreground">Comparing needs a period with a start and an end.</p>}
+                  {!(from.trim() && to.trim()) && <p className="-mt-1 text-xs text-muted-foreground">{t("Comparing needs a period with a start and an end.")}</p>}
                   <Issues messages={exact(issues, "compare")} />
                 </>
               )}
@@ -594,7 +595,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
   const measureNames = new Set(d.measures.map(measureName));
   return (
     <PanelSection
-      title="Sort and limit"
+      title={t("Sort and limit")}
       action={
         <Button
           variant="ghost"
@@ -603,7 +604,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
           disabled={!unused}
           onClick={() => unused && setDraft((x) => ({ ...x, sort: [...x.sort, { by: unused.name, dir: measureNames.has(unused.name) ? "desc" : "asc" }] }))}
         >
-          <Plus /> Add sort
+          <Plus /> {t("Add sort")}
         </Button>
       }
     >
@@ -613,13 +614,13 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
             <SortableItem key={ids[i]} id={ids[i]} label={labels[i]}>
               <div className="flex min-w-0 gap-1">
                 <Select value={s.by} onValueChange={(by) => set(i, { ...s, by })}>
-                  <SelectTrigger className="w-full min-w-0" aria-label={`Sort ${i + 1}: column`} aria-invalid={issuesAt(issues, `sort[${i}]`).length ? true : undefined}>
-                    <SelectValue placeholder="Choose a column" />
+                  <SelectTrigger className="w-full min-w-0" aria-label={t("Sort {value}: column", { value: i + 1 })} aria-invalid={issuesAt(issues, `sort[${i}]`).length ? true : undefined}>
+                    <SelectValue placeholder={t("Choose a column")} />
                   </SelectTrigger>
                   <SelectContent>
                     {(options.some((o) => o.name === s.by) || !s.by ? options : [...options, { name: s.by }]).map((o) => (
                       <SelectItem key={o.name} value={o.name}>
-                        {labelOf(o.name)}
+                        {isolate(labelOf(o.name))}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -628,13 +629,13 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
                   variant="outline"
                   size="icon"
                   className="shrink-0"
-                  aria-label={s.dir === "desc" ? `Sort ${i + 1}: descending (change to ascending)` : `Sort ${i + 1}: ascending (change to descending)`}
-                  title={s.dir === "desc" ? "Descending" : "Ascending"}
+                  aria-label={s.dir === "desc" ? t("Sort {value}: descending (change to ascending)", { value: i + 1 }) : t("Sort {value}: ascending (change to descending)", { value: i + 1 })}
+                  title={s.dir === "desc" ? t("Descending") : t("Ascending")}
                   onClick={() => set(i, { ...s, dir: s.dir === "desc" ? "asc" : "desc" })}
                 >
                   {s.dir === "desc" ? <ArrowDownWideNarrow /> : <ArrowUpNarrowWide />}
                 </Button>
-                <Button variant="ghost" size="icon" className="shrink-0" aria-label={`Remove sort ${i + 1}`} onClick={() => setDraft((x) => ({ ...x, sort: x.sort.filter((_, j) => j !== i) }))}>
+                <Button variant="ghost" size="icon" className="shrink-0" aria-label={t("Remove sort {value}", { value: i + 1 })} onClick={() => setDraft((x) => ({ ...x, sort: x.sort.filter((_, j) => j !== i) }))}>
                   <X />
                 </Button>
               </div>
@@ -645,7 +646,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
       )}
       <div className="flex items-center gap-2">
         <Label htmlFor={id} className="shrink-0 font-normal">
-          Rows
+          {t("Rows")}
         </Label>
         <Input
           id={id}
@@ -662,7 +663,7 @@ function SortSection({ d, setDraft, columns, fieldLabel, issues }: Omit<SectionP
             setDraft((x) => ({ ...x, limit: e.target.value && n >= 1 ? Math.min(n, 10000) : null }), "limit");
           }}
         />
-        <span className="text-sm text-muted-foreground">at most (up to 10,000)</span>
+        <span className="text-sm text-muted-foreground">{t("at most (up to 10,000)")}</span>
       </div>
       <Issues messages={issuesAt(issues, "limit")} />
     </PanelSection>

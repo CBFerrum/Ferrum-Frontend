@@ -106,6 +106,7 @@ import {
 } from "./space/model";
 import { BlockPreview, useRecordLabels } from "./space/preview";
 import { confirmDialog, toast } from "@/ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 let keySeq = 0;
 const nextKey = () => `b${++keySeq}`;
@@ -128,22 +129,22 @@ export function SpaceEditor() {
   const perms = meta?.entities.find((e) => e.name === "Space")?.permissions;
 
   if (!can(perms, id ? "write" : "create"))
-    return <Notice title={id ? "You can’t edit spaces" : "You can’t create spaces"} text="Ask an administrator for a role that may change spaces." />;
+    return <Notice title={id ? tr("You can’t edit spaces") : tr("You can’t create spaces")} text="Ask an administrator for a role that may change spaces." />;
   if (source.isLoading || (moduleName && reports.isLoading)) return <EditorSkeleton />;
   if (source.error)
     return (
       <Notice
-        title={source.error instanceof ApiError && source.error.status === 404 ? "This space doesn’t exist" : "The space could not be loaded"}
+        title={source.error instanceof ApiError && source.error.status === 404 ? tr("This space doesn’t exist") : tr("The space could not be loaded")}
         text={source.error instanceof ApiError && source.error.status === 404 ? "It may have been deleted, or it isn’t shared with you." : errorMessage(source.error)}
         retry={() => void source.refetch()}
       />
     );
   if (id && source.data?.is_standard)
     return (
-      <Notice title="This space comes with an app" text="Standard spaces can’t be changed. Make a copy to customize: the copy is yours to edit and share.">
+      <Notice title={tr("This space comes with an app")} text="Standard spaces can’t be changed. Make a copy to customize: the copy is yours to edit and share.">
         <Button asChild>
           <Link to={PATHS.copySpace(id)}>
-            <Copy /> Duplicate to customize
+            <Copy /> {tr("Duplicate to customize")}
           </Link>
         </Button>
       </Notice>
@@ -177,18 +178,18 @@ function Notice({ title, text, retry, children }: { title: string; text: string;
         <EmptyMedia variant="icon">
           <LayoutGrid />
         </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{text}</EmptyDescription>
+        <EmptyTitle>{isolate(title)}</EmptyTitle>
+        <EmptyDescription>{isolate(text)}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="flex-row flex-wrap justify-center">
         {children}
         {retry && (
           <Button variant="outline" onClick={retry}>
-            Try again
+            {tr("Try again")}
           </Button>
         )}
         <Button variant="ghost" asChild>
-          <Link to={PATHS.spaces}>All spaces</Link>
+          <Link to={PATHS.spaces}>{tr("All spaces")}</Link>
         </Button>
       </EmptyContent>
     </Empty>
@@ -197,7 +198,7 @@ function Notice({ title, text, retry, children }: { title: string; text: string;
 
 function EditorSkeleton() {
   return (
-    <div className="grid gap-4" aria-busy="true" aria-label="Loading the space">
+    <div className="grid gap-4" aria-busy="true" aria-label={tr("Loading the space")}>
       <Skeleton className="h-10 w-72" />
       <div className="flex gap-6">
         <div className="grid flex-1 grid-cols-12 gap-4">
@@ -348,7 +349,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
     const problems = draftIssues(draft);
     setAttempted(true);
     if (problems.length) {
-      toast(`Fix ${problems.length === 1 ? "the problem" : `the ${problems.length} problems`} marked in red before saving.`, "error");
+      toast(tr("Fix {value} marked in red before saving.", { value: problems.length === 1 ? "the problem" : `the ${problems.length} problems` }), "error");
       const m = /^blocks\[(\d+)\]/.exec(problems[0].path);
       if (m) select(draft.blocks[Number(m[1])].key, true);
       else {
@@ -365,7 +366,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       setServerIssues([]);
       setConflict(null);
       setAttempted(false);
-      toast("Space saved");
+      toast(tr("Space saved"));
       if (!saved.id && out.id) {
         allowNav.current = true;
         navigate(PATHS.editSpace(out.id), { replace: true });
@@ -382,7 +383,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
         const first = placed.find((i) => i.key);
         if (first?.key) select(first.key, true);
         else if (wide) focusIn("space-settings");
-        toast(`${e.message}. The problems are marked in red.`, "error");
+        toast(tr("{message}. The problems are marked in red.", { message: e.message }), "error");
       } else toast(errorMessage(e), "error");
     }
   };
@@ -397,19 +398,19 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       setSaved({ draft: theirs, version: latest.version, id: spaceId, record: latest });
       setConflict({ conflicts, by: nameOf(latest.updated_by) });
       setSelected((s) => (s && !merged.blocks.some((b) => b.key === s) ? null : s));
-      toast("Someone else saved this space first. Their changes are merged in: review, then save again.", "info");
+      toast(tr("Someone else saved this space first. Their changes are merged in: review, then save again."), "info");
     } catch (err) {
-      toast(`Someone else saved this space first, and it could not be reloaded: ${errorMessage(err)}`, "error");
+      toast(tr("Someone else saved this space first, and it could not be reloaded: {err}", { err: errorMessage(err) }), "error");
     }
   };
 
   const doDelete = async () => {
     if (!saved.id) return;
-    const ok = await confirmDialog({ title: `Delete “${draft.label || "this space"}”?`, message: "Everyone it is shared with loses it. This can’t be undone.", confirmLabel: "Delete", danger: true });
+    const ok = await confirmDialog({ title: tr("Delete “{value}”?", { value: draft.label || "this space" }), message: tr("Everyone it is shared with loses it. This can’t be undone."), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: saved.id, version: saved.version });
-      toast("Space deleted");
+      toast(tr("Space deleted"));
       allowNav.current = true;
       navigate(PATHS.spaces, { replace: true });
     } catch (e) {
@@ -421,7 +422,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && !allowNav.current && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    void confirmDialog({ title: "Leave without saving?", message: "Your changes to this space will be lost.", confirmLabel: "Leave", danger: true }).then((ok) =>
+    void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this space will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) =>
       ok ? blocker.proceed() : blocker.reset(),
     );
   }, [blocker]);
@@ -478,10 +479,10 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
     <Tabs value={selectedBlock ? tab : "space"} onValueChange={(v) => setTab(v as "space" | "block")} className="gap-4">
       <TabsList className="w-full">
         <TabsTrigger value="space" className={TAP}>
-          Space
+          {tr("Space")}
         </TabsTrigger>
         <TabsTrigger value="block" disabled={!selectedBlock} className={TAP}>
-          Block
+          {tr("Block")}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="space">
@@ -514,20 +515,20 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       <header className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button variant="ghost" size="sm" asChild className={TAP}>
           <Link to={saved.id ? PATHS.space(saved.id) : PATHS.spaces}>
-            <ArrowLeft /> {saved.id ? "Back to the space" : "Spaces"}
+            <ArrowLeft /> {saved.id ? tr("Back to the space") : tr("Spaces")}
           </Link>
         </Button>
         <div className="min-w-0 flex-1 basis-48">
-          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? `Edit ${draft.label.trim() || "space"}` : "New space"}</h1>
+          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? tr("Edit {value}", { value: draft.label.trim() || "space" }) : tr("New space")}</h1>
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {save.isPending ? "Saving…" : dirty ? "Unsaved changes" : saved.id ? `Saved${updated ? ` ${relativeTime(updated)}` : ""}${by ? ` by ${by}` : ""}` : "Not saved yet"}
+            {save.isPending ? tr("Saving…") : dirty ? tr("Unsaved changes") : saved.id ? tr("Saved{value}{value2}", { value: updated ? ` ${relativeTime(updated)}` : "", value2: by ? ` by ${by}` : "" }) : tr("Not saved yet")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <Button variant="outline" size="icon" className={TAP} aria-label="Undo" title={`Undo (${MOD}Z)`} disabled={!hist.past.length} onClick={() => step(undo)}>
+          <Button variant="outline" size="icon" className={TAP} aria-label={tr("Undo")} title={tr("Undo ({MOD}Z)", { MOD })} disabled={!hist.past.length} onClick={() => step(undo)}>
             <Undo2 />
           </Button>
-          <Button variant="outline" size="icon" className={TAP} aria-label="Redo" title={`Redo (${MOD}${MOD === "⌘" ? "⇧Z" : "Y"})`} disabled={!hist.future.length} onClick={() => step(redo)}>
+          <Button variant="outline" size="icon" className={TAP} aria-label={tr("Redo")} title={tr("Redo ({MOD}{value})", { MOD, value: MOD === "⌘" ? "⇧Z" : "Y" })} disabled={!hist.future.length} onClick={() => step(redo)}>
             <Redo2 />
           </Button>
           {!wide && (
@@ -539,26 +540,26 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
                 setSheetOpen(true);
               }}
             >
-              <Settings2 /> Settings
+              <Settings2 /> {tr("Settings")}
             </Button>
           )}
           {saved.id && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className={TAP} aria-label="More actions">
+                <Button variant="outline" size="icon" className={TAP} aria-label={tr("More actions")}>
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                   <Link to={PATHS.space(saved.id)}>
-                    <Eye /> View the space
+                    <Eye /> {tr("View the space")}
                   </Link>
                 </DropdownMenuItem>
                 {canCreate && (
                   <DropdownMenuItem asChild>
                     <Link to={PATHS.copySpace(saved.id)}>
-                      <Copy /> Duplicate
+                      <Copy /> {tr("Duplicate")}
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -566,46 +567,46 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onSelect={() => void doDelete()}>
-                      <Trash2 /> Delete space
+                      <Trash2 /> {tr("Delete space")}
                     </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button onClick={() => void doSave()} disabled={busy || (!dirty && !!saved.id)} title={`Save (${MOD}S)`} className={TAP}>
-            <Save /> {save.isPending ? "Saving…" : "Save"}
+          <Button onClick={() => void doSave()} disabled={busy || (!dirty && !!saved.id)} title={tr("Save ({MOD}S)", { MOD })} className={TAP}>
+            <Save /> {save.isPending ? tr("Saving…") : tr("Save")}
           </Button>
         </div>
       </header>
 
       <p className="sr-only" aria-live="polite">
-        {said}
+        {isolate(said)}
       </p>
 
       {conflict && (
         <Alert className="mb-4">
-          <AlertTitle>{conflict.by ? `${conflict.by} saved this space while you were editing` : "Someone else saved this space while you were editing"}</AlertTitle>
+          <AlertTitle>{conflict.by ? tr("{by} saved this space while you were editing", { by: conflict.by }) : tr("Someone else saved this space while you were editing")}</AlertTitle>
           <AlertDescription>
             <p>
-              Their changes are merged with yours.{" "}
+              {tr("Their changes are merged with yours.")}{isolate(" ")}
               {conflict.conflicts.length
-                ? `You both changed: ${conflict.conflicts.join(", ").toLowerCase()}. Yours are kept there; check them before saving again.`
-                : "Nothing clashed. Save again to keep both."}
+                ? tr("You both changed: {value}. Yours are kept there; check them before saving again.", { value: conflict.conflicts.join(", ").toLowerCase() })
+                : tr("Nothing clashed. Save again to keep both.")}
             </p>
             <Button variant="outline" size="sm" className="mt-2" onClick={() => setConflict(null)}>
-              Dismiss
+              {tr("Dismiss")}
             </Button>
           </AlertDescription>
         </Alert>
       )}
       {generalServer.length > 0 && (
         <Alert variant="destructive" className="mb-4">
-          <AlertTitle>The space wasn’t saved</AlertTitle>
+          <AlertTitle>{tr("The space wasn’t saved")}</AlertTitle>
           <AlertDescription>
             <ul className="list-disc ps-4">
               {generalServer.map((i, n) => (
-                <li key={n}>{i.message}</li>
+                <li key={n}>{isolate(i.message)}</li>
               ))}
             </ul>
           </AlertDescription>
@@ -613,7 +614,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       )}
 
       <div className="flex items-start gap-6">
-        <section aria-label="Blocks" className="min-w-0 flex-1">
+        <section aria-label={tr("Blocks")} className="min-w-0 flex-1">
           {draft.blocks.length ? (
             <DndContext
               sensors={sensors}
@@ -656,7 +657,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
           )}
         </section>
         {wide && (
-          <aside aria-label="Settings" className="sticky top-[calc(var(--topbar-h)+1rem)] w-[22rem] shrink-0">
+          <aside aria-label={tr("Settings")} className="sticky top-[calc(var(--topbar-h)+1rem)] w-[22rem] shrink-0">
             <div className="max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto rounded-xl border bg-card p-4 shadow-xs">{panel}</div>
           </aside>
         )}
@@ -665,8 +666,8 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
             <SheetHeader className="pb-2">
-              <SheetTitle>{selectedBlock && tab === "block" ? titleOf(selectedBlock.block) : "Space settings"}</SheetTitle>
-              <SheetDescription>Changes show in the space as you make them; save to keep them.</SheetDescription>
+              <SheetTitle>{selectedBlock && tab === "block" ? titleOf(selectedBlock.block) : tr("Space settings")}</SheetTitle>
+              <SheetDescription>{tr("Changes show in the space as you make them; save to keep them.")}</SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-6">{panel}</div>
           </SheetContent>
@@ -713,7 +714,7 @@ function SortableBlock({
     <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }} className={cn(spanClass(widthOf(eb.block)), "min-w-0", isDragging && "relative z-20")}>
       <div
         role="group"
-        aria-label={`${title}, block ${index + 1} of ${count}`}
+        aria-label={tr("{title}, block {value} of {count}", { title, value: index + 1, count })}
         className={cn(
           "flex h-full flex-col rounded-xl ring-offset-2 ring-offset-background",
           selected ? "ring-2 ring-primary" : issues.length ? "ring-2 ring-destructive" : "",
@@ -727,7 +728,7 @@ function SortableBlock({
             variant="ghost"
             size="icon-sm"
             className={cn("cursor-grab touch-none active:cursor-grabbing", TAP)}
-            aria-label={`Move ${title}`}
+            aria-label={tr("Move {title}", { title })}
             {...attributes}
             {...listeners}
           >
@@ -737,14 +738,14 @@ function SortableBlock({
             type="button"
             onClick={onSettings}
             className="flex min-h-8 min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 text-start text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
-            aria-label={`Settings of ${title}`}
+            aria-label={tr("Settings of {title}", { title })}
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{title}</span>
+            <span className="truncate">{isolate(title)}</span>
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className={TAP} aria-label={`Actions for ${title}`}>
+              <Button variant="ghost" size="icon-sm" className={TAP} aria-label={tr("Actions for {title}", { title })}>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -757,16 +758,16 @@ function SortableBlock({
               }}
             >
               <DropdownMenuItem onSelect={onSettings}>
-                <Settings2 /> Settings
+                <Settings2 /> {tr("Settings")}
               </DropdownMenuItem>
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Width: {widthLabel(widthOf(eb.block)).toLowerCase()}</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger>{tr("Width: {value}", { value: widthLabel(widthOf(eb.block)).toLowerCase() })}</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup value={eb.block.width ? String(eb.block.width) : "auto"} onValueChange={(v) => onWidth(v === "auto" ? undefined : Number(v))}>
-                    <DropdownMenuRadioItem value="auto">Automatic ({widthLabel(BLOCK_KINDS[eb.block.type].width).toLowerCase()})</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="auto">{tr("Automatic ({value})", { value: widthLabel(BLOCK_KINDS[eb.block.type].width).toLowerCase() })}</DropdownMenuRadioItem>
                     {WIDTHS.map((w) => (
                       <DropdownMenuRadioItem key={w.value} value={String(w.value)}>
-                        {w.label}
+                        {isolate(w.label)}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
@@ -774,16 +775,16 @@ function SortableBlock({
               </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(index - 1)}>
-                <ChevronUp /> Move up
+                <ChevronUp /> {tr("Move up")}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={index === count - 1} onSelect={() => onMove(index + 1)}>
-                <ChevronDown /> Move down
+                <ChevronDown /> {tr("Move down")}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={index === 0} onSelect={() => onMove(0)}>
-                <ArrowUpToLine /> Move to the top
+                <ArrowUpToLine /> {tr("Move to the top")}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={index === count - 1} onSelect={() => onMove(count - 1)}>
-                <ArrowDownToLine /> Move to the bottom
+                <ArrowDownToLine /> {tr("Move to the bottom")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -792,7 +793,7 @@ function SortableBlock({
                   onDuplicate();
                 }}
               >
-                <Copy /> Duplicate
+                <Copy /> {tr("Duplicate")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
@@ -801,7 +802,7 @@ function SortableBlock({
                   onRemove();
                 }}
               >
-                <Trash2 /> Remove
+                <Trash2 /> {tr("Remove")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -814,8 +815,8 @@ function SortableBlock({
         </div>
         {issues.length > 0 && (
           <p className="mt-1 px-1 text-xs text-destructive">
-            {issues[0]}
-            {issues.length > 1 && ` (and ${issues.length - 1} more)`}
+            {isolate(issues[0])}
+            {issues.length > 1 && tr(" (and {value} more)", { value: issues.length - 1 })}
           </p>
         )}
       </div>
@@ -828,19 +829,19 @@ function AddBlockMenu({ onAdd, after }: { onAdd: (t: BlockType) => void; after?:
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button id="add-block" variant="outline" className={cn("border-dashed", TAP)}>
-          <Plus /> Add block
+          <Plus /> {tr("Add block")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-80">
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{after ? `Adds after ${after}` : "Adds at the end"}</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{after ? tr("Adds after {after}", { after }) : tr("Adds at the end")}</DropdownMenuLabel>
         {BLOCK_TYPES.map((t) => {
           const Icon = BLOCK_ICON[t];
           return (
             <DropdownMenuItem key={t} onSelect={() => onAdd(t)} className="items-start gap-3 py-2">
               <Icon className="mt-0.5" />
               <span className="grid gap-0.5">
-                <span className="font-medium">{BLOCK_KINDS[t].label}</span>
-                <span className="text-xs text-muted-foreground">{BLOCK_KINDS[t].hint}</span>
+                <span className="font-medium">{isolate(BLOCK_KINDS[t].label)}</span>
+                <span className="text-xs text-muted-foreground">{isolate(BLOCK_KINDS[t].hint)}</span>
               </span>
             </DropdownMenuItem>
           );
@@ -872,8 +873,8 @@ function EmptyCanvas({ onAdd, onStarter }: { onAdd: (t: BlockType) => void; onSt
         <EmptyMedia variant="icon">
           <LayoutGrid />
         </EmptyMedia>
-        <EmptyTitle>Add the first block</EmptyTitle>
-        <EmptyDescription>Shortcuts with live counts, charts, number cards, quick lists of recent records, notes and getting-started checklists.</EmptyDescription>
+        <EmptyTitle>{tr("Add the first block")}</EmptyTitle>
+        <EmptyDescription>{tr("Shortcuts with live counts, charts, number cards, quick lists of recent records, notes and getting-started checklists.")}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent className="flex-row flex-wrap justify-center">
         <AddBlockMenu onAdd={onAdd} />
@@ -881,14 +882,14 @@ function EmptyCanvas({ onAdd, onStarter }: { onAdd: (t: BlockType) => void; onSt
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button variant="secondary" className={TAP}>
-                <LayoutGrid /> Start from a module
+                <LayoutGrid /> {tr("Start from a module")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-72 p-0">
               <Command>
-                <CommandInput placeholder="Search modules…" />
+                <CommandInput placeholder={tr("Search modules…")} />
                 <CommandList>
-                  <CommandEmpty>No module matches.</CommandEmpty>
+                  <CommandEmpty>{tr("No module matches.")}</CommandEmpty>
                   <CommandGroup heading="Shortcuts, links and recent records of">
                     {modules.map(({ module, starter }) => (
                       <CommandItem
@@ -899,8 +900,8 @@ function EmptyCanvas({ onAdd, onStarter }: { onAdd: (t: BlockType) => void; onSt
                           setOpen(false);
                         }}
                       >
-                        {module.label}
-                        <span className="ms-auto text-xs text-muted-foreground">{starter.blocks.length} blocks</span>
+                        {isolate(module.label)}
+                        <span className="ms-auto text-xs text-muted-foreground">{tr("{length} blocks", { length: starter.blocks.length })}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -938,28 +939,28 @@ function BlockPanel({
   return (
     <div id={`settings-${eb.key}`} className="grid gap-5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="truncate text-sm font-semibold">{title}</h2>
+        <h2 className="truncate text-sm font-semibold">{isolate(title)}</h2>
         <Button variant="ghost" size="sm" className={TAP} onClick={onDone}>
-          Done
+          {tr("Done")}
         </Button>
       </div>
       {general.length > 0 && (
         <Alert variant="destructive">
-          <AlertDescription>{general.join(" ")}</AlertDescription>
+          <AlertDescription>{isolate(general.join(" "))}</AlertDescription>
         </Alert>
       )}
       <BlockSettings block={eb.block} onChange={onChange} issues={issues} id={id} />
       <FieldGroup>
-        <Row id={`${id}-width`} label="Width" errors={issues.filter((i) => i.path === "width").map((i) => i.message)} hint="On phones, small blocks pair up and the rest take the full width.">
+        <Row id={`${id}-width`} label={tr("Width")} errors={issues.filter((i) => i.path === "width").map((i) => i.message)} hint={tr("On phones, small blocks pair up and the rest take the full width.")}>
           <Select value={width ? String(width) : "auto"} onValueChange={(v) => onWidth(v === "auto" ? undefined : Number(v))}>
             <SelectTrigger id={`${id}-width`} className={cn("w-full", TAP)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="auto">Automatic ({widthLabel(auto).toLowerCase()})</SelectItem>
+              <SelectItem value="auto">{tr("Automatic ({value})", { value: widthLabel(auto).toLowerCase() })}</SelectItem>
               {[...WIDTHS.map((w) => w.value), ...(width && !WIDTHS.some((w) => w.value === width) ? [width] : [])].map((w) => (
                 <SelectItem key={w} value={String(w)}>
-                  {widthLabel(w)}
+                  {isolate(widthLabel(w))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -987,32 +988,32 @@ function SpaceSettings({
   const known = !draft.module || sorted.some((m) => m.name === draft.module);
   return (
     <FieldGroup id="space-settings" className="gap-5">
-      <Row id="space-label" label="Name" errors={issues("label")}>
-        <Input id="space-label" value={draft.label} maxLength={140} placeholder="Selling" onChange={(e) => set("label", e.target.value, "space:label")} className={TAP} {...aria("space-label", issues("label"))} />
+      <Row id="space-label" label={tr("Name")} errors={issues("label")}>
+        <Input id="space-label" value={draft.label} maxLength={140} placeholder={tr("Selling")} onChange={(e) => set("label", e.target.value, "space:label")} className={TAP} {...aria("space-label", issues("label"))} />
       </Row>
-      <Row id="space-icon" label="Icon" errors={issues("icon")}>
+      <Row id="space-icon" label={tr("Icon")} errors={issues("icon")}>
         <IconPicker id="space-icon" value={draft.icon} onChange={(v) => set("icon", v)} />
       </Row>
-      <Row id="space-module" label="Module" optional errors={issues("module")} hint="The module whose home page shows this space.">
+      <Row id="space-module" label={tr("Module")} optional errors={issues("module")} hint={tr("The module whose home page shows this space.")}>
         <Select value={draft.module || NO_MODULE} onValueChange={(v) => set("module", v === NO_MODULE ? "" : v)}>
           <SelectTrigger id="space-module" className={cn("w-full", TAP)} {...aria("space-module", issues("module"), true)}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_MODULE}>No module</SelectItem>
-            {!known && <SelectItem value={draft.module}>{draft.module}</SelectItem>}
+            <SelectItem value={NO_MODULE}>{tr("No module")}</SelectItem>
+            {!known && <SelectItem value={draft.module}>{isolate(draft.module)}</SelectItem>}
             {sorted.map((m) => (
               <SelectItem key={m.name} value={m.name}>
-                {m.label}
+                {isolate(m.label)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </Row>
-      <Row id="space-sequence" label="Order in the sidebar" errors={issues("sequence")} hint="Lower numbers come first.">
+      <Row id="space-sequence" label={tr("Order in the sidebar")} errors={issues("sequence")} hint={tr("Lower numbers come first.")}>
         <IntInput id="space-sequence" value={draft.sequence} onChange={(v) => set("sequence", v ?? 0, "space:sequence")} errors={issues("sequence")} hint className="w-28" />
       </Row>
-      <Row id="space-sharing" label="Who can open it" errors={issues("sharing")}>
+      <Row id="space-sharing" label={tr("Who can open it")} errors={issues("sharing")}>
         <RadioGroup id="space-sharing" value={draft.sharing} onValueChange={(v) => set("sharing", v as SpaceDraft["sharing"])} aria-labelledby="space-sharing-label" className="gap-2">
           {(
             [
@@ -1024,19 +1025,19 @@ function SpaceSettings({
             <label key={value} htmlFor={`space-sharing-${value}`} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-soft/40">
               <RadioGroupItem id={`space-sharing-${value}`} value={value} className="mt-0.5" />
               <span className="grid gap-0.5">
-                <span className="text-sm font-medium">{label}</span>
-                <span className="text-xs text-muted-foreground">{hint}</span>
+                <span className="text-sm font-medium">{isolate(label)}</span>
+                <span className="text-xs text-muted-foreground">{isolate(hint)}</span>
               </span>
             </label>
           ))}
         </RadioGroup>
       </Row>
       {draft.sharing === "roles" && (
-        <Row id="space-roles" label="Roles" errors={issues("roles")}>
+        <Row id="space-roles" label={tr("Roles")} errors={issues("roles")}>
           <RolesPicker id="space-roles" value={draft.roles} errors={issues("roles")} onChange={(roles) => set("roles", roles)} />
         </Row>
       )}
-      <Row id="space-description" label="Description" optional errors={issues("description")}>
+      <Row id="space-description" label={tr("Description")} optional errors={issues("description")}>
         <Textarea id="space-description" rows={3} value={draft.description} onChange={(e) => set("description", e.target.value, "space:description")} />
       </Row>
     </FieldGroup>
@@ -1063,12 +1064,12 @@ function RolesPicker({ id, value, onChange, errors }: { id: string; value: strin
   return (
     <div className="grid gap-2">
       {value.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="Chosen roles">
+        <ul className="flex flex-wrap gap-1.5" aria-label={tr("Chosen roles")}>
           {value.map((r) => (
             <li key={r}>
               <Badge variant="secondary" className="gap-1 py-1 pe-1">
-                {r}
-                <button type="button" aria-label={`Remove ${r}`} onClick={() => toggle(r)} className="rounded-sm p-0.5 hover:bg-background">
+                {isolate(r)}
+                <button type="button" aria-label={tr("Remove {r}", { r })} onClick={() => toggle(r)} className="rounded-sm p-0.5 hover:bg-background">
                   <X className="size-3" />
                 </button>
               </Badge>
@@ -1079,18 +1080,18 @@ function RolesPicker({ id, value, onChange, errors }: { id: string; value: strin
       <Popover onOpenChange={(o) => !o && setQ("")}>
         <PopoverTrigger asChild>
           <Button id={id} type="button" variant="outline" size="sm" className={cn("justify-self-start", TAP)} aria-labelledby={`${id}-label ${id}`} {...aria(id, errors)}>
-            <Plus /> Add roles
+            <Plus /> {tr("Add roles")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-0" align="start">
           <Command>
-            <CommandInput placeholder="Search or type a role…" value={q} onValueChange={setQ} />
+            <CommandInput placeholder={tr("Search or type a role…")} value={q} onValueChange={setQ} />
             <CommandList>
-              <CommandEmpty>{all.isLoading ? "Loading roles…" : "No role matches."}</CommandEmpty>
+              <CommandEmpty>{all.isLoading ? tr("Loading roles…") : tr("No role matches.")}</CommandEmpty>
               {typed && !options.includes(typed) && !value.includes(typed) && (
                 <CommandGroup>
                   <CommandItem value={`add ${typed}`} onSelect={() => (toggle(typed), setQ(""))}>
-                    <Plus /> Add “{typed}”
+                    <Plus /> {tr("Add “{typed}”", { typed })}
                   </CommandItem>
                 </CommandGroup>
               )}
@@ -1098,8 +1099,8 @@ function RolesPicker({ id, value, onChange, errors }: { id: string; value: strin
                 {options.map((r) => (
                   <CommandItem key={r} value={r} onSelect={() => toggle(r)}>
                     <Check className={cn("size-4", value.includes(r) ? "opacity-100" : "opacity-0")} aria-hidden="true" />
-                    {r}
-                    {value.includes(r) && <span className="sr-only"> (chosen)</span>}
+                    {isolate(r)}
+                    {value.includes(r) && <span className="sr-only"> {tr("(chosen)")}</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>

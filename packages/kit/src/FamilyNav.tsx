@@ -3,7 +3,7 @@
 // its own; moving between them is a page load. Nothing is drawn outside a family.
 
 import { useEffect, useState } from "react";
-import { shell, type Family } from "@ferrum/client";
+import { shell, type Family, isolate } from "@ferrum/client";
 import { cn } from "../../../src/lib/utils";
 import { AppIcon } from "./AppIcon";
 
@@ -47,7 +47,7 @@ export function FamilyNav({ className }: { className?: string }) {
           }}
         >
           <AppIcon name={e.icon} color={e === here ? null : e.color} />
-          {e.title}
+          {isolate(e.title)}
         </a>
       ))}
     </nav>

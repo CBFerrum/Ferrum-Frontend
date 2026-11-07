@@ -74,6 +74,7 @@ import {
 } from "./report/state";
 import { useMediaQuery } from "./report/ui";
 import { ReportList } from "./ReportList";
+import { t as tr, isolate } from "@ferrum/client";
 
 export const reportRoutes: RouteObject[] = [
   { path: "studio/reports", element: <ReportList /> },
@@ -93,18 +94,18 @@ export function ReportBuilder() {
 
 function SavedEditor({ id }: { id: string }) {
   const record = useStudioRecord("reports", id);
-  if (record.isLoading) return <PageLoading label="Opening the report…" />;
+  if (record.isLoading) return <PageLoading label={tr("Opening the report…")} />;
   if (record.error || !record.data)
     return (
       <div className="grid gap-3">
         <ErrorState
-          title={record.error instanceof ApiError && [403, 404].includes(record.error.status) ? "This report cannot be edited here" : "The report could not be opened"}
+          title={record.error instanceof ApiError && [403, 404].includes(record.error.status) ? tr("This report cannot be edited here") : tr("The report could not be opened")}
           error={record.error ?? new Error("Not found.")}
           onRetry={() => void record.refetch()}
         />
         <p className="text-center text-sm">
           <Link className="text-primary underline-offset-4 hover:underline" to={`/studio/reports/${encodeURIComponent(id)}`}>
-            Open it to view instead
+            {tr("Open it to view instead")}
           </Link>
         </p>
       </div>
@@ -191,7 +192,7 @@ function Editor({ record }: { record?: ReportRecord }) {
   const { shown, hidden } = useMemo(() => (result ? displayColumns(result.columns, settings) : { shown: [], hidden: [] }), [result, settings]);
   const chart = state.chart ?? defaultChart(shown);
   const entityLabel = entityInfo?.label_plural ?? sources.data?.entities.find((e) => e.name === d.entity)?.label ?? d.entity;
-  const title = rec?.label ?? (d.entity ? `New report on ${entityLabel}` : "New report");
+  const title = rec?.label ?? (d.entity ? tr("New report on {entityLabel}", { entityLabel }) : tr("New report"));
 
   // ── choosing what to report on: the list's columns or a count by status, in one undo step ──
   const picks = useRef(0);
@@ -238,7 +239,7 @@ function Editor({ record }: { record?: ReportRecord }) {
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && !allowNav.current && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    void confirmDialog({ title: "Leave without saving?", message: "Your changes to this report will be lost.", confirmLabel: "Leave", danger: true }).then((ok) => (ok ? blocker.proceed() : blocker.reset()));
+    void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this report will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) => (ok ? blocker.proceed() : blocker.reset()));
   }, [blocker]);
   useEffect(() => {
     if (!dirty) return;
@@ -284,7 +285,7 @@ function Editor({ record }: { record?: ReportRecord }) {
       setMetaIssues([]);
       setGeneral([]);
       setSaveIssues([]);
-      toast(asNew ? `Saved “${saved.label}”` : "Changes saved");
+      toast(asNew ? tr("Saved “{label}”", { label: saved.label }) : tr("Changes saved"));
       if (asNew || !rec) {
         allowNav.current = true;
         navigate(`/studio/reports/${encodeURIComponent(saved.id ?? "")}?edit=1`, { replace: !rec });
@@ -332,7 +333,7 @@ function Editor({ record }: { record?: ReportRecord }) {
         dispatch({ type: "reset", present: theirs });
         setSavedKey(stateKey(theirs));
         setConflict(null);
-        toast("Loaded the latest version", "info");
+        toast(tr("Loaded the latest version"), "info");
       }
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -343,12 +344,12 @@ function Editor({ record }: { record?: ReportRecord }) {
 
   const onDelete = async () => {
     if (!rec?.id) return;
-    const ok = await confirmDialog({ title: "Delete this report?", message: `“${rec.label}” will be deleted for everyone it is shared with. This cannot be undone.`, confirmLabel: "Delete", danger: true });
+    const ok = await confirmDialog({ title: tr("Delete this report?"), message: tr("“{label}” will be deleted for everyone it is shared with. This cannot be undone.", { label: rec.label }), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await del.mutateAsync({ id: rec.id, version: rec.version });
       allowNav.current = true;
-      toast(`Deleted “${rec.label}”`);
+      toast(tr("Deleted “{label}”", { label: rec.label }));
       navigate("/studio/reports");
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -357,7 +358,7 @@ function Editor({ record }: { record?: ReportRecord }) {
 
   const viewReport = async () => {
     if (!rec?.id) return;
-    if (dirty && !(await confirmDialog({ title: "Leave the editor?", message: "Your unsaved changes will be lost.", confirmLabel: "Leave", danger: true }))) return;
+    if (dirty && !(await confirmDialog({ title: tr("Leave the editor?"), message: tr("Your unsaved changes will be lost."), confirmLabel: tr("Leave"), danger: true }))) return;
     allowNav.current = true;
     navigate(`/studio/reports/${encodeURIComponent(rec.id)}`);
   };
@@ -382,9 +383,9 @@ function Editor({ record }: { record?: ReportRecord }) {
     if (dirty && d.entity) url.searchParams.set("q", encodeState(state));
     try {
       await navigator.clipboard.writeText(url.toString());
-      toast(dirty && rec ? "Link copied: it opens these unsaved settings in the editor" : "Link copied");
+      toast(dirty && rec ? tr("Link copied: it opens these unsaved settings in the editor") : tr("Link copied"));
     } catch {
-      toast("The link could not be copied; copy it from the address bar.", "error");
+      toast(tr("The link could not be copied; copy it from the address bar."), "error");
     }
   };
 
@@ -465,8 +466,8 @@ function Editor({ record }: { record?: ReportRecord }) {
           <EmptyMedia variant="icon">
             <Database aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>What do you want to report on?</EmptyTitle>
-          <EmptyDescription>Pick a kind of record — invoices, orders, customers… Then choose columns, or group and measure them, filter, chart and save.</EmptyDescription>
+          <EmptyTitle>{tr("What do you want to report on?")}</EmptyTitle>
+          <EmptyDescription>{tr("Pick a kind of record — invoices, orders, customers… Then choose columns, or group and measure them, filter, chart and save.")}</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <EntityPicker large sources={sources.data} loading={sources.isLoading} value="" onChange={(e) => void pickEntity(e)} />
@@ -474,7 +475,7 @@ function Editor({ record }: { record?: ReportRecord }) {
       </Empty>
     );
   else if (query.error && !queryIssues.length)
-    preview = <ErrorState title="The preview could not be computed" error={query.error} onRetry={() => void query.refetch()} />;
+    preview = <ErrorState title={tr("The preview could not be computed")} error={query.error} onRetry={() => void query.refetch()} />;
   else if (!result) preview = pending || queryIssues.length ? null : <ResultSkeleton />;
   else
     preview = (
@@ -501,7 +502,7 @@ function Editor({ record }: { record?: ReportRecord }) {
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {result.meta.row_count.toLocaleString()} {result.meta.row_count === 1 ? "row" : "rows"} · computed in {Math.round(result.meta.sql_ms)} ms
+            {isolate(result.meta.row_count.toLocaleString())} {result.meta.row_count === 1 ? tr("row") : tr("rows")} {tr("· computed in {Math} ms", { Math: Math.round(result.meta.sql_ms) })}
           </p>
         </div>
       </div>
@@ -513,13 +514,13 @@ function Editor({ record }: { record?: ReportRecord }) {
     <div className="grid gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11 pointer-coarse:[&_[data-slot=select-trigger]]:min-h-11 pointer-coarse:[&_[data-slot=toggle-group-item]]:min-h-11">
       <header className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <nav aria-label="Breadcrumb" className="mb-1 text-xs text-muted-foreground">
+          <nav aria-label={tr("Breadcrumb")} className="mb-1 text-xs text-muted-foreground">
             <Link to="/studio/reports" className="hover:text-foreground hover:underline">
-              Reports
+              {tr("Reports")}
             </Link>
             {rec?.id && (
               <>
-                {" / "}
+                {isolate(" / ")}
                 <Link
                   to={`/studio/reports/${encodeURIComponent(rec.id)}`}
                   className="hover:text-foreground hover:underline"
@@ -528,70 +529,70 @@ function Editor({ record }: { record?: ReportRecord }) {
                     void viewReport();
                   }}
                 >
-                  {rec.label}
+                  {isolate(rec.label)}
                 </Link>
               </>
             )}
           </nav>
           <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold">
-            <span className="truncate">{title}</span>
+            <span className="truncate">{isolate(title)}</span>
             {dirty && (
               <Badge variant="secondary" className="shrink-0">
-                Unsaved
+                {tr("Unsaved")}
               </Badge>
             )}
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <ButtonGroup aria-label="History">
-            <Button variant="outline" size="icon" aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!history.past.length} onClick={() => dispatch({ type: "undo" })}>
+          <ButtonGroup aria-label={tr("History")}>
+            <Button variant="outline" size="icon" aria-label={tr("Undo")} title={tr("Undo (Ctrl+Z)")} disabled={!history.past.length} onClick={() => dispatch({ type: "undo" })}>
               <Undo2 />
             </Button>
-            <Button variant="outline" size="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!history.future.length} onClick={() => dispatch({ type: "redo" })}>
+            <Button variant="outline" size="icon" aria-label={tr("Redo")} title={tr("Redo (Ctrl+Shift+Z)")} disabled={!history.future.length} onClick={() => dispatch({ type: "redo" })}>
               <Redo2 />
             </Button>
           </ButtonGroup>
           {rec?.id && (
             <Button variant="outline" onClick={() => void viewReport()}>
-              <Play /> View
+              <Play /> {tr("View")}
             </Button>
           )}
           {canExport && (
-            <Button variant="outline" disabled={!result?.rows.length || exporting} onClick={() => void exportCsv()} title={rec?.id && !dirty ? "Every row (up to 10,000) as CSV" : "The rows shown, as CSV"}>
-              {exporting ? <Spinner /> : <Download />} CSV
+            <Button variant="outline" disabled={!result?.rows.length || exporting} onClick={() => void exportCsv()} title={rec?.id && !dirty ? tr("Every row (up to 10,000) as CSV") : tr("The rows shown, as CSV")}>
+              {exporting ? <Spinner /> : <Download />} {tr("CSV")}
             </Button>
           )}
           {canSave && (
-            <Button onClick={onSave} disabled={save.isPending || !d.entity || (!!rec && canEdit && !dirty)} title="Save (Ctrl+S)">
+            <Button onClick={onSave} disabled={save.isPending || !d.entity || (!!rec && canEdit && !dirty)} title={tr("Save (Ctrl+S)")}>
               {save.isPending ? <Spinner /> : <Save />}
-              {rec && !canEdit ? "Save a copy" : "Save"}
+              {rec && !canEdit ? tr("Save a copy") : tr("Save")}
             </Button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More actions">
+              <Button variant="outline" size="icon" aria-label={tr("More actions")}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {rec && canEdit && (
                 <DropdownMenuItem onSelect={() => setDialog("settings")}>
-                  <Settings2 /> Name and sharing…
+                  <Settings2 /> {tr("Name and sharing…")}
                 </DropdownMenuItem>
               )}
               {canCreate && d.entity && (
                 <DropdownMenuItem onSelect={() => setDialog(rec ? "copy" : "create")}>
-                  <Copy /> {rec ? "Save a copy…" : "Save as…"}
+                  <Copy /> {rec ? tr("Save a copy…") : tr("Save as…")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem disabled={!d.entity} onSelect={() => void copyLink()}>
-                <Link2 /> Copy link
+                <Link2 /> {tr("Copy link")}
               </DropdownMenuItem>
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={() => void onDelete()}>
-                    <Trash2 /> Delete report
+                    <Trash2 /> {tr("Delete report")}
                   </DropdownMenuItem>
                 </>
               )}
@@ -602,51 +603,51 @@ function Editor({ record }: { record?: ReportRecord }) {
 
       {start.badLink && (
         <Alert>
-          <AlertTitle>The link’s report settings could not be read</AlertTitle>
-          <AlertDescription>{rec ? "Showing the saved report instead." : "Start by choosing what to report on."}</AlertDescription>
+          <AlertTitle>{tr("The link’s report settings could not be read")}</AlertTitle>
+          <AlertDescription>{rec ? tr("Showing the saved report instead.") : tr("Start by choosing what to report on.")}</AlertDescription>
         </Alert>
       )}
       {start.badRecord && (
         <Alert variant="destructive">
-          <AlertTitle>This report’s settings could not be read</AlertTitle>
-          <AlertDescription>Set it up again and save to repair it.</AlertDescription>
+          <AlertTitle>{tr("This report’s settings could not be read")}</AlertTitle>
+          <AlertDescription>{tr("Set it up again and save to repair it.")}</AlertDescription>
         </Alert>
       )}
       {rec?.is_standard && (
         <Alert>
-          <AlertTitle>This report comes with an app</AlertTitle>
-          <AlertDescription>It cannot be changed; save a copy to make it your own.</AlertDescription>
+          <AlertTitle>{tr("This report comes with an app")}</AlertTitle>
+          <AlertDescription>{tr("It cannot be changed; save a copy to make it your own.")}</AlertDescription>
         </Alert>
       )}
       {!canSave && d.entity && (
         <Alert>
-          <AlertDescription>You can explore freely, but saving reports needs permission to create them.</AlertDescription>
+          <AlertDescription>{tr("You can explore freely, but saving reports needs permission to create them.")}</AlertDescription>
         </Alert>
       )}
 
       <div className={wide ? "grid grid-cols-[minmax(300px,360px)_minmax(0,1fr)] items-start gap-4" : "grid gap-3"}>
         {wide ? (
-          <aside aria-label="Report settings" className="sticky top-[calc(var(--topbar-h)+1rem)] max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto rounded-lg border border-border bg-card">
+          <aside aria-label={tr("Report settings")} className="sticky top-[calc(var(--topbar-h)+1rem)] max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto rounded-lg border border-border bg-card">
             {panel}
           </aside>
         ) : (
           <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
             <SheetContent side="left" className="w-[min(92vw,420px)] gap-0 overflow-y-auto p-0 sm:max-w-none">
               <SheetHeader className="border-b border-border">
-                <SheetTitle>Report settings</SheetTitle>
-                <SheetDescription>Changes show in the preview as you make them.</SheetDescription>
+                <SheetTitle>{tr("Report settings")}</SheetTitle>
+                <SheetDescription>{tr("Changes show in the preview as you make them.")}</SheetDescription>
               </SheetHeader>
               {panel}
             </SheetContent>
           </Sheet>
         )}
-        <section aria-label="Preview" className="grid min-w-0 gap-3">
+        <section aria-label={tr("Preview")} className="grid min-w-0 gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {!wide && (
               <Button variant="outline" onClick={() => setPanelOpen(true)}>
-                <SlidersHorizontal /> Settings
+                <SlidersHorizontal /> {tr("Settings")}
                 {attention.length > 0 && (
-                  <Badge variant="destructive" className="ms-1" aria-label={`${attention.length} to fix`}>
+                  <Badge variant="destructive" className="ms-1" aria-label={tr("{length} to fix", { length: attention.length })}>
                     {attention.length}
                   </Badge>
                 )}
@@ -656,28 +657,28 @@ function Editor({ record }: { record?: ReportRecord }) {
             {state.view === "table" && dims.length >= 2 && (
               <Label className="h-9 gap-2 rounded-md border border-input px-2.5 font-normal">
                 <Switch checked={d.subtotals} onCheckedChange={(on) => update((s) => ({ ...s, draft: { ...s.draft, subtotals: on } }))} />
-                Subtotals by {dims[0].label}
+                {tr("Subtotals by {label}", { label: dims[0].label })}
               </Label>
             )}
             {query.isFetching && (
               <span className="ms-auto flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
-                <Spinner /> Updating…
+                <Spinner /> {tr("Updating…")}
               </span>
             )}
           </div>
           {state.view === "chart" && grouped && result && <ChartSettingsBar settings={chart} columns={shown} onChange={(c) => update((s) => ({ ...s, chart: c }))} />}
           {attention.length > 0 && (
             <Alert variant={pending ? "default" : "destructive"}>
-              <AlertTitle>{pending ? "Finish the settings to update the preview" : "The server could not run these settings"}</AlertTitle>
+              <AlertTitle>{pending ? tr("Finish the settings to update the preview") : tr("The server could not run these settings")}</AlertTitle>
               <AlertDescription>
                 <ul className="grid gap-0.5">
                   {[...new Set(attention.map((i) => i.message))].slice(0, 6).map((m) => (
-                    <li key={m}>{m}</li>
+                    <li key={m}>{isolate(m)}</li>
                   ))}
                 </ul>
                 {!wide && (
                   <Button size="sm" variant="outline" className="mt-1" onClick={() => setPanelOpen(true)}>
-                    Open the settings
+                    {tr("Open the settings")}
                   </Button>
                 )}
               </AlertDescription>

@@ -5,16 +5,17 @@
 import { cn } from "@/lib/utils";
 import { parseMarkdown, type Inline, type MdBlock } from "./markdown";
 import { SmartLink } from "./ui";
+import { isolate } from "@ferrum/client";
 
 function InlineView({ nodes }: { nodes: Inline[] }) {
   return (
     <>
       {nodes.map((n, i) =>
         n.t === "text" ? (
-          <span key={i}>{n.v}</span>
+          <span key={i}>{isolate(n.v)}</span>
         ) : n.t === "code" ? (
           <code key={i} className="rounded bg-muted px-1 font-mono text-[0.9em]">
-            {n.v}
+            {isolate(n.v)}
           </code>
         ) : n.t === "a" ? (
           <SmartLink key={i} href={n.href} className="text-primary underline underline-offset-2">

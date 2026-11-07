@@ -78,6 +78,7 @@ import { addItem, describePlace, mergeLayouts, moveBy, normalize, removeItem, re
 import { blockKey, blockOf, dashboardBody, dashboardDraft, type DashboardEdit } from "./dashboard/records";
 import { CardById, ChartById, useCanWrite, WidgetEnvProvider, WidgetFrame, WidgetView, type WidgetEnv } from "./dashboard/Widget";
 import { EmptyBlock, ErrorBlock, PageHeader, useConfirm, useUnsavedGuard } from "./dashboard/ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 export function DashboardViewPage() {
   const { id = "" } = useParams();
@@ -93,15 +94,15 @@ function UpdatedAgo({ at, fetching, refresh }: { at: number; fetching: boolean; 
   }, []);
   return (
     <span className="text-xs text-muted-foreground" aria-live="polite">
-      {fetching ? "Updating…" : `Updated ${relativeTime(new Date(at).toISOString(), Math.max(now, at))}`}
-      {refresh >= 30 && <span className="hidden sm:inline"> · {refreshLabel(refresh).toLowerCase()}</span>}
+      {fetching ? tr("Updating…") : tr("Updated {value}", { value: relativeTime(new Date(at).toISOString(), Math.max(now, at)) })}
+      {refresh >= 30 && <span className="hidden sm:inline"> · {isolate(refreshLabel(refresh).toLowerCase())}</span>}
     </span>
   );
 }
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" role="status" aria-label="Loading the dashboard">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" role="status" aria-label={tr("Loading the dashboard")}>
       {[3, 3, 3, 3, 6, 6].map((w, i) => (
         <Skeleton key={i} className={cn("h-32 rounded-xl", w === 6 ? "col-span-2 h-72" : "")} />
       ))}
@@ -130,7 +131,7 @@ function DashboardScreen({ id }: { id: string }) {
   const data = main.data;
   const error = main.error ?? probe.error;
 
-  if (error && !data) return <ErrorBlock error={error} onRetry={() => (main.error ? main.refetch() : probe.refetch())} title="Could not open this dashboard" />;
+  if (error && !data) return <ErrorBlock error={error} onRetry={() => (main.error ? main.refetch() : probe.refetch())} title={tr("Could not open this dashboard")} />;
   if (!data) return <GridSkeleton />;
 
   const exitEdit = (allow?: () => void) => {
@@ -207,18 +208,18 @@ function DashboardViewer({
     try {
       const full = await studio.get("dashboards", id);
       const copy = await studio.save("dashboards", duplicateOf(full));
-      toast("Copy made");
+      toast(tr("Copy made"));
       navigate(`/studio/dashboards/${copy.id}?edit=1`);
     } catch (e) {
       toast(errorMessage(e), "error");
     }
   };
   const del = async () => {
-    const ok = await confirm({ title: `Delete “${d.label}”?`, message: "The dashboard is removed for everyone. Its charts and number cards stay.", confirmLabel: "Delete", danger: true });
+    const ok = await confirm({ title: tr("Delete “{label}”?", { label: d.label }), message: "The dashboard is removed for everyone. Its charts and number cards stay.", confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id });
-      toast("Dashboard deleted");
+      toast(tr("Dashboard deleted"));
       onDeleted();
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -227,9 +228,9 @@ function DashboardViewer({
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast("Link copied, with the current filters");
+      toast(tr("Link copied, with the current filters"));
     } catch {
-      toast("Could not copy the link", "error");
+      toast(tr("Could not copy the link"), "error");
     }
   };
 
@@ -239,7 +240,7 @@ function DashboardViewer({
       <PageHeader
         eyebrow={
           <Link to="/studio/dashboards" className="text-muted-foreground">
-            Dashboards
+            {tr("Dashboards")}
           </Link>
         }
         title={d.label}
@@ -247,34 +248,34 @@ function DashboardViewer({
         actions={
           <>
             <UpdatedAgo at={updatedAt} fetching={fetching} refresh={refresh} />
-            <Button variant="outline" size="icon" aria-label="Refresh now" onClick={onRefresh} disabled={fetching}>
+            <Button variant="outline" size="icon" aria-label={tr("Refresh now")} onClick={onRefresh} disabled={fetching}>
               {fetching ? <Spinner /> : <RefreshCw />}
             </Button>
             {editable && (
               <Button variant="outline" onClick={onEdit}>
-                <Pencil /> Edit
+                <Pencil /> {tr("Edit")}
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="More actions">
+                <Button variant="outline" size="icon" aria-label={tr("More actions")}>
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => void copyLink()}>
-                  <Share2 /> Copy link
+                  <Share2 /> {tr("Copy link")}
                 </DropdownMenuItem>
                 {canWrite.dashboards && (
                   <DropdownMenuItem onSelect={() => void duplicate()}>
-                    <Copy /> Make a copy
+                    <Copy /> {tr("Make a copy")}
                   </DropdownMenuItem>
                 )}
                 {editable && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onSelect={() => void del()}>
-                      <Trash2 /> Delete
+                      <Trash2 /> {tr("Delete")}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -292,11 +293,11 @@ function DashboardViewer({
       />
       {!!error && (
         <Alert variant="destructive" className="mb-4">
-          <AlertTitle>The dashboard could not be updated</AlertTitle>
+          <AlertTitle>{tr("The dashboard could not be updated")}</AlertTitle>
           <AlertDescription>
-            <p>{errorMessage(error)} It shows the last data it had.</p>
+            <p>{tr("{error} It shows the last data it had.", { error: errorMessage(error) })}</p>
             <Button variant="outline" size="sm" className="mt-1" onClick={onRefresh}>
-              <RefreshCw /> Try again
+              <RefreshCw /> {tr("Try again")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -306,16 +307,16 @@ function DashboardViewer({
       ) : (
         <EmptyBlock
           icon={LayoutDashboard}
-          title="Nothing here yet"
+          title={tr("Nothing here yet")}
           action={
             editable && (
               <Button onClick={onEdit}>
-                <Plus /> Add widgets
+                <Plus /> {tr("Add widgets")}
               </Button>
             )
           }
         >
-          {editable ? "Add charts, number cards, shortcuts and notes." : "There is nothing on this dashboard you can see."}
+          {editable ? tr("Add charts, number cards, shortcuts and notes.") : tr("There is nothing on this dashboard you can see.")}
         </EmptyBlock>
       )}
     </div>
@@ -329,10 +330,10 @@ function EditLoader({ id, view, onExit }: { id: string; view: DashboardData; onE
   if (rec.error)
     return (
       <div className="grid gap-3">
-        <ErrorBlock error={rec.error} onRetry={() => rec.refetch()} title="This dashboard cannot be edited here" />
+        <ErrorBlock error={rec.error} onRetry={() => rec.refetch()} title={tr("This dashboard cannot be edited here")} />
         <div>
           <Button variant="outline" onClick={() => onExit()}>
-            <ArrowLeft /> Back to the dashboard
+            <ArrowLeft /> {tr("Back to the dashboard")}
           </Button>
         </div>
       </div>
@@ -425,7 +426,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     }
     try {
       await save.mutateAsync({ ...toBody(draft), id: base.id, version: base.version });
-      toast("Dashboard saved");
+      toast(tr("Dashboard saved"));
       onExit(allowLeave);
     } catch (e) {
       if (isStale(e) && base.id) {
@@ -445,17 +446,17 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
       const list = fieldIssues(e);
       setIssues(list);
       if (list.some((i) => !i.path.startsWith("layout"))) setSettings(true);
-      toast(list.length ? "The dashboard was not saved: please correct the highlighted settings." : errorMessage(e), "error");
+      toast(list.length ? tr("The dashboard was not saved: please correct the highlighted settings.") : errorMessage(e), "error");
     }
   };
   const cancel = async () => {
-    if (dirty && !(await confirm({ title: "Discard your changes?", message: "The dashboard keeps its last saved layout.", confirmLabel: "Discard", danger: true }))) return;
+    if (dirty && !(await confirm({ title: tr("Discard your changes?"), message: "The dashboard keeps its last saved layout.", confirmLabel: tr("Discard"), danger: true }))) return;
     onExit(allowLeave);
   };
   const duplicateStandard = async () => {
     try {
       const copy = await studio.save("dashboards", duplicateOf({ ...base, ...toBody(draft) }));
-      toast("Copy made");
+      toast(tr("Copy made"));
       allowLeave();
       navigate(`/studio/dashboards/${copy.id}?edit=1`);
     } catch (e) {
@@ -472,7 +473,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     <button
       type="button"
       className="dash-drag -ms-1.5 grid size-7 shrink-0 cursor-grab touch-none place-items-center rounded text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing pointer-coarse:size-10"
-      aria-label={`Move ${titleOf(it)}: drag, or use the arrow keys; Shift and the arrow keys resize`}
+      aria-label={tr("Move {it}: drag, or use the arrow keys; Shift and the arrow keys resize", { it: titleOf(it) })}
       onKeyDown={(e: KeyboardEvent) => {
         const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
         if (!d) return;
@@ -493,50 +494,50 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
           else setEditing({ i: it.i, block: blockOf(it) as OwnBlock });
         }}
       >
-        <Pencil /> {it.type === "chart" ? "Edit chart" : it.type === "card" ? "Edit number card" : "Edit"}
+        <Pencil /> {it.type === "chart" ? tr("Edit chart") : it.type === "card" ? tr("Edit number card") : tr("Edit")}
       </DropdownMenuItem>
       {(it.type === "chart" || it.type === "card") && (
         <DropdownMenuItem onSelect={() => setPicker(it.type === "chart" ? "charts" : "cards")}>
-          <ChartColumn /> Add another {it.type === "chart" ? "chart" : "number card"}
+          <ChartColumn /> {tr("Add another")} {it.type === "chart" ? tr("chart") : tr("number card")}
         </DropdownMenuItem>
       )}
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>
-          <Move /> Move
+          <Move /> {tr("Move")}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
           <DropdownMenuItem onSelect={() => moveItem(it, -1, 0)}>
-            <ArrowLeft /> Left
+            <ArrowLeft /> {tr("Left")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => moveItem(it, 1, 0)}>
-            <ArrowRight /> Right
+            <ArrowRight /> {tr("Right")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => moveItem(it, 0, -1)}>
-            <ArrowUp /> Up
+            <ArrowUp /> {tr("Up")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => moveItem(it, 0, 1)}>
-            <ArrowDown /> Down
+            <ArrowDown /> {tr("Down")}
           </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>
-          <Scaling /> Size
+          <Scaling /> {tr("Size")}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
-          <DropdownMenuItem onSelect={() => resizeItem(it, 1, 0)}>Wider</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => resizeItem(it, -1, 0)}>Narrower</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => resizeItem(it, 0, 1)}>Taller</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => resizeItem(it, 0, -1)}>Shorter</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => resizeItem(it, 12 - it.w, 0)}>Full width</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => resizeItem(it, 1, 0)}>{tr("Wider")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => resizeItem(it, -1, 0)}>{tr("Narrower")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => resizeItem(it, 0, 1)}>{tr("Taller")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => resizeItem(it, 0, -1)}>{tr("Shorter")}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => resizeItem(it, 12 - it.w, 0)}>{tr("Full width")}</DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuItem onSelect={() => place(blockOf(it))}>
-        <Copy /> Duplicate
+        <Copy /> {tr("Duplicate")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onSelect={() => removeIt(it)}>
-        <Trash2 /> Remove
+        <Trash2 /> {tr("Remove")}
       </DropdownMenuItem>
     </>
   );
@@ -551,8 +552,8 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     ) : it.type === "card" ? (
       <CardById id={it.card} handle={handle(it)} editMenu={menu(it)} />
     ) : it.type === "list" ? (
-      <WidgetFrame title={it.label || "Record list"} label={it.label || "Record list"} handle={handle(it)} menu={menu(it)}>
-        <p className="text-sm text-muted-foreground">The latest records appear here once the dashboard is saved.</p>
+      <WidgetFrame title={it.label || tr("Record list")} label={it.label || tr("Record list")} handle={handle(it)} menu={menu(it)}>
+        <p className="text-sm text-muted-foreground">{tr("The latest records appear here once the dashboard is saved.")}</p>
       </WidgetFrame>
     ) : (
       <WidgetView
@@ -572,7 +573,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
         {body}
         {errs.length > 0 && (
           <p className="absolute inset-x-2 bottom-2 z-10 rounded bg-destructive px-2 py-1 text-xs text-white" role="alert">
-            {errs.join(" ")}
+            {isolate(errs.join(" "))}
           </p>
         )}
       </div>
@@ -590,41 +591,41 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
   return (
     <div>
       <PageHeader
-        eyebrow={<span className="text-muted-foreground">Editing dashboard</span>}
-        title={draft.label || "Untitled dashboard"}
-        description={dirty ? "Unsaved changes" : "Drag widgets by their handle, resize them from the corner, or use each widget's menu."}
+        eyebrow={<span className="text-muted-foreground">{tr("Editing dashboard")}</span>}
+        title={draft.label || tr("Untitled dashboard")}
+        description={dirty ? tr("Unsaved changes") : tr("Drag widgets by their handle, resize them from the corner, or use each widget's menu.")}
         actions={
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button ref={addRef}>
-                  <Plus /> Add
+                  <Plus /> {tr("Add")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onSelect={() => setPicker("charts")}>
-                  <ChartColumn /> Chart…
+                  <ChartColumn /> {tr("Chart…")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setPicker("cards")}>
-                  <Hash /> Number card…
+                  <Hash /> {tr("Number card…")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setEditing({ block: blankBlock("heading") })}>
-                  <Heading /> {OWN_TITLE.heading}
+                  <Heading /> {isolate(OWN_TITLE.heading)}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setEditing({ block: blankBlock("markdown") })}>
-                  <FileText /> {OWN_TITLE.markdown}
+                  <FileText /> {isolate(OWN_TITLE.markdown)}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setEditing({ block: blankBlock("shortcut") })}>
-                  <Link2 /> {OWN_TITLE.shortcut}
+                  <Link2 /> {isolate(OWN_TITLE.shortcut)}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setEditing({ block: blankBlock("list") })}>
-                  <List /> {OWN_TITLE.list}
+                  <List /> {isolate(OWN_TITLE.list)}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button variant="outline" onClick={() => setSettings(true)}>
-              <Settings2 /> Settings
+              <Settings2 /> {tr("Settings")}
               {draft.filters.length > 0 && <Badge variant="secondary">{draft.filters.length}</Badge>}
             </Button>
             <BuilderToolbar canUndo={h.canUndo} canRedo={h.canRedo} undo={h.undo} redo={h.redo} dirty={dirty} saving={save.isPending} standard={!!base.is_standard} onSave={() => void doSave()} onCancel={() => void cancel()} />
@@ -634,26 +635,26 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
       {guard.dialog}
       {dialog}
       <p className="sr-only" aria-live="polite">
-        {said}
+        {isolate(said)}
       </p>
       {base.is_standard && <StandardNotice noun="dashboard" onDuplicate={() => void duplicateStandard()} />}
       {conflict && <ConflictNotice conflict={conflict} noun="dashboard" onDismiss={() => setConflict(null)} />}
       {general.length > 0 && (
         <Alert variant="destructive" className="mb-4">
-          <AlertTitle>The dashboard was not saved</AlertTitle>
+          <AlertTitle>{tr("The dashboard was not saved")}</AlertTitle>
           <AlertDescription>
             {general.map((m) => (
-              <p key={m}>{m}</p>
+              <p key={m}>{isolate(m)}</p>
             ))}
           </AlertDescription>
         </Alert>
       )}
-      <p className="mb-2 text-xs text-muted-foreground sm:hidden">The grid is wider than your screen while editing: scroll sideways, or use each widget's menu to move and resize it.</p>
+      <p className="mb-2 text-xs text-muted-foreground sm:hidden">{tr("The grid is wider than your screen while editing: scroll sideways, or use each widget's menu to move and resize it.")}</p>
       {items.length ? (
         <GridEditor items={items} onChange={(layout) => setLayout(layout)} render={(it) => content(it, items.indexOf(it))} />
       ) : (
-        <EmptyBlock icon={LayoutDashboard} title="Add the first widget" action={<Button onClick={() => setPicker("charts")}><Plus /> Add a chart</Button>}>
-          Charts, number cards, headings, notes, shortcuts and record lists go on a 12-column grid.
+        <EmptyBlock icon={LayoutDashboard} title={tr("Add the first widget")} action={<Button onClick={() => setPicker("charts")}><Plus /> {tr("Add a chart")}</Button>}>
+          {tr("Charts, number cards, headings, notes, shortcuts and record lists go on a 12-column grid.")}
         </EmptyBlock>
       )}
 
@@ -695,8 +696,8 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
           }}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          <SheetTitle className="sr-only">{builder?.kind === "cards" ? "Number card" : "Chart"}</SheetTitle>
-          <SheetDescription className="sr-only">Save to place it on the dashboard, or cancel.</SheetDescription>
+          <SheetTitle className="sr-only">{builder?.kind === "cards" ? tr("Number card") : tr("Chart")}</SheetTitle>
+          <SheetDescription className="sr-only">{tr("Save to place it on the dashboard, or cancel.")}</SheetDescription>
           {builder?.kind === "charts" && <ChartBuilder id={builder.id} context={ctx} cancelRef={builderCancel} onSaved={(r) => onBuilt(r, "charts")} onClose={() => setBuilder(null)} />}
           {builder?.kind === "cards" && <NumberCardBuilder id={builder.id} context={ctx} cancelRef={builderCancel} onSaved={(r) => onBuilt(r, "cards")} onClose={() => setBuilder(null)} />}
         </SheetContent>

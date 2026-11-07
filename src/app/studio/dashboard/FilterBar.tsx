@@ -13,6 +13,7 @@ import { useDebounced } from "@/ui/kit";
 import { LinkInput } from "../../widgets";
 import { DateRangeInput } from "./DateRangeInput";
 import { asRange } from "./filters";
+import { t, isolate } from "@ferrum/client";
 
 const ANY = "__any";
 
@@ -23,7 +24,7 @@ function TextFilter({ id, value, onChange }: { id: string; value: string; onChan
   useEffect(() => {
     if (debounced.trim() !== value.trim()) onChange(debounced);
   }, [debounced]); // react to the debounced text only
-  return <Input id={id} type="search" value={text} placeholder="Any" className="h-9" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onChange(text)} />;
+  return <Input id={id} type="search" value={text} placeholder={t("Any")} className="h-9" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onChange(text)} />;
 }
 
 export function FilterInput({ def, value, onChange, id }: { def: FilterDef; value: unknown; onChange: (v: unknown) => void; id: string }) {
@@ -34,7 +35,7 @@ export function FilterInput({ def, value, onChange, id }: { def: FilterDef; valu
     case "link":
       return (
         <div className="[&_.input]:h-9">
-          <LinkInput id={id} to={def.to ?? ""} value={typeof value === "string" && value ? value : null} placeholder="Any" onChange={(v) => onChange(v ?? "")} />
+          <LinkInput id={id} to={def.to ?? ""} value={typeof value === "string" && value ? value : null} placeholder={t("Any")} onChange={(v) => onChange(v ?? "")} />
         </div>
       );
     case "select":
@@ -44,10 +45,10 @@ export function FilterInput({ def, value, onChange, id }: { def: FilterDef; valu
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
+            <SelectItem value={ANY}>{t("Any")}</SelectItem>
             {(def.options ?? []).map((o) => (
               <SelectItem key={o} value={o}>
-                {o}
+                {isolate(o)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -60,9 +61,9 @@ export function FilterInput({ def, value, onChange, id }: { def: FilterDef; valu
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ANY}>Any</SelectItem>
-            <SelectItem value="yes">Yes</SelectItem>
-            <SelectItem value="no">No</SelectItem>
+            <SelectItem value={ANY}>{t("Any")}</SelectItem>
+            <SelectItem value="yes">{t("Yes")}</SelectItem>
+            <SelectItem value="no">{t("No")}</SelectItem>
           </SelectContent>
         </Select>
       );
@@ -82,7 +83,7 @@ export function FilterBar({ defs, chosen, effective, onChange, onReset, classNam
   if (!defs.length) return null;
   const changed = Object.keys(chosen).length > 0;
   return (
-    <section aria-label="Dashboard filters" className={cn("mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3", className)}>
+    <section aria-label={t("Dashboard filters")} className={cn("mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3", className)}>
       {defs.map((d) => {
         const fid = `${id}-${d.name}`;
         return (
@@ -96,7 +97,7 @@ export function FilterBar({ defs, chosen, effective, onChange, onReset, classNam
       })}
       {changed && (
         <Button type="button" variant="ghost" size="sm" onClick={onReset} className="mb-0.5">
-          <RotateCcw /> Reset filters
+          <RotateCcw /> {t("Reset filters")}
         </Button>
       )}
     </section>

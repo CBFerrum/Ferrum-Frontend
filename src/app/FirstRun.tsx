@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useMe } from "@/lib/meta";
 import { Button } from "@/ui/kit";
 import { AppCard, type AppSummary, type AppsResponse, InstallDialog } from "./Apps";
+import { t } from "@ferrum/client";
 
 /** Suites first, then apps that stand on their own (no add-ons, no connectors). */
 export function firstRunChoices(available: AppSummary[]): { suites: AppSummary[]; apps: AppSummary[] } {
@@ -29,26 +30,26 @@ export function FirstRun() {
     <AppCard key={a.id} app={a} onOpen={() => setPlanFor({ id: a.id })}>
       <span className="spacer" />
       <Button size="sm" variant="primary" icon="plus" onClick={() => setPlanFor({ id: a.id })}>
-        Install
+        {t("Install")}
       </Button>
     </AppCard>
   );
   return (
     <section className="card" aria-labelledby="first-run-title">
       <div className="card-head">
-        <h2 id="first-run-title">Set up this workspace</h2>
+        <h2 id="first-run-title">{t("Set up this workspace")}</h2>
       </div>
       <div className="card-body stack">
-        <p className="muted">It has no apps yet. Start with a suite, or pick apps one by one; Apps adds more later.</p>
+        <p className="muted">{t("It has no apps yet. Start with a suite, or pick apps one by one; Apps adds more later.")}</p>
         {suites.length > 0 && (
           <>
-            <h3 className="field-label">Suites</h3>
+            <h3 className="field-label">{t("Suites")}</h3>
             <div className="app-grid">{suites.map(card)}</div>
           </>
         )}
         {apps.length > 0 && (
           <>
-            <h3 className="field-label">Apps</h3>
+            <h3 className="field-label">{t("Apps")}</h3>
             <div className="app-grid">{apps.map(card)}</div>
           </>
         )}
