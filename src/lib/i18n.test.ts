@@ -28,6 +28,16 @@ describe("the interface's language", () => {
     expect([t("Course"), t("Save"), t("Cancel")]).toEqual(["دورة", "احفظ", "إلغاء"]);
   });
 
+  it("keeps English left on a page that reads right to left in its own order", () => {
+    setLanguage("ar");
+    // A sentence's full stop stays at its end, and a value stays where the sentence put it.
+    expect(t("Every open job has a time.")).toBe("\u2068Every open job has a time.\u2069");
+    expect(t("{n} items", { n: 2 })).toBe("\u20682 items\u2069");
+    expect(t("Cancel")).toBe("إلغاء");
+    setLanguage("hi");
+    expect(t("Every open job has a time.")).toBe("Every open job has a time.");
+  });
+
   it("knows which scripts read right to left", () => {
     expect(["ar", "he-IL", "fa", "ur-PK", "en", "hi", "zh-Hant"].map(direction)).toEqual(["rtl", "rtl", "rtl", "rtl", "ltr", "ltr", "ltr"]);
     expect(baseLanguage(" PT_br ")).toBe("pt");
