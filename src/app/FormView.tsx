@@ -42,6 +42,35 @@ import { HelpLink } from "./HelpLink";
 
 /** What a finished action says: its own message when it gives one ("3 deferred lines recognised
  * through 31 Oct"), else that it is done. */
+/** What an action's answer shows only now, as only its hash is kept: a link, a code, a token. */
+export function shownOnce(res: unknown): { name: string; value: string }[] {
+  if (!res || typeof res !== "object") return [];
+  const r = res as Record<string, unknown>;
+  return ["link", "code", "token", "secret"].flatMap((name) => (typeof r[name] === "string" && r[name] ? [{ name, value: r[name] as string }] : []));
+}
+
+const ONCE_LABEL: Record<string, string> = { link: "Link", code: "Code", token: "Token", secret: "Secret" };
+
+/** An action's once-shown answer, to copy before the dialog closes. */
+function ShownOnce({ items, note }: { items: { name: string; value: string }[]; note: string }) {
+  return (
+    <div className="stack">
+      <p>{note}</p>
+      {items.map((i) => (
+        <label key={i.name} className="stack" style={{ gap: 4 }}>
+          <span className="muted">{t(ONCE_LABEL[i.name])}</span>
+          <span className="row" style={{ gap: 6 }}>
+            <input className="input" readOnly value={i.value} dir="ltr" onFocus={(e) => e.currentTarget.select()} />
+            <Button icon="copy" onClick={() => void navigator.clipboard?.writeText(i.value).then(() => toast(t("Copied")), () => toast(t("Select it and copy it"), "error"))}>
+              {t("Copy")}
+            </Button>
+          </span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function actionToast(label: string, res: unknown): string {
   const message = res && typeof res === "object" ? (res as { message?: unknown }).message : undefined;
   return typeof message === "string" && message.trim() ? message : `${label}: done`;
@@ -279,7 +308,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     }
     // Refused for what it says, such as a value another record already has.
     if (e instanceof ApiError && e.status === 409) {
-      setBanner(e.message);
+      setBanner(e.message.charAt(0).toUpperCase() + e.message.slice(1));
       return;
     }
     if (e instanceof ApiError && e.fields.length) {
@@ -440,7 +469,16 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       const type = typeof r.file.type === "string" ? r.file.type : "application/octet-stream";
       saveBlob(new Blob([r.file.content], { type }), typeof r.file.name === "string" ? r.file.name : `${a.name}.txt`);
     }
-    toast(actionToast(a.label, res));
+    const once = shownOnce(res);
+    if (once.length) {
+      const note = (res as { note?: unknown }).note;
+      await confirmDialog({
+        title: a.label,
+        message: <ShownOnce items={once} note={typeof note === "string" && note.trim() ? note : t("Shown once: copy it now")} />,
+        confirmLabel: t("Done"),
+        noCancel: true,
+      });
+    } else toast(actionToast(a.label, res));
     if (typeof r.entity === "string" && typeof r.id === "string") navigate(`/e/${r.entity}/${r.id}`);
     else if (!a.read_only) {
       const fresh = await reload();

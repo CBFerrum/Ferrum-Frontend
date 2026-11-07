@@ -402,6 +402,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
           {choices.map((c) => (
             <Label key={String(c.value)} className="font-normal">
               <Checkbox
+                aria-label={c.label}
                 checked={declared.includes(c.value)}
                 onCheckedChange={(on) => declare(on === true ? choices.filter((x) => x.value === c.value || declared.includes(x.value)).map((x) => x.value) : declared.filter((v) => v !== c.value))}
               />
