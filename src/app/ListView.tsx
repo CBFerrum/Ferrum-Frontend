@@ -57,6 +57,7 @@ import { t } from "../lib/i18n";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
+import { t as tr, isolate } from "@ferrum/client";
 
 const PAGE = 50;
 const noop = () => {};
@@ -154,7 +155,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       );
   }, [openDefault, staleView]); // react to the conditions only
   useEffect(() => {
-    if (pref.error) toast(`Your list settings could not be saved: ${errorMessage(pref.error)}`, "error");
+    if (pref.error) toast(tr("Your list settings could not be saved: {value}", { value: errorMessage(pref.error) }), "error");
   }, [pref.error]);
 
   const filterFields = useMemo(() => filterable(meta.fields, meta.children), [meta]);
@@ -297,7 +298,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   const setLayout = (patch: (l: Layout) => Layout) => {
     if (!active?.shared) return save((p) => withLayout(p, viewId, patch(layoutOf(p, viewId))));
     if (active.shared.can_change) void changeShared({ ...active, ...patch(active) });
-    else toast("This view is shared. Save it as a new view to make these changes your own.", "error");
+    else toast(tr("This view is shared. Save it as a new view to make these changes your own."), "error");
   };
   const setColumns = (names: string[]) => setLayout(() => ({ columns: names }));
   const setWidth = (name: string, width: number | undefined) => {
@@ -328,7 +329,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     const v: SavedView = { id: newViewId(), name, query: viewQuery(), columns: layout.columns, widths: layout.widths };
     save((p) => ({ ...p, views: { ...p.views, [v.id]: v }, default_view: makeDefault ? v.id : p.default_view }));
     showView(v);
-    toast(`View “${name}” saved`);
+    toast(tr("View “{name}” saved", { name }));
   };
   const viewBody = (v: SavedView) => ({ query: v.query, columns: v.columns, widths: v.widths });
   const refreshTeam = () => qc.invalidateQueries({ queryKey: ["views", E] });
@@ -346,7 +347,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     if (v.shared) void changeShared(v);
     else save((p) => (p.views[v.id] ? { ...p, views: { ...p.views, [v.id]: { ...p.views[v.id], query: v.query } } } : p));
     showView(v);
-    toast(`View “${v.name}” saved`);
+    toast(tr("View “{name}” saved", { name: v.name }));
   };
   const renameView = (id: string, name: string) => {
     if (team[id]) void changeShared({ ...team[id], name });
@@ -369,7 +370,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       moving.current = v.id;
       setSp((p) => applyView(p, { ...v, id: made.id }), { replace: true });
       save((p) => withoutView(p, v.id));
-      toast(`“${v.name}” is shared with everyone who can see this list`);
+      toast(tr("“{name}” is shared with everyone who can see this list", { name: v.name }));
     } catch (e) {
       toast(errorMessage(e), "error");
     }
@@ -400,7 +401,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            {meta.label_plural}
+            {isolate(meta.label_plural)}
             <HelpLink meta={meta} />
           </h1>
           <p className="page-sub" aria-live="polite">
@@ -491,24 +492,24 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           )}
           {filtered && (
             <button type="button" className="chip-clear" onClick={clearFilters}>
-              Clear
+              {tr("Clear")}
             </button>
           )}
           <div className="list-bar-end">
             {/* Phones: this replaces the column headers' sort buttons, which the card layout hides. */}
             {view === "list" && sortable.length > 0 && (
-              <select className="select list-sort" aria-label="Sort by" value={`${sortField} ${sortDir}`} onChange={(e) => setSort(e.target.value)}>
+              <select className="select list-sort" aria-label={tr("Sort by")} value={`${sortField} ${sortDir}`} onChange={(e) => setSort(e.target.value)}>
                 {!sortable.some((c) => c.name === sortField) && (
                   <option value={`${sortField} ${sortDir}`}>
-                    {fieldLabel(meta, sortField)} {sortDir === "desc" ? "↓" : "↑"}
+                    {isolate(fieldLabel(meta, sortField))} {sortDir === "desc" ? "↓" : "↑"}
                   </option>
                 )}
                 {sortable.flatMap((c) => [
                   <option key={`${c.name} asc`} value={`${c.name} asc`}>
-                    {c.label} ↑
+                    {isolate(c.label)} ↑
                   </option>,
                   <option key={`${c.name} desc`} value={`${c.name} desc`}>
-                    {c.label} ↓
+                    {isolate(c.label)} ↓
                   </option>,
                 ])}
               </select>
@@ -555,14 +556,14 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         ) : list.error ? (
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         ) : !list.isLoading && !rows.length ? (
-          <EmptyState title={filtered ? "No matching records" : `No ${meta.label_plural.toLowerCase()} yet`}>
+          <EmptyState title={filtered ? tr("No matching records") : tr("No {value} yet", { value: meta.label_plural.toLowerCase() })}>
             {filtered ? (
-              <Button onClick={clearFilters}>Clear filters</Button>
+              <Button onClick={clearFilters}>{tr("Clear filters")}</Button>
             ) : (
               canCreate && (
                 <Link className="btn btn-primary btn-md" to={newHref}>
                   <Icon name="plus" />
-                  New {meta.label}
+                  {tr("New {label}", { label: meta.label })}
                 </Link>
               )
             )}
@@ -573,7 +574,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
             {/* The row shows what a card would (data-ferrum-nocard: the shell draws none here). */}
             <table ref={table} className="table list-table" role="table" style={widthVars} data-ferrum-nocard="">
               <caption className="sr-only" role="caption">
-                {meta.label_plural}
+                {isolate(meta.label_plural)}
               </caption>
               <thead role="rowgroup">
                 <tr role="row">
@@ -581,7 +582,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                     <th role="columnheader" scope="col" className="w-px">
                       <SelectBox
                         id="list-select-all"
-                        label={`Select all ${ids.length} shown`}
+                        label={tr("Select all {length} shown", { length: ids.length })}
                         checked={page === "all"}
                         indeterminate={page === "some"}
                         disabled={!ids.length}
@@ -602,7 +603,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                         <div data-col className={c.name in widths ? "truncate" : undefined} style={sized(c.name)}>
                           {c.sortable ? (
                             <button type="button" className="sort-btn" onClick={() => toggleSort(c.name)}>
-                              {c.label}
+                              {isolate(c.label)}
                               {sorted && <Icon name={sortDir === "desc" ? "down" : "up"} size={12} />}
                             </button>
                           ) : (
@@ -630,7 +631,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                   : rows.map((r) => {
                       const id = String(r.id);
                       const on = selected.has(id);
-                      const box = <SelectBox label={`Select ${recordTitle(meta, r)}`} checked={on} onToggle={(range) => toggle(id, range)} />;
+                      const box = <SelectBox label={tr("Select {meta}", { meta: recordTitle(meta, r) })} checked={on} onToggle={(range) => toggle(id, range)} />;
                       return (
                         <tr
                           key={id}
@@ -681,7 +682,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         {view === "list" && list.hasNextPage && (
           <div className="load-more">
             <Button onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
-              Load more
+              {tr("Load more")}
             </Button>
           </div>
         )}
@@ -703,11 +704,11 @@ function ViewFieldPicker({ view, opts, value, onChange }: { view: ViewKind; opts
         : opts.timeline.map(([s, e]) => [`${s.name}..${e.name}`, `${s.label} – ${e.label}`]);
   if (choices.length < 2) return null;
   return (
-    <FieldWrap label={view === "board" ? "Group by" : view === "calendar" ? "Date" : "Dates"} htmlFor="view-by">
+    <FieldWrap label={view === "board" ? tr("Group by") : view === "calendar" ? tr("Date") : tr("Dates")} htmlFor="view-by">
       <select id="view-by" className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         {choices.map(([v, l]) => (
           <option key={v} value={v}>
-            {l}
+            {isolate(l)}
           </option>
         ))}
       </select>

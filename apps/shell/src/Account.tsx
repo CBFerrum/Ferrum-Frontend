@@ -4,7 +4,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
-import { LANGUAGES, shell, t } from "@ferrum/client";
+import { LANGUAGES, shell, t, isolate } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
 import { TwoFactorSettings } from "@/app/TwoFactor";
@@ -48,7 +48,7 @@ export function Devices({
     }
     try {
       await api.del(`/api/auth/sessions/${d.id}`);
-      toast(`${browserName(d.user_agent)} is signed out`);
+      toast(t("{value} is signed out", { value: browserName(d.user_agent) }));
       void qc.invalidateQueries({ queryKey: ["sessions"] });
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -69,7 +69,7 @@ export function Devices({
       toast(errorMessage(e), "error");
     }
   };
-  if (q.error) return <p className="muted">{errorMessage(q.error)}</p>;
+  if (q.error) return <p className="muted">{isolate(errorMessage(q.error))}</p>;
   if (!q.data) return <Spinner label={t("Loading your devices")} />;
   return (
     <>
@@ -80,7 +80,7 @@ export function Devices({
             <th scope="col">{t("Last active")}</th>
             <th scope="col">{t("Signed in")}</th>
             <th scope="col">
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{t("Actions")}</span>
             </th>
           </tr>
         </thead>
@@ -88,11 +88,11 @@ export function Devices({
           {q.data.sessions.map((d) => (
             <tr key={d.id}>
               <td>
-                {browserName(d.user_agent)} {d.current && <Badge tone="green">{t("This one")}</Badge>}
-                <div className="faint">{d.ip}</div>
+                {isolate(browserName(d.user_agent))} {d.current && <Badge tone="green">{t("This one")}</Badge>}
+                <div className="faint">{isolate(d.ip)}</div>
               </td>
-              <td title={formatDateTime(d.last_seen_at)}>{relativeTime(d.last_seen_at)}</td>
-              <td>{formatDateTime(d.created_at)}</td>
+              <td title={formatDateTime(d.last_seen_at)}>{isolate(relativeTime(d.last_seen_at))}</td>
+              <td>{isolate(formatDateTime(d.created_at))}</td>
               <td>
                 <Button size="sm" onClick={() => void signOut(d)}>
                   {t("Sign out")}
@@ -161,23 +161,23 @@ function ConfirmItsYou({ open, onClose, onDone }: { open: boolean; onClose: () =
     <Dialog
       open={open}
       onClose={onClose}
-      title="Confirm it is you"
+      title={t("Confirm it is you")}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t("Cancel")}</Button>
           <Button variant="primary" type="submit" form="step-up-form" loading={busy}>
-            Confirm
+            {t("Confirm")}
           </Button>
         </>
       }
     >
       <form id="step-up-form" className="stack" onSubmit={submit}>
-        <p className="muted">Changing how you sign in needs your password, as you signed in a while ago.</p>
-        <Field label="Password" htmlFor="step-up-password" error={error ?? undefined}>
+        <p className="muted">{t("Changing how you sign in needs your password, as you signed in a while ago.")}</p>
+        <Field label={t("Password")} htmlFor="step-up-password" error={error ?? undefined}>
           <input id="step-up-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
         </Field>
         {needsCode && (
-          <Field label="Code from your authenticator app" htmlFor="step-up-code">
+          <Field label={t("Code from your authenticator app")} htmlFor="step-up-code">
             <input id="step-up-code" className="input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} required />
           </Field>
         )}
@@ -228,15 +228,15 @@ export function Passkeys() {
       refresh();
     } catch (e) {
       const kind = (e as { name?: string } | null)?.name;
-      if (kind === "NotAllowedError" || kind === "AbortError") toast("No passkey was made", "info");
-      else if (kind === "InvalidStateError") toast("This device already keeps a passkey for you", "info");
+      if (kind === "NotAllowedError" || kind === "AbortError") toast(t("No passkey was made"), "info");
+      else if (kind === "InvalidStateError") toast(t("This device already keeps a passkey for you"), "info");
       else toast(errorMessage(e), "error");
     } finally {
       setBusy(false);
     }
   };
   const remove = async (p: Passkey) => {
-    const ok = await confirmDialog({ title: `Remove “${p.name}”?`, message: "It no longer signs you in. Remove it from the device too, in its settings.", confirmLabel: "Remove", danger: true });
+    const ok = await confirmDialog({ title: t("Remove “{name}”?", { name: p.name }), message: t("It no longer signs you in. Remove it from the device too, in its settings."), confirmLabel: t("Remove"), danger: true });
     if (!ok) return;
     try {
       await api.del(`/api/auth/passkeys/${p.id}`);
@@ -257,12 +257,12 @@ export function Passkeys() {
       toast(errorMessage(err), "error");
     }
   };
-  if (q.error) return <p className="muted">{errorMessage(q.error)}</p>;
+  if (q.error) return <p className="muted">{isolate(errorMessage(q.error))}</p>;
   if (!q.data) return <Spinner label={t("Loading your passkeys")} />;
   const here = location.hostname;
   return (
     <>
-      <p className="muted">Sign in with your fingerprint, face or device PIN instead of a password. A passkey works on the address it was made on.</p>
+      <p className="muted">{t("Sign in with your fingerprint, face or device PIN instead of a password. A passkey works on the address it was made on.")}</p>
       {q.data.passkeys.length > 0 && (
         <table className="shell-devices">
           <thead>
@@ -271,7 +271,7 @@ export function Passkeys() {
               <th scope="col">{t("Last used")}</th>
               <th scope="col">{t("Added")}</th>
               <th scope="col">
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{t("Actions")}</span>
               </th>
             </tr>
           </thead>
@@ -279,10 +279,10 @@ export function Passkeys() {
             {q.data.passkeys.map((p) => (
               <tr key={p.id}>
                 <td>
-                  {p.name} {p.rp_id !== here && <Badge tone="neutral">{p.rp_id}</Badge>}
+                  {isolate(p.name)} {p.rp_id !== here && <Badge tone="neutral">{isolate(p.rp_id)}</Badge>}
                 </td>
-                <td>{p.last_used_at ? relativeTime(p.last_used_at) : "Not yet"}</td>
-                <td>{formatDateTime(p.created_at)}</td>
+                <td>{p.last_used_at ? relativeTime(p.last_used_at) : t("Not yet")}</td>
+                <td>{isolate(formatDateTime(p.created_at))}</td>
                 <td>
                   <Button
                     size="sm"
@@ -292,10 +292,10 @@ export function Passkeys() {
                       setRenaming(p);
                     }}
                   >
-                    Rename
+                    {t("Rename")}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => void remove(p)}>
-                    Remove
+                    {t("Remove")}
                   </Button>
                 </td>
               </tr>
@@ -306,10 +306,10 @@ export function Passkeys() {
       <div>
         {supported ? (
           <Button onClick={() => void make()} loading={busy}>
-            Add a passkey
+            {t("Add a passkey")}
           </Button>
         ) : (
-          <p className="muted">This browser cannot make passkeys here (they need a secure address).</p>
+          <p className="muted">{t("This browser cannot make passkeys here (they need a secure address).")}</p>
         )}
       </div>
       <ConfirmItsYou
@@ -323,18 +323,18 @@ export function Passkeys() {
       <Dialog
         open={!!renaming}
         onClose={() => setRenaming(null)}
-        title="Rename passkey"
+        title={t("Rename passkey")}
         footer={
           <>
-            <Button onClick={() => setRenaming(null)}>Cancel</Button>
+            <Button onClick={() => setRenaming(null)}>{t("Cancel")}</Button>
             <Button variant="primary" type="submit" form="passkey-name-form">
-              Save
+              {t("Save")}
             </Button>
           </>
         }
       >
         <form id="passkey-name-form" onSubmit={rename}>
-          <Field label="Name" htmlFor="passkey-name">
+          <Field label={t("Name")} htmlFor="passkey-name">
             <input id="passkey-name" className="input" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           </Field>
         </form>
@@ -366,7 +366,7 @@ function Language() {
         <option value="">{t("The workspace's language")}</option>
         {LANGUAGES.map((l) => (
           <option key={l.tag} value={l.tag} lang={l.tag}>
-            {l.name}
+            {isolate(l.name)}
           </option>
         ))}
       </select>
@@ -401,7 +401,7 @@ function TimeZone() {
         <option value="">{workspace ? t("The workspace's ({zone})", { zone: workspace }) : t("The workspace's")}</option>
         {[...new Set([mine, ...zones])].filter(Boolean).map((z) => (
           <option key={z} value={z}>
-            {z.replaceAll("_", " ")}
+            {isolate(z.replaceAll("_", " "))}
           </option>
         ))}
       </select>
@@ -414,7 +414,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   return (
     <section className="card" aria-labelledby={id}>
       <div className="card-head">
-        <h2 id={id}>{title}</h2>
+        <h2 id={id}>{isolate(title)}</h2>
       </div>
       <div className="card-body">{children}</div>
     </section>

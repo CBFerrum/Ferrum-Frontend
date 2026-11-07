@@ -55,6 +55,7 @@ import { QueryEditor } from "./dashboard/QueryEditor";
 import { AcceptsEditor, LabelFields, SharingFields } from "./dashboard/RecordFields";
 import { EntityPicker, SearchSelect } from "./dashboard/pickers";
 import { ErrorBlock, goBack, LoadingBlock, Messages, PageHeader, Section, SheetState, UnsavedGuard, useConfirm } from "./dashboard/ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** The dashboard a builder was opened from: its filters, for previews and the accepts map. */
 export interface BuilderContext {
@@ -81,7 +82,7 @@ export function ChartBuilderPage() {
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const existing = useStudioRecord("charts", isNew ? undefined : id);
-  if (!isNew && existing.error) return <ErrorBlock error={existing.error} onRetry={() => existing.refetch()} title="Could not open this chart" />;
+  if (!isNew && existing.error) return <ErrorBlock error={existing.error} onRetry={() => existing.refetch()} title={tr("Could not open this chart")} />;
   if (!isNew && !existing.data) return <LoadingBlock rows={4} />;
   return (
     <ChartEditor
@@ -113,8 +114,8 @@ export function ChartBuilder({
   if (id && !existing.data) {
     if (cancelRef) cancelRef.current = onClose;
     return (
-      <SheetState title="Chart" onClose={onClose}>
-        {existing.error ? <ErrorBlock error={existing.error} onRetry={() => existing.refetch()} title="Could not open this chart" /> : <LoadingBlock rows={4} />}
+      <SheetState title={tr("Chart")} onClose={onClose}>
+        {existing.error ? <ErrorBlock error={existing.error} onRetry={() => existing.refetch()} title={tr("Could not open this chart")} /> : <LoadingBlock rows={4} />}
       </SheetState>
     );
   }
@@ -173,7 +174,7 @@ function ChartEditor({
   const local = chartIssuesLocal(b.draft, catalog.data, (builtinDef?.params ?? []).filter((p) => p.required).map((p) => p.name));
   const record = b.record;
   // Debounced by value (the record is rebuilt on every render).
-  const reqKey = local.length ? "" : JSON.stringify({ record: { ...record, label: record.label || "Preview" }, filter_defs: context.filterDefs, values: context.values });
+  const reqKey = local.length ? "" : JSON.stringify({ record: { ...record, label: record.label || tr("Preview") }, filter_defs: context.filterDefs, values: context.values });
   const debouncedKey = useDebounced(reqKey, 400);
   const req = useMemo(() => (debouncedKey ? JSON.parse(debouncedKey) : undefined), [debouncedKey]);
   const preview = useChartPreview(req);
@@ -196,7 +197,7 @@ function ChartEditor({
     await b.save();
   };
   const cancel = async () => {
-    if (b.dirty && !b.standard && !(await confirm({ title: "Discard your changes?", message: "The chart keeps its last saved settings.", confirmLabel: "Discard", danger: true }))) return;
+    if (b.dirty && !b.standard && !(await confirm({ title: tr("Discard your changes?"), message: "The chart keeps its last saved settings.", confirmLabel: tr("Discard"), danger: true }))) return;
     allowLeave();
     onClose();
   };
@@ -204,7 +205,7 @@ function ChartEditor({
   const duplicate = async () => {
     try {
       const copy = await studio.save("charts", duplicateOf(toRecord(b.draft)));
-      toast("Copy made");
+      toast(tr("Copy made"));
       if (embedded) onSaved(copy, true);
       else navigate(`/studio/charts/${copy.id}`);
     } catch (e) {
@@ -213,11 +214,11 @@ function ChartEditor({
   };
   const del = async () => {
     if (!b.base.id) return;
-    const ok = await confirm({ title: `Delete “${b.base.label}”?`, message: "The chart is removed for everyone. Dashboards that show it must drop it first.", confirmLabel: "Delete", danger: true });
+    const ok = await confirm({ title: tr("Delete “{label}”?", { label: b.base.label }), message: "The chart is removed for everyone. Dashboards that show it must drop it first.", confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: b.base.id, version: b.base.version });
-      toast("Chart deleted");
+      toast(tr("Chart deleted"));
       allowLeave();
       navigate("/studio/dashboards?tab=charts");
     } catch (e) {
@@ -236,17 +237,17 @@ function ChartEditor({
         b.base.id && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="More actions">
+              <Button variant="outline" size="icon" aria-label={tr("More actions")}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => void duplicate()}>
-                <Copy /> Make a copy
+                <Copy /> {tr("Make a copy")}
               </DropdownMenuItem>
               {!embedded && !b.standard && (
                 <DropdownMenuItem variant="destructive" onSelect={() => void del()}>
-                  <Trash2 /> Delete
+                  <Trash2 /> {tr("Delete")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -260,16 +261,16 @@ function ChartEditor({
     <div className="grid gap-4">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full">
-          <TabsTrigger value="data">Data</TabsTrigger>
-          <TabsTrigger value="chart">Chart</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="data">{tr("Data")}</TabsTrigger>
+          <TabsTrigger value="chart">{tr("Chart")}</TabsTrigger>
+          <TabsTrigger value="settings">{tr("Settings")}</TabsTrigger>
         </TabsList>
         <TabsContent value="data" className="grid gap-5 pt-3">
           <SourcePicker value={rec.source} onChange={(source) => setRec({ source, x_field: null, y_fields: null })} />
           {rec.source === "query" && (
             <>
               <div className="grid gap-1.5">
-                <Label>Report on</Label>
+                <Label>{tr("Report on")}</Label>
                 <EntityChoice value={query.entity} onChange={(entity) => setQuery({ ...emptyDraft(entity, "group_by"), period: null })} />
                 <Messages list={issuesAt(issues, "spec.entity")} />
               </div>
@@ -279,17 +280,17 @@ function ChartEditor({
           )}
           {rec.source === "report" && (
             <div className="grid gap-1.5">
-              <Label>Saved report</Label>
+              <Label>{tr("Saved report")}</Label>
               <SearchSelect
                 value={rec.report}
                 loading={reports.isLoading}
-                label="Saved report"
-                placeholder="Choose a report…"
+                label={tr("Saved report")}
+                placeholder={tr("Choose a report…")}
                 fallbackLabel="A report you cannot open"
                 options={(reports.data ?? []).map((r) => ({ value: r.id, label: r.label, hint: r.kind.replace("_", " "), group: r.base_entity ? plural(r.base_entity) : undefined }))}
                 onChange={(report) => setRec({ report, x_field: null, y_fields: null })}
               />
-              <p className="text-xs text-muted-foreground">The chart follows the report: its query, columns and labels.</p>
+              <p className="text-xs text-muted-foreground">{tr("The chart follows the report: its query, columns and labels.")}</p>
               <Messages list={issuesAt(issues, "report")} />
             </div>
           )}
@@ -306,15 +307,15 @@ function ChartEditor({
           )}
         </TabsContent>
         <TabsContent value="chart" className="grid gap-5 pt-3">
-          <Section title="Chart type">
-            <ToggleGroup type="single" variant="outline" spacing={1} value={rec.chart_type} onValueChange={(t) => t && setRec({ chart_type: t as ChartType })} className="grid w-full grid-cols-3 gap-1.5 sm:grid-cols-4" aria-label="Chart type">
+          <Section title={tr("Chart type")}>
+            <ToggleGroup type="single" variant="outline" spacing={1} value={rec.chart_type} onValueChange={(t) => t && setRec({ chart_type: t as ChartType })} className="grid w-full grid-cols-3 gap-1.5 sm:grid-cols-4" aria-label={tr("Chart type")}>
               {TYPES.map((t) => {
                 const Icon = CHART_ICON[t];
                 const fits = !columns || !chartIssues(t, columns, rec.x_field, rec.y_fields ?? []).length;
                 return (
-                  <ToggleGroupItem key={t} value={t} className={cn("h-auto flex-col gap-1 rounded-md py-2 text-xs", !fits && "opacity-55")} title={fits ? undefined : "Does not fit this data yet"}>
+                  <ToggleGroupItem key={t} value={t} className={cn("h-auto flex-col gap-1 rounded-md py-2 text-xs", !fits && "opacity-55")} title={fits ? undefined : tr("Does not fit this data yet")}>
                     <Icon className="size-5" />
-                    {CHART_TYPE_LABEL[t]}
+                    {isolate(CHART_TYPE_LABEL[t])}
                   </ToggleGroupItem>
                 );
               })}
@@ -344,40 +345,40 @@ function ChartEditor({
 
   const meta = preview.data?.data && "meta" in preview.data.data ? (preview.data.data.meta as { row_count?: number; sql_ms?: number; truncated?: boolean } | undefined) : undefined;
   const previewPane = (
-    <section aria-label="Preview" className="flex h-[22rem] flex-col rounded-xl border bg-card shadow-sm lg:sticky lg:top-4 lg:h-[min(36rem,calc(100vh-10rem))]">
+    <section aria-label={tr("Preview")} className="flex h-[22rem] flex-col rounded-xl border bg-card shadow-sm lg:sticky lg:top-4 lg:h-[min(36rem,calc(100vh-10rem))]">
       <header className="flex items-center gap-2 border-b px-3 py-2">
-        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{rec.label || "Preview"}</h2>
-        {preview.isFetching && <Spinner className="text-muted-foreground" aria-label="Updating the preview" />}
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{rec.label || tr("Preview")}</h2>
+        {preview.isFetching && <Spinner className="text-muted-foreground" aria-label={tr("Updating the preview")} />}
         <Button type="button" variant={table ? "secondary" : "ghost"} size="sm" aria-pressed={table} onClick={() => setTable((t) => !t)} disabled={!preview.data}>
-          <Table2 /> Table
+          <Table2 /> {tr("Table")}
         </Button>
       </header>
       <div className="relative min-h-0 flex-1 p-3" aria-live="polite" aria-busy={preview.isFetching || undefined}>
         {local.length > 0 ? (
           <div className="grid h-full place-content-center gap-1 text-center text-sm text-muted-foreground">
-            <p>Finish the data settings to see a preview:</p>
+            <p>{tr("Finish the data settings to see a preview:")}</p>
             {local.slice(0, 4).map((i) => (
                 <p key={i.path + i.message} className="text-xs">
-                  {i.message}
+                  {isolate(i.message)}
                 </p>
               ))}
           </div>
         ) : preview.error && !preview.data ? (
-          <ErrorBlock error={preview.error} onRetry={() => preview.refetch()} title="The preview could not run" className="h-full" />
+          <ErrorBlock error={preview.error} onRetry={() => preview.refetch()} title={tr("The preview could not run")} className="h-full" />
         ) : !preview.data ? (
           <Skeleton className="h-full w-full" />
         ) : table ? (
           <ResultTable data={preview.data.data} className="h-full" />
         ) : (
-          <ChartView type={rec.chart_type} data={preview.data.data} x={rec.x_field} y={rec.y_fields} colors={rec.colors} title={rec.label || "Preview"} />
+          <ChartView type={rec.chart_type} data={preview.data.data} x={rec.x_field} y={rec.y_fields} colors={rec.colors} title={rec.label || tr("Preview")} />
         )}
-        {!!preview.error && !!preview.data && <p className="absolute inset-x-3 bottom-2 rounded bg-destructive/10 px-2 py-1 text-xs text-destructive">{errorMessage(preview.error, false)}</p>}
+        {!!preview.error && !!preview.data && <p className="absolute inset-x-3 bottom-2 rounded bg-destructive/10 px-2 py-1 text-xs text-destructive">{isolate(errorMessage(preview.error, false))}</p>}
       </div>
       {meta && (
         <footer className="flex flex-wrap gap-x-3 border-t px-3 py-1.5 text-xs text-muted-foreground">
-          {meta.row_count != null && <span>{formatDecimal(meta.row_count, 0)} rows</span>}
-          {meta.sql_ms != null && <span>{formatDecimal(meta.sql_ms)} ms</span>}
-          {meta.truncated && <span className="text-warning">More rows matched than the limit</span>}
+          {meta.row_count != null && <span>{tr("{value} rows", { value: formatDecimal(meta.row_count, 0) })}</span>}
+          {meta.sql_ms != null && <span>{tr("{value} ms", { value: formatDecimal(meta.sql_ms) })}</span>}
+          {meta.truncated && <span className="text-warning">{tr("More rows matched than the limit")}</span>}
         </footer>
       )}
     </section>
@@ -392,12 +393,12 @@ function ChartEditor({
           eyebrow={
             embedded ? undefined : (
               <Link to="/studio/dashboards?tab=charts" className="text-muted-foreground">
-                Charts
+                {tr("Charts")}
               </Link>
             )
           }
-          title={rec.label || (b.base.id ? "Untitled chart" : "New chart")}
-          description={b.dirty && !b.standard ? "Unsaved changes" : undefined}
+          title={rec.label || (b.base.id ? tr("Untitled chart") : tr("New chart"))}
+          description={b.dirty && !b.standard ? tr("Unsaved changes") : undefined}
           actions={toolbar}
         />
       </div>
@@ -423,11 +424,11 @@ const SOURCE_LABEL: Record<ChartSource, string> = { query: "A query", report: "A
 function SourcePicker({ value, onChange }: { value: ChartSource; onChange: (s: ChartSource) => void }) {
   return (
     <div className="grid gap-1.5">
-      <Label id="chart-source">Data from</Label>
+      <Label id="chart-source">{tr("Data from")}</Label>
       <ToggleGroup type="single" variant="outline" value={value} onValueChange={(v) => v && onChange(v as ChartSource)} aria-labelledby="chart-source" className="w-full">
         {(Object.keys(SOURCE_LABEL) as ChartSource[]).map((s) => (
           <ToggleGroupItem key={s} value={s} className="flex-1 text-xs sm:text-sm">
-            {SOURCE_LABEL[s]}
+            {isolate(SOURCE_LABEL[s])}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -437,7 +438,7 @@ function SourcePicker({ value, onChange }: { value: ChartSource; onChange: (s: C
 
 function EntityChoice({ value, onChange }: { value: string; onChange: (e: string) => void }) {
   const meta = useEntityMeta(value || undefined);
-  return <EntityPicker value={value || null} label="Report on" fallbackLabel={meta.data?.label} onChange={onChange} />;
+  return <EntityPicker value={value || null} label={tr("Report on")} fallbackLabel={meta.data?.label} onChange={onChange} />;
 }
 
 function BuiltinSettings({
@@ -462,19 +463,19 @@ function BuiltinSettings({
   return (
     <div className="grid gap-4">
       <div className="grid gap-1.5">
-        <Label>Built-in report</Label>
-        <SearchSelect value={name} loading={loading} label="Built-in report" placeholder="Choose a report…" options={sources.map((r) => ({ value: r.name, label: r.label, group: r.module ?? "Other" }))} onChange={onReport} />
+        <Label>{tr("Built-in report")}</Label>
+        <SearchSelect value={name} loading={loading} label={tr("Built-in report")} placeholder={tr("Choose a report…")} options={sources.map((r) => ({ value: r.name, label: r.label, group: r.module ?? "Other" }))} onChange={onReport} />
         <Messages list={issuesAt(issues, "builtin_report")} />
       </div>
       {def && def.params.length > 0 && (
-        <Section title="Parameters" hint="Leave a parameter empty for the report's default. Dashboard filters fill them in too.">
+        <Section title={tr("Parameters")} hint={tr("Leave a parameter empty for the report's default. Dashboard filters fill them in too.")}>
           {def.params.map((p) => {
             const label = p.label ?? p.name.replace(/_/g, " ");
             const v = params[p.name] ?? "";
             return (
               <div key={p.name} className="grid gap-1">
                 <Label className="text-xs font-normal text-muted-foreground">
-                  {label}
+                  {isolate(label)}
                   {p.required && <span className="text-destructive"> *</span>}
                 </Label>
                 {p.type === "link" && p.to ? (
@@ -487,10 +488,10 @@ function BuiltinSettings({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={ANY}>Default</SelectItem>
+                      <SelectItem value={ANY}>{tr("Default")}</SelectItem>
                       {p.options.map((o) => (
                         <SelectItem key={o} value={o}>
-                          {o}
+                          {isolate(o)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -501,9 +502,9 @@ function BuiltinSettings({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={ANY}>Default</SelectItem>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value={ANY}>{tr("Default")}</SelectItem>
+                      <SelectItem value="true">{tr("Yes")}</SelectItem>
+                      <SelectItem value="false">{tr("No")}</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : (
@@ -520,7 +521,7 @@ function BuiltinSettings({
 }
 
 function AxesSettings({ type, columns, x, y, onX, onY, issues }: { type: ChartType; columns: ResultColumn[] | undefined; x: string | null; y: string[]; onX: (x: string | null) => void; onY: (y: string[] | null) => void; issues: Issue[] }) {
-  if (!columns) return <Section title="Axes" hint="The preview's columns appear here once it runs.">{null}</Section>;
+  if (!columns) return <Section title={tr("Axes")} hint={tr("The preview's columns appear here once it runs.")}>{null}</Section>;
   const axes = axisColumns(columns);
   const values = valueColumns(columns);
   const single = ["pie", "donut", "percentage", "funnel", "number", "heatmap"].includes(type);
@@ -530,19 +531,19 @@ function AxesSettings({ type, columns, x, y, onX, onY, issues }: { type: ChartTy
     onY(next.length ? values.map((c) => c.name).filter((n) => next.includes(n)) : null);
   };
   return (
-    <Section title="Axes" hint={type === "scatter" ? "The first value runs along the x axis, the second up the y axis." : undefined}>
+    <Section title={tr("Axes")} hint={type === "scatter" ? tr("The first value runs along the x axis, the second up the y axis.") : undefined}>
       {type !== "number" && axes.length > 0 && (
         <div className="grid gap-1">
-          <Label className="text-xs font-normal text-muted-foreground">{type === "pie" || type === "donut" || type === "percentage" || type === "funnel" ? "Slices" : "X axis"}</Label>
+          <Label className="text-xs font-normal text-muted-foreground">{type === "pie" || type === "donut" || type === "percentage" || type === "funnel" ? tr("Slices") : tr("X axis")}</Label>
           <Select value={x ?? AUTO} onValueChange={(v) => onX(v === AUTO ? null : v)}>
-            <SelectTrigger className="h-9 w-full" aria-label="X axis">
+            <SelectTrigger className="h-9 w-full" aria-label={tr("X axis")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={AUTO}>Automatic (the first grouping)</SelectItem>
+              <SelectItem value={AUTO}>{tr("Automatic (the first grouping)")}</SelectItem>
               {axes.map((c) => (
                 <SelectItem key={c.name} value={c.name}>
-                  {columnLabel(c)}
+                  {isolate(columnLabel(c))}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -551,14 +552,14 @@ function AxesSettings({ type, columns, x, y, onX, onY, issues }: { type: ChartTy
         </div>
       )}
       <fieldset className="grid gap-1.5">
-        <legend className="mb-1 text-xs text-muted-foreground">{single ? "Value" : "Values"} (none ticked: {single ? "the first" : "all of them"})</legend>
+        <legend className="mb-1 text-xs text-muted-foreground">{single ? tr("Value") : tr("Values")} {tr("(none ticked:")} {single ? tr("the first") : tr("all of them")})</legend>
         {values.map((c) => (
           <Label key={c.name} className="flex items-center gap-2 text-sm font-normal">
             <Checkbox checked={y.includes(c.name)} onCheckedChange={(on) => toggle(c.name, on === true)} />
-            {columnLabel(c)}
+            {isolate(columnLabel(c))}
           </Label>
         ))}
-        {!values.length && <p className="text-sm text-muted-foreground">The result has no number columns to plot.</p>}
+        {!values.length && <p className="text-sm text-muted-foreground">{tr("The result has no number columns to plot.")}</p>}
         <Messages list={issuesAt(issues, "y_fields")} />
       </fieldset>
     </Section>
@@ -577,11 +578,11 @@ function ColorsSettings({ colors, labels, onChange, issues }: { colors: string[]
   const count = Math.min(Math.max(labels.length, colors.length, 1), 20);
   return (
     <Section
-      title="Colours"
-      hint={custom ? "Fixed colours, the same in light and dark mode." : "The theme's palette, adjusted for light and dark mode."}
+      title={tr("Colours")}
+      hint={custom ? tr("Fixed colours, the same in light and dark mode.") : tr("The theme's palette, adjusted for light and dark mode.")}
       action={
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange(custom ? [] : THEME_HEX.slice(0, Math.min(count, 8)))}>
-          {custom ? "Use the theme" : "Customize"}
+          {custom ? tr("Use the theme") : tr("Customize")}
         </Button>
       }
     >
@@ -598,15 +599,15 @@ function ColorsSettings({ colors, labels, onChange, issues }: { colors: string[]
                   next[i] = e.target.value.toLowerCase();
                   onChange(next, `color-${i}`);
                 }}
-                aria-label={`Colour of ${label}`}
+                aria-label={tr("Colour of {label}", { label })}
                 className="size-7 cursor-pointer rounded border-0 bg-transparent p-0"
               />
-              <span className="max-w-28 truncate">{label}</span>
+              <span className="max-w-28 truncate">{isolate(label)}</span>
             </label>
           ) : (
             <span key={i} className="flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-xs">
               <span className="size-5 rounded" style={{ background: `var(--chart-${(i % 8) + 1})` }} aria-hidden="true" />
-              <span className="max-w-28 truncate">{label}</span>
+              <span className="max-w-28 truncate">{isolate(label)}</span>
             </span>
           );
         })}

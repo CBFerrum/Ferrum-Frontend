@@ -22,18 +22,19 @@ import {
   type SpaceRecord,
   type SpecFilter,
 } from "@/lib/studio";
+import { t as tr } from "@ferrum/client";
 
 export type BlockType = Block["type"];
 
 export const BLOCK_KINDS: Record<BlockType, { label: string; hint: string; width: number }> = {
-  shortcut: { label: "Shortcut", hint: "Opens a list, report, dashboard or page; a list can show a live count", width: 3 },
-  card: { label: "Number card", hint: "One number and its change since the previous period", width: 3 },
-  chart: { label: "Chart", hint: "A saved chart", width: 6 },
-  list: { label: "Quick list", hint: "The latest records of a list", width: 6 },
-  links: { label: "Link card", hint: "A card of links to lists, reports, dashboards and pages", width: 4 },
-  onboarding: { label: "Onboarding", hint: "Getting-started steps that tick themselves off", width: 6 },
-  heading: { label: "Heading", hint: "A section title", width: 12 },
-  markdown: { label: "Text", hint: "Notes and instructions, with Markdown formatting", width: 12 },
+  shortcut: { get label() { return tr("Shortcut"); }, get hint() { return tr("Opens a list, report, dashboard or page; a list can show a live count"); }, width: 3 },
+  card: { get label() { return tr("Number card"); }, get hint() { return tr("One number and its change since the previous period"); }, width: 3 },
+  chart: { get label() { return tr("Chart"); }, get hint() { return tr("A saved chart"); }, width: 6 },
+  list: { get label() { return tr("Quick list"); }, get hint() { return tr("The latest records of a list"); }, width: 6 },
+  links: { get label() { return tr("Link card"); }, get hint() { return tr("A card of links to lists, reports, dashboards and pages"); }, width: 4 },
+  onboarding: { get label() { return tr("Onboarding"); }, get hint() { return tr("Getting-started steps that tick themselves off"); }, width: 6 },
+  heading: { get label() { return tr("Heading"); }, get hint() { return tr("A section title"); }, width: 12 },
+  markdown: { get label() { return tr("Text"); }, get hint() { return tr("Notes and instructions, with Markdown formatting"); }, width: 12 },
 };
 /** In the order the add-block menu offers them. */
 export const BLOCK_TYPES = Object.keys(BLOCK_KINDS) as BlockType[];
@@ -41,12 +42,12 @@ export const BLOCK_TYPES = Object.keys(BLOCK_KINDS) as BlockType[];
 // ───────────────────────────── widths ─────────────────────────────
 
 export const WIDTHS = [
-  { value: 3, label: "Quarter" },
-  { value: 4, label: "Third" },
-  { value: 6, label: "Half" },
-  { value: 8, label: "Two thirds" },
-  { value: 9, label: "Three quarters" },
-  { value: 12, label: "Full width" },
+  { value: 3, get label() { return tr("Quarter"); } },
+  { value: 4, get label() { return tr("Third"); } },
+  { value: 6, get label() { return tr("Half"); } },
+  { value: 8, get label() { return tr("Two thirds"); } },
+  { value: 9, get label() { return tr("Three quarters"); } },
+  { value: 12, get label() { return tr("Full width"); } },
 ];
 
 const clampWidth = (w: number) => Math.min(12, Math.max(1, Math.round(w) || 12));
@@ -190,7 +191,7 @@ export function newBlock(type: BlockType): SpaceBlock {
     case "heading":
       return { type, text: "", level: 2 };
     case "onboarding":
-      return { type, title: "Get started", steps: [{ label: "", entity: "" }] };
+      return { type, title: tr("Get started"), steps: [{ label: "", entity: "" }] };
   }
 }
 
@@ -522,10 +523,10 @@ export function starterSpace(module: Module, readable: EntitySummary[], reports:
   const labels = new Map(reports.map((r) => [r.name, r.label]));
   const builtins = module.items.filter((i) => i.startsWith("report:")).map((i) => i.slice(7));
   const blocks: SpaceBlock[] = counted.map((e) => ({ type: "shortcut", label: e.label_plural, entity: e.name, show_count: true }));
-  if (others.length) blocks.push({ type: "links", label: "Lists", items: others.slice(0, 50).map((e) => ({ label: e.label_plural, entity: e.name })) });
-  if (builtins.length) blocks.push({ type: "links", label: "Reports", items: builtins.slice(0, 50).map((n) => ({ label: labels.get(n) ?? humanize(n), builtin: n })) });
+  if (others.length) blocks.push({ type: "links", label: tr("Lists"), items: others.slice(0, 50).map((e) => ({ label: e.label_plural, entity: e.name })) });
+  if (builtins.length) blocks.push({ type: "links", label: tr("Reports"), items: builtins.slice(0, 50).map((n) => ({ label: labels.get(n) ?? humanize(n), builtin: n })) });
   const recent = docs[0] ?? lists[0];
-  if (recent) blocks.push({ type: "list", label: `Recent ${recent.label_plural.toLowerCase()}`, entity: recent.name, sort: "updated_at desc", limit: 5 });
+  if (recent) blocks.push({ type: "list", label: tr("Recent {value}", { value: recent.label_plural.toLowerCase() }), entity: recent.name, sort: "updated_at desc", limit: 5 });
   return { label: module.label, icon: module.icon ?? "", module: module.name, blocks };
 }
 
@@ -632,17 +633,17 @@ export function redo<T>(h: History<T>): History<T> {
 type Part = { label: string; get: (d: SpaceDraft) => unknown; take: (into: SpaceDraft, from: SpaceDraft) => SpaceDraft };
 
 const PARTS: Part[] = [
-  { label: "Name", get: (d) => d.label.trim(), take: (into, from) => ({ ...into, label: from.label }) },
-  { label: "Icon", get: (d) => d.icon.trim(), take: (into, from) => ({ ...into, icon: from.icon }) },
-  { label: "Module", get: (d) => d.module.trim(), take: (into, from) => ({ ...into, module: from.module }) },
-  { label: "Order", get: (d) => d.sequence, take: (into, from) => ({ ...into, sequence: from.sequence }) },
+  { get label() { return tr("Name"); }, get: (d) => d.label.trim(), take: (into, from) => ({ ...into, label: from.label }) },
+  { get label() { return tr("Icon"); }, get: (d) => d.icon.trim(), take: (into, from) => ({ ...into, icon: from.icon }) },
+  { get label() { return tr("Module"); }, get: (d) => d.module.trim(), take: (into, from) => ({ ...into, module: from.module }) },
+  { get label() { return tr("Order"); }, get: (d) => d.sequence, take: (into, from) => ({ ...into, sequence: from.sequence }) },
   {
-    label: "Audience",
+    get label() { return tr("Audience"); },
     get: (d) => [d.sharing, d.sharing === "roles" ? [...new Set(d.roles.map((r) => r.trim()))].sort() : []],
     take: (into, from) => ({ ...into, sharing: from.sharing, roles: from.roles }),
   },
-  { label: "Description", get: (d) => d.description.trim(), take: (into, from) => ({ ...into, description: from.description }) },
-  { label: "Blocks", get: (d) => d.blocks.map((b) => cleanBlock(b.block)), take: (into, from) => ({ ...into, blocks: from.blocks }) },
+  { get label() { return tr("Description"); }, get: (d) => d.description.trim(), take: (into, from) => ({ ...into, description: from.description }) },
+  { get label() { return tr("Blocks"); }, get: (d) => d.blocks.map((b) => cleanBlock(b.block)), take: (into, from) => ({ ...into, blocks: from.blocks }) },
 ];
 
 /**

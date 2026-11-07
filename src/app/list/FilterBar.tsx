@@ -10,6 +10,7 @@ import { t } from "../../lib/i18n";
 import type { Field } from "../../lib/meta";
 import { Field as FieldWrap, Icon, useDebounced } from "../../ui/kit";
 import { LinkInput, useLinkTitle } from "../widgets";
+import { t as tr, isolate } from "@ferrum/client";
 
 const NUMBERS = new Set(["int", "decimal", "currency", "percent"]);
 const NUMBER_WORDS: Record<string, string> = { ">=": "at least", "<=": "at most", ">": "over", "<": "under" };
@@ -49,10 +50,10 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
       return (
         <FieldWrap label={f.label} htmlFor={id}>
           <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-            <option value="">All</option>
+            <option value="">{tr("All")}</option>
             {(f.options ?? []).map((o) => (
               <option key={o} value={o}>
-                {o}
+                {isolate(o)}
               </option>
             ))}
           </select>
@@ -62,16 +63,16 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
       return (
         <FieldWrap label={f.label} htmlFor={id}>
           <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
-            <option value="">All</option>
-            <option value="1">Yes</option>
-            <option value="0">No</option>
+            <option value="">{tr("All")}</option>
+            <option value="1">{tr("Yes")}</option>
+            <option value="0">{tr("No")}</option>
           </select>
         </FieldWrap>
       );
     case "link":
       return (
         <FieldWrap label={f.label} htmlFor={id}>
-          <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} placeholder="Any" onChange={(v) => onChange(v ?? "")} />
+          <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} placeholder={tr("Any")} onChange={(v) => onChange(v ?? "")} />
         </FieldWrap>
       );
     case "date":
@@ -80,13 +81,13 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
       return (
         <FieldWrap label={f.label} htmlFor={id}>
           <div className="range">
-            <input id={id} className="input" type="date" aria-label={`${f.label} from`} value={from} onChange={(e) => onChange(joinRange(e.target.value, to))} />
-            <input className="input" type="date" aria-label={`${f.label} to`} value={to} onChange={(e) => onChange(joinRange(from, e.target.value))} />
+            <input id={id} className="input" type="date" aria-label={tr("{label} from", { label: f.label })} value={from} onChange={(e) => onChange(joinRange(e.target.value, to))} />
+            <input className="input" type="date" aria-label={tr("{label} to", { label: f.label })} value={to} onChange={(e) => onChange(joinRange(from, e.target.value))} />
           </div>
-          <div className="filter-words" role="group" aria-label="Periods">
+          <div className="filter-words" role="group" aria-label={tr("Periods")}>
             {PERIODS.map(([word, label]) => (
               <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(word)}>
-                {label}
+                {isolate(label)}
               </button>
             ))}
           </div>
@@ -106,13 +107,13 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
 /** Whether the field holds anything: a filter every field can take, under its own control. */
 function Presence({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="filter-words" role="group" aria-label="Whether it has a value">
+    <div className="filter-words" role="group" aria-label={tr("Whether it has a value")}>
       {[
         [EMPTY, "Is empty"],
         [SET, "Has a value"],
       ].map(([word, label]) => (
         <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(value === word ? "" : word)}>
-          {label}
+          {isolate(label)}
         </button>
       ))}
     </div>
@@ -132,16 +133,16 @@ function NumberFilter({ id, label, value, onChange }: { id: string; label: strin
   return (
     <FieldWrap label={label} htmlFor={id}>
       <div className="range">
-        <select className="select" aria-label={`How to compare ${label}`} value={op} onChange={(e) => setOp(e.target.value)}>
-          <option value="=">Is</option>
-          <option value=">=">At least</option>
-          <option value="<=">At most</option>
-          <option value=">">Over</option>
-          <option value="<">Under</option>
-          <option value="..">Between</option>
+        <select className="select" aria-label={tr("How to compare {label}", { label })} value={op} onChange={(e) => setOp(e.target.value)}>
+          <option value="=">{tr("Is")}</option>
+          <option value=">=">{tr("At least")}</option>
+          <option value="<=">{tr("At most")}</option>
+          <option value=">">{tr("Over")}</option>
+          <option value="<">{tr("Under")}</option>
+          <option value="..">{tr("Between")}</option>
         </select>
-        <input id={id} className="input" inputMode="decimal" autoComplete="off" aria-label={op === ".." ? `${label} from` : label} value={a} onChange={(e) => setA(e.target.value)} />
-        {op === ".." && <input className="input" inputMode="decimal" autoComplete="off" aria-label={`${label} to`} value={b} onChange={(e) => setB(e.target.value)} />}
+        <input id={id} className="input" inputMode="decimal" autoComplete="off" aria-label={op === ".." ? tr("{label} from", { label }) : label} value={a} onChange={(e) => setA(e.target.value)} />
+        {op === ".." && <input className="input" inputMode="decimal" autoComplete="off" aria-label={tr("{label} to", { label })} value={b} onChange={(e) => setB(e.target.value)} />}
       </div>
     </FieldWrap>
   );
@@ -167,7 +168,7 @@ function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: s
       <Popover open={open} onOpenChange={onOpen}>
         <PopoverTrigger asChild>
           <button type="button" className="chip-body">
-            <span className="chip-label">{field.label}</span>
+            <span className="chip-label">{isolate(field.label)}</span>
             {value !== "" && (
               <span className="chip-value">
                 <ChipValue field={field} value={value} />
@@ -180,7 +181,7 @@ function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: s
           {field.type !== "check" && <Presence value={value} onChange={onChange} />}
         </PopoverContent>
       </Popover>
-      <button type="button" className="chip-x" aria-label={`Remove the ${field.label} filter`} onClick={() => onChange("")}>
+      <button type="button" className="chip-x" aria-label={tr("Remove the {label} filter", { label: field.label })} onClick={() => onChange("")}>
         <Icon name="x" size={12} />
       </button>
     </span>
@@ -223,9 +224,9 @@ export function FilterChips({ fields, state, onChange }: { fields: Field[]; stat
           </PopoverTrigger>
           <PopoverContent align="start" className="chip-picker">
             <Command>
-              {rest.length > 7 && <CommandInput placeholder="Filter by…" />}
+              {rest.length > 7 && <CommandInput placeholder={tr("Filter by…")} />}
               <CommandList>
-                <CommandEmpty>No such field</CommandEmpty>
+                <CommandEmpty>{tr("No such field")}</CommandEmpty>
                 <CommandGroup>
                   {rest.map((f) => (
                     <CommandItem
@@ -237,7 +238,7 @@ export function FilterChips({ fields, state, onChange }: { fields: Field[]; stat
                         setEditing(f.name);
                       }}
                     >
-                      {f.label}
+                      {isolate(f.label)}
                     </CommandItem>
                   ))}
                 </CommandGroup>

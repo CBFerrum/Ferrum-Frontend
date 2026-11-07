@@ -17,19 +17,20 @@ import { chartColor, chartIssues, columnLabel, formatCell, isNumericColumn, toCh
 import { cn } from "@/lib/utils";
 import { CHART_TYPES } from "./state";
 import { useReducedMotion } from "./ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 export const CHART_META: Record<ChartType, { label: string; icon: LucideIcon }> = {
-  bar: { label: "Bars", icon: ChartColumn },
-  stacked_bar: { label: "Stacked bars", icon: ChartColumnStacked },
-  line: { label: "Line", icon: ChartLine },
-  area: { label: "Area", icon: ChartArea },
-  pie: { label: "Pie", icon: ChartPie },
-  donut: { label: "Donut", icon: Donut },
-  percentage: { label: "Percentage bar", icon: Percent },
-  funnel: { label: "Funnel", icon: FunnelIcon },
-  scatter: { label: "Scatter", icon: ChartScatter },
-  heatmap: { label: "Calendar heatmap", icon: LayoutGrid },
-  number: { label: "Number", icon: Hash },
+  bar: { get label() { return tr("Bars"); }, icon: ChartColumn },
+  stacked_bar: { get label() { return tr("Stacked bars"); }, icon: ChartColumnStacked },
+  line: { get label() { return tr("Line"); }, icon: ChartLine },
+  area: { get label() { return tr("Area"); }, icon: ChartArea },
+  pie: { get label() { return tr("Pie"); }, icon: ChartPie },
+  donut: { get label() { return tr("Donut"); }, icon: Donut },
+  percentage: { get label() { return tr("Percentage bar"); }, icon: Percent },
+  funnel: { get label() { return tr("Funnel"); }, icon: FunnelIcon },
+  scatter: { get label() { return tr("Scatter"); }, icon: ChartScatter },
+  heatmap: { get label() { return tr("Calendar heatmap"); }, icon: LayoutGrid },
+  number: { get label() { return tr("Number"); }, icon: Hash },
 };
 
 const compactFormat = new Map<string, Intl.NumberFormat>();
@@ -77,9 +78,9 @@ function SliceLegend({ items, total }: { items: Slice[]; total: number }) {
       {items.map((s) => (
         <li key={s.name} className="flex items-center gap-1.5">
           <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.fill }} aria-hidden="true" />
-          <span className="max-w-48 truncate">{s.name}</span>
+          <span className="max-w-48 truncate">{isolate(s.name)}</span>
           <span className="text-muted-foreground tabular-nums">
-            {s.fmt} · {total ? Math.round((s.value / total) * 1000) / 10 : 0}%
+            {isolate(s.fmt)} · {total ? Math.round((s.value / total) * 1000) / 10 : 0}%
           </span>
         </li>
       ))}
@@ -123,9 +124,9 @@ export function ResultChart({ result, settings, options, title, className }: Res
   );
 
   let chart: ReactNode;
-  if (!result.rows.length) chart = <Message>No data to chart for these settings.</Message>;
+  if (!result.rows.length) chart = <Message>{tr("No data to chart for these settings.")}</Message>;
   else if (type === "number") chart = <NumberView result={result} options={options} />;
-  else if (!model.series.length) chart = <Message>Nothing to plot: add a measure (a count or a sum) to chart it.</Message>;
+  else if (!model.series.length) chart = <Message>{tr("Nothing to plot: add a measure (a count or a sum) to chart it.")}</Message>;
   else if (type === "pie" || type === "donut" || type === "funnel" || type === "percentage") {
     const parts = slices(model, settings.colors);
     // A funnel narrows: its stages go from the largest down.
@@ -144,7 +145,7 @@ export function ResultChart({ result, settings, options, title, className }: Res
         }
       />
     );
-    if (!items.length) chart = <Message>Only positive values can be shown as parts of a whole.</Message>;
+    if (!items.length) chart = <Message>{tr("Only positive values can be shown as parts of a whole.")}</Message>;
     else if (type === "percentage")
       chart = (
         <div className="grid content-center gap-4 py-6" style={{ minHeight: 160 }}>
@@ -187,7 +188,7 @@ export function ResultChart({ result, settings, options, title, className }: Res
   } else if (type === "scatter") {
     const [sx, sy] = model.series;
     chart = !sy ? (
-      <Message>A scatter chart plots two measures against each other: add a second measure.</Message>
+      <Message>{tr("A scatter chart plots two measures against each other: add a second measure.")}</Message>
     ) : (
       <ChartContainer config={model.config} className={box} style={style}>
         <ScatterChart accessibilityLayer margin={{ top: 12, right: 12, bottom: 4, left: 4 }}>
@@ -203,7 +204,7 @@ export function ResultChart({ result, settings, options, title, className }: Res
                   const key = String(item.dataKey ?? "");
                   return (
                     <div className="grid w-full gap-1">
-                      {index === 0 && <span className="font-medium">{row.label}</span>}
+                      {index === 0 && <span className="font-medium">{isolate(row.label)}</span>}
                       <TipRow color={`var(--color-${sx.key})`} label={model.config[key]?.label ?? key} value={row.fmt[key]} />
                     </div>
                   );
@@ -264,20 +265,20 @@ export function ResultChart({ result, settings, options, title, className }: Res
   }
 
   return (
-    <figure className="grid gap-2" aria-label={`${title}: ${CHART_META[type]?.label ?? type} chart`}>
+    <figure className="grid gap-2" aria-label={tr("{title}: {value} chart", { title, value: CHART_META[type]?.label ?? type })}>
       {chart}
-      {model.truncated && <figcaption className="text-xs text-muted-foreground">Showing the 12 largest series; the table lists every row.</figcaption>}
+      {model.truncated && <figcaption className="text-xs text-muted-foreground">{tr("Showing the 12 largest series; the table lists every row.")}</figcaption>}
     </figure>
   );
 }
 
 function NumberView({ result, options }: { result: ResultLike; options: CellOptions }) {
   const c = result.columns.find((x) => x.role === "measure") ?? result.columns.find(isNumericColumn);
-  if (!c) return <Message>A number chart shows one measure.</Message>;
+  if (!c) return <Message>{tr("A number chart shows one measure.")}</Message>;
   const value = result.totals?.[c.name] ?? result.rows[0]?.[c.name];
   return (
     <div className="grid min-h-48 content-center justify-items-center gap-1 py-8 text-center">
-      <span className="text-sm text-muted-foreground">{columnLabel(c, options)}</span>
+      <span className="text-sm text-muted-foreground">{isolate(columnLabel(c, options))}</span>
       <span className="text-5xl font-semibold tracking-tight tabular-nums">{formatCell(c, value, undefined, options) || "—"}</span>
     </div>
   );
@@ -291,7 +292,7 @@ function Heatmap({ model, title }: { model: ChartModel; title: string }) {
   const s = model.series[0];
   const cells = model.rows.filter((r) => typeof r.x === "string" && ISO.test(r.x as string));
   if (!s || !cells.length || !model.x || (model.x.bucket && model.x.bucket !== "day") || (!model.x.bucket && model.x.type !== "date")) {
-    return <Message>A heatmap shows a measure by day: group by a date (each day) or use a daily trend.</Message>;
+    return <Message>{tr("A heatmap shows a measure by day: group by a date (each day) or use a daily trend.")}</Message>;
   }
   const max = Math.max(0, ...cells.map((r) => Math.abs((r[s.key] as number | null) ?? 0)));
   const byDay = new Map(cells.map((r) => [r.x as string, r]));
@@ -304,10 +305,10 @@ function Heatmap({ model, title }: { model: ChartModel; title: string }) {
   };
   return (
     <div className="overflow-x-auto py-2">
-      <div className="inline-grid grid-flow-col gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={`${title}: ${s.label} by day, ${days.length} days; the table lists every value`}>
+      <div className="inline-grid grid-flow-col gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={tr("{title}: {label} by day, {length} days; the table lists every value", { title, label: s.label, length: days.length })}>
         {WEEKDAYS.map((d, i) => (
           <span key={i} className="pe-1 leading-[14px]" aria-hidden="true">
-            {d}
+            {isolate(d)}
           </span>
         ))}
         {Array.from({ length: weeks * 7 }, (_, i) => {
@@ -342,9 +343,9 @@ export function ChartSettingsBar({ settings, columns, onChange }: ChartSettingsB
     <div className="grid gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <Select value={settings.type} onValueChange={(t) => set({ type: t as ChartType })}>
-          <SelectTrigger className="w-44" aria-label="Chart type">
+          <SelectTrigger className="w-44" aria-label={tr("Chart type")}>
             <SelectValue>
-              <Icon aria-hidden="true" /> {CHART_META[settings.type].label}
+              <Icon aria-hidden="true" /> {isolate(CHART_META[settings.type].label)}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -352,7 +353,7 @@ export function ChartSettingsBar({ settings, columns, onChange }: ChartSettingsB
               const I = CHART_META[t].icon;
               return (
                 <SelectItem key={t} value={t}>
-                  <I aria-hidden="true" /> {CHART_META[t].label}
+                  <I aria-hidden="true" /> {isolate(CHART_META[t].label)}
                 </SelectItem>
               );
             })}
@@ -360,13 +361,13 @@ export function ChartSettingsBar({ settings, columns, onChange }: ChartSettingsB
         </Select>
         {dims.length > 1 && settings.type !== "number" && (
           <Select value={settings.x ?? dims[0].name} onValueChange={(x) => set({ x: x === dims[0].name ? undefined : x })}>
-            <SelectTrigger className="w-48" aria-label="Along the axis">
+            <SelectTrigger className="w-48" aria-label={tr("Along the axis")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {dims.map((d) => (
                 <SelectItem key={d.name} value={d.name}>
-                  Along: {d.label}
+                  {tr("Along: {label}", { label: d.label })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -375,12 +376,12 @@ export function ChartSettingsBar({ settings, columns, onChange }: ChartSettingsB
         {!pivoted && values.length > 1 && settings.type !== "number" && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" aria-label="Series plotted">
-                Series ({chosen.length} of {values.length})
+              <Button variant="outline" aria-label={tr("Series plotted")}>
+                {tr("Series ({length} of {length2})", { length: chosen.length, length2: values.length })}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Plot these measures</DropdownMenuLabel>
+              <DropdownMenuLabel>{tr("Plot these measures")}</DropdownMenuLabel>
               {values.map((c) => (
                 <DropdownMenuCheckboxItem
                   key={c.name}
@@ -392,18 +393,18 @@ export function ChartSettingsBar({ settings, columns, onChange }: ChartSettingsB
                     set({ y: next.length === values.length ? undefined : next });
                   }}
                 >
-                  {c.label}
+                  {isolate(c.label)}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {settings.type === "area" && <SwitchField label="Stacked" checked={!!settings.stacked} onChange={(v) => set({ stacked: v || undefined })} />}
-        {cartesian && <SwitchField label="Legend" checked={settings.show_legend ?? true} onChange={(v) => set({ show_legend: v })} />}
-        {settings.type !== "number" && settings.type !== "heatmap" && <SwitchField label="Values" checked={!!settings.show_values} onChange={(v) => set({ show_values: v || undefined })} />}
+        {settings.type === "area" && <SwitchField label={tr("Stacked")} checked={!!settings.stacked} onChange={(v) => set({ stacked: v || undefined })} />}
+        {cartesian && <SwitchField label={tr("Legend")} checked={settings.show_legend ?? true} onChange={(v) => set({ show_legend: v })} />}
+        {settings.type !== "number" && settings.type !== "heatmap" && <SwitchField label={tr("Values")} checked={!!settings.show_values} onChange={(v) => set({ show_values: v || undefined })} />}
       </div>
       {issues.length > 0 && (
-        <ul className="grid gap-0.5 text-xs text-warning" aria-label="Chart problems">
+        <ul className="grid gap-0.5 text-xs text-warning" aria-label={tr("Chart problems")}>
           {issues.map((m) => (
             <li key={m}>{m.charAt(0).toUpperCase() + m.slice(1)}.</li>
           ))}
@@ -417,7 +418,7 @@ function SwitchField({ label, checked, onChange }: { label: string; checked: boo
   return (
     <Label className="h-9 gap-2 rounded-md border border-input px-2.5 font-normal">
       <Switch checked={checked} onCheckedChange={onChange} />
-      {label}
+      {isolate(label)}
     </Label>
   );
 }

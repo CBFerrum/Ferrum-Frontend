@@ -15,6 +15,7 @@ import { usePeople } from "../Collab";
 import { FieldControl } from "../widgets";
 import { MergeDialog } from "./MergeDialog";
 import { bulkActions, chunk, countOf, describeOp, MAX_BULK, mergeResults, parseTags, retryIds, rowErrorText, type BulkOp, type BulkResponse } from "./bulk";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** A row's checkbox (or the header's); `onToggle(range)` gets whether Shift was held. */
 export function SelectBox({
@@ -160,13 +161,13 @@ export function BulkBar({
       clear();
       return;
     }
-    if (!runOpenRef.current) toast(`${countOf(meta, left.length)} could not be done; they stay selected.`, "error");
+    if (!runOpenRef.current) toast(tr("{meta} could not be done; they stay selected.", { meta: countOf(meta, left.length) }), "error");
     setRun((r) => r && { ...r, result, error });
     onSelect(new Set(left)); // what is left to do stays selected
   };
 
   const confirmed = async (op: BulkOp, o: { title: string; message: string; confirmLabel: string; danger?: boolean }) => {
-    if (await confirmDialog({ ...o, cancelLabel: "Back" })) void execute(op, [...selected]);
+    if (await confirmDialog({ ...o, cancelLabel: tr("Back") })) void execute(op, [...selected]);
   };
 
   const failed = run?.result ? retryIds(run.ids, run.result).length : 0;
@@ -176,45 +177,45 @@ export function BulkBar({
       {/* Phones (≤720px, as records.css): a bar along the bottom of the screen (.doc-actions, like the form's actions). */}
       <div
         role="group"
-        aria-label={`Actions for the ${what} selected`}
+        aria-label={tr("Actions for the {what} selected", { what })}
         className="doc-actions flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2"
         onKeyDown={(e) => {
           if (e.key === "Escape") clear();
         }}
       >
         <span className="font-semibold whitespace-nowrap tabular-nums" role="status">
-          {n.toLocaleString()} selected
+          {tr("{n} selected", { n: n.toLocaleString() })}
         </span>
         {!pageAll && pageIds.length > 1 && (
           <Button size="sm" variant="ghost" onClick={() => onSelect(new Set([...selected, ...pageIds]))}>
-            Select all {pageIds.length} shown
+            {tr("Select all {length} shown", { length: pageIds.length })}
           </Button>
         )}
         {pageAll && beyond && !allMatching && (
           <Button size="sm" variant="ghost" loading={selecting} onClick={() => void selectMatching()}>
-            {total == null ? `Select all matching (up to ${MAX_BULK})` : total > MAX_BULK ? `Select the first ${MAX_BULK} of ${total.toLocaleString()}` : `Select all ${total.toLocaleString()} matching`}
+            {total == null ? tr("Select all matching (up to {MAX_BULK})", { MAX_BULK }) : total > MAX_BULK ? tr("Select the first {MAX_BULK} of {total}", { MAX_BULK, total: total.toLocaleString() }) : tr("Select all {total} matching", { total: total.toLocaleString() })}
           </Button>
         )}
-        {allMatching && total != null && total > n && <span className="text-[13px] whitespace-nowrap text-muted-foreground">of {total.toLocaleString()} matching</span>}
+        {allMatching && total != null && total > n && <span className="text-[13px] whitespace-nowrap text-muted-foreground">{tr("of {total} matching", { total: total.toLocaleString() })}</span>}
         <Button size="sm" variant="ghost" icon="x" onClick={clear}>
-          Clear
+          {tr("Clear")}
         </Button>
         <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />
         {run?.result && !runOpen && failed > 0 && (
           <Button size="sm" variant="ghost" icon="alert" onClick={() => showRun(true)}>
-            {failed.toLocaleString()} not done · details
+            {tr("{failed} not done · details", { failed: failed.toLocaleString() })}
           </Button>
         )}
         {actions.fields.length > 0 && (
           <Button size="sm" icon="edit" onClick={() => setDialog("edit")}>
-            Edit
+            {tr("Edit")}
           </Button>
         )}
         <Button size="sm" icon="user" onClick={() => setDialog("assign")}>
-          Assign
+          {tr("Assign")}
         </Button>
         <Button size="sm" onClick={() => setDialog("tags")}>
-          Tags
+          {tr("Tags")}
         </Button>
         {actions.submit && (
           <Button
@@ -224,14 +225,14 @@ export function BulkBar({
               void confirmed(
                 { op: "submit" },
                 {
-                  title: `Submit ${what}?`,
+                  title: tr("Submit {what}?", { what }),
                   message: "Submitted documents can no longer be edited; to change one later, cancel and amend it. Records that cannot be submitted are listed afterwards.",
-                  confirmLabel: "Submit",
+                  confirmLabel: tr("Submit"),
                 },
               )
             }
           >
-            Submit
+            {tr("Submit")}
           </Button>
         )}
         {actions.cancel && (
@@ -242,15 +243,15 @@ export function BulkBar({
               void confirmed(
                 { op: "cancel" },
                 {
-                  title: `Cancel ${what}?`,
+                  title: tr("Cancel {what}?", { what }),
                   message: "Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards.",
-                  confirmLabel: "Cancel them",
+                  confirmLabel: tr("Cancel them"),
                   danger: true,
                 },
               )
             }
           >
-            Cancel
+            {tr("Cancel")}
           </Button>
         )}
         {actions.workflow.map((action) => (
@@ -268,12 +269,12 @@ export function BulkBar({
               )
             }
           >
-            {action}
+            {isolate(action)}
           </Button>
         ))}
         {n === 2 && meta.mergeable && actions.delete && (
           <Button size="sm" onClick={() => setMerging(true)}>
-            Merge
+            {tr("Merge")}
           </Button>
         )}
         {actions.delete && (
@@ -285,15 +286,15 @@ export function BulkBar({
               void confirmed(
                 { op: "delete" },
                 {
-                  title: `Delete ${what}?`,
+                  title: tr("Delete {what}?", { what }),
                   message: "They are deleted permanently. Records that cannot be deleted (submitted documents, or ones you may not delete) are skipped and listed afterwards.",
-                  confirmLabel: "Delete",
+                  confirmLabel: tr("Delete"),
                   danger: true,
                 },
               )
             }
           >
-            Delete
+            {tr("Delete")}
           </Button>
         )}
       </div>
@@ -310,13 +311,13 @@ export function BulkBar({
           }}
         />
       )}
-      <Dialog open={dialog === "edit"} onClose={() => setDialog(null)} title={`Edit ${what}`}>
+      <Dialog open={dialog === "edit"} onClose={() => setDialog(null)} title={tr("Edit {what}", { what })}>
         {dialog === "edit" && <EditForm fields={actions.fields} onCancel={() => setDialog(null)} onApply={(values) => void execute({ op: "update", values }, [...selected])} />}
       </Dialog>
-      <Dialog open={dialog === "assign"} onClose={() => setDialog(null)} title={`Assign ${what}`}>
+      <Dialog open={dialog === "assign"} onClose={() => setDialog(null)} title={tr("Assign {what}", { what })}>
         {dialog === "assign" && <AssignForm onCancel={() => setDialog(null)} onApply={(body) => void execute({ op: "assign", ...body }, [...selected])} />}
       </Dialog>
-      <Dialog open={dialog === "tags"} onClose={() => setDialog(null)} title={`Tags on ${what}`}>
+      <Dialog open={dialog === "tags"} onClose={() => setDialog(null)} title={tr("Tags on {what}", { what })}>
         {dialog === "tags" && <TagsForm entity={E} onCancel={() => setDialog(null)} onApply={(op) => void execute(op, [...selected])} />}
       </Dialog>
       {run && (
@@ -356,48 +357,48 @@ function RunDialog({
   const lookup = useTitles(meta, failures.map((f) => String(f.id)).filter((id) => !titles.has(id)).slice(0, 50));
   const left = r ? retryIds(run.ids, r) : [];
   const unreached = left.length - failures.length;
-  const title = (id: string) => titles.get(id) ?? lookup.get(id) ?? `Record ${shortId(id)}`;
+  const title = (id: string) => titles.get(id) ?? lookup.get(id) ?? tr("Record {id}", { id: shortId(id) });
   return (
-    <Dialog open={open} onClose={onClose} wide title={r ? "Bulk action results" : text.running(countOf(meta, run.ids.length))}>
+    <Dialog open={open} onClose={onClose} wide title={r ? tr("Bulk action results") : text.running(countOf(meta, run.ids.length))}>
       {!r ? (
         <div className="row" role="status">
           <Spinner small />
           <span>
-            {text.running(countOf(meta, run.ids.length))}
-            {run.ids.length > MAX_BULK && ` ${run.sent.toLocaleString()} of ${run.ids.length.toLocaleString()} done.`}
+            {isolate(text.running(countOf(meta, run.ids.length)))}
+            {run.ids.length > MAX_BULK && tr(" {value} of {value2} done.", { value: run.sent.toLocaleString(), value2: run.ids.length.toLocaleString() })}
           </span>
-          <span className="w-full text-[13px] text-muted-foreground">You can close this window: the action carries on and its results stay available from the bar.</span>
+          <span className="w-full text-[13px] text-muted-foreground">{tr("You can close this window: the action carries on and its results stay available from the bar.")}</span>
         </div>
       ) : (
         <div className="stack" style={{ gap: 12 }}>
           <p role="status">
-            {r.succeeded > 0 ? `${text.done(countOf(meta, r.succeeded))}.` : "Nothing was changed."}{" "}
-            {failures.length > 0 && `${countOf(meta, failures.length)} could not be done.`}
+            {r.succeeded > 0 ? `${text.done(countOf(meta, r.succeeded))}.` : tr("Nothing was changed.")}{isolate(" ")}
+            {failures.length > 0 && tr("{meta} could not be done.", { meta: countOf(meta, failures.length) })}
           </p>
           {run.error != null && (
             <Alert tone="error">
-              {errorMessage(run.error)}
-              {unreached > 0 && ` ${countOf(meta, unreached)} were not attempted.`}
+              {isolate(errorMessage(run.error))}
+              {unreached > 0 && tr(" {meta} were not attempted.", { meta: countOf(meta, unreached) })}
             </Alert>
           )}
           {failures.length > 0 && (
-            <ul className="max-h-[50dvh] divide-y divide-border overflow-y-auto rounded-md border border-border" aria-label="Records not done">
+            <ul className="max-h-[50dvh] divide-y divide-border overflow-y-auto rounded-md border border-border" aria-label={tr("Records not done")}>
               {failures.map((f) => (
                 <li key={f.id} className="flex flex-col gap-0.5 px-3 py-2">
                   <Link to={`/e/${meta.name}/${f.id}`} className="font-medium">
-                    {title(String(f.id))}
+                    {isolate(title(String(f.id)))}
                   </Link>
-                  <span className="text-[13px] text-muted-foreground">{rowErrorText(meta, f.error)}</span>
+                  <span className="text-[13px] text-muted-foreground">{isolate(rowErrorText(meta, f.error))}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[13px] text-muted-foreground">{left.length > 0 && "The records not done stay selected."}</p>
+          <p className="text-[13px] text-muted-foreground">{left.length > 0 && tr("The records not done stay selected.")}</p>
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={onClose}>{tr("Close")}</Button>
             {left.length > 0 && (
               <Button variant="primary" icon="refresh" onClick={() => onRetry(left)}>
-                Retry {countOf(meta, left.length)}
+                {tr("Retry {meta}", { meta: countOf(meta, left.length) })}
               </Button>
             )}
           </div>
@@ -425,9 +426,9 @@ function useTitles(meta: EntityMeta, ids: string[]): Map<string, string> {
 function Actions({ onCancel, label, disabled }: { onCancel: () => void; label: string; disabled?: boolean }) {
   return (
     <div className="row" style={{ justifyContent: "flex-end" }}>
-      <Button onClick={onCancel}>Back</Button>
+      <Button onClick={onCancel}>{tr("Back")}</Button>
       <Button type="submit" variant="primary" disabled={disabled}>
-        {label}
+        {isolate(label)}
       </Button>
     </div>
   );
@@ -451,22 +452,22 @@ function EditForm({ fields, onCancel, onApply }: { fields: Field[]; onCancel: ()
   };
   return (
     <form className="stack" onSubmit={submit}>
-      <FieldWrap label="Field" htmlFor={`${id}-field`} required>
+      <FieldWrap label={tr("Field")} htmlFor={`${id}-field`} required>
         <select id={`${id}-field`} className="select" value={name} onChange={(e) => pick(e.target.value)} required>
-          <option value="">Choose a field…</option>
+          <option value="">{tr("Choose a field…")}</option>
           {fields.map((x) => (
             <option key={x.name} value={x.name}>
-              {x.label}
+              {isolate(x.label)}
             </option>
           ))}
         </select>
       </FieldWrap>
       {f && (
         <FieldWrap
-          label="New value"
+          label={tr("New value")}
           htmlFor={`${id}-value`}
           required={f.required}
-          hint={f.type === "check" ? undefined : f.required ? "Required: it cannot be cleared." : "Leave it empty to clear the field."}
+          hint={f.type === "check" ? undefined : f.required ? tr("Required: it cannot be cleared.") : tr("Leave it empty to clear the field.")}
         >
           <FieldControl
             field={f}
@@ -482,7 +483,7 @@ function EditForm({ fields, onCancel, onApply }: { fields: Field[]; onCancel: ()
           />
         </FieldWrap>
       )}
-      <Actions onCancel={onCancel} label="Apply" disabled={!f || (f.required && empty)} />
+      <Actions onCancel={onCancel} label={tr("Apply")} disabled={!f || (f.required && empty)} />
     </form>
   );
 }
@@ -500,9 +501,9 @@ function AssignForm({ onCancel, onApply }: { onCancel: () => void; onApply: (bod
   };
   return (
     <form className="stack" onSubmit={submit}>
-      <FieldWrap label="Person" htmlFor={`${id}-user`} required error={people.error ? errorMessage(people.error) : undefined}>
+      <FieldWrap label={tr("Person")} htmlFor={`${id}-user`} required error={people.error ? errorMessage(people.error) : undefined}>
         <select id={`${id}-user`} className="select" value={user} onChange={(e) => setUser(e.target.value)} required disabled={people.isLoading}>
-          <option value="">{people.isLoading ? "Loading people…" : "Choose…"}</option>
+          <option value="">{people.isLoading ? tr("Loading people…") : tr("Choose…")}</option>
           {(people.data?.users ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.full_name || p.email}
@@ -511,21 +512,21 @@ function AssignForm({ onCancel, onApply }: { onCancel: () => void; onApply: (bod
         </select>
       </FieldWrap>
       <div className="form-grid">
-        <FieldWrap label="Due" htmlFor={`${id}-due`}>
+        <FieldWrap label={tr("Due")} htmlFor={`${id}-due`}>
           <input id={`${id}-due`} type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
         </FieldWrap>
-        <FieldWrap label="Priority" htmlFor={`${id}-priority`}>
+        <FieldWrap label={tr("Priority")} htmlFor={`${id}-priority`}>
           <select id={`${id}-priority`} className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-            <option>Low</option>
-            <option>Medium</option>
-            <option>High</option>
+            <option>{tr("Low")}</option>
+            <option>{tr("Medium")}</option>
+            <option>{tr("High")}</option>
           </select>
         </FieldWrap>
       </div>
-      <FieldWrap label="Note" htmlFor={`${id}-note`}>
+      <FieldWrap label={tr("Note")} htmlFor={`${id}-note`}>
         <textarea id={`${id}-note`} className="textarea" rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
       </FieldWrap>
-      <Actions onCancel={onCancel} label="Assign" disabled={!user} />
+      <Actions onCancel={onCancel} label={tr("Assign")} disabled={!user} />
     </form>
   );
 }
@@ -550,22 +551,22 @@ function TagsForm({ entity, onCancel, onApply }: { entity: string; onCancel: () 
   };
   return (
     <form className="stack" onSubmit={submit}>
-      <div className="segmented self-start" role="group" aria-label="Tag action">
+      <div className="segmented self-start" role="group" aria-label={tr("Tag action")}>
         <button type="button" aria-pressed={mode === "add_tags"} onClick={() => setMode("add_tags")}>
-          Add tags
+          {tr("Add tags")}
         </button>
         <button type="button" aria-pressed={mode === "remove_tags"} onClick={() => setMode("remove_tags")}>
-          Remove tags
+          {tr("Remove tags")}
         </button>
       </div>
-      <FieldWrap label="Tags" htmlFor={`${id}-tags`} error={error ?? undefined} hint="Press Enter or type a comma after each tag.">
+      <FieldWrap label={tr("Tags")} htmlFor={`${id}-tags`} error={error ?? undefined} hint={tr("Press Enter or type a comma after each tag.")}>
         <div className="stack" style={{ gap: 8 }}>
           {tags.length > 0 && (
-            <ul className="chips" aria-label="Tags to apply">
+            <ul className="chips" aria-label={tr("Tags to apply")}>
               {tags.map((t) => (
                 <li key={t} className="chip-removable">
-                  {t}
-                  <button type="button" className="icon-btn" aria-label={`Remove ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
+                  {isolate(t)}
+                  <button type="button" className="icon-btn" aria-label={tr("Remove {t}", { t })} onClick={() => setTags(tags.filter((x) => x !== t))}>
                     <Icon name="x" size={12} />
                   </button>
                 </li>
@@ -603,7 +604,7 @@ function TagsForm({ entity, onCancel, onApply }: { entity: string; onCancel: () 
           </datalist>
         </div>
       </FieldWrap>
-      <Actions onCancel={onCancel} label={mode === "add_tags" ? "Add" : "Remove"} />
+      <Actions onCancel={onCancel} label={mode === "add_tags" ? tr("Add") : tr("Remove")} />
     </form>
   );
 }

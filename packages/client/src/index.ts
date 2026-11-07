@@ -30,8 +30,8 @@ export {
   zoneLabel,
   type FormatOptions,
 } from "../../../src/lib/format";
-export { addCatalog, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, type Direction } from "../../../src/lib/i18n";
-import { applyLocale } from "../../../src/lib/i18n";
+export { addCatalog, addCatalogs, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
+import { applyLocale, wordsReady } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
 export interface Bootstrap {
@@ -722,4 +722,11 @@ export async function uploadInParts(
   const stored = await client.post<StoredFile>(`${uploadPath(up.upload_id)}/complete`);
   forgetUpload(key);
   return stored;
+}
+
+// The page's words before anything is drawn: the bootstrap is read as the page starts and its
+// language's catalog fetched; every module that imports this one waits for it.
+if (typeof document !== "undefined") {
+  bootstrap();
+  await wordsReady();
 }

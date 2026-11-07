@@ -8,7 +8,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, LogOut, Plus } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { bootstrap, type EnterRequest } from "@ferrum/client";
+import { bootstrap, type EnterRequest, t, isolate } from "@ferrum/client";
 import { ChangePasswordDialog } from "@/app/Shell";
 import { TwoFactorSettings, TwoFactorSetup } from "@/app/TwoFactor";
 import { api, errorMessage } from "@/lib/api";
@@ -77,7 +77,7 @@ function Monogram({ name, size = 40 }: { name: string; size?: number }) {
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   return (
     <span className="acct-mono" style={{ width: size, height: size, background: `oklch(0.6 0.13 ${hue})`, fontSize: Math.round(size * 0.4) }} aria-hidden>
-      {initials(name)}
+      {isolate(initials(name))}
     </span>
   );
 }
@@ -88,20 +88,20 @@ function Top() {
     <header className="acct-top">
       <a className="acct-brand" href="/">
         <img src="/_shell/v1/icon.svg" alt="" width={26} height={26} />
-        <span>Ferrum</span>
+        <span>{t("Ferrum")}</span>
       </a>
       {person && (
         <div className="acct-who">
           <span className="acct-avatar" aria-hidden>
-            {initials(person.name)}
+            {isolate(initials(person.name))}
           </span>
           <span className="acct-who-text">
-            <strong>{person.name}</strong>
-            <span>{person.email}</span>
+            <strong>{isolate(person.name)}</strong>
+            <span>{isolate(person.email)}</span>
           </span>
-          <Button size="sm" variant="ghost" onClick={() => void signOut()} aria-label="Sign out">
+          <Button size="sm" variant="ghost" onClick={() => void signOut()} aria-label={t("Sign out")}>
             <LogOut size={15} aria-hidden />
-            <span className="acct-hide-small">Sign out</span>
+            <span className="acct-hide-small">{t("Sign out")}</span>
           </Button>
         </div>
       )}
@@ -126,21 +126,21 @@ function WorkspaceRow({ w }: { w: Workspace }) {
     <li className="acct-row">
       <Monogram name={w.name} />
       <div className="acct-row-text">
-        <strong>{w.name}</strong>
-        <span>{w.host ?? "No address yet"}</span>
+        <strong>{isolate(w.name)}</strong>
+        <span>{w.host ?? t("No address yet")}</span>
       </div>
       <div className="acct-row-actions">
-        {w.admin && w.joined && <Badge tone="blue">Admin</Badge>}
-        {!w.active && <Badge tone="neutral">Turned off</Badge>}
+        {w.admin && w.joined && <Badge tone="blue">{t("Admin")}</Badge>}
+        {!w.active && <Badge tone="neutral">{t("Turned off")}</Badge>}
         {w.url && w.active && (
           <a className="btn btn-default btn-sm" href={w.url} aria-label={`${w.joined ? "Open" : "Add"} ${w.name}`}>
             {w.joined ? (
               <>
-                Open <ArrowRight size={14} aria-hidden />
+                {t("Open")} <ArrowRight size={14} aria-hidden />
               </>
             ) : (
               <>
-                <Plus size={14} aria-hidden /> Add
+                <Plus size={14} aria-hidden /> {t("Add")}
               </>
             )}
           </a>
@@ -154,7 +154,7 @@ function Card({ id, title, aside, children }: { id: string; title: string; aside
   return (
     <section className="acct-card" aria-labelledby={id}>
       <div className="acct-card-head">
-        <h2 id={id}>{title}</h2>
+        <h2 id={id}>{isolate(title)}</h2>
         {aside}
       </div>
       {children}
@@ -168,13 +168,13 @@ function Home() {
   if (q.error)
     return (
       <main className="acct-main" id="main">
-        <Alert tone="error">{errorMessage(q.error)}</Alert>
+        <Alert tone="error">{isolate(errorMessage(q.error))}</Alert>
       </main>
     );
   if (!q.data)
     return (
       <main className="acct-main" id="main">
-        <Spinner label="Loading your account" />
+        <Spinner label={t("Loading your account")} />
       </main>
     );
   const { account, workspaces, region } = q.data;
@@ -184,13 +184,13 @@ function Home() {
   return (
     <main className="acct-main" id="main">
       <div className="acct-hello">
-        <h1>Hello, {first}</h1>
-        <p>One account for every workspace you belong to: sign in once, and go anywhere.</p>
+        <h1>{t("Hello, {first}", { first })}</h1>
+        <p>{t("One account for every workspace you belong to: sign in once, and go anywhere.")}</p>
       </div>
-      <Card id="acct-ws" title="Your workspaces" aside={region ? <Badge tone="neutral">{region.toUpperCase()}</Badge> : undefined}>
+      <Card id="acct-ws" title={t("Your workspaces")} aside={region ? <Badge tone="neutral">{isolate(region.toUpperCase())}</Badge> : undefined}>
         {joined.length === 0 ? (
           <p className="acct-quiet">
-            No workspace yet. Open a workspace's address to add it, or ask its administrator to add {account.email}.
+            {t("No workspace yet. Open a workspace's address to add it, or ask its administrator to add {email}.", { email: account.email })}
           </p>
         ) : (
           <ul className="acct-list">
@@ -201,8 +201,8 @@ function Home() {
         )}
         {more.length > 0 && (
           <>
-            <h3 className="acct-sub">Also for {account.email}</h3>
-            <p className="acct-quiet">These workspaces have an account for your address. Add one to go in with your Ferrum account.</p>
+            <h3 className="acct-sub">{t("Also for {email}", { email: account.email })}</h3>
+            <p className="acct-quiet">{t("These workspaces have an account for your address. Add one to go in with your Ferrum account.")}</p>
             <ul className="acct-list">
               {more.map((w) => (
                 <WorkspaceRow key={w.id} w={w} />
@@ -211,17 +211,16 @@ function Home() {
           </>
         )}
       </Card>
-      <Card id="acct-signin" title="Signing in">
+      <Card id="acct-signin" title={t("Signing in")}>
         {account.home_region ? (
           <>
             <p className="acct-quiet">
-              Your Ferrum account lives in region {account.home_region.toUpperCase()}, which keeps its password, passkeys and two-factor sign-in. This
-              region trusts it: you sign in there and come back here.
+              {t("Your Ferrum account lives in region {value}, which keeps its password, passkeys and two-factor sign-in. This region trusts it: you sign in there and come back here.", { value: account.home_region.toUpperCase() })}
             </p>
             {account.home && (
               <div>
                 <a className="btn btn-default btn-sm" href={account.home}>
-                  Manage it in {account.home_region.toUpperCase()}
+                  {t("Manage it in {value}", { value: account.home_region.toUpperCase() })}
                 </a>
               </div>
             )}
@@ -231,21 +230,21 @@ function Home() {
             <div className="acct-line">
               <KeyRound size={18} aria-hidden />
               <div>
-                <strong>Password</strong>
-                <span>The one for every workspace you added.</span>
+                <strong>{t("Password")}</strong>
+                <span>{t("The one for every workspace you added.")}</span>
               </div>
               <Button size="sm" onClick={() => setPassword(true)}>
-                Change
+                {t("Change")}
               </Button>
             </div>
-            <h3 className="acct-sub">Passkeys</h3>
+            <h3 className="acct-sub">{t("Passkeys")}</h3>
             <Passkeys />
-            <h3 className="acct-sub">Two-factor sign-in</h3>
+            <h3 className="acct-sub">{t("Two-factor sign-in")}</h3>
             <TwoFactorSettings />
           </>
         )}
       </Card>
-      <Card id="acct-devices" title="Signed-in browsers">
+      <Card id="acct-devices" title={t("Signed-in browsers")}>
         <Devices
           signOutHere={() => void signOut()}
           everywhere={{
@@ -287,7 +286,7 @@ function Enter({ request }: { request: EnterRequest }) {
         <div className="acct-step-head">
           <Monogram name={ws.name} size={48} />
           <div>
-            <p className="acct-kicker">{request.host}</p>
+            <p className="acct-kicker">{isolate(request.host)}</p>
             <h1>{HEADINGS[step.need](ws.name)}</h1>
           </div>
         </div>
@@ -325,15 +324,15 @@ function Continue({ request, go }: StepProps) {
   return (
     <>
       <p className="acct-quiet">
-        You are signed in as <strong>{email}</strong>.
+        {t("You are signed in as")} <strong>{isolate(email ?? "")}</strong>.
       </p>
-      {error && <Alert tone="error">{error}</Alert>}
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
       <div className="acct-actions">
         <Button variant="primary" loading={busy} onClick={() => void run("/api/accounts/continue")}>
-          Continue to {request.workspace.name}
+          {t("Continue to {name}", { name: request.workspace.name })}
         </Button>
         <Button variant="ghost" onClick={anotherAccount}>
-          Use another account
+          {t("Use another account")}
         </Button>
       </div>
     </>
@@ -378,66 +377,66 @@ function Join({ request, join, go }: StepProps & { join: NonNullable<EnterReques
   return (
     <>
       <p className="acct-quiet">
-        {ws.name} has an account for <strong>{email}</strong>. Show it is yours once; from then on you go in with your Ferrum account.
+        {t("{name} has an account for", { name: ws.name })} <strong>{isolate(email ?? "")}</strong>{t(". Show it is yours once; from then on you go in with your Ferrum account.")}
       </p>
       {join.click ? (
         <>
-          {error && <Alert tone="error">{error}</Alert>}
+          {error && <Alert tone="error">{isolate(error)}</Alert>}
           <div className="acct-actions">
             <Button variant="primary" loading={busy} onClick={() => void run("/api/accounts/join")}>
-              Add {ws.name} and continue
+              {t("Add {name} and continue", { name: ws.name })}
             </Button>
           </div>
         </>
       ) : (
         <form className="stack" onSubmit={submit}>
           {how === "password" ? (
-            <Field label={`Your password at ${ws.name}`} htmlFor="join-password" required>
+            <Field label={t("Your password at {name}", { name: ws.name })} htmlFor="join-password" required>
               <input id="join-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
             </Field>
           ) : sent ? (
-            <Field label="Code from the email" htmlFor="join-code" required hint={`We sent it to ${email}. It works for 15 minutes.`}>
+            <Field label={t("Code from the email")} htmlFor="join-code" required hint={t("We sent it to {email}. It works for 15 minutes.", { email: String(email) })}>
               <input id="join-code" className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={code} onChange={(e) => setCode(e.target.value)} required autoFocus />
             </Field>
           ) : (
-            <p className="acct-quiet">We will email a code to {email}.</p>
+            <p className="acct-quiet">{t("We will email a code to {email}.", { email: email ?? "" })}</p>
           )}
           {join.two_factor && (how === "password" || sent) && (
-            <Field label={`Code from your ${ws.name} authenticator app`} htmlFor="join-totp" required>
+            <Field label={t("Code from your {name} authenticator app", { name: ws.name })} htmlFor="join-totp" required>
               <input id="join-totp" className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={12} value={totp} onChange={(e) => setTotp(e.target.value)} required />
             </Field>
           )}
-          {error && <Alert tone="error">{error}</Alert>}
+          {error && <Alert tone="error">{isolate(error)}</Alert>}
           <div className="acct-actions">
             {how === "code" && !sent ? (
               <Button variant="primary" loading={sending} onClick={() => void sendCode()}>
-                Email me a code
+                {t("Email me a code")}
               </Button>
             ) : (
               <Button type="submit" variant="primary" loading={busy}>
-                Add {ws.name} and continue
+                {t("Add {name} and continue", { name: ws.name })}
               </Button>
             )}
           </div>
           {mail && how === "password" && (
             <button type="button" className="acct-link" onClick={() => void sendCode()} disabled={sending}>
-              Email me a code instead
+              {t("Email me a code instead")}
             </button>
           )}
           {how === "code" && join.password && (
             <button type="button" className="acct-link" onClick={() => setHow("password")}>
-              Use the password instead
+              {t("Use the password instead")}
             </button>
           )}
         </form>
       )}
       {providers.length > 0 && (
         <a className="btn btn-default btn-md" href={`/login?sso=1&next=${encodeURIComponent(here())}`}>
-          Use {providers.length === 1 ? (providers[0].name ?? "single sign-on") : "single sign-on"}
+          {t("Use")} {providers.length === 1 ? (providers[0].name ?? t("single sign-on")) : t("single sign-on")}
         </a>
       )}
       <button type="button" className="acct-link" onClick={anotherAccount}>
-        Use another account
+        {t("Use another account")}
       </button>
     </>
   );
@@ -446,13 +445,13 @@ function Join({ request, join, go }: StepProps & { join: NonNullable<EnterReques
 function Sso({ request }: { request: EnterRequest }) {
   return (
     <>
-      <p className="acct-quiet">{request.workspace.name} signs its people in through its own single sign-on.</p>
+      <p className="acct-quiet">{t("{name} signs its people in through its own single sign-on.", { name: request.workspace.name })}</p>
       <div className="acct-actions">
         <a className="btn btn-primary btn-md" href={`/login?sso=1&next=${encodeURIComponent(here())}`}>
-          Continue with single sign-on
+          {t("Continue with single sign-on")}
         </a>
         <Button variant="ghost" onClick={anotherAccount}>
-          Use another account
+          {t("Use another account")}
         </Button>
       </div>
     </>
@@ -466,16 +465,15 @@ function TwoStep({ request, go }: StepProps) {
   return (
     <>
       <p className="acct-quiet">
-        {request.workspace.name} asks everyone to sign in with two factors: the password, then a code from an app on your phone. Turn it on for
-        your Ferrum account to go on; it then guards every workspace you have.
+        {t("{name} asks everyone to sign in with two factors: the password, then a code from an app on your phone. Turn it on for your Ferrum account to go on; it then guards every workspace you have.", { name: request.workspace.name })}
       </p>
-      {error && <Alert tone="error">{error}</Alert>}
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
       <div className="acct-actions">
         <Button variant="primary" onClick={() => setSetting(true)}>
-          Turn on two-factor sign-in
+          {t("Turn on two-factor sign-in")}
         </Button>
         <Button variant="ghost" onClick={anotherAccount}>
-          Use another account
+          {t("Use another account")}
         </Button>
       </div>
     </>
@@ -487,14 +485,14 @@ function NoAccess({ request }: { request: EnterRequest }) {
   return (
     <>
       <p className="acct-quiet">
-        <strong>{email}</strong> has no account at {request.workspace.name}. Ask one of its administrators to add you, or use another account.
+        <strong>{isolate(email ?? "")}</strong> {t("has no account at {name}. Ask one of its administrators to add you, or use another account.", { name: request.workspace.name })}
       </p>
       <div className="acct-actions">
         <Button variant="primary" onClick={anotherAccount}>
-          Use another account
+          {t("Use another account")}
         </Button>
         <a className="btn btn-default btn-md" href="/">
-          Your workspaces
+          {t("Your workspaces")}
         </a>
       </div>
     </>

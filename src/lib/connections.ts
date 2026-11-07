@@ -3,6 +3,7 @@
 // no single "Connected" to show.
 
 import { formatDateTime } from "./format";
+import { t } from "@ferrum/client";
 
 export type Tone = "neutral" | "green" | "amber" | "red";
 
@@ -49,17 +50,17 @@ export function connectionFacts(h: ConnectionHealth, now: Date): Fact[] {
   const failures = h.quota?.failures ?? 0;
   const count = (n: number | undefined) => (n ? String(n) : "None");
   return [
-    { label: "Sign-in", value: signIn, tone: signInTone },
-    { label: "Last sync", value: h.freshness ? ago(h.freshness, now) : "Never", tone: seen ? (stale ? "amber" : "green") : "neutral" },
+    { label: t("Sign-in"), value: signIn, tone: signInTone },
+    { label: t("Last sync"), value: h.freshness ? ago(h.freshness, now) : "Never", tone: seen ? (stale ? "amber" : "green") : "neutral" },
     {
-      label: "Provider",
+      label: t("Provider"),
       value: waiting ? `Left alone until ${formatDateTime(waiting.toISOString())}` : failures ? `${failures} failed in a row` : "Answering",
       tone: waiting ? "amber" : failures ? "amber" : "green",
       detail: waiting ? (h.quota?.reason ?? undefined) : undefined,
     },
-    { label: "Waiting to go", value: count(h.backlog), tone: "neutral" },
-    { label: "Failed changes", value: count(h.dead_letters), tone: h.dead_letters ? "red" : "neutral" },
-    { label: "Differences", value: count(h.drift), tone: h.drift ? "amber" : "neutral" },
+    { label: t("Waiting to go"), value: count(h.backlog), tone: "neutral" },
+    { label: t("Failed changes"), value: count(h.dead_letters), tone: h.dead_letters ? "red" : "neutral" },
+    { label: t("Differences"), value: count(h.drift), tone: h.drift ? "amber" : "neutral" },
   ];
 }
 

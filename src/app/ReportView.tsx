@@ -9,6 +9,7 @@ import { formatDate, formatValue, humanize, isDecimalString, NUMERIC_TYPES, toda
 import { useMe, useReports, type Me, type ReportDef, type ReportParam } from "../lib/meta";
 import { Alert, Button, EmptyState, ErrorState, Field as FieldWrap, PageLoading } from "../ui/kit";
 import { LinkInput } from "./widgets";
+import { t, isolate } from "@ferrum/client";
 
 interface Column {
   name: string;
@@ -85,13 +86,13 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
     <div>
       <div className="page-head">
         <div>
-          <p className="crumbs">Report</p>
-          <h1 className="page-title">{title}</h1>
+          <p className="crumbs">{t("Report")}</p>
+          <h1 className="page-title">{isolate(title)}</h1>
         </div>
         <div className="page-actions">
           {data && data.rows.length > 0 && (
             <Button icon="download" onClick={downloadCsv}>
-              Download CSV
+              {t("Download CSV")}
             </Button>
           )}
         </div>
@@ -99,12 +100,12 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
 
       {!def && (
         <Alert tone={catalogError ? "warning" : "info"}>
-          {catalogError ? "Could not load the report catalogue. " : "This report publishes no parameters. "}
-          You can still run it.
+          {catalogError ? t("Could not load the report catalogue. ") : t("This report publishes no parameters. ")}
+          {t("You can still run it.")}
         </Alert>
       )}
 
-      <form className="card card-pad" onSubmit={run} style={{ marginBottom: 16 }} aria-label="Report parameters">
+      <form className="card card-pad" onSubmit={run} style={{ marginBottom: 16 }} aria-label={t("Report parameters")}>
         {params.length > 0 && (
           <div className="form-grid" style={{ ["--cols" as string]: 3, marginBottom: 14 }}>
             {params.map((p) => (
@@ -113,21 +114,21 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
           </div>
         )}
         <Button type="submit" variant="primary" loading={result.isFetching}>
-          Run report
+          {t("Run report")}
         </Button>
       </form>
 
       {!ran ? (
         <div className="card">
-          <EmptyState title="Set the parameters and run the report" icon="chart" />
+          <EmptyState title={t("Set the parameters and run the report")} icon="chart" />
         </div>
       ) : result.error ? (
         <div className="card">
-          <ErrorState error={result.error} onRetry={() => result.refetch()} title="The report could not be run" />
+          <ErrorState error={result.error} onRetry={() => result.refetch()} title={t("The report could not be run")} />
         </div>
       ) : !data ? (
         <div className="card">
-          <PageLoading label="Running report…" />
+          <PageLoading label={t("Running report…")} />
         </div>
       ) : (
         <ReportTable data={data} />
@@ -144,12 +145,12 @@ function ParamInput({ param: p, value, onChange }: { param: ReportParam; value: 
       <div className="field">
         <div className="check-field">
           <input type="checkbox" id={id} checked={value === "true"} onChange={(e) => onChange(e.target.checked ? "true" : "")} />
-          <label htmlFor={id}>{label}</label>
+          <label htmlFor={id}>{isolate(label)}</label>
         </div>
       </div>
     );
   }
-  const hint = typeof p.default === "string" && SERVER_DEFAULTS[p.default] ? `Defaults to ${SERVER_DEFAULTS[p.default]}` : undefined;
+  const hint = typeof p.default === "string" && SERVER_DEFAULTS[p.default] ? t("Defaults to {value}", { value: SERVER_DEFAULTS[p.default] }) : undefined;
   return (
     <FieldWrap label={label} htmlFor={id} required={p.required} hint={hint}>
       {p.type === "link" && p.to ? (
@@ -159,7 +160,7 @@ function ParamInput({ param: p, value, onChange }: { param: ReportParam; value: 
           <option value="">—</option>
           {(p.options ?? []).map((o) => (
             <option key={o} value={o}>
-              {o}
+              {isolate(o)}
             </option>
           ))}
         </select>
@@ -190,7 +191,7 @@ function splitTotals(data: ReportResult) {
 }
 
 function summaryValue(v: unknown, money: boolean): string {
-  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (typeof v === "boolean") return v ? t("Yes") : t("No");
   if (isDecimalString(v)) return formatValue({ type: money ? "currency" : "decimal" }, v);
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return formatDate(v);
   return v === null || v === undefined ? "" : String(v);
@@ -202,7 +203,7 @@ function ReportTable({ data }: { data: ReportResult }) {
   if (!data.rows.length) {
     return (
       <div className="card">
-        <EmptyState title="No rows for these parameters" icon="chart" />
+        <EmptyState title={t("No rows for these parameters")} icon="chart" />
       </div>
     );
   }
@@ -210,21 +211,21 @@ function ReportTable({ data }: { data: ReportResult }) {
     <div className="card">
       {data.meta?.truncated === true && (
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Alert tone="warning">The result was truncated: only the first rows are shown. Narrow the parameters to see everything.</Alert>
+          <Alert tone="warning">{t("The result was truncated: only the first rows are shown. Narrow the parameters to see everything.")}</Alert>
         </div>
       )}
       {(extra.length > 0 || meta.length > 0) && (
         <dl className="summary">
           {extra.map(([k, v]) => (
             <div key={`t-${k}`}>
-              <dt>{humanize(k)}</dt>
-              <dd className="num">{summaryValue(v, true)}</dd>
+              <dt>{isolate(humanize(k))}</dt>
+              <dd className="num">{isolate(summaryValue(v, true))}</dd>
             </div>
           ))}
           {meta.map(([k, v]) => (
             <div key={`m-${k}`}>
-              <dt>{humanize(k)}</dt>
-              <dd>{summaryValue(v, false)}</dd>
+              <dt>{isolate(humanize(k))}</dt>
+              <dd>{isolate(summaryValue(v, false))}</dd>
             </div>
           ))}
         </dl>
@@ -250,7 +251,7 @@ function ReportTable({ data }: { data: ReportResult }) {
                     className={isNumeric(c) ? "num" : undefined}
                     style={j === 0 && r._indent ? { paddingLeft: `${0.75 + Number(r._indent) * 1.25}rem` } : undefined}
                   >
-                    {display(c, r)}
+                    {isolate(display(c, r))}
                   </td>
                 ))}
               </tr>
@@ -261,7 +262,7 @@ function ReportTable({ data }: { data: ReportResult }) {
               <tr>
                 {cols.map((c, j) => (
                   <td key={c.name} className={isNumeric(c) ? "num" : undefined}>
-                    {data.totals?.[c.name] == null ? (j === 0 ? "Total" : "") : display(c, data.totals ?? {})}
+                    {data.totals?.[c.name] == null ? (j === 0 ? t("Total") : "") : display(c, data.totals ?? {})}
                   </td>
                 ))}
               </tr>

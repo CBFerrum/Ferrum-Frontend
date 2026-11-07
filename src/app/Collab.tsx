@@ -8,6 +8,7 @@ import { formatDate, relativeTime } from "../lib/format";
 import { useMe } from "../lib/meta";
 import { uploadFile } from "../lib/files";
 import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, PageLoading, toast, useDismiss } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 export interface Person {
   id: string;
@@ -94,26 +95,26 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
   return (
     <div className="collab">
       <aside className="collab-side">
-        <section aria-label="Assigned to">
-          <h3 className="field-label">Assigned to</h3>
+        <section aria-label={tr("Assigned to")}>
+          <h3 className="field-label">{tr("Assigned to")}</h3>
           <ul className="people">
             {open.map((a) => (
               <li key={a.id} className="person" title={[a.note, a.due_date && `Due ${formatDate(a.due_date)}`].filter(Boolean).join(" · ")}>
                 <span className="avatar" aria-hidden="true">
-                  {initials(a.user_name ?? "?")}
+                  {isolate(initials(a.user_name ?? "?"))}
                 </span>
                 <span className="person-name">
-                  {a.user_name}
-                  {a.due_date && <span className="faint"> · due {formatDate(a.due_date)}</span>}
-                  {a.note && <span className="person-note faint">{a.note}</span>}
+                  {isolate(a.user_name ?? "")}
+                  {a.due_date && <span className="faint"> {tr("· due {value}", { value: formatDate(a.due_date) })}</span>}
+                  {a.note && <span className="person-note faint">{isolate(a.note)}</span>}
                 </span>
-                {a.priority === "High" && <Badge tone="red">High</Badge>}
+                {a.priority === "High" && <Badge tone="red">{tr("High")}</Badge>}
                 {(a.user === me?.user.id || a.assigned_by === me?.user.id || me?.user.is_admin) && (
                   <button
                     type="button"
                     className="icon-btn"
-                    aria-label={`Mark ${a.user_name}'s assignment done`}
-                    title="Done"
+                    aria-label={tr("Mark {user_name}'s assignment done", { user_name: String(a.user_name) })}
+                    title={tr("Done")}
                     onClick={() => void run(() => api.post(`/api/assignments/${a.id}/close`, { status: "Done" }), "Marked done")}
                   >
                     <Icon name="check" size={14} />
@@ -123,17 +124,17 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
             ))}
           </ul>
           <Button size="sm" icon="plus" onClick={() => setAssigning(true)}>
-            Assign
+            {tr("Assign")}
           </Button>
         </section>
 
-        <section aria-label="Tags">
-          <h3 className="field-label">Tags</h3>
+        <section aria-label={tr("Tags")}>
+          <h3 className="field-label">{tr("Tags")}</h3>
           <TagEditor tags={tags.data?.tags ?? []} canWrite={canWrite} onChange={(next) => run(() => api.put(docPath(entity, id, "tags"), { tags: next }))} />
         </section>
 
-        <section aria-label="Attachments">
-          <h3 className="field-label">Attachments</h3>
+        <section aria-label={tr("Attachments")}>
+          <h3 className="field-label">{tr("Attachments")}</h3>
           <Attachments entity={entity} id={id} files={files.data?.attachments ?? []} onChanged={refresh} />
         </section>
 
@@ -144,19 +145,19 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
           aria-pressed={!!follow.data?.following}
           onClick={() => void run(() => api.put(docPath(entity, id, "follow"), { following: !follow.data?.following }), follow.data?.following ? "Unfollowed" : "Following: you will be notified of changes")}
         >
-          {follow.data?.following ? "Following" : "Follow"}
+          {follow.data?.following ? tr("Following") : tr("Follow")}
         </Button>
       </aside>
 
-      <section className="collab-main" aria-label="Comments">
+      <section className="collab-main" aria-label={tr("Comments")}>
         {comments.isLoading ? (
-          <PageLoading label="Loading comments…" />
+          <PageLoading label={tr("Loading comments…")} />
         ) : (
           <ul className="comments">
             {(comments.data?.comments ?? []).map((c) => (
               <CommentItem key={c.id} c={c} canDelete={c.mine || !!me?.user.is_admin} onChanged={refresh} />
             ))}
-            {!comments.data?.comments.length && <li className="muted">No comments yet.</li>}
+            {!comments.data?.comments.length && <li className="muted">{tr("No comments yet.")}</li>}
           </ul>
         )}
         <Composer people={people} onPost={(body, mentions) => run(() => api.post(docPath(entity, id, "comments"), { body, mentions }))} />
@@ -179,7 +180,7 @@ function CommentItem({ c, canDelete, onChanged }: { c: Comment; canDelete: boole
     }
   };
   const remove = async () => {
-    if (!(await confirmDialog({ title: "Delete this comment?", confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirmDialog({ title: tr("Delete this comment?"), confirmLabel: tr("Delete"), danger: true }))) return;
     try {
       await api.del(`/api/comments/${c.id}`);
       onChanged();
@@ -190,35 +191,35 @@ function CommentItem({ c, canDelete, onChanged }: { c: Comment; canDelete: boole
   return (
     <li className="comment">
       <span className="avatar" aria-hidden="true">
-        {initials(c.author ?? "?")}
+        {isolate(initials(c.author ?? "?"))}
       </span>
       <div className="comment-body">
         <div className="comment-meta">
-          <strong>{c.author ?? "Someone"}</strong> <span className="faint">{relativeTime(c.created_at)}</span>
-          {c.edited_at && <span className="faint"> · edited</span>}
+          <strong>{c.author ?? tr("Someone")}</strong> <span className="faint">{isolate(relativeTime(c.created_at))}</span>
+          {c.edited_at && <span className="faint"> {tr("· edited")}</span>}
           <span className="spacer" />
           {c.mine && editing === null && (
             <button type="button" className="link-btn" onClick={() => setEditing(c.body)}>
-              Edit
+              {tr("Edit")}
             </button>
           )}
           {canDelete && editing === null && (
             <button type="button" className="link-btn danger" onClick={() => void remove()}>
-              Delete
+              {tr("Delete")}
             </button>
           )}
         </div>
         {editing === null ? (
-          <p className="comment-text">{c.body}</p>
+          <p className="comment-text">{isolate(c.body)}</p>
         ) : (
           <div className="stack" style={{ gap: 6 }}>
-            <textarea className="textarea" aria-label="Edit comment" value={editing} rows={3} onChange={(e) => setEditing(e.target.value)} />
+            <textarea className="textarea" aria-label={tr("Edit comment")} value={editing} rows={3} onChange={(e) => setEditing(e.target.value)} />
             <div className="row">
               <Button size="sm" variant="primary" onClick={() => void save()} disabled={!editing.trim()}>
-                Save
+                {tr("Save")}
               </Button>
               <Button size="sm" onClick={() => setEditing(null)}>
-                Cancel
+                {tr("Cancel")}
               </Button>
             </div>
           </div>
@@ -273,7 +274,7 @@ export function Composer({ people, onPost }: { people: Person[]; onPost: (body: 
   return (
     <form ref={form} className="composer" onSubmit={submit}>
       <label htmlFor="comment-new" className="sr-only">
-        Add a comment
+        {tr("Add a comment")}
       </label>
       <textarea
         id="comment-new"
@@ -287,11 +288,11 @@ export function Composer({ people, onPost }: { people: Person[]; onPost: (body: 
         onKeyDown={onKey}
       />
       {matches.length > 0 && (
-        <ul className="mention-list" role="listbox" aria-label="Mention someone">
+        <ul className="mention-list" role="listbox" aria-label={tr("Mention someone")}>
           {matches.map((p) => (
             <li key={p.id} role="option" aria-selected={false}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(p)}>
-                <strong>{p.full_name || p.email}</strong> <span className="faint">{p.email}</span>
+                <strong>{p.full_name || p.email}</strong> <span className="faint">{isolate(p.email)}</span>
               </button>
             </li>
           ))}
@@ -299,10 +300,10 @@ export function Composer({ people, onPost }: { people: Person[]; onPost: (body: 
       )}
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <span className="faint keys-hint" style={{ fontSize: 12 }}>
-          Ctrl/⌘ + Enter to post
+          {tr("Ctrl/⌘ + Enter to post")}
         </span>
         <Button type="submit" variant="primary" size="sm" loading={busy} disabled={!text.trim()}>
-          Comment
+          {tr("Comment")}
         </Button>
       </div>
     </form>
@@ -320,9 +321,9 @@ function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boo
     <div className="chips">
       {tags.map((t) => (
         <span key={t} className="chip-removable">
-          {t}
+          {isolate(t)}
           {canWrite && (
-            <button type="button" className="icon-btn" aria-label={`Remove tag ${t}`} onClick={() => void onChange(tags.filter((x) => x !== t))}>
+            <button type="button" className="icon-btn" aria-label={tr("Remove tag {t}", { t })} onClick={() => void onChange(tags.filter((x) => x !== t))}>
               <Icon name="x" size={12} />
             </button>
           )}
@@ -331,8 +332,8 @@ function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boo
       {canWrite && (
         <input
           className="input tag-input"
-          aria-label="Add a tag"
-          placeholder="Add tag"
+          aria-label={tr("Add a tag")}
+          placeholder={tr("Add tag")}
           maxLength={60}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -345,7 +346,7 @@ function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boo
           onBlur={add}
         />
       )}
-      {!tags.length && !canWrite && <span className="muted">None</span>}
+      {!tags.length && !canWrite && <span className="muted">{tr("None")}</span>}
     </div>
   );
 }
@@ -365,7 +366,7 @@ function Attachments({ entity, id, files, onChanged }: { entity: string; id: str
     }
   };
   const remove = async (f: Attachment) => {
-    if (!(await confirmDialog({ title: `Delete ${f.file_name}?`, confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirmDialog({ title: tr("Delete {file_name}?", { file_name: f.file_name }), confirmLabel: tr("Delete"), danger: true }))) return;
     try {
       await api.del(`/api/files/${f.id}`);
       onChanged();
@@ -379,17 +380,17 @@ function Attachments({ entity, id, files, onChanged }: { entity: string; id: str
         <div key={f.id} className="row" style={{ flexWrap: "nowrap" }}>
           <button type="button" className="link-btn row attachment" onClick={() => download(f.url, f.file_name).catch((e) => toast(errorMessage(e), "error"))}>
             <Icon name="file" size={14} />
-            <span className="attachment-name">{f.file_name}</span>
+            <span className="attachment-name">{isolate(f.file_name)}</span>
           </button>
-          <span className="faint nowrap">{Math.max(1, Math.round(f.size_bytes / 1024))} KB</span>
-          <button type="button" className="icon-btn" aria-label={`Delete ${f.file_name}`} onClick={() => void remove(f)}>
+          <span className="faint nowrap">{tr("{Math} KB", { Math: Math.max(1, Math.round(f.size_bytes / 1024)) })}</span>
+          <button type="button" className="icon-btn" aria-label={tr("Delete {file_name}", { file_name: f.file_name })} onClick={() => void remove(f)}>
             <Icon name="trash" size={14} />
           </button>
         </div>
       ))}
       <label className="btn btn-default btn-sm" style={{ alignSelf: "flex-start" }} aria-busy={busy}>
         <Icon name="upload" />
-        {busy ? "Uploading…" : "Attach file"}
+        {busy ? tr("Uploading…") : tr("Attach file")}
         <input type="file" className="sr-only" onChange={(e) => void upload(e.target.files?.[0])} disabled={busy} />
       </label>
     </div>
@@ -421,11 +422,11 @@ function AssignDialog({
     onClose();
   };
   return (
-    <Dialog open={open} onClose={onClose} title="Assign">
+    <Dialog open={open} onClose={onClose} title={tr("Assign")}>
       <form className="stack" onSubmit={submit}>
-        <FieldWrap label="Person" htmlFor="as-user" required>
+        <FieldWrap label={tr("Person")} htmlFor="as-user" required>
           <select id="as-user" className="select" value={user} onChange={(e) => setUser(e.target.value)} required>
-            <option value="">Choose…</option>
+            <option value="">{tr("Choose…")}</option>
             {people.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.full_name || p.email}
@@ -434,24 +435,24 @@ function AssignDialog({
           </select>
         </FieldWrap>
         <div className="form-grid">
-          <FieldWrap label="Due" htmlFor="as-due">
+          <FieldWrap label={tr("Due")} htmlFor="as-due">
             <input id="as-due" type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
           </FieldWrap>
-          <FieldWrap label="Priority" htmlFor="as-priority">
+          <FieldWrap label={tr("Priority")} htmlFor="as-priority">
             <select id="as-priority" className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
+              <option>{tr("Low")}</option>
+              <option>{tr("Medium")}</option>
+              <option>{tr("High")}</option>
             </select>
           </FieldWrap>
         </div>
-        <FieldWrap label="Note" htmlFor="as-note">
+        <FieldWrap label={tr("Note")} htmlFor="as-note">
           <textarea id="as-note" className="textarea" rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
         </FieldWrap>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" disabled={!user}>
-            Assign
+            {tr("Assign")}
           </Button>
         </div>
       </form>

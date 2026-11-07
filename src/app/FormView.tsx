@@ -39,6 +39,7 @@ import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withVal
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** What a finished action says: its own message when it gives one ("3 deferred lines recognised
  * through 31 Oct"), else that it is done. */
@@ -55,7 +56,7 @@ const ONCE_LABEL: Record<string, string> = { link: "Link", code: "Code", token: 
 function ShownOnce({ items, note }: { items: { name: string; value: string }[]; note: string }) {
   return (
     <div className="stack">
-      <p>{note}</p>
+      <p>{isolate(note)}</p>
       {items.map((i) => (
         <label key={i.name} className="stack" style={{ gap: 4 }}>
           <span className="muted">{t(ONCE_LABEL[i.name])}</span>
@@ -100,7 +101,7 @@ function DocLoader({ meta, me, id }: { meta: EntityMeta; me: Me; id: string }) {
     if (r.error) throw r.error;
     return r.data;
   }, [q]);
-  if (!isNew && q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} title={`Could not load this ${meta.label}`} />;
+  if (!isNew && q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} title={tr("Could not load this {label}", { label: meta.label })} />;
   if (!isNew && !q.data) return <PageLoading />;
   return <DocForm meta={meta} me={me} initial={isNew ? null : (q.data ?? null)} reload={reload} />;
 }
@@ -138,11 +139,11 @@ function tabLabel(label: string, errors: number): ReactNode {
   if (!errors) return label;
   return (
     <>
-      {label}
+      {isolate(label)}
       <span className="tab-errors" aria-hidden="true">
         {errors}
       </span>
-      <span className="sr-only">, {errors === 1 ? "1 error" : `${errors} errors`}</span>
+      <span className="sr-only">, {errors === 1 ? tr("1 error") : tr("{errors} errors", { errors })}</span>
     </>
   );
 }
@@ -372,14 +373,14 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     const ok = await confirmDialog(
       op === "submit"
         ? {
-            title: `Submit this ${meta.label}?`,
+            title: tr("Submit this {label}?", { label: meta.label }),
             message: "Submitted documents can no longer be edited. To change one later, cancel it and amend it.",
-            confirmLabel: "Submit",
+            confirmLabel: tr("Submit"),
           }
         : {
-            title: `Cancel this ${meta.label}?`,
+            title: tr("Cancel this {label}?", { label: meta.label }),
             message: "Cancelling reverses its postings and cannot be undone. You can amend it into a new draft afterwards.",
-            confirmLabel: "Cancel document",
+            confirmLabel: tr("Cancel document"),
             danger: true,
           },
     );
@@ -387,21 +388,21 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     await operate(op, async (version) => {
       const d = await api.post<Doc>(docPath(E, String(id), op), undefined, { ifMatch: version });
       load(d, docRef.current);
-      toast(op === "submit" ? `${meta.label} submitted` : `${meta.label} cancelled`);
+      toast(op === "submit" ? tr("{label} submitted", { label: meta.label }) : tr("{label} cancelled", { label: meta.label }));
       void invalidateLists();
     });
   };
 
   const amend = async () => {
     const ok = await confirmDialog({
-      title: `Amend this ${meta.label}?`,
-      message: "A new draft is created from this cancelled document; the original stays cancelled.",
-      confirmLabel: "Amend",
+      title: tr("Amend this {label}?", { label: meta.label }),
+      message: tr("A new draft is created from this cancelled document; the original stays cancelled."),
+      confirmLabel: tr("Amend"),
     });
     if (!ok) return;
     await operate("amend", async () => {
       const d = await api.post<Doc>(docPath(E, String(id), "amend"));
-      toast("Amended: you are now editing the new draft");
+      toast(tr("Amended: you are now editing the new draft"));
       void invalidateLists();
       navigate(`/e/${E}/${d.id}`);
     });
@@ -409,16 +410,16 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
 
   const remove = async () => {
     const ok = await confirmDialog({
-      title: `Delete this ${meta.label}?`,
-      message: "The record is deleted permanently.",
-      confirmLabel: "Delete",
+      title: tr("Delete this {label}?", { label: meta.label }),
+      message: tr("The record is deleted permanently."),
+      confirmLabel: tr("Delete"),
       danger: true,
     });
     if (!ok) return;
     setBusy("delete");
     try {
       await api.del(docPath(E, String(id)), { ifMatch: base?.version });
-      toast(`${meta.label} deleted`);
+      toast(tr("{label} deleted", { label: meta.label }));
       allowNav.current = true;
       void invalidateLists();
       navigate(`/e/${E}`);
@@ -441,12 +442,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       : [];
 
   const transition = async (action: string) => {
-    const ok = await confirmDialog({ title: `${action}?`, message: `Apply “${action}” to this ${meta.label}.`, confirmLabel: action });
+    const ok = await confirmDialog({ title: `${action}?`, message: tr("Apply “{action}” to this {label}.", { action, label: meta.label }), confirmLabel: action });
     if (!ok) return;
     await operate(`wf:${action}`, async (version) => {
       const d = await api.post<Doc>(docPath(E, String(id), "workflow", action), undefined, { ifMatch: version });
       load(d, docRef.current);
-      toast(`${action}: done`);
+      toast(tr("{action}: done", { action }));
       void invalidateLists();
     });
   };
@@ -496,12 +497,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   };
 
   const reloadLatest = async () => {
-    if (dirty && !(await confirmDialog({ title: "Discard your changes?", message: "Reloading discards your unsaved edits.", confirmLabel: "Reload", danger: true })))
+    if (dirty && !(await confirmDialog({ title: tr("Discard your changes?"), message: tr("Reloading discards your unsaved edits."), confirmLabel: tr("Reload"), danger: true })))
       return;
     try {
       const fresh = await reload();
       if (fresh) load(fresh);
-      toast("Loaded the latest version", "info");
+      toast(tr("Loaded the latest version"), "info");
     } catch (e) {
       toast(errorMessage(e), "error");
     }
@@ -517,7 +518,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && !allowNav.current && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    void confirmDialog({ title: "Leave without saving?", message: "Your unsaved changes will be lost.", confirmLabel: "Leave", danger: true }).then((ok) =>
+    void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your unsaved changes will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) =>
       ok ? blocker.proceed() : blocker.reset(),
     );
   }, [blocker]);
@@ -583,7 +584,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       return (
         <div key={f.name} className="field span-all" role="group" aria-labelledby={`${fid}-label`}>
           <div className={soleInSection ? "sr-only" : "field-label"} id={`${fid}-label`}>
-            {f.label}
+            {isolate(f.label)}
             {st.required && (
               <span className="req" aria-hidden="true">
                 *
@@ -602,7 +603,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             entity={E}
             recordId={id}
           />
-          {err && <p className="field-error">{err}</p>}
+          {err && <p className="field-error">{isolate(err)}</p>}
         </div>
       );
     }
@@ -627,16 +628,16 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         <div key={f.name} className="field">
           <div className="check-field">
             {control}
-            <label htmlFor={fid}>{f.label}</label>
+            <label htmlFor={fid}>{isolate(f.label)}</label>
           </div>
           {err ? (
             <p className="field-error" id={`${fid}-error`}>
-              {err}
+              {isolate(err)}
             </p>
           ) : (
             f.description && (
               <p className="field-hint" id={`${fid}-hint`}>
-                {f.description}
+                {isolate(f.description)}
               </p>
             )
           )}
@@ -667,7 +668,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   );
 
   const titleValue = meta.title_field ? (doc._titles?.[meta.title_field] ?? doc[meta.title_field]) : null;
-  const heading = isNew ? `New ${meta.label}` : doc.number ? String(doc.number) : recordTitle(meta, doc);
+  const heading = isNew ? tr("New {label}", { label: meta.label }) : doc.number ? String(doc.number) : recordTitle(meta, doc);
   const sub = !isNew && doc.number && titleValue ? String(titleValue) : null;
   const status = meta.fields.some((f) => f.name === "status") ? doc.status : null;
   const canSubmit = !isNew && meta.submittable && !wf && docstatus === 0 && allowed("submit");
@@ -681,61 +682,61 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       <div className="page-head">
         <div style={{ minWidth: 0 }}>
           <div className="crumbs">
-            <Link to={`/e/${E}`}>{meta.label_plural}</Link>
+            <Link to={`/e/${E}`}>{isolate(meta.label_plural)}</Link>
             <Icon name="chevronRight" size={12} />
           </div>
           <h1 className="page-title">
-            {heading}
+            {isolate(heading)}
             <HelpLink meta={meta} />
           </h1>
-          {sub && <p className="page-sub">{sub}</p>}
+          {sub && <p className="page-sub">{isolate(sub)}</p>}
           <div className="row" style={{ marginTop: 8 }}>
             {meta.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[docstatus])}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}
-            {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <Badge tone={statusTone(status)}>{status}</Badge>}
-            {wfState && <Badge tone="purple">{wfState}</Badge>}
-            {dirty && <Badge tone="amber">Not saved</Badge>}
+            {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <Badge tone={statusTone(status)}>{isolate(status)}</Badge>}
+            {wfState && <Badge tone="purple">{isolate(wfState)}</Badge>}
+            {dirty && <Badge tone="amber">{tr("Not saved")}</Badge>}
             {calc.pending ? (
               <span className="row faint" role="status">
-                <Spinner small /> Calculating…
+                <Spinner small /> {tr("Calculating…")}
               </span>
             ) : calc.error && touched ? (
               <span className="faint" title={calc.error}>
-                Totals pending: {calc.error}
+                {tr("Totals pending: {error}", { error: calc.error })}
               </span>
             ) : null}
           </div>
         </div>
         <div className="page-actions doc-actions">
           {!locked && (
-            <Button variant={dirty ? "primary" : "default"} onClick={() => void save()} loading={busy === "save"} disabled={busyAny || !dirty} title="Save (Ctrl+S)">
+            <Button variant={dirty ? "primary" : "default"} onClick={() => void save()} loading={busy === "save"} disabled={busyAny || !dirty} title={tr("Save (Ctrl+S)")}>
               {isNew ? t("Create") : t("Save")}
             </Button>
           )}
           {canSubmit && (
             <Button variant="primary" onClick={() => void lifecycle("submit")} loading={busy === "submit"} disabled={busyAny}>
-              {dirty ? "Save & Submit" : "Submit"}
+              {dirty ? tr("Save & Submit") : tr("Submit")}
             </Button>
           )}
           {canCancel && (
             <Button variant="danger" onClick={() => void lifecycle("cancel")} loading={busy === "cancel"} disabled={busyAny}>
-              Cancel
+              {tr("Cancel")}
             </Button>
           )}
           {canAmend && (
             <Button onClick={() => void amend()} loading={busy === "amend"} disabled={busyAny}>
-              Amend
+              {tr("Amend")}
             </Button>
           )}
           {transitions.map((t) => (
             <Button key={`${t.action}->${t.to}`} variant="primary" onClick={() => void transition(t.action)} loading={busy === `wf:${t.action}`} disabled={busyAny}>
-              {t.action}
+              {isolate(t.action)}
             </Button>
           ))}
           {actions
             .filter((a) => !a.group)
             .map((a) => (
               <Button key={a.name} onClick={() => void runAction(a)} loading={busy === `action:${a.name}`} disabled={busyAny}>
-                {a.label}
+                {isolate(a.label)}
               </Button>
             ))}
           {[...new Set(actions.map((a) => a.group).filter((g): g is string => !!g))].map((group) => (
@@ -751,7 +752,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                         if (!busyAny) void runAction(a);
                       }}
                     >
-                      {a.label}
+                      {isolate(a.label)}
                     </MenuItem>
                   ))
               }
@@ -764,7 +765,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           )}
           {!isNew && pdf && (
             <Button icon="download" onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))}>
-              PDF
+              {tr("PDF")}
             </Button>
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
@@ -817,7 +818,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                         navigate(`/customize/${E}`);
                       }}
                     >
-                      Customize {meta.label}
+                      {tr("Customize {label}", { label: meta.label })}
                     </MenuItem>
                   )}
                   {me.user.is_admin && (
@@ -827,7 +828,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                         navigate(formDesignerLink(E));
                       }}
                     >
-                      Design form layout
+                      {tr("Design form layout")}
                     </MenuItem>
                   )}
                   {canDelete && meta.mergeable && (
@@ -837,7 +838,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                         setMerging(true);
                       }}
                     >
-                      Merge with…
+                      {tr("Merge with…")}
                     </MenuItem>
                   )}
                   {canDelete && (
@@ -848,7 +849,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                         void remove();
                       }}
                     >
-                      Delete
+                      {tr("Delete")}
                     </MenuItem>
                   )}
                 </>
@@ -859,22 +860,21 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       </div>
 
       {conflict && (
-        <Alert tone="warning" action={<Button icon="refresh" onClick={() => void reloadLatest()}>Reload</Button>}>
-          <strong>Changed by someone else.</strong> This {meta.label} was modified after you opened it. Reload to get the latest version, then
-          re-apply your changes.
+        <Alert tone="warning" action={<Button icon="refresh" onClick={() => void reloadLatest()}>{tr("Reload")}</Button>}>
+          <strong>{tr("Changed by someone else.")}</strong> {tr("This {label} was modified after you opened it. Reload to get the latest version, then re-apply your changes.", { label: meta.label })}
         </Alert>
       )}
       {banner && (
         <Alert tone="error">
-          {banner}
+          {isolate(banner)}
           {unplaced.length > 0 && (
             <ul>
               {unplaced.map((e, i) => (
                 <li key={i}>
                   {e.row
-                    ? `${fieldLabel(meta, e.row[0])} row ${e.row[1] + 1}, ${meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field)}`
+                    ? tr("{meta} row {value}, {value2}", { meta: fieldLabel(meta, e.row[0]), value: e.row[1] + 1, value2: meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field) })
                     : fieldLabel(meta, e.field)}
-                  : {e.message}
+                  : {isolate(e.message)}
                 </li>
               ))}
             </ul>
@@ -882,10 +882,10 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         </Alert>
       )}
       {!isNew && docstatus === 1 && meta.submittable && (
-        <Alert tone="info">This document is submitted and can no longer be edited.{canCancel ? " Cancel it to make changes through an amendment." : ""}</Alert>
+        <Alert tone="info">{tr("This document is submitted and can no longer be edited.")}{canCancel ? tr(" Cancel it to make changes through an amendment.") : ""}</Alert>
       )}
-      {!isNew && docstatus === 2 && <Alert tone="warning">This document is cancelled.{canAmend ? " Amend it to create a corrected draft." : ""}</Alert>}
-      {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">You cannot edit documents in the “{wfState}” state.</Alert>}
+      {!isNew && docstatus === 2 && <Alert tone="warning">{tr("This document is cancelled.")}{canAmend ? tr(" Amend it to create a corrected draft.") : ""}</Alert>}
+      {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">{tr("You cannot edit documents in the “{wfState}” state.", { wfState: wfState ?? "" })}</Alert>}
 
       {tabs.length > 1 ? (
         <>
@@ -933,7 +933,7 @@ function FormSection({ label, collapsible, forceOpen, children }: { label: strin
   if (!collapsible) {
     return (
       <section className="section" aria-label={label ?? undefined}>
-        {label && <h2 className="section-title">{label}</h2>}
+        {label && <h2 className="section-title">{isolate(label)}</h2>}
         <div className="section-body" style={label ? undefined : { paddingTop: 16 }}>
           {children}
         </div>
@@ -944,7 +944,7 @@ function FormSection({ label, collapsible, forceOpen, children }: { label: strin
     <details className="section" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
         <Icon name="chevronRight" size={14} />
-        {label ?? "More"}
+        {label ?? tr("More")}
       </summary>
       <div className="section-body">{children}</div>
     </details>
@@ -970,31 +970,31 @@ function AuditPanel({ meta, id }: { meta: EntityMeta; id: string }) {
     queryKey: ["audit", meta.name, id],
     queryFn: ({ signal }) => api.get<{ events: AuditEvent[]; chain_valid: boolean; broken_at?: number | null }>(docPath(meta.name, id, "audit"), undefined, signal),
   });
-  if (q.isLoading) return <PageLoading label="Loading history…" />;
+  if (q.isLoading) return <PageLoading label={tr("Loading history…")} />;
   if (q.error || !q.data) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const { events, chain_valid, broken_at } = q.data;
   return (
     <div className="stack">
       {chain_valid ? (
         <Alert tone="success">
-          <strong>Audit chain verified.</strong> {events.length} event{events.length === 1 ? "" : "s"}, none altered.
+          <strong>{tr("Audit chain verified.")}</strong> {tr("{length} event", { length: events.length })}{events.length === 1 ? "" : "s"}{tr(", none altered.")}
         </Alert>
       ) : (
         <Alert tone="error">
-          <strong>Audit chain broken</strong>
-          {broken_at != null ? ` at event ${broken_at}` : ""}: the stored history does not match its hash chain.
+          <strong>{tr("Audit chain broken")}</strong>
+          {broken_at != null ? tr(" at event {broken_at}", { broken_at }) : ""}{tr(": the stored history does not match its hash chain.")}
         </Alert>
       )}
       {!events.length ? (
-        <p className="muted">No history recorded yet.</p>
+        <p className="muted">{tr("No history recorded yet.")}</p>
       ) : (
         <ol className="timeline">
           {[...events].reverse().map((ev, i) => (
             <li key={ev.id ?? `${ev.at}-${i}`}>
               <div className="row">
-                <strong>{humanize(ev.action)}</strong>
-                <span className="muted">by {ev.actor_name ?? (ev.actor ? shortId(ev.actor) : "System")}</span>
-                <span className="faint">{formatDateTime(ev.at)}</span>
+                <strong>{isolate(humanize(ev.action))}</strong>
+                <span className="muted">{tr("by")} {ev.actor_name ?? (ev.actor ? shortId(ev.actor) : tr("System"))}</span>
+                <span className="faint">{isolate(formatDateTime(ev.at))}</span>
                 {ev.version != null && <Badge>v{ev.version}</Badge>}
               </div>
               <DiffTable meta={meta} diff={ev.diff} />
@@ -1033,9 +1033,9 @@ function DiffTable({ meta, diff }: { meta: EntityMeta; diff?: Record<string, unk
 }
 
 function DiffValue({ name, field, value }: { name: string; field?: Field; value: unknown }) {
-  if (value === null || value === undefined || value === "") return <span className="faint">empty</span>;
+  if (value === null || value === undefined || value === "") return <span className="faint">{tr("empty")}</span>;
   if (name === "docstatus" && typeof value === "number") return <>{DOCSTATUS_LABEL[value] ?? value}</>;
-  if (Array.isArray(value)) return <>{`${value.length} row${value.length === 1 ? "" : "s"}`}</>;
+  if (Array.isArray(value)) return <>{tr("{length} row{value}", { length: value.length, value: value.length === 1 ? "" : "s" })}</>;
   if (field?.type === "link" && field.to && typeof value === "string") return <LinkTitle to={field.to} id={value} />;
   return <>{field ? formatValue(field, value) : typeof value === "object" ? JSON.stringify(value) : String(value)}</>;
 }

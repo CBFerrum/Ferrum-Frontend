@@ -10,6 +10,7 @@ import type { CatalogField, Sources } from "@/lib/studio";
 import { useMetaIndex } from "@/lib/meta";
 import { cn } from "@/lib/utils";
 import { TypeIcon } from "./ui";
+import { t, isolate } from "@ferrum/client";
 
 const ITEM = "pointer-coarse:py-3";
 
@@ -59,7 +60,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
   if (add) {
     trigger = (
       <Button variant="ghost" size="sm" disabled={disabled} className={cn("text-primary", className)}>
-        <Plus /> {add}
+        <Plus /> {isolate(add)}
       </Button>
     );
   } else {
@@ -77,7 +78,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
         <span className="flex min-w-0 items-center gap-1.5">
           {selected && <TypeIcon type={selected.type} />}
           <span className="truncate" title={selected?.label ?? value}>
-            {shownText}
+            {isolate(shownText)}
           </span>
         </span>
         <ChevronsUpDown className="opacity-50" aria-hidden="true" />
@@ -89,9 +90,9 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-[min(calc(100vw-2rem),380px)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search fields…" aria-label={`Search fields for ${label}`} />
+          <CommandInput placeholder={t("Search fields…")} aria-label={t("Search fields for {label}", { label })} />
           <CommandList className="max-h-[min(55vh,380px)]">
-            <CommandEmpty>No field matches.</CommandEmpty>
+            <CommandEmpty>{t("No field matches.")}</CommandEmpty>
             {none && (
               <CommandGroup>
                 <CommandItem
@@ -103,7 +104,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
                     setOpen(false);
                   }}
                 >
-                  {none.label}
+                  {isolate(none.label)}
                   {!value && <Check className="ms-auto" />}
                 </CommandItem>
               </CommandGroup>
@@ -113,7 +114,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
                 {list.map((f) => (
                   <CommandItem key={f.path} value={f.path} keywords={[f.label, group]} className={ITEM} onSelect={() => choose(f)}>
                     <TypeIcon type={f.type} />
-                    <span className="truncate">{shortLabel(f)}</span>
+                    <span className="truncate">{isolate(shortLabel(f))}</span>
                     {f.path === value && <Check className="ms-auto" />}
                   </CommandItem>
                 ))}
@@ -159,21 +160,21 @@ export function EntityPicker({ sources, loading, value, onChange, large, autoOpe
           size={large ? "lg" : "default"}
           role="combobox"
           aria-expanded={open}
-          aria-label={value ? `Report on: ${label}` : "Choose what to report on"}
+          aria-label={value ? t("Report on: {label}", { label }) : t("Choose what to report on")}
           className={cn(!large && "w-full min-w-0 justify-between px-2.5 font-normal")}
         >
           <span className="flex min-w-0 items-center gap-1.5">
             <Database aria-hidden="true" className={cn(!large && "text-muted-foreground")} />
-            <span className="truncate">{value ? label : "Choose what to report on"}</span>
+            <span className="truncate">{value ? label : t("Choose what to report on")}</span>
           </span>
           {!large && <ChevronsUpDown className="opacity-50" aria-hidden="true" />}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(calc(100vw-2rem),360px)] p-0" align={large ? "center" : "start"}>
         <Command>
-          <CommandInput placeholder="Search records to report on…" aria-label="Search records to report on" />
+          <CommandInput placeholder={t("Search records to report on…")} aria-label={t("Search records to report on")} />
           <CommandList className="max-h-[min(55vh,380px)]">
-            <CommandEmpty>{loading ? "Loading…" : "Nothing matches."}</CommandEmpty>
+            <CommandEmpty>{loading ? t("Loading…") : t("Nothing matches.")}</CommandEmpty>
             {groups.map(([group, list]) => (
               <CommandGroup key={group} heading={group}>
                 {list.map((e) => (
@@ -187,7 +188,7 @@ export function EntityPicker({ sources, loading, value, onChange, large, autoOpe
                       setOpen(false);
                     }}
                   >
-                    <span className="truncate">{e.label}</span>
+                    <span className="truncate">{isolate(e.label)}</span>
                     {e.name === value && <Check className="ms-auto" />}
                   </CommandItem>
                 ))}

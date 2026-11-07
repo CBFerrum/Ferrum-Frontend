@@ -7,6 +7,7 @@ import { Link } from "react-router";
 import { api, docPath } from "../../lib/api";
 import type { EntityMeta, LinkedFrom, ListResponse } from "../../lib/meta";
 import { Spinner } from "../../ui/kit";
+import { t, isolate } from "@ferrum/client";
 
 /** Which field a link goes through matters only when one list links in more than one way. */
 const seenTwice = (links: LinkedFrom[], l: LinkedFrom) => links.filter((x) => x.entity === l.entity).length > 1;
@@ -24,15 +25,15 @@ export function Related({ meta, id }: { meta: EntityMeta; id: string }) {
   const found = links.map((l, i) => ({ link: l, n: counts[i]?.data?.total ?? 0 })).filter((x) => x.n > 0);
   const loading = counts.some((c) => c.isLoading);
   return (
-    <section className="related" aria-label="Related records" aria-busy={loading}>
+    <section className="related" aria-label={t("Related records")} aria-busy={loading}>
       {found.length > 0 && (
         <ul className="related-list">
           {found.map(({ link: l, n }) => (
             <li key={`${l.entity}.${l.field}`}>
               <Link className="related-row" to={`/e/${l.entity}?${new URLSearchParams({ [`f.${l.field}`]: id })}`}>
                 <span>
-                  {l.label}
-                  {seenTwice(links, l) && <span className="faint"> by {l.field_label}</span>}
+                  {isolate(l.label)}
+                  {seenTwice(links, l) && <span className="faint"> {t("by {field_label}", { field_label: l.field_label })}</span>}
                 </span>
                 <span className="related-count">{n}</span>
               </Link>
@@ -40,7 +41,7 @@ export function Related({ meta, id }: { meta: EntityMeta; id: string }) {
           ))}
         </ul>
       )}
-      {loading ? <Spinner label="Looking" /> : !found.length && <p className="faint">Nothing links to this record yet.</p>}
+      {loading ? <Spinner label={t("Looking")} /> : !found.length && <p className="faint">{t("Nothing links to this record yet.")}</p>}
     </section>
   );
 }

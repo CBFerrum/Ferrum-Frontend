@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
-import { bootstrap, shell } from "@ferrum/client";
+import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
@@ -44,17 +44,17 @@ export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav]
 
 /** The POS app's till, first in its module. */
 export const POS = "pos";
-export const registerNav: NavItem = { label: "Register", to: "/pos", icon: "store" };
+export const registerNav: NavItem = { get label() { return tr("Register"); }, to: "/pos", icon: "store" };
 
 /** The Mail app's team chat, first in its module (its API checks who may chat). */
 export const COMMS_MODULE = "communication";
-export const chatNav: NavItem = { label: "Chat", to: "/chat", icon: "chat" };
-export const calendarNav: NavItem = { label: "Calendar", to: "/calendar", icon: "calendar" };
-export const meetNav: NavItem = { label: "Meet", to: "/meet", icon: "video" };
+export const chatNav: NavItem = { get label() { return tr("Chat"); }, to: "/chat", icon: "chat" };
+export const calendarNav: NavItem = { get label() { return tr("Calendar"); }, to: "/calendar", icon: "calendar" };
+export const meetNav: NavItem = { get label() { return tr("Meet"); }, to: "/meet", icon: "video" };
 
 /** The Docs app's page, first in its module. */
 export const DOCS_MODULE = "docs";
-export const docsNav: NavItem = { label: "Documents", to: "/docs", icon: "doc" };
+export const docsNav: NavItem = { get label() { return tr("Documents"); }, to: "/docs", icon: "doc" };
 
 /** A module's links (sidebar group, home card): its readable entities and reports; `meet` when
  *  video meetings are set up. */
@@ -208,16 +208,16 @@ function Shell() {
       {/* Under the platform's bar, the bar has the skip link, inside its banner. */}
       {frameMode === "classic" && (
         <a className="skip-link" href="#main">
-          Skip to content
+          {tr("Skip to content")}
         </a>
       )}
       {/* Any link closes the drawer, the current page's too (its path does not change). */}
-      <aside className="sidebar" aria-label="Sidebar" onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
+      <aside className="sidebar" aria-label={tr("Sidebar")} onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            {frameMode === "app" ? appName().slice(0, 2) : "Fe"}
+            {frameMode === "app" ? appName().slice(0, 2) : tr("Fe")}
           </span>
-          {frameMode === "app" ? appName() : "Ferrum"}
+          {frameMode === "app" ? appName() : tr("Ferrum")}
         </NavLink>
         <Sidebar />
       </aside>
@@ -226,7 +226,7 @@ function Shell() {
         {/* Under the platform's bar the frame's own bar only opens the sidebar on a phone, and the platform's
             bar is the page's one banner. */}
         <TopBar className={frameMode === "classic" ? "topbar" : "topbar topbar-nav-only"}>
-          <button type="button" className="icon-btn nav-toggle" aria-label="Open navigation" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
+          <button type="button" className="icon-btn nav-toggle" aria-label={tr("Open navigation")} aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
             <Icon name="menu" size={18} />
           </button>
           {frameMode === "classic" && <NavPicker mode="inline" inputRef={searchRef} />}
@@ -239,7 +239,7 @@ function Shell() {
         <UpdateBanner />
         <main id="main" tabIndex={-1}>
           {meta.error ? (
-            <ErrorState error={meta.error} onRetry={() => meta.refetch()} title="Could not load the application metadata" />
+            <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={tr("Could not load the application metadata")} />
           ) : meta.isLoading ? (
             <PageLoading />
           ) : (
@@ -250,7 +250,7 @@ function Shell() {
         </main>
       </div>
       {frameMode === "classic" && (
-        <Dialog open={palette} onClose={() => setPalette(false)} title="Go to…">
+        <Dialog open={palette} onClose={() => setPalette(false)} title={tr("Go to…")}>
           <NavPicker mode="palette" onDone={() => setPalette(false)} />
         </Dialog>
       )}
@@ -262,7 +262,7 @@ function OfflineBanner() {
   if (useOnline()) return null;
   return (
     <div className="offline-banner" role="status">
-      <Icon name="alert" size={14} /> You are offline. Pages you open need a connection, and nothing can be saved until it is back.
+      <Icon name="alert" size={14} /> {tr("You are offline. Pages you open need a connection, and nothing can be saved until it is back.")}
     </div>
   );
 }
@@ -279,7 +279,7 @@ function UpdateBanner() {
   const reload = async () => {
     // A form with unsaved edits objects to unloading (FormView); ask here, as iOS never shows that prompt.
     if (!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))) {
-      const ok = await confirmDialog({ title: "Discard your changes?", message: "Reloading discards your unsaved edits.", confirmLabel: "Reload", danger: true });
+      const ok = await confirmDialog({ title: tr("Discard your changes?"), message: tr("Reloading discards your unsaved edits."), confirmLabel: tr("Reload"), danger: true });
       if (!ok) return;
       discarding = true; // asked already
     }
@@ -287,11 +287,11 @@ function UpdateBanner() {
   };
   return (
     <div className="update-banner" role="status">
-      <Icon name="refresh" size={14} /> A new version of Ferrum is available.
+      <Icon name="refresh" size={14} /> {tr("A new version of Ferrum is available.")}
       <Button size="sm" variant="primary" onClick={() => void reload()}>
-        Reload
+        {tr("Reload")}
       </Button>
-      <button type="button" className="icon-btn icon-btn-sm" aria-label="Dismiss" onClick={() => setDismissed(true)}>
+      <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Dismiss")} onClick={() => setDismissed(true)}>
         <Icon name="x" size={14} />
       </button>
     </div>
@@ -324,34 +324,34 @@ function Sidebar() {
   }, [meta, reports, meet]);
 
   return (
-    <nav aria-label="Main">
+    <nav aria-label={tr("Main")}>
       <NavLink to="/" end className="nav-link">
         <Icon name="home" />
-        Home
+        {tr("Home")}
       </NavLink>
       {/* Under the platform's bar, other apps are in its launcher. */}
       {frameMode === "classic" && comms && (
         <NavLink to="/mail" className="nav-link">
           <Icon name="mail" />
-          Mail
+          {tr("Mail")}
         </NavLink>
       )}
       {frameMode === "classic" && meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
           <Icon name="file" />
-          Files
+          {tr("Files")}
         </NavLink>
       )}
       {groups.map((g) => (
         <details key={g.name} className="nav-group" open>
           <summary>
             <Icon name="chevronRight" size={12} />
-            {g.label}
+            {isolate(g.label)}
           </summary>
           {g.items.map((i) => (
             <NavLink key={i.to} to={i.to} className="nav-link">
               <Icon name={i.icon} />
-              {i.label}
+              {isolate(i.label)}
             </NavLink>
           ))}
         </details>
@@ -360,12 +360,12 @@ function Sidebar() {
         <details className="nav-group" open>
           <summary>
             <Icon name="chevronRight" size={12} />
-            Add-ons
+            {tr("Add-ons")}
           </summary>
           {pages.map((p) => (
             <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
               <Icon name={p.icon ?? "apps"} />
-              {p.title}
+              {isolate(p.title ?? "")}
             </NavLink>
           ))}
         </details>
@@ -374,17 +374,17 @@ function Sidebar() {
         <details className="nav-group" open>
           <summary>
             <Icon name="chevronRight" size={12} />
-            Administration
+            {tr("Administration")}
           </summary>
           {frameMode === "classic" ? (
             <>
               <NavLink to="/apps" className="nav-link">
                 <Icon name="apps" />
-                Apps
+                {tr("Apps")}
               </NavLink>
               <NavLink to="/admin" className="nav-link">
                 <Icon name="settings" />
-                Admin
+                {tr("Admin")}
               </NavLink>
             </>
           ) : (
@@ -392,23 +392,23 @@ function Sidebar() {
               {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
               <a href="/store/" className="nav-link">
                 <Icon name="apps" />
-                Apps
+                {tr("Apps")}
               </a>
               <a href="/admin/" className="nav-link">
                 <Icon name="settings" />
-                Admin
+                {tr("Admin")}
               </a>
             </>
           )}
           {frameHasPages ? (
             <NavLink to="/customize" className="nav-link">
               <Icon name="edit" />
-              Customize
+              {tr("Customize")}
             </NavLink>
           ) : (
             <a href="/data/customize/" className="nav-link">
               <Icon name="edit" />
-              Customize
+              {tr("Customize")}
             </a>
           )}
         </details>
@@ -435,27 +435,27 @@ function useNavTargets(): NavTarget[] {
   return useMemo(() => {
     if (!meta) return [];
     const modLabel = new Map(meta.modules.map((m) => [m.name, m.label]));
-    const out: NavTarget[] = [{ label: "Home", hint: "Page", to: "/" }];
+    const out: NavTarget[] = [{ label: tr("Home"), hint: tr("Page"), to: "/" }];
     for (const e of meta.entities) {
       if (!can(e.permissions, "read") || e.module === STUDIO) continue;
       const hint = (e.module && modLabel.get(e.module)) || "Entity";
       out.push({ label: e.label_plural, hint, to: `/e/${e.name}` });
-      if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: `New ${e.label}`, hint, to: `/e/${e.name}/new` });
+      if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: tr("New {label}", { label: e.label }), hint, to: `/e/${e.name}/new` });
     }
-    for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: "Report", to: `/r/${r.name}` });
-    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioNav) out.push({ label: n.label, hint: "Studio", to: n.to });
+    for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: tr("Report"), to: `/r/${r.name}` });
+    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioNav) out.push({ label: n.label, hint: tr("Studio"), to: n.to });
     if (frameHasPages && meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
-      out.push({ label: "POS Register", hint: "POS", to: registerNav.to });
+      out.push({ label: tr("POS Register"), hint: tr("POS"), to: registerNav.to });
     // Under the platform's bar, Comms and Docs are apps of their own, in its launcher.
     if (frameMode === "classic" && meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
-      out.push({ label: "Chat", hint: "Communication", to: chatNav.to }, { label: "Calendar", hint: "Communication", to: calendarNav.to });
-    if (frameMode === "classic" && meet) out.push({ label: "Meet", hint: "Communication", to: meetNav.to });
+      out.push({ label: tr("Chat"), hint: tr("Communication"), to: chatNav.to }, { label: tr("Calendar"), hint: tr("Communication"), to: calendarNav.to });
+    if (frameMode === "classic" && meet) out.push({ label: tr("Meet"), hint: tr("Communication"), to: meetNav.to });
     if (frameMode === "classic" && meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read")))
-      out.push({ label: "Documents", hint: "Docs", to: docsNav.to });
+      out.push({ label: tr("Documents"), hint: tr("Docs"), to: docsNav.to });
     if (me?.user.is_admin) {
-      if (frameMode === "classic") out.push({ label: "Apps", hint: "Page", to: "/apps" }, { label: "Administration", hint: "Page", to: "/admin" });
-      else out.push({ label: "Apps", hint: "Page", to: "", href: "/store/" }, { label: "Administration", hint: "Page", to: "", href: "/admin/" });
-      out.push(frameHasPages ? { label: "Customize", hint: "Page", to: "/customize" } : { label: "Customize", hint: "Page", to: "", href: "/data/customize/" });
+      if (frameMode === "classic") out.push({ label: tr("Apps"), hint: tr("Page"), to: "/apps" }, { label: tr("Administration"), hint: tr("Page"), to: "/admin" });
+      else out.push({ label: tr("Apps"), hint: tr("Page"), to: "", href: "/store/" }, { label: tr("Administration"), hint: tr("Page"), to: "", href: "/admin/" });
+      out.push(frameHasPages ? { label: tr("Customize"), hint: tr("Page"), to: "/customize" } : { label: tr("Customize"), hint: tr("Page"), to: "", href: "/data/customize/" });
     }
     return out;
   }, [meta, reports, me, meet]);
@@ -489,7 +489,7 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
     const list = text ? matchTargets(targets, text) : mode === "palette" ? targets : [];
     const e = meta?.entities.find((x) => x.name === entityMatch?.params.entity);
     const search: NavTarget[] =
-      text && e ? [{ label: `Search ${e.label_plural} for “${text}”`, hint: "Search", to: `/e/${e.name}?q=${encodeURIComponent(text)}` }] : [];
+      text && e ? [{ label: tr("Search {label_plural} for “{text}”", { label_plural: e.label_plural, text }), hint: tr("Search"), to: `/e/${e.name}?q=${encodeURIComponent(text)}` }] : [];
     return [...list.slice(0, 59), ...search];
   }, [q, targets, mode, meta, entityMatch?.params.entity]);
 
@@ -527,12 +527,12 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
         ref={inputRef}
         className="input"
         role="combobox"
-        aria-label={mode === "inline" ? "Search or jump to (press /)" : "Go to entity, report or page"}
+        aria-label={mode === "inline" ? tr("Search or jump to (press /)") : tr("Go to entity, report or page")}
         aria-expanded={showList}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={showList ? `${listId}-${active}` : undefined}
-        placeholder={mode === "inline" ? "Search or jump to…" : "Type to filter…"}
+        placeholder={mode === "inline" ? tr("Search or jump to…") : tr("Type to filter…")}
         value={q}
         data-autofocus={mode === "palette" || undefined}
         onChange={(e) => {
@@ -563,17 +563,17 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
               }}
               onMouseEnter={() => setActive(i)}
             >
-              <span>{t.label}</span>
-              <small>{t.hint}</small>
+              <span>{isolate(t.label)}</span>
+              <small>{isolate(t.hint)}</small>
             </li>
           ))}
         </ul>
       )}
-      {mode === "palette" && q.trim() && !items.length && <p className="option-empty">No matches.</p>}
+      {mode === "palette" && q.trim() && !items.length && <p className="option-empty">{tr("No matches.")}</p>}
       {mode === "palette" && (
         <p className="field-hint" style={{ marginTop: 8 }}>
-          <span className="kbd">↑</span> <span className="kbd">↓</span> to move, <span className="kbd">Enter</span> to open,{" "}
-          <span className="kbd">Esc</span> to close
+          <span className="kbd">↑</span> <span className="kbd">↓</span> {tr("to move,")} <span className="kbd">{tr("Enter")}</span> {tr("to open,")}{isolate(" ")}
+          <span className="kbd">{tr("Esc")}</span> {tr("to close")}
         </p>
       )}
     </div>
@@ -624,7 +624,7 @@ function Notifications() {
       <button
         type="button"
         className="icon-btn"
-        aria-label={`Notifications${unread.length ? `, ${unread.length} unread` : ""}`}
+        aria-label={tr("Notifications{value}", { value: unread.length ? `, ${unread.length} unread` : "" })}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
@@ -637,31 +637,31 @@ function Notifications() {
         )}
       </button>
       {open && (
-        <div className="popover" id={panelId} role="region" aria-label="Notifications">
+        <div className="popover" id={panelId} role="region" aria-label={tr("Notifications")}>
           <div className="card-head">
-            <h2>Notifications</h2>
+            <h2>{tr("Notifications")}</h2>
             <span className="spacer" />
             {unread.length > 0 && (
               <Button size="sm" variant="ghost" onClick={() => Promise.all(unread.map((n) => markRead.mutateAsync(n.id))).catch(() => undefined)}>
-                Mark all read
+                {tr("Mark all read")}
               </Button>
             )}
           </div>
           {q.isLoading ? (
             <div className="state">
-              <Spinner label="Loading notifications" />
+              <Spinner label={tr("Loading notifications")} />
             </div>
           ) : q.error ? (
-            <p className="option-empty">{errorMessage(q.error)}</p>
+            <p className="option-empty">{isolate(errorMessage(q.error))}</p>
           ) : !list.length ? (
-            <p className="option-empty">You’re all caught up.</p>
+            <p className="option-empty">{tr("You’re all caught up.")}</p>
           ) : (
             list.map((n) => (
               <button key={n.id} type="button" className={`notif ${n.read_at ? "" : "notif-unread"}`} onClick={() => openOne(n)}>
-                <strong>{n.title}</strong>
-                {n.body && <div className="muted">{n.body}</div>}
+                <strong>{isolate(n.title)}</strong>
+                {n.body && <div className="muted">{isolate(n.body)}</div>}
                 <div className="faint" style={{ fontSize: 12 }}>
-                  {relativeTime(n.created_at)}
+                  {isolate(relativeTime(n.created_at))}
                 </div>
               </button>
             ))
@@ -691,15 +691,15 @@ function UserMenu() {
   };
   const signOutEverywhere = async () => {
     const ok = await confirmDialog({
-      title: "Sign out everywhere?",
-      message: "This ends every session of your account on all devices, including this one. API keys keep working.",
-      confirmLabel: "Sign out everywhere",
+      title: tr("Sign out everywhere?"),
+      message: tr("This ends every session of your account on all devices, including this one. API keys keep working."),
+      confirmLabel: tr("Sign out everywhere"),
       danger: true,
     });
     if (!ok) return;
     try {
       await api.post("/api/auth/logout_all");
-      toast("Signed out of all sessions");
+      toast(tr("Signed out of all sessions"));
       signOut();
     } catch (e) {
       toast(errorMessage(e), "error");
@@ -714,10 +714,10 @@ function UserMenu() {
             <div className="menu-head">
               <strong>{me?.user.full_name ?? "…"}</strong>
               <div className="muted" style={{ fontSize: 12.5 }}>
-                {me?.user.email}
+                {isolate(me?.user.email ?? "")}
               </div>
               <div className="faint" style={{ fontSize: 12 }}>
-                Workspace: {getSession()?.tenant}
+                {tr("Workspace: {tenant}", { tenant: getSession()?.tenant ?? "" })}
               </div>
             </div>
             <MenuItem
@@ -726,7 +726,7 @@ function UserMenu() {
                 setDialog("password");
               }}
             >
-              Change password
+              {tr("Change password")}
             </MenuItem>
             <MenuItem
               onSelect={() => {
@@ -734,7 +734,7 @@ function UserMenu() {
                 setDialog("2fa");
               }}
             >
-              Two-factor sign-in
+              {tr("Two-factor sign-in")}
             </MenuItem>
             {comms && (
               <MenuItem
@@ -743,7 +743,7 @@ function UserMenu() {
                   setDialog("cal");
                 }}
               >
-                Calendar and contacts apps
+                {tr("Calendar and contacts apps")}
               </MenuItem>
             )}
             <MenuItem
@@ -752,7 +752,7 @@ function UserMenu() {
                 setDialog("keys");
               }}
             >
-              API keys
+              {tr("API keys")}
             </MenuItem>
             <MenuItem
               onSelect={() => {
@@ -760,7 +760,7 @@ function UserMenu() {
                 setDialog("ai");
               }}
             >
-              Connect an AI assistant
+              {tr("Connect an AI assistant")}
             </MenuItem>
             {install && (
               <MenuItem
@@ -769,7 +769,7 @@ function UserMenu() {
                   void install();
                 }}
               >
-                Install the app
+                {tr("Install the app")}
               </MenuItem>
             )}
             <MenuItem
@@ -778,7 +778,7 @@ function UserMenu() {
                 signOut();
               }}
             >
-              Sign out
+              {tr("Sign out")}
             </MenuItem>
             <MenuItem
               danger
@@ -787,34 +787,34 @@ function UserMenu() {
                 void signOutEverywhere();
               }}
             >
-              Sign out everywhere
+              {tr("Sign out everywhere")}
             </MenuItem>
           </>
         )}
       </Menu>
       <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
-      <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title="Two-factor sign-in">
+      <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title={tr("Two-factor sign-in")}>
         {dialog === "2fa" && (
-          <Suspense fallback={<Spinner label="Loading…" />}>
+          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
             <TwoFactorSettings />
           </Suspense>
         )}
       </Dialog>
-      <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title="Your API keys" wide>
+      <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title={tr("Your API keys")} wide>
         {dialog === "keys" && (
-          <Suspense fallback={<Spinner label="Loading…" />}>
+          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
             <ApiKeys />
           </Suspense>
         )}
       </Dialog>
-      <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title="Calendar and contacts apps" wide>
+      <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title={tr("Calendar and contacts apps")} wide>
         {dialog === "cal" && (
-          <Suspense fallback={<Spinner label="Loading…" />}>
+          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
             <CalendarApps email={me?.user.email ?? ""} />
           </Suspense>
         )}
       </Dialog>
-      <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title="Connect an AI assistant">
+      <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title={tr("Connect an AI assistant")}>
         <ConnectAi />
       </Dialog>
     </>
@@ -855,13 +855,13 @@ export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boo
         );
         if (res.token && !res.two_factor_setup) setSession({ ...s, token: res.token });
         else {
-          toast("Password changed; sign in again");
+          toast(tr("Password changed; sign in again"));
           close();
           onSignedOut();
           return;
         }
       }
-      toast("Password changed");
+      toast(tr("Password changed"));
       close();
     } catch (err) {
       const fields = (err as { fields?: { field: string; message: string }[] }).fields ?? [];
@@ -872,28 +872,28 @@ export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boo
     }
   };
   return (
-    <Dialog open={open} onClose={close} title="Change password">
+    <Dialog open={open} onClose={close} title={tr("Change password")}>
       <form className="stack" onSubmit={submit}>
-        {errors.form && <Alert tone="error">{errors.form}</Alert>}
-        <Field label="Current password" htmlFor="pw-current" required error={errors.current_password}>
+        {errors.form && <Alert tone="error">{isolate(errors.form)}</Alert>}
+        <Field label={tr("Current password")} htmlFor="pw-current" required error={errors.current_password}>
           <input id="pw-current" className="input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
         </Field>
         <Field
-          label="New password"
+          label={tr("New password")}
           htmlFor="pw-new"
           required
           error={errors.new_password ?? errors.password}
-          hint="At least 10 characters, with 3 of: lower case, upper case, digit, symbol."
+          hint={tr("At least 10 characters, with 3 of: lower case, upper case, digit, symbol.")}
         >
           <input id="pw-new" className="input" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} required minLength={10} />
         </Field>
-        <Field label="Confirm new password" htmlFor="pw-confirm" required error={errors.confirm}>
+        <Field label={tr("Confirm new password")} htmlFor="pw-confirm" required error={errors.confirm}>
           <input id="pw-confirm" className="input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
         </Field>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={close}>Cancel</Button>
+          <Button onClick={close}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Change password
+            {tr("Change password")}
           </Button>
         </div>
       </form>
@@ -908,24 +908,23 @@ export function ConnectAi() {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      toast("Address copied");
+      toast(tr("Address copied"));
     } catch {
-      toast("Copy the address manually", "error");
+      toast(tr("Copy the address manually"), "error");
     }
   };
   return (
     <div className="stack">
       <p>
-        Add Ferrum as a remote MCP server (connector) in your AI assistant, then sign in when it asks. The assistant can then search, create and update records, run
-        actions and reports — with your permissions, and every change in the audit trail.
+        {tr("Add Ferrum as a remote MCP server (connector) in your AI assistant, then sign in when it asks. The assistant can then search, create and update records, run actions and reports — with your permissions, and every change in the audit trail.")}
       </p>
       <div className="row" style={{ flexWrap: "nowrap" }}>
-        <input className="input mono" readOnly value={url} aria-label="MCP server address" onFocus={(e) => e.currentTarget.select()} />
+        <input className="input mono" readOnly value={url} aria-label={tr("MCP server address")} onFocus={(e) => e.currentTarget.select()} />
         <Button icon="copy" onClick={() => void copy()}>
-          Copy
+          {tr("Copy")}
         </Button>
       </div>
-      <p className="muted">Assistants without sign-in support can use an API key instead: send it as a bearer token.</p>
+      <p className="muted">{tr("Assistants without sign-in support can use an API key instead: send it as a bearer token.")}</p>
     </div>
   );
 }

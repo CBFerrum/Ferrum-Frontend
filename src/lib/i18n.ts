@@ -1,22 +1,60 @@
 // The interface's language (FERRUM-UX-006): which catalog its words come from, which way its pages
 // read, and the locale numbers and dates are written in. English is the source and the key: a word
-// without a translation stays English, so a catalog can be partial. Catalogs are small and bundled
-// (src/locales); an app's own words may come in with addCatalog.
+// without a translation stays English, so a catalog can be partial. Each language's catalog
+// (src/locales) is a file of its own, fetched only for a page in that language: it holds every word
+// of the interface, too many to send to everyone. A page waits for it before it is drawn
+// (@ferrum/client does). An app's own words come in with addCatalogs (or addCatalog).
 
 import { setFormatLocale } from "./format";
-import ar from "../locales/ar";
-import hi from "../locales/hi";
 
 export type Direction = "ltr" | "rtl";
 
-/** The interface's own words in a language (its catalog; nothing for English, the source). */
-export function builtInWords(tag: string): Record<string, string> {
-  return CATALOGS[baseLanguage(tag)] ?? {};
+type Loader = () => Promise<{ default: Record<string, string> }>;
+const LOADERS: Record<string, Loader> = { ar: () => import("../locales/ar"), hi: () => import("../locales/hi") };
+const CATALOGS: Record<string, Record<string, string>> = {};
+
+/** The interface's own words in a language, fetched once (nothing for English, the source). */
+export async function builtInWords(tag: string): Promise<Record<string, string>> {
+  const base = baseLanguage(tag);
+  if (!CATALOGS[base] && LOADERS[base]) CATALOGS[base] = (await LOADERS[base]()).default;
+  return CATALOGS[base] ?? {};
 }
 
 /** Every word the interface asks for: each catalog holds them all (a test keeps it so). */
-export function interfaceWords(): string[] {
-  return Object.keys(CATALOGS.ar).sort((a, b) => a.localeCompare(b));
+export async function interfaceWords(): Promise<string[]> {
+  return Object.keys(await builtInWords("ar")).sort((a, b) => a.localeCompare(b));
+}
+
+/** An app's own catalogs, by language: each fetched when a page reads its language. */
+const appLoaders: Record<string, Loader>[] = [];
+let ready: Promise<void> = Promise.resolve();
+
+/** The page's words in its language, fetched: what a page waits for before it is drawn. */
+export function wordsReady(): Promise<void> {
+  return ready;
+}
+
+/** Fetches what the page's language needs that it does not have yet. */
+function load(loaders: Record<string, Loader>[] = appLoaders): Promise<void> {
+  const base = baseLanguage(language);
+  const fetches = [
+    ...(LOADERS[base] && !CATALOGS[base] ? [builtInWords(base).then(() => undefined)] : []),
+    ...loaders.map((l) => l[base]).filter((l): l is Loader => !!l).map((l) => l().then((m) => addCatalog(base, m.default))),
+  ];
+  if (!fetches.length) return ready;
+  // A catalog that cannot be fetched leaves its words in English.
+  ready = Promise.all([ready, ...fetches]).then(merge, merge);
+  return ready;
+}
+
+/**
+ * An app's own words, a loader for each language's (`{ ar: () => import("./locales/ar.json") }`):
+ * the page's language is fetched now, another when the page switches to it. Await it before the
+ * app is drawn.
+ */
+export function addCatalogs(loaders: Record<string, Loader>): Promise<void> {
+  appLoaders.push(loaders);
+  return load([loaders]);
 }
 
 /** The languages the interface offers, by their own names. */
@@ -25,8 +63,6 @@ export const LANGUAGES: { tag: string; name: string }[] = [
   { tag: "hi", name: "हिन्दी" },
   { tag: "ar", name: "العربية" },
 ];
-
-const CATALOGS: Record<string, Record<string, string>> = { ar, hi };
 
 /** Scripts written right to left, by the language subtag. */
 const RTL = new Set(["ar", "arc", "ckb", "dv", "fa", "he", "ks", "ps", "sd", "ug", "ur", "yi"]);
@@ -59,6 +95,7 @@ export function currentLanguage(): string {
 export function setLanguage(tag: string | undefined | null): void {
   language = tag?.trim() || "en";
   merge();
+  void load();
 }
 
 const extra = new Map<string, Record<string, string>>();

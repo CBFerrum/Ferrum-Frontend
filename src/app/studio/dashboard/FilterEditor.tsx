@@ -10,20 +10,21 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LinkInput } from "../../widgets";
 import { FieldPicker } from "./pickers";
+import { t as tr, isolate } from "@ferrum/client";
 
 const OP_LABEL: Record<FilterOp, string> = {
   "=": "is",
-  "!=": "is not",
-  ">": "greater than",
-  ">=": "at least",
-  "<": "less than",
-  "<=": "at most",
-  in: "is any of",
-  "not in": "is none of",
+  get "!="() { return tr("is not"); },
+  get ">"() { return tr("greater than"); },
+  get ">="() { return tr("at least"); },
+  get "<"() { return tr("less than"); },
+  get "<="() { return tr("at most"); },
+  get in() { return tr("is any of"); },
+  get "not in"() { return tr("is none of"); },
   like: "contains",
-  "not like": "does not contain",
+  get "not like"() { return tr("does not contain"); },
   between: "between",
-  is: "is set or empty",
+  get is() { return tr("is set or empty"); },
 };
 
 const NUMBER = new Set(["int", "decimal", "currency", "percent", "float"]);
@@ -70,8 +71,8 @@ function ValueInput({ field, op, value, onChange, label }: { field: CatalogField
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="set">set</SelectItem>
-          <SelectItem value="not set">empty</SelectItem>
+          <SelectItem value="set">{tr("set")}</SelectItem>
+          <SelectItem value="not set">{tr("empty")}</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -82,8 +83,8 @@ function ValueInput({ field, op, value, onChange, label }: { field: CatalogField
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="yes">Yes</SelectItem>
-          <SelectItem value="no">No</SelectItem>
+          <SelectItem value="yes">{tr("Yes")}</SelectItem>
+          <SelectItem value="no">{tr("No")}</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -94,9 +95,9 @@ function ValueInput({ field, op, value, onChange, label }: { field: CatalogField
     const [a, b] = Array.isArray(value) ? value : ["", ""];
     return (
       <div className="flex min-w-0 items-center gap-1">
-        <Input type={inputType} inputMode={numeric ? "decimal" : undefined} value={asText(a)} aria-label={`${label}: from`} aria-invalid={bad(a) || undefined} className="h-9 min-w-0" onChange={(e) => onChange([typed(field, "=", e.target.value), b])} />
-        <span className="text-xs text-muted-foreground">and</span>
-        <Input type={inputType} inputMode={numeric ? "decimal" : undefined} value={asText(b)} aria-label={`${label}: to`} aria-invalid={bad(b) || undefined} className="h-9 min-w-0" onChange={(e) => onChange([a, typed(field, "=", e.target.value)])} />
+        <Input type={inputType} inputMode={numeric ? "decimal" : undefined} value={asText(a)} aria-label={tr("{label}: from", { label })} aria-invalid={bad(a) || undefined} className="h-9 min-w-0" onChange={(e) => onChange([typed(field, "=", e.target.value), b])} />
+        <span className="text-xs text-muted-foreground">{tr("and")}</span>
+        <Input type={inputType} inputMode={numeric ? "decimal" : undefined} value={asText(b)} aria-label={tr("{label}: to", { label })} aria-invalid={bad(b) || undefined} className="h-9 min-w-0" onChange={(e) => onChange([a, typed(field, "=", e.target.value)])} />
       </div>
     );
   }
@@ -104,12 +105,12 @@ function ValueInput({ field, op, value, onChange, label }: { field: CatalogField
     return (
       <Select value={asText(value) || undefined} onValueChange={onChange}>
         <SelectTrigger aria-label={label} className="h-9 w-full">
-          <SelectValue placeholder="Choose…" />
+          <SelectValue placeholder={tr("Choose…")} />
         </SelectTrigger>
         <SelectContent>
           {field.options.map((o) => (
             <SelectItem key={o} value={o}>
-              {o}
+              {isolate(o)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -126,7 +127,7 @@ function ValueInput({ field, op, value, onChange, label }: { field: CatalogField
       type={op === "in" || op === "not in" ? "text" : inputType}
       inputMode={numeric ? "decimal" : undefined}
       value={asText(value)}
-      placeholder={op === "in" || op === "not in" ? "Values, separated by commas" : op === "like" || op === "not like" ? "Text" : ""}
+      placeholder={op === "in" || op === "not in" ? tr("Values, separated by commas") : op === "like" || op === "not like" ? tr("Text") : ""}
       aria-label={label}
       aria-invalid={bad(value) || undefined}
       className="h-9 min-w-0"
@@ -151,7 +152,7 @@ export function FilterEditor({ catalog, filters, onChange, errors = {} }: { cata
                 catalog={catalog}
                 which="any"
                 value={path}
-                label={`${label}: field`}
+                label={tr("{label}: field", { label })}
                 className="col-span-1"
                 onChange={(p) => {
                   const f = byPath.get(p);
@@ -159,28 +160,28 @@ export function FilterEditor({ catalog, filters, onChange, errors = {} }: { cata
                   set(i, [p, nextOp, defaultValue(f, nextOp)]);
                 }}
               />
-              <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${label.toLowerCase()}`} className="sm:order-last" onClick={() => onChange(filters.filter((_, n) => n !== i))}>
+              <Button type="button" variant="ghost" size="icon" aria-label={tr("Remove {label}", { label: label.toLowerCase() })} className="sm:order-last" onClick={() => onChange(filters.filter((_, n) => n !== i))}>
                 <Trash2 />
               </Button>
               <Select value={ops.includes(op) ? op : ops[0]} onValueChange={(o) => set(i, [path, o as FilterOp, o === op ? value : defaultValue(field, o as FilterOp)])}>
-                <SelectTrigger aria-label={`${label}: operator`} className="h-9 w-full">
+                <SelectTrigger aria-label={tr("{label}: operator", { label })} className="h-9 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {ops.map((o) => (
                     <SelectItem key={o} value={o}>
-                      {OP_LABEL[o]}
+                      {isolate(OP_LABEL[o])}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <div className="col-span-2 min-w-0 sm:col-span-1">
-                <ValueInput field={field} op={op} value={value} label={`${label}: value`} onChange={(v) => set(i, [path, op, v], `filter-${i}`)} />
+                <ValueInput field={field} op={op} value={value} label={tr("{label}: value", { label })} onChange={(v) => set(i, [path, op, v], `filter-${i}`)} />
               </div>
             </div>
             {errors[i]?.map((m) => (
               <p key={m} className="text-xs text-destructive">
-                {m}
+                {isolate(m)}
               </p>
             ))}
           </div>
@@ -188,7 +189,7 @@ export function FilterEditor({ catalog, filters, onChange, errors = {} }: { cata
       })}
       <div>
         <Button type="button" variant="outline" size="sm" disabled={!catalog} onClick={() => onChange([...filters, ["", "=", ""]])}>
-          <Plus /> Add condition
+          <Plus /> {tr("Add condition")}
         </Button>
       </div>
     </div>

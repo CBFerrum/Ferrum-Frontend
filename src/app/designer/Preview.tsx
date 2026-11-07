@@ -15,6 +15,7 @@ import { formSections } from "../../lib/formTabs";
 import { can, fieldState, recordTitle, useCurrencyPrecision, useMe, userScope, type Doc, type EntityMeta, type Field, type FieldState, type ListResponse } from "../../lib/meta";
 import { ErrorState, Field as FieldWrap, Icon, TabPanel, Tabs } from "../../ui/kit";
 import { FieldControl, TableGrid } from "../widgets";
+import { t as tr, isolate } from "@ferrum/client";
 
 const NEW = "\u0000new";
 const WIDE = new Set(["text", "markdown", "code", "json"]);
@@ -59,7 +60,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
     });
     return items.length ? [{ s, items }] : [];
   });
-  const tabs = view.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((t) => ({ id: tabId(t), label: t ?? "Details" }));
+  const tabs = view.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((t) => ({ id: tabId(t), label: t ?? tr("Details") }));
   const active = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "details");
 
   const currencyPrecision = (f: Field, row: Doc, parent?: Doc) =>
@@ -73,7 +74,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
       return (
         <div key={f.name} className="field span-all" role="group" aria-labelledby={`${fid}-label`}>
           <div className={soleInSection ? "sr-only" : "field-label"} id={`${fid}-label`}>
-            {f.label}
+            {isolate(f.label)}
             {st.required && (
               <span className="req" aria-hidden="true">
                 *
@@ -115,11 +116,11 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
         <div key={f.name} className="field">
           <div className="check-field">
             {control}
-            <label htmlFor={fid}>{f.label}</label>
+            <label htmlFor={fid}>{isolate(f.label)}</label>
           </div>
           {f.description && (
             <p className="field-hint" id={`${fid}-hint`}>
-              {f.description}
+              {isolate(f.description)}
             </p>
           )}
         </div>
@@ -154,16 +155,16 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
       <div className="mb-4 flex flex-wrap items-end gap-x-4 gap-y-2 rounded-lg border bg-card p-3">
         {listable && (
           <div className="grid w-full gap-1.5 sm:w-72">
-            <Label htmlFor="fd-preview-record">Preview with</Label>
+            <Label htmlFor="fd-preview-record">{tr("Preview with")}</Label>
             <Select value={pick} onValueChange={setPick}>
               <SelectTrigger id="fd-preview-record" className="w-full pointer-coarse:h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NEW}>A new {meta.label}</SelectItem>
+                <SelectItem value={NEW}>{tr("A new {label}", { label: meta.label })}</SelectItem>
                 {rows.map((r) => (
                   <SelectItem key={String(r.id)} value={String(r.id)}>
-                    {name(r)}
+                    {isolate(name(r))}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -171,25 +172,25 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
           </div>
         )}
         <p className="min-w-48 flex-1 text-sm text-muted-foreground">
-          Read-only: the form as it will look{unsaved ? " with your unsaved changes" : ""}. Section and field conditions follow the chosen record.
-          {recent.isError ? " The latest records could not be loaded." : ""}
+          {tr("Read-only: the form as it will look")}{unsaved ? tr(" with your unsaved changes") : ""}{tr(". Section and field conditions follow the chosen record.")}
+          {recent.isError ? tr(" The latest records could not be loaded.") : ""}
         </p>
       </div>
       {pick !== NEW && record.isLoading ? (
         <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground" role="status">
-          <Spinner /> Loading the record…
+          <Spinner /> {tr("Loading the record…")}
         </div>
       ) : pick !== NEW && record.error ? (
-        <ErrorState error={record.error} onRetry={() => record.refetch()} title="Could not load this record" />
+        <ErrorState error={record.error} onRetry={() => record.refetch()} title={tr("Could not load this record")} />
       ) : (
         <>
           {hidden.length > 0 && (
             <p className="mb-3 text-sm text-muted-foreground">
-              Hidden by their condition{pick === NEW ? " on a new record" : " on this record"}: {hidden.join(", ")}.
+              {tr("Hidden by their condition")}{pick === NEW ? tr(" on a new record") : tr(" on this record")}: {isolate(hidden.join(", "))}.
             </p>
           )}
           {!shown.length ? (
-            <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No section has a field to show here.</p>
+            <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{tr("No section has a field to show here.")}</p>
           ) : tabs.length > 1 ? (
             <>
               <Tabs id="fd-preview" value={active} onChange={setTab} tabs={tabs} />
@@ -211,7 +212,7 @@ function PreviewSection({ label, collapsible, children }: { label: string | null
   if (!collapsible) {
     return (
       <section className="section" aria-label={label ?? undefined}>
-        {label && <h2 className="section-title">{label}</h2>}
+        {label && <h2 className="section-title">{isolate(label)}</h2>}
         <div className="section-body" style={label ? undefined : { paddingTop: 16 }}>
           {children}
         </div>
@@ -222,7 +223,7 @@ function PreviewSection({ label, collapsible, children }: { label: string | null
     <details className="section">
       <summary>
         <Icon name="chevronRight" size={14} />
-        {label ?? "More"}
+        {label ?? tr("More")}
       </summary>
       <div className="section-body">{children}</div>
     </details>

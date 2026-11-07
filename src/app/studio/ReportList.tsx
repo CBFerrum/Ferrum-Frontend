@@ -18,18 +18,19 @@ import { can, useMetaIndex } from "@/lib/meta";
 import { STUDIO_ENTITY, studio, useDeleteStudioRecord, useStudioList, type ReportKind, type Sharing, type StudioListRow } from "@/lib/studio";
 import { confirmDialog, ErrorState, toast } from "@/ui/kit";
 import { encodeParam, recordFromState, stateFromRecord } from "./report/state";
+import { t as tr, isolate } from "@ferrum/client";
 
 const KIND_META: Record<ReportKind, { label: string; icon: LucideIcon }> = {
-  table: { label: "Records", icon: Rows3 },
-  group_by: { label: "Summary", icon: Sigma },
-  pivot: { label: "Pivot", icon: Grid3x3 },
-  chart: { label: "Chart", icon: ChartColumn },
+  table: { get label() { return tr("Records"); }, icon: Rows3 },
+  group_by: { get label() { return tr("Summary"); }, icon: Sigma },
+  pivot: { get label() { return tr("Pivot"); }, icon: Grid3x3 },
+  chart: { get label() { return tr("Chart"); }, icon: ChartColumn },
 };
 
 const SHARING: Record<Sharing, { label: string; icon: LucideIcon }> = {
-  private: { label: "Only me", icon: Lock },
-  roles: { label: "Shared with roles", icon: Users },
-  everyone: { label: "Everyone", icon: Globe },
+  private: { get label() { return tr("Only me"); }, icon: Lock },
+  roles: { get label() { return tr("Shared with roles"); }, icon: Users },
+  everyone: { get label() { return tr("Everyone"); }, icon: Globe },
 };
 
 type Scope = "all" | "mine" | "shared";
@@ -72,11 +73,11 @@ export function ReportList() {
     }
   };
   const remove = async (r: StudioListRow<"reports">) => {
-    const ok = await confirmDialog({ title: "Delete this report?", message: `“${r.label}” will be deleted for everyone it is shared with. This cannot be undone.`, confirmLabel: "Delete", danger: true });
+    const ok = await confirmDialog({ title: tr("Delete this report?"), message: tr("“{label}” will be deleted for everyone it is shared with. This cannot be undone.", { label: r.label }), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await del.mutateAsync({ id: r.id });
-      toast(`Deleted “${r.label}”`);
+      toast(tr("Deleted “{label}”", { label: r.label }));
     } catch (e) {
       toast(errorMessage(e), "error");
     }
@@ -86,13 +87,13 @@ export function ReportList() {
     <div className="mx-auto grid w-full max-w-6xl gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11">
       <header className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold">Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Tables, summaries, pivots and charts over any records. Each person sees only the data their permissions allow.</p>
+          <h1 className="text-xl font-semibold">{tr("Reports")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{tr("Tables, summaries, pivots and charts over any records. Each person sees only the data their permissions allow.")}</p>
         </div>
         {canCreate && (
           <Button asChild>
             <Link to="/studio/reports/new">
-              <Plus /> New report
+              <Plus /> {tr("New report")}
             </Link>
           </Button>
         )}
@@ -101,22 +102,22 @@ export function ReportList() {
       <div className="flex flex-wrap items-center gap-2" role="search">
         <div className="relative min-w-48 flex-1 sm:max-w-80">
           <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input type="search" className="ps-8" placeholder="Search reports…" aria-label="Search reports" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input type="search" className="ps-8" placeholder={tr("Search reports…")} aria-label={tr("Search reports")} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <ToggleGroup type="single" variant="outline" value={scope} onValueChange={(v) => v && setScope(v as Scope)} aria-label="Whose reports">
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="mine">Mine</ToggleGroupItem>
-          <ToggleGroupItem value="shared">Shared with me</ToggleGroupItem>
+        <ToggleGroup type="single" variant="outline" value={scope} onValueChange={(v) => v && setScope(v as Scope)} aria-label={tr("Whose reports")}>
+          <ToggleGroupItem value="all">{tr("All")}</ToggleGroupItem>
+          <ToggleGroupItem value="mine">{tr("Mine")}</ToggleGroupItem>
+          <ToggleGroupItem value="shared">{tr("Shared with me")}</ToggleGroupItem>
         </ToggleGroup>
         <Select value={kind} onValueChange={(v) => setKind(v as ReportKind | "any")}>
-          <SelectTrigger className="w-40" aria-label="Report shape">
+          <SelectTrigger className="w-40" aria-label={tr("Report shape")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="any">Any shape</SelectItem>
+            <SelectItem value="any">{tr("Any shape")}</SelectItem>
             {(Object.keys(KIND_META) as ReportKind[]).map((k) => (
               <SelectItem key={k} value={k}>
-                {KIND_META[k].label}
+                {isolate(KIND_META[k].label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -124,7 +125,7 @@ export function ReportList() {
       </div>
 
       {list.isLoading ? (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading reports">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label={tr("Loading reports")}>
           {Array.from({ length: 6 }, (_, i) => (
             <li key={i}>
               <Skeleton className="h-28 rounded-lg" />
@@ -132,21 +133,21 @@ export function ReportList() {
           ))}
         </ul>
       ) : list.error ? (
-        <ErrorState title="The reports could not be loaded" error={list.error} onRetry={() => void list.refetch()} />
+        <ErrorState title={tr("The reports could not be loaded")} error={list.error} onRetry={() => void list.refetch()} />
       ) : !list.data?.length ? (
         <Empty className="border border-border bg-card">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <ChartColumn aria-hidden="true" />
             </EmptyMedia>
-            <EmptyTitle>No reports yet</EmptyTitle>
-            <EmptyDescription>Build one in a minute: pick what to report on, group it, chart it, save it, share it.</EmptyDescription>
+            <EmptyTitle>{tr("No reports yet")}</EmptyTitle>
+            <EmptyDescription>{tr("Build one in a minute: pick what to report on, group it, chart it, save it, share it.")}</EmptyDescription>
           </EmptyHeader>
           {canCreate && (
             <EmptyContent>
               <Button asChild>
                 <Link to="/studio/reports/new">
-                  <Plus /> New report
+                  <Plus /> {tr("New report")}
                 </Link>
               </Button>
             </EmptyContent>
@@ -155,8 +156,8 @@ export function ReportList() {
       ) : !rows.length ? (
         <Empty className="border border-border bg-card">
           <EmptyHeader>
-            <EmptyTitle>No report matches</EmptyTitle>
-            <EmptyDescription>Try another search, or show every shape and owner.</EmptyDescription>
+            <EmptyTitle>{tr("No report matches")}</EmptyTitle>
+            <EmptyDescription>{tr("Try another search, or show every shape and owner.")}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button
@@ -167,12 +168,12 @@ export function ReportList() {
                 setKind("any");
               }}
             >
-              Show all reports
+              {tr("Show all reports")}
             </Button>
           </EmptyContent>
         </Empty>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={`${rows.length} reports`}>
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={tr("{length} reports", { length: rows.length })}>
           {rows.map((r) => {
             const K = KIND_META[r.kind]?.icon ?? Rows3;
             const S = SHARING[r.sharing]?.icon ?? Lock;
@@ -185,7 +186,7 @@ export function ReportList() {
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-medium">
                       <Link to={`/studio/reports/${encodeURIComponent(r.id)}`} className="outline-none after:absolute after:inset-0 after:content-['']">
-                        {r.label}
+                        {isolate(r.label)}
                       </Link>
                     </h2>
                     <p className="truncate text-xs text-muted-foreground">
@@ -195,43 +196,43 @@ export function ReportList() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" className="relative z-10 shrink-0" aria-label={`${r.label}: actions`}>
+                      <Button variant="ghost" size="icon-sm" className="relative z-10 shrink-0" aria-label={tr("{label}: actions", { label: r.label })}>
                         <Ellipsis />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {editable(r) && (
                         <DropdownMenuItem onSelect={() => navigate(`/studio/reports/${encodeURIComponent(r.id)}?edit=1`)}>
-                          <Pencil /> Edit
+                          <Pencil /> {tr("Edit")}
                         </DropdownMenuItem>
                       )}
                       {canCreate && (
                         <DropdownMenuItem onSelect={() => void duplicate(r)}>
-                          <Copy /> Duplicate
+                          <Copy /> {tr("Duplicate")}
                         </DropdownMenuItem>
                       )}
                       {deletable(r) && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem variant="destructive" onSelect={() => void remove(r)}>
-                            <Trash2 /> Delete
+                            <Trash2 /> {tr("Delete")}
                           </DropdownMenuItem>
                         </>
                       )}
-                      {!editable(r) && !canCreate && !deletable(r) && <DropdownMenuItem disabled>No actions available</DropdownMenuItem>}
+                      {!editable(r) && !canCreate && !deletable(r) && <DropdownMenuItem disabled>{tr("No actions available")}</DropdownMenuItem>}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                {r.description && <p className="line-clamp-2 text-sm text-muted-foreground">{r.description}</p>}
+                {r.description && <p className="line-clamp-2 text-sm text-muted-foreground">{isolate(r.description)}</p>}
                 <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <S className="size-3.5" aria-hidden="true" />
                     {SHARING[r.sharing]?.label ?? r.sharing}
                   </span>
-                  {r.is_standard && <Badge variant="outline">Standard</Badge>}
-                  {!r.mine && !r.is_standard && <Badge variant="outline">Shared with me</Badge>}
+                  {r.is_standard && <Badge variant="outline">{tr("Standard")}</Badge>}
+                  {!r.mine && !r.is_standard && <Badge variant="outline">{tr("Shared with me")}</Badge>}
                   <span className="ms-auto" title={r.updated_at}>
-                    Updated {relativeTime(r.updated_at)}
+                    {tr("Updated {value}", { value: relativeTime(r.updated_at) })}
                   </span>
                 </div>
               </li>

@@ -14,6 +14,7 @@ import { NoRows, ResultNotices, ResultSkeleton } from "./studio/report/Preview";
 import { ResultTable } from "./studio/report/ResultTable";
 import { displayColumns, emptyState, filterIssues, startState, type BuilderState } from "./studio/report/state";
 import { JsonInput, type ControlProps } from "./widgets";
+import { isolate } from "@ferrum/client";
 
 /** The field's value as a query: an object naming its entity, or the same written as a JSON string. */
 export function specOf(value: unknown): Spec | null {
@@ -125,7 +126,7 @@ export default function QueryInput(p: ControlProps) {
         {!d.entity ? (
           <p className="field-hint">{t("Choose what it is about.")}</p>
         ) : query.error && !refused.length ? (
-          <p className="field-error">{errorMessage(query.error)}</p>
+          <p className="field-error">{isolate(errorMessage(query.error))}</p>
         ) : query.isLoading && !result ? (
           <ResultSkeleton />
         ) : result ? (

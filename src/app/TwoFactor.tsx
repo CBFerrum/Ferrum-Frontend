@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, errorMessage, request } from "../lib/api";
 import { Alert, Button, Field, PageLoading, confirmDialog, toast } from "../ui/kit";
+import { t, isolate } from "@ferrum/client";
 
 export interface TwoFactorStatus {
   enabled: boolean;
@@ -55,9 +56,9 @@ export function RecoveryCodes({ codes, onDone, doneLabel = "Done" }: { codes: st
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      toast("Recovery codes copied");
+      toast(t("Recovery codes copied"));
     } catch {
-      toast("Copy the codes manually", "error");
+      toast(t("Copy the codes manually"), "error");
     }
   };
   const download = () => {
@@ -70,26 +71,26 @@ export function RecoveryCodes({ codes, onDone, doneLabel = "Done" }: { codes: st
   };
   return (
     <div className="stack">
-      <Alert tone="warning">Keep these codes somewhere safe. Each one signs you in once if you lose your phone; they are not shown again.</Alert>
-      <ul className="recovery-codes mono" aria-label="Recovery codes">
+      <Alert tone="warning">{t("Keep these codes somewhere safe. Each one signs you in once if you lose your phone; they are not shown again.")}</Alert>
+      <ul className="recovery-codes mono" aria-label={t("Recovery codes")}>
         {codes.map((c) => (
-          <li key={c}>{c}</li>
+          <li key={c}>{isolate(c)}</li>
         ))}
       </ul>
       <div className="row">
         <Button icon="copy" onClick={() => void copy()}>
-          Copy
+          {t("Copy")}
         </Button>
         <Button icon="download" onClick={download}>
-          Download
+          {t("Download")}
         </Button>
       </div>
       <label className="row" style={{ gap: 8 }}>
-        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have saved my recovery codes
+        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />{t("I have saved my recovery codes")}
       </label>
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <Button variant="primary" disabled={!saved} onClick={onDone}>
-          {doneLabel}
+          {isolate(doneLabel)}
         </Button>
       </div>
     </div>
@@ -130,27 +131,27 @@ export function TwoFactorSetup({ token, onEnabled, onCancel }: { token?: string;
   };
 
   if (done) return <RecoveryCodes codes={done.recovery_codes} onDone={() => onEnabled(done)} doneLabel="Continue" />;
-  if (error) return <Alert tone="error">{error}</Alert>;
-  if (!begun) return <PageLoading label="Preparing…" />;
+  if (error) return <Alert tone="error">{isolate(error)}</Alert>;
+  if (!begun) return <PageLoading label={t("Preparing…")} />;
   return (
     <form className="stack" onSubmit={submit}>
-      <p>Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…), then enter the six-digit code it shows.</p>
-      <img className="qr" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(begun.qr_svg)}`} alt="QR code for your authenticator app" width={200} height={200} />
+      <p>{t("Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…), then enter the six-digit code it shows.")}</p>
+      <img className="qr" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(begun.qr_svg)}`} alt={t("QR code for your authenticator app")} width={200} height={200} />
       <details>
-        <summary>Can't scan it?</summary>
+        <summary>{t("Can't scan it?")}</summary>
         <div className="stack" style={{ marginTop: 8 }}>
-          <p className="muted">Enter this key in the app (time-based), or open the link on the phone that has the app.</p>
-          <input className="input mono" readOnly value={begun.secret.replace(/(.{4})/g, "$1 ").trim()} aria-label="Setup key" onFocus={(e) => e.currentTarget.select()} />
-          <a href={begun.uri}>Open in authenticator app</a>
+          <p className="muted">{t("Enter this key in the app (time-based), or open the link on the phone that has the app.")}</p>
+          <input className="input mono" readOnly value={begun.secret.replace(/(.{4})/g, "$1 ").trim()} aria-label={t("Setup key")} onFocus={(e) => e.currentTarget.select()} />
+          <a href={begun.uri}>{t("Open in authenticator app")}</a>
         </div>
       </details>
-      <Field label="Code from the app" htmlFor="tf-setup-code" required error={codeError}>
+      <Field label={t("Code from the app")} htmlFor="tf-setup-code" required error={codeError}>
         <CodeInput id="tf-setup-code" value={code} onChange={setCode} />
       </Field>
       <div className="row" style={{ justifyContent: "flex-end" }}>
-        {onCancel && <Button onClick={onCancel}>Cancel</Button>}
+        {onCancel && <Button onClick={onCancel}>{t("Cancel")}</Button>}
         <Button type="submit" variant="primary" loading={busy}>
-          Turn on
+          {t("Turn on")}
         </Button>
       </div>
     </form>
@@ -180,7 +181,7 @@ export function TwoFactorSettings() {
   };
 
   if (status.isPending) return <PageLoading />;
-  if (status.isError) return <Alert tone="error">{errorMessage(status.error)}</Alert>;
+  if (status.isError) return <Alert tone="error">{isolate(errorMessage(status.error))}</Alert>;
   const s = status.data;
 
   if (codes)
@@ -198,7 +199,7 @@ export function TwoFactorSettings() {
       <TwoFactorSetup
         onCancel={reset}
         onEnabled={(res) => {
-          toast("Two-factor sign-in is on");
+          toast(t("Two-factor sign-in is on"));
           reset();
           refresh({ enabled: true, pending: false, recovery_codes_left: res.recovery_codes.length });
         }}
@@ -223,9 +224,9 @@ export function TwoFactorSettings() {
     e.preventDefault();
     if (s.required) {
       const ok = await confirmDialog({
-        title: "Turn off two-factor sign-in?",
-        message: "This workspace requires it: you will set it up again the next time you sign in.",
-        confirmLabel: "Turn off",
+        title: t("Turn off two-factor sign-in?"),
+        message: t("This workspace requires it: you will set it up again the next time you sign in."),
+        confirmLabel: t("Turn off"),
         danger: true,
       });
       if (!ok) return;
@@ -234,7 +235,7 @@ export function TwoFactorSettings() {
     setErr({});
     try {
       await api.post("/api/auth/2fa/disable", password ? { password } : { code: code.trim() }, { noAuthRedirect: true });
-      toast("Two-factor sign-in is off");
+      toast(t("Two-factor sign-in is off"));
       reset();
       refresh({ enabled: false, pending: false, recovery_codes_left: 0 });
     } catch (e2) {
@@ -247,11 +248,11 @@ export function TwoFactorSettings() {
   if (!s.enabled)
     return (
       <div className="stack">
-        <p>Two-factor sign-in asks for a code from an app on your phone after your password, so a stolen password alone cannot open your account.</p>
-        {s.required && <Alert tone="info">Your workspace requires it.</Alert>}
+        <p>{t("Two-factor sign-in asks for a code from an app on your phone after your password, so a stolen password alone cannot open your account.")}</p>
+        {s.required && <Alert tone="info">{t("Your workspace requires it.")}</Alert>}
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button variant="primary" onClick={() => setMode("setup")}>
-            Set up
+            {t("Set up")}
           </Button>
         </div>
       </div>
@@ -260,29 +261,29 @@ export function TwoFactorSettings() {
   return (
     <div className="stack">
       <Alert tone="success">
-        Two-factor sign-in is on. {s.recovery_codes_left} recovery code{s.recovery_codes_left === 1 ? "" : "s"} left.
+        {t("Two-factor sign-in is on. {recovery_codes_left} recovery code", { recovery_codes_left: s.recovery_codes_left })}{s.recovery_codes_left === 1 ? "" : "s"} {t("left.")}
       </Alert>
       {mode === "codes" ? (
         <form className="stack" onSubmit={newCodes}>
-          <p>New recovery codes replace the old ones. Confirm with a code from your app.</p>
-          <Field label="Code from the app" htmlFor="tf-codes-code" required error={err.code}>
+          <p>{t("New recovery codes replace the old ones. Confirm with a code from your app.")}</p>
+          <Field label={t("Code from the app")} htmlFor="tf-codes-code" required error={err.code}>
             <CodeInput id="tf-codes-code" value={code} onChange={setCode} />
           </Field>
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button onClick={reset}>Cancel</Button>
+            <Button onClick={reset}>{t("Cancel")}</Button>
             <Button type="submit" variant="primary" loading={busy}>
-              New codes
+              {t("New codes")}
             </Button>
           </div>
         </form>
       ) : mode === "off" ? (
         <form className="stack" onSubmit={turnOff}>
-          <p>Confirm with your password, or with a code from your app if you sign in without one.</p>
-          <Field label="Password" htmlFor="tf-off-password" error={err.password}>
+          <p>{t("Confirm with your password, or with a code from your app if you sign in without one.")}</p>
+          <Field label={t("Password")} htmlFor="tf-off-password" error={err.password}>
             <input id="tf-off-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           {!password && (
-            <Field label="Or a code from the app" htmlFor="tf-off-code" error={err.code}>
+            <Field label={t("Or a code from the app")} htmlFor="tf-off-code" error={err.code}>
               <input
                 id="tf-off-code"
                 className="input mono"
@@ -295,17 +296,17 @@ export function TwoFactorSettings() {
             </Field>
           )}
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button onClick={reset}>Cancel</Button>
+            <Button onClick={reset}>{t("Cancel")}</Button>
             <Button type="submit" variant="danger" loading={busy} disabled={!password && !code.trim()}>
-              Turn off
+              {t("Turn off")}
             </Button>
           </div>
         </form>
       ) : (
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={() => setMode("codes")}>New recovery codes</Button>
+          <Button onClick={() => setMode("codes")}>{t("New recovery codes")}</Button>
           <Button variant="danger" onClick={() => setMode("off")}>
-            Turn off
+            {t("Turn off")}
           </Button>
         </div>
       )}

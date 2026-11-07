@@ -9,6 +9,7 @@ import { parseCsv, toCsv } from "../../lib/csv";
 import { buildRecords, type Built, guessMapping, importable, missingRequired, type Problem } from "../../lib/importing";
 import type { Doc, EntityMeta, Field, ListResponse } from "../../lib/meta";
 import { Alert, Button, Dialog, Icon, Spinner } from "../../ui/kit";
+import { t, isolate } from "@ferrum/client";
 
 const BATCH = 200;
 const MAX_SHOWN = 20;
@@ -50,22 +51,22 @@ function ProblemList({ problems, total }: { problems: Problem[]; total: number }
       <table className="table">
         <thead>
           <tr>
-            <th>Row</th>
-            <th>Column</th>
-            <th>Problem</th>
+            <th>{t("Row")}</th>
+            <th>{t("Column")}</th>
+            <th>{t("Problem")}</th>
           </tr>
         </thead>
         <tbody>
           {problems.slice(0, MAX_SHOWN).map((p, i) => (
             <tr key={i}>
               <td className="num">{p.row}</td>
-              <td>{p.field}</td>
-              <td>{p.message}</td>
+              <td>{isolate(p.field)}</td>
+              <td>{isolate(p.message)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {total > MAX_SHOWN && <p className="muted">And {total - MAX_SHOWN} more.</p>}
+      {total > MAX_SHOWN && <p className="muted">{t("And")} {total - MAX_SHOWN} {t("more.")}</p>}
     </div>
   );
 }
@@ -153,72 +154,72 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
   const footer =
     step === "map" ? (
       <>
-        <Button onClick={() => setStep("file")}>Back</Button>
+        <Button onClick={() => setStep("file")}>{t("Back")}</Button>
         <Button variant="primary" disabled={missing.length > 0 || !mapping.some(Boolean)} onClick={() => void check()}>
-          Check {body.length.toLocaleString()} {body.length === 1 ? "row" : "rows"}
+          {t("Check {value}", { value: body.length.toLocaleString() })} {body.length === 1 ? t("row") : t("rows")}
         </Button>
       </>
     ) : step === "review" ? (
       <>
-        <Button onClick={() => setStep("map")}>Back</Button>
+        <Button onClick={() => setStep("map")}>{t("Back")}</Button>
         <Button variant="primary" disabled={!built?.records.length} onClick={() => void send()}>
-          Import {built?.records.length.toLocaleString()} {built?.records.length === 1 ? "row" : "rows"}
+          {t("Import {value}", { value: built?.records.length.toLocaleString() ?? "" })} {built?.records.length === 1 ? t("row") : t("rows")}
         </Button>
       </>
     ) : step === "done" ? (
       <>
         {(failed.length > 0 || problemRows > 0) && (
           <Button icon="download" onClick={saveFailures}>
-            Download what needs fixing
+            {t("Download what needs fixing")}
           </Button>
         )}
         <Button variant="primary" onClick={onClose}>
-          Done
+          {t("Done")}
         </Button>
       </>
     ) : undefined;
 
   return (
-    <Dialog open wide onClose={onClose} title={`Import ${label}`} footer={footer}>
-      {error && <Alert tone="error">{error}</Alert>}
+    <Dialog open wide onClose={onClose} title={t("Import {label}", { label })} footer={footer}>
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
       {step === "file" && (
         <label className="import-drop">
           <Icon name="upload" size={22} />
-          <strong>Choose a CSV file</strong>
-          <span className="muted">The first row holds the column names.</span>
+          <strong>{t("Choose a CSV file")}</strong>
+          <span className="muted">{t("The first row holds the column names.")}</span>
           <input type="file" accept=".csv,.tsv,.txt,text/csv" onChange={(e) => void choose(e)} />
         </label>
       )}
       {step === "map" && (
         <div className="stack">
           <p className="muted">
-            {fileName}: {body.length.toLocaleString()} {body.length === 1 ? "row" : "rows"}. Say which field each column fills.
+            {isolate(fileName)}: {isolate(body.length.toLocaleString())} {body.length === 1 ? t("row") : t("rows")}{t(". Say which field each column fills.")}
           </p>
-          {missing.length > 0 && <Alert tone="warning">Every {meta.label.toLowerCase()} needs {missing.map((f) => f.label).join(", ")}: choose a column for it.</Alert>}
+          {missing.length > 0 && <Alert tone="warning">{t("Every {value} needs {value2}: choose a column for it.", { value: meta.label.toLowerCase(), value2: missing.map((f) => f.label).join(", ") })}</Alert>}
           <table className="table import-map">
             <thead>
               <tr>
-                <th>Column</th>
-                <th>Example</th>
-                <th>Field</th>
+                <th>{t("Column")}</th>
+                <th>{t("Example")}</th>
+                <th>{t("Field")}</th>
               </tr>
             </thead>
             <tbody>
               {(header ?? []).map((h, i) => (
                 <tr key={i}>
-                  <td>{h || <span className="faint">Column {i + 1}</span>}</td>
-                  <td className="muted">{body.find((r) => r[i]?.trim())?.[i]}</td>
+                  <td>{h || <span className="faint">{t("Column")} {i + 1}</span>}</td>
+                  <td className="muted">{isolate(body.find((r) => r[i]?.trim())?.[i] ?? "")}</td>
                   <td>
                     <select
                       className="select"
-                      aria-label={`Field for ${h || `column ${i + 1}`}`}
+                      aria-label={t("Field for {value}", { value: h || `column ${i + 1}` })}
                       value={mapping[i] ?? ""}
                       onChange={(e) => setMapping((m) => m.map((v, j) => (j === i ? e.target.value || null : v === e.target.value ? null : v)))}
                     >
-                      <option value="">Skip this column</option>
+                      <option value="">{t("Skip this column")}</option>
                       {fields.map((f) => (
                         <option key={f.name} value={f.name}>
-                          {f.label}
+                          {isolate(f.label)}
                           {f.required ? " *" : ""}
                         </option>
                       ))}
@@ -230,41 +231,41 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
           </table>
         </div>
       )}
-      {step === "checking" && <Spinner label="Checking the rows" />}
+      {step === "checking" && <Spinner label={t("Checking the rows")} />}
       {step === "review" && built && (
         <div className="stack">
           {built.records.length > 0 && (
             <Alert tone="success">
-              {built.records.length.toLocaleString()} {built.records.length === 1 ? "row is" : "rows are"} ready.
+              {isolate(built.records.length.toLocaleString())} {built.records.length === 1 ? t("row is") : t("rows are")} {t("ready.")}
             </Alert>
           )}
           {built.problems.length > 0 ? (
             <>
               <Alert tone="warning">
-                {problemRows.toLocaleString()} {problemRows === 1 ? "row needs" : "rows need"} fixing and will be left out. You can download them afterwards.
+                {isolate(problemRows.toLocaleString())} {problemRows === 1 ? t("row needs") : t("rows need")} {t("fixing and will be left out. You can download them afterwards.")}
               </Alert>
               <ProblemList problems={built.problems} total={built.problems.length} />
             </>
           ) : (
-            <p className="muted">Nothing is wrong with this file.</p>
+            <p className="muted">{t("Nothing is wrong with this file.")}</p>
           )}
         </div>
       )}
       {step === "sending" && built && (
         <div className="stack" role="status">
-          <progress className="import-progress" max={built.records.length} value={sent} aria-label="Imported so far" />
+          <progress className="import-progress" max={built.records.length} value={sent} aria-label={t("Imported so far")} />
           <p className="muted">
-            {sent.toLocaleString()} of {built.records.length.toLocaleString()}
+            {t("{sent} of {value}", { sent: sent.toLocaleString(), value: built.records.length.toLocaleString() })}
           </p>
         </div>
       )}
       {step === "done" && (
         <div className="stack" role="status">
           <Alert tone={created ? "success" : "warning"}>
-            {created.toLocaleString()} {created === 1 ? meta.label.toLowerCase() : label} imported.
+            {isolate(created.toLocaleString())} {created === 1 ? meta.label.toLowerCase() : label} {t("imported.")}
           </Alert>
           {failed.length > 0 && <ProblemList problems={failed.map((f) => ({ row: f.row, field: "", message: f.why }))} total={failed.length} />}
-          {problemRows > 0 && <p className="muted">{problemRows.toLocaleString()} more were left out when checking.</p>}
+          {problemRows > 0 && <p className="muted">{t("{problemRows} more were left out when checking.", { problemRows: problemRows.toLocaleString() })}</p>}
         </div>
       )}
     </Dialog>
