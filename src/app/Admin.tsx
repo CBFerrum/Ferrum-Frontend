@@ -9,6 +9,7 @@ import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import { Connections } from "./Connections";
+import { InterfaceWords } from "./InterfaceWords";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
   Alert,
@@ -39,6 +40,7 @@ const TABS = [
   { id: "domains", label: "Domains" },
   { id: "privacy", label: "Personal data" },
   { id: "workspace", label: "Workspace" },
+  { id: "words", label: "Interface words" },
 ];
 
 export function AdminPage() {
@@ -72,6 +74,7 @@ export function AdminPage() {
         {tab === "domains" && <Domains />}
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
+        {tab === "words" && <InterfaceWords />}
       </TabPanel>
     </div>
   );

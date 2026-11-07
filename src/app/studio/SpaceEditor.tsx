@@ -66,7 +66,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorMessage } from "@/lib/api";
+import { api, ApiError, errorMessage, isStale } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { can, useMe, useMetaIndex, useReports } from "@/lib/meta";
 import { fieldIssues, studio, useDeleteStudioRecord, useSaveStudioRecord, useStudioRecord, type Issue, type SpaceBlock, type SpaceRecord } from "@/lib/studio";
@@ -371,7 +371,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
         navigate(PATHS.editSpace(out.id), { replace: true });
       }
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && saved.id) return void (await rebaseOnLatest(saved.id));
+      if (isStale(e) && saved.id) return void (await rebaseOnLatest(saved.id));
       if (e instanceof ApiError && e.fields.length) {
         const placed = placeIssues(fieldIssues(e), draft.blocks.map((b) => b.block)).map((i): Placed => {
           const m = /^blocks\[(\d+)\]\.?/.exec(i.path);

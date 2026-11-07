@@ -472,10 +472,20 @@ export function LinkInput({
 
 // ── attachments ──
 
+/** Whether a stored file is a picture, from its content type (a HEAD request, kept: files do not change). */
+export const filePicture = (url: string) => ({
+  queryKey: ["file-picture", url],
+  queryFn: () => fetch(url, { method: "HEAD", credentials: "same-origin" }).then((r) => r.ok && (r.headers.get("content-type") ?? "").startsWith("image/")),
+  staleTime: Infinity,
+  retry: false,
+});
+
 function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId }: ControlProps) {
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState<string | null>(null);
   const v = typeof value === "string" ? value : "";
+  // A picture is shown as itself, beside the way to download it.
+  const picture = useQuery({ ...filePicture(v), enabled: v.startsWith("/files/") }).data === true;
 
   const upload = async (file: File) => {
     setBusy(true);
@@ -492,22 +502,25 @@ function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId 
 
   if (v) {
     return (
-      <div className="row" style={{ flexWrap: "nowrap", minHeight: 34 }}>
-        {v.startsWith("/files/") ? (
-          <button type="button" className="link-btn row" onClick={() => download(v, name ?? "attachment").catch((e) => toast(errorMessage(e), "error"))}>
-            <Icon name="download" />
-            {name ?? "Download file"}
-          </button>
-        ) : (
-          <a href={v} target="_blank" rel="noopener noreferrer">
-            {v}
-          </a>
-        )}
-        {!disabled && (
-          <Button size="sm" variant="ghost" onClick={() => onChange(null)}>
-            Remove
-          </Button>
-        )}
+      <div className="stack attach-value">
+        {picture && <img className="attach-picture" src={v} alt={name ?? t("The attached picture")} loading="lazy" />}
+        <div className="row" style={{ flexWrap: "nowrap", minHeight: 34 }}>
+          {v.startsWith("/files/") ? (
+            <button type="button" className="link-btn row" onClick={() => download(v, name ?? "attachment").catch((e) => toast(errorMessage(e), "error"))}>
+              <Icon name="download" />
+              {name ?? t("Download file")}
+            </button>
+          ) : (
+            <a href={v} target="_blank" rel="noopener noreferrer">
+              {v}
+            </a>
+          )}
+          {!disabled && (
+            <Button size="sm" variant="ghost" onClick={() => onChange(null)}>
+              {t("Remove")}
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

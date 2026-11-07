@@ -1,7 +1,7 @@
 // HTTP client for the Ferrum API: bearer auth, uniform error parsing, retries on connection
 // errors (the dev server restarts now and then), authenticated downloads and print previews.
 
-export { ApiError, errorMessage, parseApiError, type FieldError } from "@ferrum/client";
+export { ApiError, errorMessage, isStale, parseApiError, type FieldError } from "@ferrum/client";
 import { parseApiError } from "@ferrum/client";
 
 // ── session ──
