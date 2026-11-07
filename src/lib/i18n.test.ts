@@ -106,6 +106,13 @@ describe("the catalogs", () => {
     expect(asked.size).toBeGreaterThan(40);
     for (const [name, words] of [["ar", ar], ["hi", hi]] as const) expect([...asked].filter((w) => !(w in words)), name).toEqual([]);
   });
+
+  it("keep each word's places, and no word is left empty", () => {
+    const places = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+    for (const [name, words] of [["ar", ar], ["hi", hi]] as const) {
+      expect(Object.entries(words).filter(([english, w]) => !w.trim() || places(w) !== places(english)).map(([english]) => english), name).toEqual([]);
+    }
+  });
 });
 
 describe("a workspace's own words", () => {
