@@ -26,21 +26,22 @@ import {
   Tabs,
   toast,
 } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 const TABS = [
-  { id: "users", label: "Users" },
-  { id: "roles", label: "Roles & permissions" },
-  { id: "packages", label: "Packages" },
-  { id: "connections", label: "Connections" },
-  { id: "webhooks", label: "Webhooks" },
-  { id: "automations", label: "Automations" },
-  { id: "plugins", label: "Plugins" },
-  { id: "keys", label: "API keys" },
-  { id: "sso", label: "Single sign-on" },
-  { id: "domains", label: "Domains" },
-  { id: "privacy", label: "Personal data" },
-  { id: "workspace", label: "Workspace" },
-  { id: "words", label: "Interface words" },
+  { id: "users", get label() { return tr("Users"); } },
+  { id: "roles", get label() { return tr("Roles & permissions"); } },
+  { id: "packages", get label() { return tr("Packages"); } },
+  { id: "connections", get label() { return tr("Connections"); } },
+  { id: "webhooks", get label() { return tr("Webhooks"); } },
+  { id: "automations", get label() { return tr("Automations"); } },
+  { id: "plugins", get label() { return tr("Plugins"); } },
+  { id: "keys", get label() { return tr("API keys"); } },
+  { id: "sso", get label() { return tr("Single sign-on"); } },
+  { id: "domains", get label() { return tr("Domains"); } },
+  { id: "privacy", get label() { return tr("Personal data"); } },
+  { id: "workspace", get label() { return tr("Workspace"); } },
+  { id: "words", get label() { return tr("Interface words"); } },
 ];
 
 export function AdminPage() {
@@ -50,15 +51,15 @@ export function AdminPage() {
   if (me.isLoading) return <PageLoading />;
   if (!me.data?.user.is_admin) {
     return (
-      <EmptyState title="Administrator access required" icon="alert">
-        <p className="muted">Ask an administrator if you need access to these settings.</p>
+      <EmptyState title={tr("Administrator access required")} icon="alert">
+        <p className="muted">{tr("Ask an administrator if you need access to these settings.")}</p>
       </EmptyState>
     );
   }
   return (
     <div>
       <div className="page-head">
-        <h1 className="page-title">Administration</h1>
+        <h1 className="page-title">{tr("Administration")}</h1>
       </div>
       <Tabs id="admin" tabs={TABS} value={tab} onChange={(t) => setSp({ tab: t }, { replace: true })} />
       <TabPanel id="admin" tab={tab}>
@@ -109,7 +110,7 @@ interface PersonData {
 /** Field names of an entity as their labels, in a list. */
 function FieldLabels({ entity, names }: { entity: string; names: string[] }) {
   const fields = useEntityMeta(entity).data?.fields;
-  return <>{names.map((n) => fields?.find((f) => f.name === n)?.label ?? n).join(", ")}</>;
+  return <>{isolate(names.map((n) => fields?.find((f) => f.name === n)?.label ?? n).join(", "))}</>;
 }
 
 /** Personal-data requests: what is kept about a person (by email, and their phone number and name
@@ -148,7 +149,7 @@ function PersonalData() {
     if (!found) return;
     const what = `${found.records.length} ${found.records.length === 1 ? "record" : "records"}${found.account ? " and the login account" : ""}`;
     const message = `The person's details leave ${what}, and their history. The workspace's stored exports, copies from before, are deleted too. This cannot be undone.`;
-    if (!(await confirmDialog({ title: `Erase ${found.email}?`, message, confirmLabel: "Erase", danger: true })))
+    if (!(await confirmDialog({ title: tr("Erase {email}?", { email: found.email }), message, confirmLabel: tr("Erase"), danger: true })))
       return;
     setBusy("erase");
     setError(null);
@@ -164,7 +165,7 @@ function PersonalData() {
       const kept = res.retained.length ? `; ${res.retained.length} kept for the reasons given` : "";
       const exports = res.exports_deleted ? `; ${res.exports_deleted} stored ${res.exports_deleted === 1 ? "export" : "exports"} deleted` : "";
       toast(
-        `Erased ${res.erased.length} ${res.erased.length === 1 ? "record" : "records"}${res.account_erased ? " and the login account" : ""}; ${res.audit_events_redacted} history entries redacted${kept}${exports}`,
+        tr("Erased {length} {value}{value2}; {audit_events_redacted} history entries redacted{kept}{exports}", { length: res.erased.length, value: res.erased.length === 1 ? "record" : "records", value2: res.account_erased ? " and the login account" : "", audit_events_redacted: res.audit_events_redacted, kept, exports }),
       );
       setFound(null);
       setReason("");
@@ -179,7 +180,7 @@ function PersonalData() {
     <>
     <section className="card">
       <div className="card-head">
-        <h2>Personal data</h2>
+        <h2>{tr("Personal data")}</h2>
       </div>
       <div className="card-pad stack">
         <p className="muted">
@@ -188,36 +189,36 @@ function PersonalData() {
           records&apos; history, and closes their login account; submitted documents keep the names they carry, as bookkeeping law requires.
         </p>
         <form className="row" onSubmit={find}>
-          <FieldWrap label="Email" htmlFor="pd-email">
+          <FieldWrap label={tr("Email")} htmlFor="pd-email">
             <input id="pd-email" className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </FieldWrap>
-          <FieldWrap label="Phone (optional)" htmlFor="pd-phone" hint="Its digits as recorded; one held with or without a country code is listed apart">
+          <FieldWrap label={tr("Phone (optional)")} htmlFor="pd-phone" hint={tr("Its digits as recorded; one held with or without a country code is listed apart")}>
             <input id="pd-phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </FieldWrap>
-          <FieldWrap label="Name (optional)" htmlFor="pd-name" hint="Lists records holding it, for you to judge">
+          <FieldWrap label={tr("Name (optional)")} htmlFor="pd-name" hint={tr("Lists records holding it, for you to judge")}>
             <input id="pd-name" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
           </FieldWrap>
           <Button type="submit" variant="primary" icon="search" loading={busy === "find"} disabled={!email.trim()}>
-            Find
+            {tr("Find")}
           </Button>
         </form>
-        {error && <Alert tone="error">{error}</Alert>}
-        {nothing && <p className="muted">Nothing is kept about {found.email}.</p>}
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        {nothing && <p className="muted">{tr("Nothing is kept about {email}.", { email: found.email })}</p>}
         {found && !nothing && (
           <>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Kind</th>
-                    <th scope="col">Record</th>
-                    <th scope="col">Erasure blanks</th>
+                    <th scope="col">{tr("Kind")}</th>
+                    <th scope="col">{tr("Record")}</th>
+                    <th scope="col">{tr("Erasure blanks")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {found.records.map((r) => (
                     <tr key={`${r.entity}/${r.id}`}>
-                      <td>{r.label}</td>
+                      <td>{isolate(r.label)}</td>
                       <td>
                         <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.number || r.id.slice(0, 8)}</a>
                       </td>
@@ -225,10 +226,10 @@ function PersonalData() {
                         {r.table ? (
                           <>
                             {r.erases.includes(r.table)
-                              ? "their "
-                              : `${r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", ")} in their `}
-                            {r.rows === 1 ? "row" : `${r.rows} rows`} of <FieldLabels entity={r.entity} names={[r.table]} />
-                            {r.erases.includes(r.table) ? ", removed" : ""}
+                              ? tr("their ")
+                              : tr("{value} in their ", { value: r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", ") })}
+                            {r.rows === 1 ? tr("row") : tr("{rows} rows", { rows: String(r.rows) })} {tr("of")} <FieldLabels entity={r.entity} names={[r.table]} />
+                            {r.erases.includes(r.table) ? tr(", removed") : ""}
                           </>
                         ) : (
                           <FieldLabels entity={r.entity} names={r.erases} />
@@ -238,11 +239,11 @@ function PersonalData() {
                   ))}
                   {found.account && (
                     <tr>
-                      <td>Login account</td>
+                      <td>{tr("Login account")}</td>
                       <td>
-                        {found.account.full_name || found.account.email} {found.account.is_admin && <Badge tone="amber">administrator</Badge>}
+                        {found.account.full_name || found.account.email} {found.account.is_admin && <Badge tone="amber">{tr("administrator")}</Badge>}
                       </td>
-                      <td className="muted">name, email, password and roles; the account is closed</td>
+                      <td className="muted">{tr("name, email, password and roles; the account is closed")}</td>
                     </tr>
                   )}
                 </tbody>
@@ -250,23 +251,23 @@ function PersonalData() {
             </div>
             {!!found.possibly?.length && (
               <>
-                <h3 className="section-title">Possibly theirs: the same name, or the number with or without its country code</h3>
-                <p className="muted">Not in the copy and never erased for that alone: open each, and if it is theirs, change or delete it there.</p>
+                <h3 className="section-title">{tr("Possibly theirs: the same name, or the number with or without its country code")}</h3>
+                <p className="muted">{tr("Not in the copy and never erased for that alone: open each, and if it is theirs, change or delete it there.")}</p>
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Kind</th>
-                        <th scope="col">Record</th>
-                        <th scope="col">Held</th>
+                        <th scope="col">{tr("Kind")}</th>
+                        <th scope="col">{tr("Record")}</th>
+                        <th scope="col">{tr("Held")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {found.possibly.map((r) => (
                         <tr key={`${r.entity}/${r.id}`}>
-                          <td>{r.label}</td>
+                          <td>{isolate(r.label)}</td>
                           <td>
-                            <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{r.id.slice(0, 8)}</a>
+                            <a href={`/app/e/${encodeURIComponent(r.entity)}/${encodeURIComponent(r.id)}`}>{isolate(r.id.slice(0, 8))}</a>
                           </td>
                           <td>{r.name ?? r.phone}</td>
                         </tr>
@@ -278,7 +279,7 @@ function PersonalData() {
             )}
             <div className="row">
               <Button icon="download" onClick={download}>
-                Download a copy (JSON)
+                {tr("Download a copy (JSON)")}
               </Button>
             </div>
             <form
@@ -288,11 +289,11 @@ function PersonalData() {
                 void erase();
               }}
             >
-              <FieldWrap label="Reason" htmlFor="pd-reason" hint="Kept with the erasure, e.g. the request's reference">
+              <FieldWrap label={tr("Reason")} htmlFor="pd-reason" hint={tr("Kept with the erasure, e.g. the request's reference")}>
                 <input id="pd-reason" className="input" required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
               </FieldWrap>
               <Button type="submit" variant="danger" icon="trash" loading={busy === "erase"} disabled={!reason.trim() || !!found.account?.is_admin}>
-                Erase
+                {tr("Erase")}
               </Button>
             </form>
           </>
@@ -301,16 +302,15 @@ function PersonalData() {
     </section>
     <section className="card">
       <div className="card-head">
-        <h2>Evidence for a review</h2>
+        <h2>{tr("Evidence for a review")}</h2>
       </div>
       <div className="card-pad stack">
         <p className="muted">
-          What a reviewer asks for, read from the system now: who can reach what, who outside the workspace is involved, what happens to personal data, and whether its
-          history is whole. These are facts, not a claim that the workspace meets any standard. Taking a copy is recorded.
+          {tr("What a reviewer asks for, read from the system now: who can reach what, who outside the workspace is involved, what happens to personal data, and whether its history is whole. These are facts, not a claim that the workspace meets any standard. Taking a copy is recorded.")}
         </p>
         <div className="row">
           <Button icon="download" onClick={() => downloadFile("/api/admin/evidence", "evidence.json").catch((e) => toast(errorMessage(e), "error"))}>
-            Download the evidence pack
+            {tr("Download the evidence pack")}
           </Button>
         </div>
       </div>
@@ -410,45 +410,44 @@ function WorkspaceExport() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Export the workspace</h2>
+        <h2>{tr("Export the workspace")}</h2>
         <span className="spacer" />
         <Button size="sm" loading={busy} disabled={making} onClick={() => void start()}>
-          Make an export
+          {tr("Make an export")}
         </Button>
       </div>
       <div className="card-body stack" style={{ gap: 8 }}>
-        <p className="muted">Every record with its rows, the files, the history and the settings, never a password or secret, in zip files you download here.</p>
+        <p className="muted">{tr("Every record with its rows, the files, the history and the settings, never a password or secret, in zip files you download here.")}</p>
         {making && (
           <p role="status">
-            Being made{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? ` (${latest.progress.done ?? 0} of ${latest.progress.total})` : ""}` : ""}…
+            {tr("Being made")}{latest?.progress?.step ? `: ${latest.progress.step}${latest.progress.total ? ` (${latest.progress.done ?? 0} of ${latest.progress.total})` : ""}` : ""}…
           </p>
         )}
-        {latest?.status === "failed" && <Alert tone="error">The last export failed: {latest.last_error}</Alert>}
+        {latest?.status === "failed" && <Alert tone="error">{tr("The last export failed: {last_error}", { last_error: latest.last_error ?? "" })}</Alert>}
         {gone && (
           <p className="faint">
             {latest?.result?.deleted
-              ? "The last export was deleted by a personal-data erasure, as every copy from before one is. Make another."
-              : `The last export was kept its ${days} days and is gone. Make another.`}
+              ? tr("The last export was deleted by a personal-data erasure, as every copy from before one is. Make another.")
+              : tr("The last export was kept its {days} days and is gone. Make another.", { days })}
           </p>
         )}
         {latest?.status === "done" && !gone && (
           <>
             <p className="faint">
-              Made {latest.finished_at ? formatDateTime(latest.finished_at) : ""}; kept {days} days, unless a personal-data erasure deletes it first.
+              {tr("Made")} {latest.finished_at ? formatDateTime(latest.finished_at) : ""}{tr("; kept {days} days, unless a personal-data erasure deletes it first.", { days })}
             </p>
             {latest.result?.files_missing ? (
               <Alert tone="warning">
-                {latest.result.files_missing} {latest.result.files_missing === 1 ? "file" : "files"} the storage no longer has {latest.result.files_missing === 1 ? "was" : "were"} left
-                out; the export's manifest names them.
+                {latest.result.files_missing} {latest.result.files_missing === 1 ? tr("file") : tr("files")} {tr("the storage no longer has")} {latest.result.files_missing === 1 ? tr("was") : tr("were")} {tr("left out; the export's manifest names them.")}
               </Alert>
             ) : null}
             <ul className="stack" style={{ gap: 4 }}>
               {parts.map((p) => (
                 <li key={p.id}>
                   <Button size="sm" variant="ghost" onClick={() => save(p)}>
-                    Download {p.file_name}
+                    {tr("Download {file_name}", { file_name: p.file_name })}
                   </Button>
-                  {p.size ? <span className="faint"> {size(p.size)}</span> : null}
+                  {p.size ? <span className="faint"> {isolate(size(p.size))}</span> : null}
                 </li>
               ))}
             </ul>
@@ -472,10 +471,10 @@ interface Usage {
 
 /** What the workspace uses, beside what its plan allows. */
 const METERS: { id: string; label: string; bytes?: boolean }[] = [
-  { id: "people", label: "People" },
-  { id: "storage_bytes", label: "Files", bytes: true },
-  { id: "ai_tokens_month", label: "Assistant this month (tokens)" },
-  { id: "jobs_month", label: "Background jobs this month" },
+  { id: "people", get label() { return tr("People"); } },
+  { id: "storage_bytes", get label() { return tr("Files"); }, bytes: true },
+  { id: "ai_tokens_month", get label() { return tr("Assistant this month (tokens)"); } },
+  { id: "jobs_month", get label() { return tr("Background jobs this month"); } },
 ];
 
 function useUsage() {
@@ -500,27 +499,27 @@ function PlanAndUsage() {
   return (
     <section className="card card-pad stack" style={{ maxWidth: 560 }} aria-labelledby="ws-plan">
       <h2 id="ws-plan" className="section-title">
-        Plan and usage
+        {tr("Plan and usage")}
       </h2>
       <Loaded q={q}>
         {(u) => (
           <>
-            <p className="muted">{u.plan ? `This workspace is on the ${u.plan} plan.` : "This workspace is on no plan: its operator sets what it may use."}</p>
-            {u.state !== "active" && <Alert tone="warning">{`This workspace's account is ${u.state}${u.note ? `: ${u.note}` : "."}`}</Alert>}
+            <p className="muted">{u.plan ? tr("This workspace is on the {plan} plan.", { plan: u.plan }) : tr("This workspace is on no plan: its operator sets what it may use.")}</p>
+            {u.state !== "active" && <Alert tone="warning">{tr("This workspace's account is {state}{value}", { state: u.state, value: u.note ? `: ${u.note}` : "." })}</Alert>}
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">What</th>
-                  <th scope="col">Used</th>
-                  <th scope="col">Allowed</th>
+                  <th scope="col">{tr("What")}</th>
+                  <th scope="col">{tr("Used")}</th>
+                  <th scope="col">{tr("Allowed")}</th>
                 </tr>
               </thead>
               <tbody>
                 {METERS.map((m) => (
                   <tr key={m.id}>
-                    <th scope="row">{m.label}</th>
-                    <td>{amount(m, u.now[m.id] ?? 0)}</td>
-                    <td>{u.quotas[m.id] === undefined ? "No limit" : amount(m, u.quotas[m.id])}</td>
+                    <th scope="row">{isolate(m.label)}</th>
+                    <td>{isolate(amount(m, u.now[m.id] ?? 0))}</td>
+                    <td>{u.quotas[m.id] === undefined ? tr("No limit") : amount(m, u.quotas[m.id])}</td>
                   </tr>
                 ))}
               </tbody>
@@ -542,7 +541,7 @@ function CloseWorkspace() {
   const slug = q.data?.slug ?? "";
   const close = async (e: FormEvent) => {
     e.preventDefault();
-    if (!(await confirmDialog({ title: `Close ${slug}?`, message: "Everyone can still read and export it, and nobody can change anything. It is kept for 30 days; after that its operator may delete it.", confirmLabel: "Close it", danger: true })))
+    if (!(await confirmDialog({ title: tr("Close {slug}?", { slug }), message: tr("Everyone can still read and export it, and nobody can change anything. It is kept for 30 days; after that its operator may delete it."), confirmLabel: tr("Close it"), danger: true })))
       return;
     setBusy(true);
     try {
@@ -559,19 +558,19 @@ function CloseWorkspace() {
   return (
     <section className="card card-pad stack" style={{ maxWidth: 560 }} aria-labelledby="ws-close">
       <h2 id="ws-close" className="section-title">
-        Close this workspace
+        {tr("Close this workspace")}
       </h2>
       {closed ? (
-        <Alert tone="info">{`Closed. It is read-only, and kept until ${closed}; ask its operator to open it again before then. Export what you need from each list.`}</Alert>
+        <Alert tone="info">{tr("Closed. It is read-only, and kept until {closed}; ask its operator to open it again before then. Export what you need from each list.", { closed })}</Alert>
       ) : (
         <form className="stack" onSubmit={close}>
-          <p className="muted">Closing makes the workspace read-only for everyone, with export still open, and keeps it for 30 days. Its operator can open it again until then.</p>
-          <FieldWrap label={`Type ${slug} to close it`} htmlFor="ws-close-name">
+          <p className="muted">{tr("Closing makes the workspace read-only for everyone, with export still open, and keeps it for 30 days. Its operator can open it again until then.")}</p>
+          <FieldWrap label={tr("Type {slug} to close it", { slug })} htmlFor="ws-close-name">
             <input id="ws-close-name" className="input" value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
           </FieldWrap>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button type="submit" variant="danger" loading={busy} disabled={!slug || typed.trim() !== slug}>
-              Close the workspace
+              {tr("Close the workspace")}
             </Button>
           </div>
         </form>
@@ -593,9 +592,9 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
     if (
       fyChanged &&
       !(await confirmDialog({
-        title: "Change when the fiscal year starts?",
-        message: "Number series that include the fiscal year, and fiscal-year report periods, use the new start from now on. Existing documents keep their numbers.",
-        confirmLabel: "Change",
+        title: tr("Change when the fiscal year starts?"),
+        message: tr("Number series that include the fiscal year, and fiscal-year report periods, use the new start from now on. Existing documents keep their numbers."),
+        confirmLabel: tr("Change"),
       }))
     )
       return;
@@ -603,7 +602,7 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
     setErrors([]);
     try {
       await api.put("/api/admin/settings", form);
-      toast("Workspace settings saved");
+      toast(tr("Workspace settings saved"));
       // `me` carries the zone that today's date follows (lib/format todayIso).
       await Promise.all(["admin", "me"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
     } catch (err) {
@@ -617,70 +616,70 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
   return (
     <form className="card card-pad stack" style={{ maxWidth: 560 }} onSubmit={submit}>
       <FieldWrap
-        label="Time zone"
+        label={tr("Time zone")}
         htmlFor="ws-tz"
         error={fieldError("timezone")}
-        hint={`Today's date, date-based number series and report periods follow it. This device uses ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`}
+        hint={tr("Today's date, date-based number series and report periods follow it. This device uses {timeZone}.", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
       >
         <select id="ws-tz" className="select" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
           {zones.map((z) => (
             <option key={z} value={z}>
-              {z}
+              {isolate(z)}
             </option>
           ))}
         </select>
       </FieldWrap>
       <FieldWrap
-        label="Language"
+        label={tr("Language")}
         htmlFor="ws-lang"
         error={fieldError("language")}
-        hint="The interface's language, direction and number and date formats for everyone who has not chosen their own."
+        hint={tr("The interface's language, direction and number and date formats for everyone who has not chosen their own.")}
       >
         <select id="ws-lang" className="select" value={form.language ?? ""} onChange={(e) => setForm({ ...form, language: e.target.value || null })}>
-          <option value="">English</option>
+          <option value="">{tr("English")}</option>
           {LANGUAGES.filter((l) => l.tag !== "en").map((l) => (
             <option key={l.tag} value={l.tag} lang={l.tag}>
-              {l.name}
+              {isolate(l.name)}
             </option>
           ))}
         </select>
       </FieldWrap>
-      <FieldWrap label="Fiscal year starts in" htmlFor="ws-fy" error={fieldError("fiscal_year_start_month")}>
+      <FieldWrap label={tr("Fiscal year starts in")} htmlFor="ws-fy" error={fieldError("fiscal_year_start_month")}>
         <select id="ws-fy" className="select" value={form.fiscal_year_start_month} onChange={(e) => setForm({ ...form, fiscal_year_start_month: Number(e.target.value) })}>
           {MONTHS.map((m, i) => (
             <option key={m} value={i + 1}>
-              {m}
+              {isolate(m)}
             </option>
           ))}
         </select>
       </FieldWrap>
       <FieldWrap
-        label="Two-factor sign-in"
+        label={tr("Two-factor sign-in")}
         htmlFor="ws-2fa"
         error={fieldError("require_two_factor")}
-        hint="Everyone signs in with a code from an authenticator app too; those without one set it up at their next sign-in."
+        hint={tr("Everyone signs in with a code from an authenticator app too; those without one set it up at their next sign-in.")}
       >
         <label className="row" style={{ gap: 8 }}>
           <input id="ws-2fa" type="checkbox" checked={form.require_two_factor} onChange={(e) => setForm({ ...form, require_two_factor: e.target.checked })} />
-          Require it of everyone
+          {tr("Require it of everyone")}
         </label>
       </FieldWrap>
       <FieldWrap
-        label="Single sign-on"
+        label={tr("Single sign-on")}
         htmlFor="ws-sso"
         error={fieldError("require_sso")}
-        hint="Everyone but administrators signs in through a single sign-on provider; administrators keep their passwords for when the provider is down."
+        hint={tr("Everyone but administrators signs in through a single sign-on provider; administrators keep their passwords for when the provider is down.")}
       >
         <label className="row" style={{ gap: 8 }}>
           <input id="ws-sso" type="checkbox" checked={form.require_sso} onChange={(e) => setForm({ ...form, require_sso: e.target.checked })} />
-          Require it
+          {tr("Require it")}
         </label>
       </FieldWrap>
       <FieldWrap
-        label="Working offline"
+        label={tr("Working offline")}
         htmlFor="ws-offline"
         error={fieldError("offline")}
-        hint="What a device keeps for someone to work from without a connection (a till's price book) is forgotten when the time is up, when someone else signs in there, or when they are signed out everywhere. Work done offline is kept until it is sent, whatever this says."
+        hint={tr("What a device keeps for someone to work from without a connection (a till's price book) is forgotten when the time is up, when someone else signs in there, or when they are signed out everywhere. Work done offline is kept until it is sent, whatever this says.")}
       >
         <label className="row" style={{ gap: 8 }}>
           <input
@@ -689,19 +688,19 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
             checked={form.offline?.allowed !== false}
             onChange={(e) => setForm({ ...form, offline: { ...form.offline, allowed: e.target.checked } })}
           />
-          Devices may keep it for
+          {tr("Devices may keep it for")}
           <input
             className="input"
             type="number"
             min={1}
             max={720}
             style={{ width: 90 }}
-            aria-label="Hours devices may keep it"
+            aria-label={tr("Hours devices may keep it")}
             disabled={form.offline?.allowed === false}
             value={form.offline?.hours ?? 72}
             onChange={(e) => setForm({ ...form, offline: { ...form.offline, hours: Number(e.target.value) } })}
           />
-          hours
+          {tr("hours")}
         </label>
       </FieldWrap>
       <div className="row" style={{ justifyContent: "flex-end" }}>
@@ -718,7 +717,7 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
             JSON.stringify(form.offline) === JSON.stringify(initial.offline)
           }
         >
-          Save
+          {tr("Save")}
         </Button>
       </div>
     </form>
@@ -733,27 +732,27 @@ function SecretDialog({ secret, title, note, onClose }: { secret: string | null;
       title={title}
       footer={
         <Button variant="primary" onClick={onClose}>
-          I have stored it
+          {tr("I have stored it")}
         </Button>
       }
     >
       <div className="stack">
-        <Alert tone="warning">{note}</Alert>
+        <Alert tone="warning">{isolate(note)}</Alert>
         <div className="secret">
           <code className="mono" style={{ flex: 1 }}>
-            {secret}
+            {isolate(secret ?? "")}
           </code>
           <Button
             size="sm"
             data-autofocus
             onClick={() =>
               navigator.clipboard.writeText(secret ?? "").then(
-                () => toast("Copied to the clipboard"),
-                () => toast("Copy failed: select the text and copy it manually", "error"),
+                () => toast(tr("Copied to the clipboard")),
+                () => toast(tr("Copy failed: select the text and copy it manually"), "error"),
               )
             }
           >
-            Copy
+            {tr("Copy")}
           </Button>
         </div>
       </div>
@@ -827,17 +826,17 @@ export function roleEnds(roles: string[], through: Record<string, string>, held:
 }
 
 function RoleChecks({ roles, value, onChange }: { roles: string[]; value: string[]; onChange: (v: string[]) => void }) {
-  if (!roles.length) return <p className="faint">No roles defined yet.</p>;
+  if (!roles.length) return <p className="faint">{tr("No roles defined yet.")}</p>;
   return (
     <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
       <legend className="field-label" style={{ marginBottom: 6 }}>
-        Roles
+        {tr("Roles")}
       </legend>
       <div className="form-grid">
         {roles.map((r) => (
           <label key={r} className="check-field">
             <input type="checkbox" checked={value.includes(r)} onChange={(e) => onChange(e.target.checked ? [...value, r] : value.filter((x) => x !== r))} />
-            {r}
+            {isolate(r)}
           </label>
         ))}
       </div>
@@ -858,9 +857,9 @@ function Users() {
 
   const toggleActive = async (u: User) => {
     const ok = await confirmDialog({
-      title: u.is_active ? `Deactivate ${u.full_name}?` : `Activate ${u.full_name}?`,
-      message: u.is_active ? "They will be signed out and can no longer sign in or use API keys." : "They will be able to sign in again.",
-      confirmLabel: u.is_active ? "Deactivate" : "Activate",
+      title: u.is_active ? tr("Deactivate {full_name}?", { full_name: u.full_name }) : tr("Activate {full_name}?", { full_name: u.full_name }),
+      message: u.is_active ? tr("They will be signed out and can no longer sign in or use API keys.") : tr("They will be able to sign in again."),
+      confirmLabel: u.is_active ? tr("Deactivate") : tr("Activate"),
       danger: u.is_active,
     });
     if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/active`, { active: !u.is_active }), u.is_active ? "User deactivated" : "User activated")))
@@ -868,29 +867,29 @@ function Users() {
   };
   const resetTwoFactor = async (u: User) => {
     const ok = await confirmDialog({
-      title: `Reset two-factor sign-in for ${u.full_name}?`,
-      message: "For a lost phone: it turns their two-factor sign-in off, lifts a lockout and signs them out everywhere. If the workspace requires it, they set it up again at their next sign-in.",
-      confirmLabel: "Reset",
+      title: tr("Reset two-factor sign-in for {full_name}?", { full_name: u.full_name }),
+      message: tr("For a lost phone: it turns their two-factor sign-in off, lifts a lockout and signs them out everywhere. If the workspace requires it, they set it up again at their next sign-in."),
+      confirmLabel: tr("Reset"),
       danger: true,
     });
     if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/two-factor/reset`), "Two-factor sign-in reset"))) void refresh();
   };
   const unlinkSso = async (u: User) => {
     const ok = await confirmDialog({
-      title: `Unlink ${u.full_name} from single sign-on?`,
-      message: "For an identity that changed at the provider, or an account handed to someone else: their next single sign-on links the identity it brings.",
-      confirmLabel: "Unlink",
+      title: tr("Unlink {full_name} from single sign-on?", { full_name: u.full_name }),
+      message: tr("For an identity that changed at the provider, or an account handed to someone else: their next single sign-on links the identity it brings."),
+      confirmLabel: tr("Unlink"),
     });
     if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/sso/unlink`), "Unlinked"))) void refresh();
   };
   const changeKind = async (u: User) => {
     const toPortal = (u.kind ?? "member") === "member";
     const ok = await confirmDialog({
-      title: toPortal ? `Make ${u.full_name} a portal person?` : `Make ${u.full_name} a member?`,
+      title: toPortal ? tr("Make {full_name} a portal person?", { full_name: u.full_name }) : tr("Make {full_name} a member?", { full_name: u.full_name }),
       message: toPortal
-        ? "They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold no roles. They are signed out everywhere now."
-        : "They will use the workspace's apps with the roles you give them. They are signed out everywhere now.",
-      confirmLabel: toPortal ? "Make portal person" : "Make member",
+        ? tr("They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold no roles. They are signed out everywhere now.")
+        : tr("They will use the workspace's apps with the roles you give them. They are signed out everywhere now."),
+      confirmLabel: toPortal ? tr("Make portal person") : tr("Make member"),
     });
     if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/kind`, { kind: toPortal ? "portal" : "member" }), "Changed"))) void refresh();
   };
@@ -898,10 +897,10 @@ function Users() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Users</h2>
+        <h2>{tr("Users")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-          New user
+          {tr("New user")}
         </Button>
       </div>
       <Loaded q={users}>
@@ -910,12 +909,12 @@ function Users() {
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">User</th>
-                  <th scope="col">Roles</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Last sign-in</th>
+                  <th scope="col">{tr("User")}</th>
+                  <th scope="col">{tr("Roles")}</th>
+                  <th scope="col">{tr("Status")}</th>
+                  <th scope="col">{tr("Last sign-in")}</th>
                   <th scope="col">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{tr("Actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -924,59 +923,59 @@ function Users() {
                   <tr key={u.id}>
                     <td>
                       <div>
-                        {u.full_name} {u.is_admin && <Badge tone="purple">admin</Badge>}{" "}
-                        {u.kind && u.kind !== "member" && <Badge tone="amber">{u.kind}</Badge>}
+                        {isolate(u.full_name)} {u.is_admin && <Badge tone="purple">{tr("admin")}</Badge>}{isolate(" ")}
+                        {u.kind && u.kind !== "member" && <Badge tone="amber">{isolate(u.kind)}</Badge>}
                       </div>
-                      <div className="muted">{u.email}</div>
+                      <div className="muted">{isolate(u.email)}</div>
                     </td>
                     <td>
                       <div className="chips">
                         {u.roles.length ? (
                           u.roles.map((r) => (
                             <Badge key={r}>
-                              {r}
-                              {u.role_until?.[r] && ` through ${formatDate(throughDay(u.role_until[r]))}`}
+                              {isolate(r)}
+                              {u.role_until?.[r] && tr(" through {value}", { value: formatDate(throughDay(u.role_until[r])) })}
                             </Badge>
                           ))
                         ) : (
-                          <span className="faint">none</span>
+                          <span className="faint">{tr("none")}</span>
                         )}
                       </div>
                     </td>
                     <td>
                       <div className="chips">
-                        <Badge tone={u.is_active ? "green" : "red"}>{u.is_active ? "active" : "inactive"}</Badge>
-                        {u.locked && <Badge tone="red">locked</Badge>}
-                        {u.two_factor && <Badge tone="blue">2FA</Badge>}
-                        {u.sso && <Badge tone="purple">SSO</Badge>}
+                        <Badge tone={u.is_active ? "green" : "red"}>{u.is_active ? tr("active") : tr("inactive")}</Badge>
+                        {u.locked && <Badge tone="red">{tr("locked")}</Badge>}
+                        {u.two_factor && <Badge tone="blue">{tr("2FA")}</Badge>}
+                        {u.sso && <Badge tone="purple">{tr("SSO")}</Badge>}
                       </div>
                     </td>
-                    <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">never</span>}</td>
+                    <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">{tr("never")}</span>}</td>
                     <td>
                       <div className="row">
                         <Button size="sm" onClick={() => setEditRoles(u)}>
-                          Roles
+                          {tr("Roles")}
                         </Button>
                         <Button size="sm" onClick={() => setResetting(u)}>
-                          Reset password
+                          {tr("Reset password")}
                         </Button>
                         {u.two_factor && (
                           <Button size="sm" onClick={() => void resetTwoFactor(u)}>
-                            Reset 2FA
+                            {tr("Reset 2FA")}
                           </Button>
                         )}
                         {u.sso && (
                           <Button size="sm" onClick={() => void unlinkSso(u)}>
-                            Unlink SSO
+                            {tr("Unlink SSO")}
                           </Button>
                         )}
                         {u.id !== me?.user.id && (u.kind ?? "member") !== "service" && (
                           <Button size="sm" onClick={() => void changeKind(u)}>
-                            {(u.kind ?? "member") === "member" ? "Make portal person" : "Make member"}
+                            {(u.kind ?? "member") === "member" ? tr("Make portal person") : tr("Make member")}
                           </Button>
                         )}
                         <Button size="sm" variant={u.is_active ? "danger" : "default"} disabled={u.id === me?.user.id} onClick={() => void toggleActive(u)}>
-                          {u.is_active ? "Deactivate" : "Activate"}
+                          {u.is_active ? tr("Deactivate") : tr("Activate")}
                         </Button>
                       </div>
                     </td>
@@ -1019,7 +1018,7 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
         roles: portal ? [] : u.roles,
         is_admin: portal ? false : u.is_admin,
       });
-      toast("User created");
+      toast(tr("User created"));
       onDone();
       close();
     } catch (err) {
@@ -1029,41 +1028,41 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
     }
   };
   return (
-    <Dialog open={open} onClose={close} title="New user">
+    <Dialog open={open} onClose={close} title={tr("New user")}>
       <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{error}</Alert>}
-        <FieldWrap label="Email" htmlFor="nu-email" required>
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        <FieldWrap label={tr("Email")} htmlFor="nu-email" required>
           <input id="nu-email" className="input" type="email" autoComplete="off" value={u.email} onChange={(e) => setU({ ...u, email: e.target.value })} required />
         </FieldWrap>
-        <FieldWrap label="Full name" htmlFor="nu-name" required>
+        <FieldWrap label={tr("Full name")} htmlFor="nu-name" required>
           <input id="nu-name" className="input" value={u.full_name} onChange={(e) => setU({ ...u, full_name: e.target.value })} required />
         </FieldWrap>
         <FieldWrap
-          label="Kind"
+          label={tr("Kind")}
           htmlFor="nu-kind"
-          hint={u.kind === "portal" ? "A customer or supplier: only the workspace's portal, signing in with codes sent to this email." : "Someone of the workspace, using its apps."}
+          hint={u.kind === "portal" ? tr("A customer or supplier: only the workspace's portal, signing in with codes sent to this email.") : tr("Someone of the workspace, using its apps.")}
         >
           <select id="nu-kind" className="input" value={u.kind} onChange={(e) => setU({ ...u, kind: e.target.value })}>
-            <option value="member">Member</option>
-            <option value="portal">Portal person</option>
+            <option value="member">{tr("Member")}</option>
+            <option value="portal">{tr("Portal person")}</option>
           </select>
         </FieldWrap>
         {u.kind !== "portal" && (
           <>
-            <FieldWrap label="Initial password" htmlFor="nu-pw" hint="Optional. At least 10 characters with 3 of: lower, upper, digit, symbol.">
+            <FieldWrap label={tr("Initial password")} htmlFor="nu-pw" hint={tr("Optional. At least 10 characters with 3 of: lower, upper, digit, symbol.")}>
               <input id="nu-pw" className="input" type="password" autoComplete="new-password" value={u.password} onChange={(e) => setU({ ...u, password: e.target.value })} />
             </FieldWrap>
             <label className="check-field">
               <input type="checkbox" checked={u.is_admin} onChange={(e) => setU({ ...u, is_admin: e.target.checked })} />
-              Administrator
+              {tr("Administrator")}
             </label>
             <RoleChecks roles={roles} value={u.roles} onChange={(r) => setU({ ...u, roles: r })} />
           </>
         )}
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={close}>Cancel</Button>
+          <Button onClick={close}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Create user
+            {tr("Create user")}
           </Button>
         </div>
       </form>
@@ -1096,12 +1095,12 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
     <Dialog
       open={!!user}
       onClose={onClose}
-      title={`Roles of ${user?.full_name ?? ""}`}
+      title={tr("Roles of {value}", { value: user?.full_name ?? "" })}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button variant="primary" loading={busy} onClick={() => void save()}>
-            Save roles
+            {tr("Save roles")}
           </Button>
         </>
       }
@@ -1110,7 +1109,7 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
       {value.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
           <legend className="field-label" style={{ marginBottom: 6 }}>
-            Held through (optional)
+            {tr("Held through (optional)")}
           </legend>
           <div className="form-grid">
             {value.map((r) => (
@@ -1126,7 +1125,7 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
               </FieldWrap>
             ))}
           </div>
-          <p className="faint">Empty: held for good. A role with a day ends when that day does, and what it allowed ends with it.</p>
+          <p className="faint">{tr("Empty: held for good. A role with a day ends when that day does, and what it allowed ends with it.")}</p>
         </fieldset>
       )}
     </Dialog>
@@ -1149,7 +1148,7 @@ function ResetPasswordDialog({ user, onClose }: { user: User | null; onClose: ()
     setError(null);
     try {
       await api.put(`/api/admin/users/${user.id}/password`, { password: pw });
-      toast(`Password reset for ${user.full_name}`);
+      toast(tr("Password reset for {full_name}", { full_name: user.full_name }));
       close();
     } catch (err) {
       setError(errorMessage(err));
@@ -1158,16 +1157,16 @@ function ResetPasswordDialog({ user, onClose }: { user: User | null; onClose: ()
     }
   };
   return (
-    <Dialog open={!!user} onClose={close} title={`Reset password for ${user?.full_name ?? ""}`}>
+    <Dialog open={!!user} onClose={close} title={tr("Reset password for {value}", { value: user?.full_name ?? "" })}>
       <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{error}</Alert>}
-        <FieldWrap label="New password" htmlFor="rp-pw" required hint="Their existing sessions are signed out.">
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        <FieldWrap label={tr("New password")} htmlFor="rp-pw" required hint={tr("Their existing sessions are signed out.")}>
           <input id="rp-pw" className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={10} />
         </FieldWrap>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={close}>Cancel</Button>
+          <Button onClick={close}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Reset password
+            {tr("Reset password")}
           </Button>
         </div>
       </form>
@@ -1203,10 +1202,10 @@ function ConditionText({ entity, cond }: { entity: string; cond: Record<string, 
         return (
           <span key={k}>
             {i > 0 && "; "}
-            {f?.label ?? k} is{" "}
+            {f?.label ?? k} {tr("is")}{isolate(" ")}
             {(Array.isArray(v) ? v : [v]).map(String).map((x, j) => (
               <span key={x}>
-                {j > 0 && " or "}
+                {j > 0 && tr(" or ")}
                 {f?.type === "link" && f.to ? <LinkTitle to={f.to} id={x} /> : x}
               </span>
             ))}
@@ -1230,8 +1229,8 @@ function ConditionInput({ field, value, onChange }: { field: Field; value: strin
     return (
       <FieldWrap label="is" htmlFor="perm-values">
         <select id="perm-values" className="select" value={value || "true"} onChange={(e) => onChange(e.target.value)}>
-          <option value="true">Ticked</option>
-          <option value="false">Not ticked</option>
+          <option value="true">{tr("Ticked")}</option>
+          <option value="false">{tr("Not ticked")}</option>
         </select>
       </FieldWrap>
     );
@@ -1242,17 +1241,17 @@ function ConditionInput({ field, value, onChange }: { field: Field; value: strin
     const toggle = (o: string) => onChange(options.filter((x) => (x === o ? !picked.has(o) : picked.has(x))).join(","));
     return (
       <fieldset className="row" style={{ border: 0, padding: 0, margin: 0, gap: 12 }}>
-        <legend className="field-label">is one of</legend>
+        <legend className="field-label">{tr("is one of")}</legend>
         {options.map((o) => (
           <label key={o} className="check-field">
-            <input type="checkbox" checked={picked.has(o)} onChange={() => toggle(o)} /> {o}
+            <input type="checkbox" checked={picked.has(o)} onChange={() => toggle(o)} /> {isolate(o)}
           </label>
         ))}
       </fieldset>
     );
   }
   return (
-    <FieldWrap label="is one of" htmlFor="perm-values" hint="Comma-separated">
+    <FieldWrap label={tr("is one of")} htmlFor="perm-values" hint={tr("Comma-separated")}>
       <input id="perm-values" className="input" required value={value} onChange={(e) => onChange(e.target.value)} />
     </FieldWrap>
   );
@@ -1325,7 +1324,7 @@ function Roles() {
       "add",
     );
     if (ok) {
-      toast(`${addEntity} added to ${current}`);
+      toast(tr("{addEntity} added to {current}", { addEntity, current }));
       setAddEntity("");
       setAddOwner(false);
       setAddField("");
@@ -1341,11 +1340,11 @@ function Roles() {
       {() => (
         <div className="stack">
           <div className="card card-pad row">
-            <FieldWrap label="Role" htmlFor="role-pick">
+            <FieldWrap label={tr("Role")} htmlFor="role-pick">
               <select id="role-pick" className="select" style={{ minWidth: 240 }} value={current} onChange={(e) => setSelected(e.target.value)}>
                 {names.map((n) => (
                   <option key={n} value={n}>
-                    {n}
+                    {isolate(n)}
                   </option>
                 ))}
               </select>
@@ -1362,32 +1361,32 @@ function Roles() {
                 setNewRole("");
               }}
             >
-              <FieldWrap label="New role" htmlFor="role-new" hint="Created when you grant its first permission.">
+              <FieldWrap label={tr("New role")} htmlFor="role-new" hint={tr("Created when you grant its first permission.")}>
                 <input id="role-new" className="input" value={newRole} onChange={(e) => setNewRole(e.target.value)} maxLength={100} />
               </FieldWrap>
-              <Button type="submit">Add role</Button>
+              <Button type="submit">{tr("Add role")}</Button>
             </form>
           </div>
-          {role?.description && <p className="muted">{role.description}</p>}
-          <section className="card" aria-label={`Permissions of ${current}`}>
+          {role?.description && <p className="muted">{isolate(role.description)}</p>}
+          <section className="card" aria-label={tr("Permissions of {current}", { current })}>
             <div className="table-wrap">
               <table className="table matrix">
                 <thead>
                   <tr>
-                    <th scope="col">Entity</th>
+                    <th scope="col">{tr("Entity")}</th>
                     {ACTIONS.map((a) => (
                       <th key={a} scope="col">
-                        {a}
+                        {isolate(a)}
                       </th>
                     ))}
-                    <th scope="col">Applies to</th>
+                    <th scope="col">{tr("Applies to")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!perms.length && (
                     <tr>
                       <td colSpan={ACTIONS.length + 2} className="muted">
-                        This role has no permissions yet.
+                        {tr("This role has no permissions yet.")}
                       </td>
                     </tr>
                   )}
@@ -1395,7 +1394,7 @@ function Roles() {
                     const key = `${p.entity}|${p.if_owner}|${p.rule_key ?? ""}`;
                     return (
                       <tr key={key}>
-                        <td>{label(p.entity)}</td>
+                        <td>{isolate(label(p.entity))}</td>
                         {ACTIONS.map((a) => {
                           const k = `can_${a}` as const;
                           return (
@@ -1413,11 +1412,11 @@ function Roles() {
                           );
                         })}
                         <td>
-                          {p.if_owner && <Badge tone="amber">own only</Badge>}{" "}
+                          {p.if_owner && <Badge tone="amber">{tr("own only")}</Badge>}{isolate(" ")}
                           {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
                             <ConditionText entity={p.entity} cond={p.match_rule} />
                           ) : (
-                            !p.if_owner && <span className="faint">all</span>
+                            !p.if_owner && <span className="faint">{tr("all")}</span>
                           )}
                         </td>
                       </tr>
@@ -1427,24 +1426,24 @@ function Roles() {
               </table>
             </div>
             <form className="toolbar" style={{ borderBottom: 0, borderTop: "1px solid var(--border)" }} onSubmit={addRow}>
-              <FieldWrap label="Grant access to" htmlFor="perm-entity" className="field-wide">
+              <FieldWrap label={tr("Grant access to")} htmlFor="perm-entity" className="field-wide">
                 <select id="perm-entity" className="select" value={addEntity} onChange={(e) => setAddEntity(e.target.value)}>
-                  <option value="">Choose an entity…</option>
-                  <option value="*">All entities (*)</option>
+                  <option value="">{tr("Choose an entity…")}</option>
+                  <option value="*">{tr("All entities (*)")}</option>
                   {entities.map((e) => (
                     <option key={e.name} value={e.name}>
-                      {e.label}
+                      {isolate(e.label)}
                     </option>
                   ))}
                 </select>
               </FieldWrap>
               <label className="check-field">
                 <input type="checkbox" checked={addOwner} onChange={(e) => setAddOwner(e.target.checked)} />
-                Own records only
+                {tr("Own records only")}
               </label>
               {conditionFields.length > 0 && (
                 <>
-                  <FieldWrap label="Only where" htmlFor="perm-field" hint="Optional: records whose field holds one of the values">
+                  <FieldWrap label={tr("Only where")} htmlFor="perm-field" hint={tr("Optional: records whose field holds one of the values")}>
                     <select
                       id="perm-field"
                       className="select"
@@ -1454,10 +1453,10 @@ function Roles() {
                         setAddValues("");
                       }}
                     >
-                      <option value="">Any record</option>
+                      <option value="">{tr("Any record")}</option>
                       {conditionFields.map((f) => (
                         <option key={f.name} value={f.name}>
-                          {f.label}
+                          {isolate(f.label)}
                         </option>
                       ))}
                     </select>
@@ -1466,7 +1465,7 @@ function Roles() {
                 </>
               )}
               <Button type="submit" icon="plus" disabled={!addEntity || !current || (!!conditionField && conditionField.type !== "check" && !addValues)} loading={saving === "add"}>
-                Add
+                {tr("Add")}
               </Button>
             </form>
           </section>
@@ -1513,9 +1512,9 @@ function RoleConflicts({ roles }: { roles: string[] }) {
   };
   const remove = async (c: RoleConflict) => {
     const ok = await confirmDialog({
-      title: `Allow ${c.role_a} and ${c.role_b} together?`,
-      message: "One person may then be given both.",
-      confirmLabel: "Allow together",
+      title: tr("Allow {role_a} and {role_b} together?", { role_a: c.role_a, role_b: c.role_b }),
+      message: tr("One person may then be given both."),
+      confirmLabel: tr("Allow together"),
       danger: true,
     });
     if (ok && (await attempt(() => api.del("/api/admin/role-conflicts", { query: { role_a: c.role_a, role_b: c.role_b } }), "Allowed together"))) void refresh();
@@ -1523,7 +1522,7 @@ function RoleConflicts({ roles }: { roles: string[] }) {
   return (
     <section className="card card-pad stack" aria-labelledby="conflicts-title">
       <h2 id="conflicts-title" className="section-title">
-        Roles one person may not hold together
+        {tr("Roles one person may not hold together")}
       </h2>
       <Loaded q={q}>
         {(d) =>
@@ -1532,19 +1531,19 @@ function RoleConflicts({ roles }: { roles: string[] }) {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Roles</th>
-                    <th>Why</th>
-                    <th>Held by both</th>
-                    <th aria-label="Actions" />
+                    <th>{tr("Roles")}</th>
+                    <th>{tr("Why")}</th>
+                    <th>{tr("Held by both")}</th>
+                    <th aria-label={tr("Actions")} />
                   </tr>
                 </thead>
                 <tbody>
                   {d.conflicts.map((c) => (
                     <tr key={`${c.role_a}\u0000${c.role_b}`}>
                       <td>
-                        <Badge>{c.role_a}</Badge> and <Badge>{c.role_b}</Badge>
+                        <Badge>{isolate(c.role_a)}</Badge> {tr("and")} <Badge>{isolate(c.role_b)}</Badge>
                       </td>
-                      <td>{c.reason}</td>
+                      <td>{isolate(c.reason)}</td>
                       <td>
                         {c.holders.length ? (
                           <div className="chips">
@@ -1555,11 +1554,11 @@ function RoleConflicts({ roles }: { roles: string[] }) {
                             ))}
                           </div>
                         ) : (
-                          <span className="faint">no one</span>
+                          <span className="faint">{tr("no one")}</span>
                         )}
                       </td>
                       <td>
-                        <Button onClick={() => void remove(c)}>Allow together</Button>
+                        <Button onClick={() => void remove(c)}>{tr("Allow together")}</Button>
                       </td>
                     </tr>
                   ))}
@@ -1567,34 +1566,34 @@ function RoleConflicts({ roles }: { roles: string[] }) {
               </table>
             </div>
           ) : (
-            <p className="muted">None yet: anyone may be given any roles together.</p>
+            <p className="muted">{tr("None yet: anyone may be given any roles together.")}</p>
           )
         }
       </Loaded>
       <form className="row" style={{ alignItems: "flex-end", flexWrap: "wrap" }} onSubmit={(e) => void add(e)}>
-        <FieldWrap label="Role" htmlFor="conflict-a">
+        <FieldWrap label={tr("Role")} htmlFor="conflict-a">
           <select id="conflict-a" className="select" value={a} onChange={(e) => setA(e.target.value)} required>
-            <option value="">Choose a role…</option>
+            <option value="">{tr("Choose a role…")}</option>
             {roles.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {isolate(r)}
               </option>
             ))}
           </select>
         </FieldWrap>
-        <FieldWrap label="Is not held with" htmlFor="conflict-b">
+        <FieldWrap label={tr("Is not held with")} htmlFor="conflict-b">
           <select id="conflict-b" className="select" value={b} onChange={(e) => setB(e.target.value)} required>
-            <option value="">Choose a role…</option>
+            <option value="">{tr("Choose a role…")}</option>
             {roles
               .filter((r) => r !== a)
               .map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {isolate(r)}
                 </option>
               ))}
           </select>
         </FieldWrap>
-        <FieldWrap label="Because" htmlFor="conflict-why" className="field-wide">
+        <FieldWrap label={tr("Because")} htmlFor="conflict-why" className="field-wide">
           <input
             id="conflict-why"
             className="input"
@@ -1602,11 +1601,11 @@ function RoleConflicts({ roles }: { roles: string[] }) {
             onChange={(e) => setReason(e.target.value)}
             required
             maxLength={500}
-            placeholder="e.g. whoever adds suppliers does not pay them"
+            placeholder={tr("e.g. whoever adds suppliers does not pay them")}
           />
         </FieldWrap>
         <Button type="submit" icon="plus" loading={busy} disabled={!a || !b || !reason.trim()}>
-          Add
+          {tr("Add")}
         </Button>
       </form>
     </section>
@@ -1651,29 +1650,29 @@ function ExplainAccess({ roles, entities }: { roles: string[]; entities: { name:
   return (
     <section className="card card-pad stack" aria-labelledby="explain-title">
       <h2 id="explain-title" className="section-title">
-        Why may they, or not?
+        {tr("Why may they, or not?")}
       </h2>
       <form className="row" style={{ alignItems: "flex-end", flexWrap: "wrap" }} onSubmit={(e) => void ask(e)}>
-        <FieldWrap label="Person" htmlFor="explain-user">
+        <FieldWrap label={tr("Person")} htmlFor="explain-user">
           <select id="explain-user" className="select" value={user} onChange={(e) => setUser(e.target.value)} required>
-            <option value="">Choose someone…</option>
+            <option value="">{tr("Choose someone…")}</option>
             {people.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.full_name} ({u.email})
+                {isolate(u.full_name)} ({isolate(u.email)})
               </option>
             ))}
           </select>
         </FieldWrap>
-        <FieldWrap label="Do" htmlFor="explain-action">
+        <FieldWrap label={tr("Do")} htmlFor="explain-action">
           <select id="explain-action" className="select" value={action} onChange={(e) => setAction(e.target.value)}>
             {ACTIONS.map((a) => (
               <option key={a} value={a}>
-                {a}
+                {isolate(a)}
               </option>
             ))}
           </select>
         </FieldWrap>
-        <FieldWrap label="Entity" htmlFor="explain-entity">
+        <FieldWrap label={tr("Entity")} htmlFor="explain-entity">
           <select
             id="explain-entity"
             className="select"
@@ -1684,47 +1683,47 @@ function ExplainAccess({ roles, entities }: { roles: string[]; entities: { name:
             }}
             required
           >
-            <option value="">Choose an entity…</option>
+            <option value="">{tr("Choose an entity…")}</option>
             {entities.map((e) => (
               <option key={e.name} value={e.name}>
-                {e.label}
+                {isolate(e.label)}
               </option>
             ))}
           </select>
         </FieldWrap>
         {entity && (
-          <FieldWrap label="This record (optional)" htmlFor="explain-record">
+          <FieldWrap label={tr("This record (optional)")} htmlFor="explain-record">
             <LinkInput id="explain-record" to={entity} value={record} onChange={(id) => setRecord(id)} />
           </FieldWrap>
         )}
         <Button type="submit" variant="primary" loading={busy} disabled={!user || !entity}>
-          Explain
+          {tr("Explain")}
         </Button>
       </form>
       {answer?.asked === asked && (
         <div role="status" className="stack">
           <div>
-            <Badge tone={answer.is.allowed ? "green" : "red"}>{answer.is.allowed ? "allowed" : "not allowed"}</Badge> {answer.is.simulated && <Badge tone="amber">as if</Badge>}{" "}
+            <Badge tone={answer.is.allowed ? "green" : "red"}>{answer.is.allowed ? tr("allowed") : tr("not allowed")}</Badge> {answer.is.simulated && <Badge tone="amber">{tr("as if")}</Badge>}{isolate(" ")}
             {answer.is.reason.charAt(0).toUpperCase() + answer.is.reason.slice(1)}.
           </div>
-          {answer.is.roles && <p className="muted">Roles: {answer.is.roles.length ? answer.is.roles.join(", ") : "none"}</p>}
+          {answer.is.roles && <p className="muted">{tr("Roles:")} {answer.is.roles.length ? answer.is.roles.join(", ") : tr("none")}</p>}
           {!!answer.is.rules?.length && (
             <ul className="muted" style={{ margin: 0 }}>
               {answer.is.rules.map((r, i) => (
                 <li key={i}>
-                  {r.role}: {r.entity === "*" ? "every entity" : r.entity}
-                  {r.if_owner && ", their own records"}
-                  {r.where && `, where ${JSON.stringify(r.where)}`}
+                  {isolate(r.role)}: {r.entity === "*" ? tr("every entity") : r.entity}
+                  {r.if_owner && tr(", their own records")}
+                  {r.where && tr(", where {JSON}", { JSON: JSON.stringify(r.where) })}
                 </li>
               ))}
             </ul>
           )}
-          {!!answer.is.scoped_by?.length && <p className="muted">Limited by their scopes on: {answer.is.scoped_by.join(", ")}</p>}
+          {!!answer.is.scoped_by?.length && <p className="muted">{tr("Limited by their scopes on: {value}", { value: answer.is.scoped_by.join(", ") })}</p>}
         </div>
       )}
       <label className="check-field">
         <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
-        As if they held other roles (nothing changes)
+        {tr("As if they held other roles (nothing changes)")}
       </label>
       {simulate && <RoleChecks roles={roles} value={as} onChange={setAs} />}
     </section>
@@ -1748,9 +1747,9 @@ function Packages() {
   const [busy, setBusy] = useState<string | null>(null);
   const install = async (p: Package) => {
     const ok = await confirmDialog({
-      title: `Install ${p.label ?? p.name}?`,
-      message: `This adds its entities, roles and data to the workspace${p.depends.length ? ` (requires ${p.depends.join(", ")})` : ""}.`,
-      confirmLabel: "Install",
+      title: tr("Install {value}?", { value: p.label ?? p.name }),
+      message: tr("This adds its entities, roles and data to the workspace{value}.", { value: p.depends.length ? ` (requires ${p.depends.join(", ")})` : "" }),
+      confirmLabel: tr("Install"),
     });
     if (!ok) return;
     setBusy(p.name);
@@ -1769,20 +1768,20 @@ function Packages() {
                 <div className="card-head">
                   <h2>{p.label ?? p.name}</h2>
                   <span className="faint mono">
-                    {p.name}@{p.version}
+                    {isolate(p.name)}@{isolate(p.version)}
                   </span>
                   <span className="spacer" />
                   {p.installed ? (
-                    <Badge tone="green">installed</Badge>
+                    <Badge tone="green">{tr("installed")}</Badge>
                   ) : (
                     <Button size="sm" variant="primary" loading={busy === p.name} onClick={() => void install(p)}>
-                      Install
+                      {tr("Install")}
                     </Button>
                   )}
                 </div>
                 <div className="card-body stack" style={{ gap: 8 }}>
-                  <p className="muted">{p.description}</p>
-                  {p.depends.length > 0 && <p className="faint">Requires: {p.depends.join(", ")}</p>}
+                  <p className="muted">{isolate(p.description ?? "")}</p>
+                  {p.depends.length > 0 && <p className="faint">{tr("Requires: {value}", { value: p.depends.join(", ") })}</p>}
                 </div>
               </section>
             ))}
@@ -1818,7 +1817,7 @@ function Backfills() {
   const [busy, setBusy] = useState<string | null>(null);
   const rerun = async (b: Backfill) => {
     const key = `${b.package}/${b.name}`;
-    const ok = await confirmDialog({ title: `Run ${key} again?`, message: "It runs from the start at the next upkeep, over the rows that still need it.", confirmLabel: "Run again" });
+    const ok = await confirmDialog({ title: tr("Run {key} again?", { key }), message: tr("It runs from the start at the next upkeep, over the rows that still need it."), confirmLabel: tr("Run again") });
     if (!ok) return;
     setBusy(key);
     if (await attempt(() => api.post(`/api/admin/backfills/${encodeURIComponent(b.package)}/${encodeURIComponent(b.name)}/rerun`, {}), `${key} runs again at the next upkeep`)) {
@@ -1832,20 +1831,20 @@ function Backfills() {
         data.backfills.length === 0 ? null : (
           <section className="card">
             <div className="card-head">
-              <h2>Data moves</h2>
+              <h2>{tr("Data moves")}</h2>
             </div>
             <div className="card-body table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Backfill</th>
-                    <th scope="col">State</th>
-                    <th scope="col">Rows changed</th>
-                    <th scope="col">It could not change</th>
-                    <th scope="col">Need it now</th>
-                    <th scope="col">Finished</th>
+                    <th scope="col">{tr("Backfill")}</th>
+                    <th scope="col">{tr("State")}</th>
+                    <th scope="col">{tr("Rows changed")}</th>
+                    <th scope="col">{tr("It could not change")}</th>
+                    <th scope="col">{tr("Need it now")}</th>
+                    <th scope="col">{tr("Finished")}</th>
                     <th scope="col">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{tr("Actions")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -1854,9 +1853,9 @@ function Backfills() {
                     const key = `${b.package}/${b.name}`;
                     return (
                       <tr key={key}>
-                        <td className="mono">{key}</td>
+                        <td className="mono">{isolate(key)}</td>
                         <td>
-                          <Badge tone={BACKFILL_STATE[b.state].tone}>{BACKFILL_STATE[b.state].text}</Badge>
+                          <Badge tone={BACKFILL_STATE[b.state].tone}>{isolate(BACKFILL_STATE[b.state].text)}</Badge>
                         </td>
                         <td>{b.changed}</td>
                         <td>{b.remaining ?? ""}</td>
@@ -1865,7 +1864,7 @@ function Backfills() {
                         <td>
                           {b.state === "done" && (
                             <Button size="sm" loading={busy === key} onClick={() => void rerun(b)}>
-                              Run again
+                              {tr("Run again")}
                             </Button>
                           )}
                         </td>
@@ -1911,7 +1910,7 @@ interface Domain {
 }
 
 const TARGET_LABEL = (t: string, apps: { app: string; title: string }[]) =>
-  t === "shell" ? "This workspace" : t === "portal" ? "The portal" : `${apps.find((a) => `site:${a.app}` === t)?.title ?? t.slice(5)}'s public site`;
+  t === "shell" ? tr("This workspace") : t === "portal" ? tr("The portal") : tr("{value}'s public site", { value: apps.find((a) => `site:${a.app}` === t)?.title ?? t.slice(5) });
 
 const DOMAIN_STATUS: Record<Domain["status"], { tone: "green" | "amber" | "red" | "neutral"; text: string }> = {
   verified: { tone: "green", text: "Working" },
@@ -1944,7 +1943,7 @@ function Domains() {
       setAdding(false);
       setForm({ host: "", target: "shell" });
       // A name that can only reach this server (`*.localhost` on a developer's machine) works at once.
-      toast(made.verified_at ? "Domain added, and working" : "Domain added: point it at Ferrum, and it starts working once checked");
+      toast(made.verified_at ? tr("Domain added, and working") : tr("Domain added: point it at Ferrum, and it starts working once checked"));
       void refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -1955,7 +1954,7 @@ function Domains() {
   const check = async (d: Domain) => {
     try {
       const r = await api.post<{ answers: boolean }>(`/api/admin/domains/${encodeURIComponent(d.host)}/check`);
-      toast(r.answers ? `${d.host} reaches Ferrum` : `${d.host} does not reach Ferrum yet`, r.answers ? "success" : "error");
+      toast(r.answers ? tr("{host} reaches Ferrum", { host: d.host }) : tr("{host} does not reach Ferrum yet", { host: d.host }), r.answers ? "success" : "error");
     } catch (err) {
       toast(errorMessage(err), "error");
     }
@@ -1966,9 +1965,9 @@ function Domains() {
   };
   const remove = async (d: Domain) => {
     const ok = await confirmDialog({
-      title: `Remove ${d.host}?`,
-      message: "If it worked, it keeps sending visitors to the workspace's main address for 90 days, and no other workspace can use it for a year.",
-      confirmLabel: "Remove",
+      title: tr("Remove {host}?", { host: d.host }),
+      message: tr("If it worked, it keeps sending visitors to the workspace's main address for 90 days, and no other workspace can use it for a year."),
+      confirmLabel: tr("Remove"),
       danger: true,
     });
     if (ok && (await attempt(() => api.del(`/api/admin/domains/${encodeURIComponent(d.host)}`), "Domain removed"))) void refresh();
@@ -1976,39 +1975,39 @@ function Domains() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Domains</h2>
+        <h2>{tr("Domains")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="plus" onClick={() => setAdding(true)}>
-          Add a domain
+          {tr("Add a domain")}
         </Button>
       </div>
       <Loaded q={q}>
         {(data) => (
           <div className="card-body stack">
             <p className="muted">
-              Use your own address for this workspace, its portal or an app's public site.{" "}
+              {tr("Use your own address for this workspace, its portal or an app's public site.")}{isolate(" ")}
               {data.point_to ? (
                 <>
-                  Point the domain at <span className="mono">{data.point_to}</span> with a CNAME record;
+                  {tr("Point the domain at")} <span className="mono">{isolate(data.point_to)}</span> {tr("with a CNAME record;")}
                 </>
               ) : (
-                <>Point the domain at this server;</>
-              )}{" "}
-              Ferrum checks it within a few minutes and serves it with its own certificate.
+                <>{tr("Point the domain at this server;")}</>
+              )}{isolate(" ")}
+              {tr("Ferrum checks it within a few minutes and serves it with its own certificate.")}
             </p>
             {!data.domains.length ? (
-              <EmptyState title="No domains yet" icon="external" />
+              <EmptyState title={tr("No domains yet")} icon="external" />
             ) : (
               <div className="table-wrap">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th scope="col">Domain</th>
-                      <th scope="col">Serves</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Checked</th>
+                      <th scope="col">{tr("Domain")}</th>
+                      <th scope="col">{tr("Serves")}</th>
+                      <th scope="col">{tr("Status")}</th>
+                      <th scope="col">{tr("Checked")}</th>
                       <th scope="col">
-                        <span className="sr-only">Actions</span>
+                        <span className="sr-only">{tr("Actions")}</span>
                       </th>
                     </tr>
                   </thead>
@@ -2016,28 +2015,28 @@ function Domains() {
                     {data.domains.map((d) => (
                       <tr key={d.host}>
                         <td className="mono" style={{ overflowWrap: "anywhere" }}>
-                          {d.host} {d.is_primary && <Badge tone="blue">main</Badge>}
+                          {isolate(d.host)} {d.is_primary && <Badge tone="blue">{tr("main")}</Badge>}
                         </td>
-                        <td>{TARGET_LABEL(d.target, sites)}</td>
+                        <td>{isolate(TARGET_LABEL(d.target, sites))}</td>
                         <td>
-                          <Badge tone={DOMAIN_STATUS[d.status].tone}>{d.kind === "subdomain" && d.status === "verified" ? "Working" : DOMAIN_STATUS[d.status].text}</Badge>
+                          <Badge tone={DOMAIN_STATUS[d.status].tone}>{d.kind === "subdomain" && d.status === "verified" ? tr("Working") : DOMAIN_STATUS[d.status].text}</Badge>
                         </td>
-                        <td className="muted">{d.checked_at ? relativeTime(d.checked_at) : d.kind === "subdomain" ? "—" : "not yet"}</td>
+                        <td className="muted">{d.checked_at ? relativeTime(d.checked_at) : d.kind === "subdomain" ? "—" : tr("not yet")}</td>
                         <td>
                           <div className="row" style={{ gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                             {d.kind === "custom" && !d.released_at && (
                               <Button size="sm" onClick={() => void check(d)}>
-                                Check now
+                                {tr("Check now")}
                               </Button>
                             )}
                             {d.status === "verified" && !d.is_primary && !d.released_at && (
                               <Button size="sm" onClick={() => void primary(d)}>
-                                Make main
+                                {tr("Make main")}
                               </Button>
                             )}
                             {d.kind === "custom" && !d.released_at && (
                               <Button size="sm" variant="ghost" onClick={() => void remove(d)}>
-                                Remove
+                                {tr("Remove")}
                               </Button>
                             )}
                           </div>
@@ -2054,28 +2053,28 @@ function Domains() {
       <Dialog
         open={adding}
         onClose={() => setAdding(false)}
-        title="Add a domain"
+        title={tr("Add a domain")}
         footer={
           <>
-            <Button onClick={() => setAdding(false)}>Cancel</Button>
+            <Button onClick={() => setAdding(false)}>{tr("Cancel")}</Button>
             <Button variant="primary" type="submit" form="domain-form" loading={busy}>
-              Add
+              {tr("Add")}
             </Button>
           </>
         }
       >
         <form id="domain-form" className="stack" onSubmit={add}>
-          {error && <Alert tone="error">{error}</Alert>}
-          <FieldWrap label="Domain" htmlFor="domain-host" required hint="A name you own, such as erp.example.com">
+          {error && <Alert tone="error">{isolate(error)}</Alert>}
+          <FieldWrap label={tr("Domain")} htmlFor="domain-host" required hint={tr("A name you own, such as erp.example.com")}>
             <input id="domain-host" className="input mono" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} required autoFocus placeholder="erp.example.com" />
           </FieldWrap>
-          <FieldWrap label="Serves" htmlFor="domain-target">
+          <FieldWrap label={tr("Serves")} htmlFor="domain-target">
             <select id="domain-target" className="input" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })}>
-              <option value="shell">This workspace</option>
-              <option value="portal">The portal (customers, suppliers)</option>
+              <option value="shell">{tr("This workspace")}</option>
+              <option value="portal">{tr("The portal (customers, suppliers)")}</option>
               {sites.map((a) => (
                 <option key={a.app} value={`site:${a.app}`}>
-                  {a.title}'s public site
+                  {tr("{title}'s public site", { title: a.title })}
                 </option>
               ))}
             </select>
@@ -2114,40 +2113,40 @@ function Webhooks() {
     }
   };
   const remove = async (w: Webhook) => {
-    if (!(await confirmDialog({ title: `Delete webhook ${w.name}?`, message: "Pending deliveries are dropped.", confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirmDialog({ title: tr("Delete webhook {name}?", { name: w.name }), message: tr("Pending deliveries are dropped."), confirmLabel: tr("Delete"), danger: true }))) return;
     if (await attempt(() => api.del(`/api/admin/webhooks/${w.id}`), "Webhook deleted")) void refresh();
   };
 
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Webhooks</h2>
+        <h2>{tr("Webhooks")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
-          New webhook
+          {tr("New webhook")}
         </Button>
       </div>
       <Loaded q={q}>
         {(data) =>
           !data.webhooks.length ? (
-            <EmptyState title="No webhooks yet" icon="external" />
+            <EmptyState title={tr("No webhooks yet")} icon="external" />
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">URL</th>
-                    <th scope="col">Topics</th>
+                    <th scope="col">{tr("Name")}</th>
+                    <th scope="col">{tr("URL")}</th>
+                    <th scope="col">{tr("Topics")}</th>
                     <th scope="col" className="num">
-                      Pending
+                      {tr("Pending")}
                     </th>
                     <th scope="col" className="num">
-                      Dead
+                      {tr("Dead")}
                     </th>
-                    <th scope="col">Created</th>
+                    <th scope="col">{tr("Created")}</th>
                     <th scope="col">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{tr("Actions")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -2155,28 +2154,28 @@ function Webhooks() {
                   {data.webhooks.map((w) => (
                     <tr key={w.id}>
                       <td>
-                        {w.name} {!w.is_active && <Badge tone="red">inactive</Badge>}
+                        {isolate(w.name)} {!w.is_active && <Badge tone="red">{tr("inactive")}</Badge>}
                       </td>
                       <td className="mono" style={{ overflowWrap: "anywhere" }}>
-                        {w.url}
+                        {isolate(w.url)}
                       </td>
                       <td>
                         <div className="chips">
                           {w.topics.map((t) => (
                             <Badge key={t} tone="blue">
-                              {t}
+                              {isolate(t)}
                             </Badge>
                           ))}
                         </div>
                       </td>
                       <td className="num">{w.pending}</td>
                       <td className="num">{w.dead > 0 ? <Badge tone="red">{w.dead}</Badge> : w.dead}</td>
-                      <td className="nowrap">{formatDateTime(w.created_at)}</td>
+                      <td className="nowrap">{isolate(formatDateTime(w.created_at))}</td>
                       <td>
                         {w.app ? (
                           <span className="muted">The {w.app} app&apos;s</span>
                         ) : (
-                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(w)} aria-label={`Delete webhook ${w.name}`} />
+                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(w)} aria-label={tr("Delete webhook {name}", { name: w.name })} />
                         )}
                       </td>
                     </tr>
@@ -2187,29 +2186,29 @@ function Webhooks() {
           )
         }
       </Loaded>
-      <Dialog open={creating} onClose={() => setCreating(false)} title="New webhook">
+      <Dialog open={creating} onClose={() => setCreating(false)} title={tr("New webhook")}>
         <form className="stack" onSubmit={create}>
-          {error && <Alert tone="error">{error}</Alert>}
-          <FieldWrap label="Name" htmlFor="wh-name" required>
+          {error && <Alert tone="error">{isolate(error)}</Alert>}
+          <FieldWrap label={tr("Name")} htmlFor="wh-name" required>
             <input id="wh-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </FieldWrap>
-          <FieldWrap label="URL" htmlFor="wh-url" required>
+          <FieldWrap label={tr("URL")} htmlFor="wh-url" required>
             <input id="wh-url" className="input" type="url" placeholder="https://example.com/hooks/ferrum" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required />
           </FieldWrap>
-          <FieldWrap label="Topics" htmlFor="wh-topics" required hint="Separated by commas or spaces, e.g. SalesInvoice.submitted, SalesInvoice.*, *">
+          <FieldWrap label={tr("Topics")} htmlFor="wh-topics" required hint={tr("Separated by commas or spaces, e.g. SalesInvoice.submitted, SalesInvoice.*, *")}>
             <input id="wh-topics" className="input mono" value={form.topics} onChange={(e) => setForm({ ...form, topics: e.target.value })} required />
           </FieldWrap>
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button onClick={() => setCreating(false)}>Cancel</Button>
+            <Button onClick={() => setCreating(false)}>{tr("Cancel")}</Button>
             <Button type="submit" variant="primary" loading={busy}>
-              Create webhook
+              {tr("Create webhook")}
             </Button>
           </div>
         </form>
       </Dialog>
       <SecretDialog
         secret={secret?.secret ?? null}
-        title="Webhook signing secret"
+        title={tr("Webhook signing secret")}
         note={`This secret is shown only once. ${secret?.note ?? "Use it to verify the X-Ferrum-Signature header."}`}
         onClose={() => setSecret(null)}
       />
@@ -2254,9 +2253,9 @@ function SingleSignOn() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "sso"] });
   const remove = async (p: SsoProvider) => {
     const ok = await confirmDialog({
-      title: `Remove ${p.label}?`,
-      message: `Its button leaves the sign-in page and ${p.linked_users} linked account${p.linked_users === 1 ? " is" : "s are"} unlinked. The accounts stay.`,
-      confirmLabel: "Remove",
+      title: tr("Remove {label}?", { label: p.label }),
+      message: tr("Its button leaves the sign-in page and {linked_users} linked account{value} unlinked. The accounts stay.", { linked_users: p.linked_users, value: p.linked_users === 1 ? " is" : "s are" }),
+      confirmLabel: tr("Remove"),
       danger: true,
     });
     if (ok && (await attempt(() => api.del(`/api/admin/sso/${p.id}`), "Provider removed"))) void refresh();
@@ -2264,18 +2263,18 @@ function SingleSignOn() {
   const copy = async (value: string, what: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast(`${what} copied`);
+      toast(tr("{what} copied", { what }));
     } catch {
-      toast("Copy it manually", "error");
+      toast(tr("Copy it manually"), "error");
     }
   };
   const copyable = (value: string, what: string, label?: string) => (
     <div className="stack" style={{ gap: 4 }}>
-      {label && <span className="field-label">{label}</span>}
+      {label && <span className="field-label">{isolate(label)}</span>}
       <div className="row" style={{ flexWrap: "nowrap" }}>
         <input className="input mono" readOnly value={value} aria-label={what} onFocus={(e) => e.currentTarget.select()} />
-        <Button icon="copy" onClick={() => void copy(value, what)} aria-label={`Copy the ${what.toLowerCase()}`}>
-          Copy
+        <Button icon="copy" onClick={() => void copy(value, what)} aria-label={tr("Copy the {what}", { what: what.toLowerCase() })}>
+          {tr("Copy")}
         </Button>
       </div>
     </div>
@@ -2284,23 +2283,21 @@ function SingleSignOn() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Single sign-on</h2>
+        <h2>{tr("Single sign-on")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="plus" onClick={() => setEditing("new")}>
-          New provider
+          {tr("New provider")}
         </Button>
       </div>
       <div className="card-pad stack">
         <p className="muted">
-          People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a
-          web application with this redirect URI, then add the provider here with the client ID and secret it gives you.
+          {tr("People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a web application with this redirect URI, then add the provider here with the client ID and secret it gives you.")}
         </p>
         {copyable(ssoRedirectUri(), "Redirect URI", q.data?.saml ? "Redirect URI (OpenID Connect)" : undefined)}
         {q.data?.saml && (
           <>
             <p className="muted">
-              Or through a SAML 2.0 identity provider (AD FS, Entra ID, Okta, OneLogin, PingFederate, Keycloak…): give it this workspace's metadata address, or its
-              entity ID and assertion consumer service, then add the provider here with its metadata.
+              {tr("Or through a SAML 2.0 identity provider (AD FS, Entra ID, Okta, OneLogin, PingFederate, Keycloak…): give it this workspace's metadata address, or its entity ID and assertion consumer service, then add the provider here with its metadata.")}
             </p>
             {copyable(q.data.saml.metadata_url, "Metadata address", q.data.saml.metadata_url === q.data.saml.entity_id ? "Metadata address, also its entity ID" : "Metadata address")}
             {q.data.saml.metadata_url !== q.data.saml.entity_id && copyable(q.data.saml.entity_id, "Entity ID", "Entity ID")}
@@ -2311,21 +2308,21 @@ function SingleSignOn() {
       <Loaded q={q}>
         {(data) =>
           !data.providers.length ? (
-            <EmptyState title="No providers yet" icon="user" />
+            <EmptyState title={tr("No providers yet")} icon="user" />
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Provider</th>
-                    <th scope="col">Issuer</th>
-                    <th scope="col">Email domains</th>
-                    <th scope="col">New people</th>
+                    <th scope="col">{tr("Provider")}</th>
+                    <th scope="col">{tr("Issuer")}</th>
+                    <th scope="col">{tr("Email domains")}</th>
+                    <th scope="col">{tr("New people")}</th>
                     <th scope="col" className="num">
-                      Linked
+                      {tr("Linked")}
                     </th>
                     <th scope="col">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{tr("Actions")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -2333,28 +2330,28 @@ function SingleSignOn() {
                   {data.providers.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        {p.label} {p.protocol === "saml" && <Badge tone="purple">SAML</Badge>} {!p.enabled && <Badge tone="red">disabled</Badge>}
+                        {isolate(p.label)} {p.protocol === "saml" && <Badge tone="purple">{tr("SAML")}</Badge>} {!p.enabled && <Badge tone="red">{tr("disabled")}</Badge>}
                       </td>
                       <td className="mono" style={{ overflowWrap: "anywhere" }}>
-                        {p.issuer}
+                        {isolate(p.issuer)}
                       </td>
                       <td>
-                        <div className="chips">{p.domains.length ? p.domains.map((d) => <Badge key={d}>{d}</Badge>) : <span className="faint">any it verifies</span>}</div>
+                        <div className="chips">{p.domains.length ? p.domains.map((d) => <Badge key={d}>{isolate(d)}</Badge>) : <span className="faint">{tr("any it verifies")}</span>}</div>
                       </td>
                       <td>
                         {p.auto_create ? (
-                          <span>get an account{p.default_roles.length ? ` (${p.default_roles.join(", ")})` : ""}</span>
+                          <span>{tr("get an account")}{p.default_roles.length ? ` (${p.default_roles.join(", ")})` : ""}</span>
                         ) : (
-                          <span className="faint">need an account first</span>
+                          <span className="faint">{tr("need an account first")}</span>
                         )}
                       </td>
                       <td className="num">{p.linked_users}</td>
                       <td>
                         <div className="row">
                           <Button size="sm" onClick={() => setEditing(p)}>
-                            Edit
+                            {tr("Edit")}
                           </Button>
-                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(p)} aria-label={`Remove ${p.label}`} />
+                          <Button size="sm" variant="danger" icon="trash" onClick={() => void remove(p)} aria-label={tr("Remove {label}", { label: p.label })} />
                         </div>
                       </td>
                     </tr>
@@ -2434,7 +2431,7 @@ function SsoProviderDialog({
     try {
       if (provider) await api.put(`/api/admin/sso/${provider.id}`, body);
       else await api.post("/api/admin/sso", body);
-      toast(provider ? "Provider saved" : "Provider added");
+      toast(provider ? tr("Provider saved") : tr("Provider added"));
       onDone();
     } catch (err) {
       if (err instanceof ApiError && err.fields.length) setErrors(err.fields);
@@ -2444,37 +2441,37 @@ function SsoProviderDialog({
     }
   };
   return (
-    <Dialog open onClose={onClose} title={provider ? `Edit ${provider.label}` : "New single sign-on provider"} wide>
+    <Dialog open onClose={onClose} title={provider ? tr("Edit {label}", { label: provider.label }) : tr("New single sign-on provider")} wide>
       <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{error}</Alert>}
-        <FieldWrap label="Name" htmlFor="sso-label" required error={fieldError("label")} hint="On the sign-in button: “Continue with …”.">
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        <FieldWrap label={tr("Name")} htmlFor="sso-label" required error={fieldError("label")} hint={tr("On the sign-in button: “Continue with …”.")}>
           <input id="sso-label" className="input" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} maxLength={60} required />
         </FieldWrap>
         {(saml || provider?.protocol === "saml") && (
           <fieldset disabled={Boolean(provider)} style={{ border: 0, padding: 0, margin: 0 }}>
             <legend className="field-label" style={{ marginBottom: 6 }}>
-              Protocol
+              {tr("Protocol")}
             </legend>
             <div className="row" style={{ gap: 16 }}>
               <label className="row" style={{ gap: 8 }}>
                 <input type="radio" name="sso-protocol" checked={form.protocol === "oidc"} onChange={() => setForm({ ...form, protocol: "oidc" })} />
-                OpenID Connect
+                {tr("OpenID Connect")}
               </label>
               <label className="row" style={{ gap: 8 }}>
                 <input type="radio" name="sso-protocol" checked={form.protocol === "saml"} onChange={() => setForm({ ...form, protocol: "saml" })} />
-                SAML 2.0
+                {tr("SAML 2.0")}
               </label>
             </div>
-            {fieldError("protocol") && <p className="field-error">{fieldError("protocol")}</p>}
+            {fieldError("protocol") && <p className="field-error">{isolate(fieldError("protocol") ?? "")}</p>}
           </fieldset>
         )}
         {form.protocol === "saml" ? (
           <FieldWrap
-            label="Identity provider metadata"
+            label={tr("Identity provider metadata")}
             htmlFor="sso-metadata"
             required
             error={fieldError("saml_metadata")}
-            hint="Paste its metadata XML, or the https address it publishes it at (read again at each sign-in, so a new signing certificate is picked up). It must hold a signing certificate."
+            hint={tr("Paste its metadata XML, or the https address it publishes it at (read again at each sign-in, so a new signing certificate is picked up). It must hold a signing certificate.")}
           >
             <textarea
               id="sso-metadata"
@@ -2488,7 +2485,7 @@ function SsoProviderDialog({
           </FieldWrap>
         ) : (
           <>
-        <FieldWrap label="Issuer URL" htmlFor="sso-issuer" required error={fieldError("issuer")} hint="Its discovery document is read from here, e.g. https://login.microsoftonline.com/<tenant>/v2.0 or https://acme.okta.com.">
+        <FieldWrap label={tr("Issuer URL")} htmlFor="sso-issuer" required error={fieldError("issuer")} hint="Its discovery document is read from here, e.g. https://login.microsoftonline.com/<tenant>/v2.0 or https://acme.okta.com.">
           <input
             id="sso-issuer"
             className="input mono"
@@ -2500,14 +2497,14 @@ function SsoProviderDialog({
           />
         </FieldWrap>
         <div className="form-grid">
-          <FieldWrap label="Client ID" htmlFor="sso-client" required error={fieldError("client_id")}>
+          <FieldWrap label={tr("Client ID")} htmlFor="sso-client" required error={fieldError("client_id")}>
             <input id="sso-client" className="input mono" value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })} required />
           </FieldWrap>
           <FieldWrap
-            label="Client secret"
+            label={tr("Client secret")}
             htmlFor="sso-secret"
             error={fieldError("client_secret")}
-            hint={provider?.has_secret && !form.noSecret ? "Stored; leave empty to keep it." : "Sealed on the server and never shown again."}
+            hint={provider?.has_secret && !form.noSecret ? tr("Stored; leave empty to keep it.") : tr("Sealed on the server and never shown again.")}
           >
             <input
               id="sso-secret"
@@ -2522,41 +2519,41 @@ function SsoProviderDialog({
         </div>
         <label className="check-field">
           <input type="checkbox" checked={form.noSecret} onChange={(e) => setForm({ ...form, noSecret: e.target.checked, secret: "" })} />
-          No client secret (a public client: PKCE only)
+          {tr("No client secret (a public client: PKCE only)")}
         </label>
           </>
         )}
         <FieldWrap
-          label="Email domains"
+          label={tr("Email domains")}
           htmlFor="sso-domains"
           error={fieldError("domains")}
           required={form.protocol === "saml"}
           hint={
             form.protocol === "saml"
-              ? "Separated by commas. Only these addresses sign in through it: SAML never says whether an address was checked, so the domains are required."
-              : "Separated by commas. Only these addresses sign in through it; leave empty to accept any address the provider has verified. Providers that do not say whether they verified an address (Microsoft Entra ID) need the domains listed."
+              ? tr("Separated by commas. Only these addresses sign in through it: SAML never says whether an address was checked, so the domains are required.")
+              : tr("Separated by commas. Only these addresses sign in through it; leave empty to accept any address the provider has verified. Providers that do not say whether they verified an address (Microsoft Entra ID) need the domains listed.")
           }
         >
           <input id="sso-domains" className="input mono" value={form.domains} onChange={(e) => setForm({ ...form, domains: e.target.value })} placeholder="example.com" />
         </FieldWrap>
         <label className="check-field">
           <input type="checkbox" checked={form.auto_create} onChange={(e) => setForm({ ...form, auto_create: e.target.checked })} />
-          Create an account for someone signing in who has none
+          {tr("Create an account for someone signing in who has none")}
         </label>
         {form.auto_create && (
           <div>
             <RoleChecks roles={roles} value={form.default_roles} onChange={(v) => setForm({ ...form, default_roles: v })} />
-            {fieldError("default_roles") && <p className="field-error">{fieldError("default_roles")}</p>}
+            {fieldError("default_roles") && <p className="field-error">{isolate(fieldError("default_roles") ?? "")}</p>}
           </div>
         )}
         <label className="check-field">
           <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
-          Enabled (its button shows on the sign-in page)
+          {tr("Enabled (its button shows on the sign-in page)")}
         </label>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            {provider ? "Save" : "Add provider"}
+            {provider ? tr("Save") : tr("Add provider")}
           </Button>
         </div>
       </form>
@@ -2581,7 +2578,7 @@ const EVENTS = ["created", "updated", "submitted", "cancelled", "deleted"];
 const TEMPLATES: Record<string, unknown> = {
   "Set fields": { type: "set_fields", values: { remarks: "'Updated by automation'" } },
   "Create document": { type: "create_document", entity: "Project", values: { project_name: "'Follow-up for ' + doc.number" } },
-  Notify: { type: "notify", to: "owner", title: "'Document ' + doc.number + ' needs attention'", body: "doc.remarks" },
+  Notify: { type: "notify", to: "owner", get title() { return tr("'Document ' + doc.number + ' needs attention'"); }, body: "doc.remarks" },
   Email: { type: "email", to: "doc.email", subject: "'Update on ' + doc.number", body: "'Hello, your document has changed.'" },
 };
 
@@ -2591,54 +2588,54 @@ function Automations() {
   const [editing, setEditing] = useState<Partial<Automation> | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "automations"] });
   const remove = async (a: Automation) => {
-    if (!(await confirmDialog({ title: `Delete automation ${a.name}?`, confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirmDialog({ title: tr("Delete automation {name}?", { name: a.name }), confirmLabel: tr("Delete"), danger: true }))) return;
     if (await attempt(() => api.del(`/api/admin/automations/${a.id}`), "Automation deleted")) void refresh();
   };
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Automations</h2>
+        <h2>{tr("Automations")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="plus" onClick={() => setEditing({ event: "submitted", is_active: true, actions: [] })}>
-          New automation
+          {tr("New automation")}
         </Button>
       </div>
       <Loaded q={q}>
         {(data) =>
           !data.automations.length ? (
-            <EmptyState title="No automations yet" icon="settings" />
+            <EmptyState title={tr("No automations yet")} icon="settings" />
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">When</th>
-                    <th scope="col">Condition</th>
-                    <th scope="col">Actions</th>
-                    <th scope="col">Status</th>
+                    <th scope="col">{tr("Name")}</th>
+                    <th scope="col">{tr("When")}</th>
+                    <th scope="col">{tr("Condition")}</th>
+                    <th scope="col">{tr("Actions")}</th>
+                    <th scope="col">{tr("Status")}</th>
                     <th scope="col">
-                      <span className="sr-only">Edit</span>
+                      <span className="sr-only">{tr("Edit")}</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.automations.map((a) => (
                     <tr key={a.id}>
-                      <td>{a.name}</td>
+                      <td>{isolate(a.name)}</td>
                       <td>
-                        {a.entity} {a.event}
+                        {isolate(a.entity)} {isolate(a.event)}
                       </td>
-                      <td className="mono">{a.condition || <span className="faint">always</span>}</td>
+                      <td className="mono">{a.condition || <span className="faint">{tr("always")}</span>}</td>
                       <td>{Array.isArray(a.actions) ? a.actions.map((x) => (x as { type?: string }).type).join(", ") : "—"}</td>
                       <td>
-                        <Badge tone={a.is_active ? "green" : "neutral"}>{a.is_active ? "active" : "off"}</Badge>
+                        <Badge tone={a.is_active ? "green" : "neutral"}>{a.is_active ? tr("active") : tr("off")}</Badge>
                       </td>
                       <td className="nowrap">
                         <Button size="sm" icon="edit" onClick={() => setEditing(a)}>
-                          Edit
-                        </Button>{" "}
-                        <Button size="sm" variant="danger" icon="trash" aria-label={`Delete automation ${a.name}`} onClick={() => void remove(a)} />
+                          {tr("Edit")}
+                        </Button>{isolate(" ")}
+                        <Button size="sm" variant="danger" icon="trash" aria-label={tr("Delete automation {name}", { name: a.name })} onClick={() => void remove(a)} />
                       </td>
                     </tr>
                   ))}
@@ -2697,7 +2694,7 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
     setError(null);
     try {
       await api.post("/api/admin/automations", { ...(value?.id ? { id: value.id } : {}), ...form, condition: form.condition.trim() || null, actions });
-      toast(value?.id ? "Automation saved" : "Automation created");
+      toast(value?.id ? tr("Automation saved") : tr("Automation created"));
       onDone();
       onClose();
     } catch (err) {
@@ -2708,36 +2705,36 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
   };
 
   return (
-    <Dialog open={!!value} onClose={onClose} title={value?.id ? `Edit ${value.name}` : "New automation"} wide>
+    <Dialog open={!!value} onClose={onClose} title={value?.id ? tr("Edit {name}", { name: String(value.name) }) : tr("New automation")} wide>
       <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{error}</Alert>}
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
         <div className="form-grid" style={{ ["--cols" as string]: 3 }}>
-          <FieldWrap label="Name" htmlFor="au-name" required>
+          <FieldWrap label={tr("Name")} htmlFor="au-name" required>
             <input id="au-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </FieldWrap>
-          <FieldWrap label="Entity" htmlFor="au-entity" required>
+          <FieldWrap label={tr("Entity")} htmlFor="au-entity" required>
             <select id="au-entity" className="select" value={form.entity} onChange={(e) => setForm({ ...form, entity: e.target.value })} required>
-              <option value="">Choose…</option>
+              <option value="">{tr("Choose…")}</option>
               {[...(index?.entities ?? [])]
                 .sort((a, b) => a.label.localeCompare(b.label))
                 .map((x) => (
                   <option key={x.name} value={x.name}>
-                    {x.label}
+                    {isolate(x.label)}
                   </option>
                 ))}
             </select>
           </FieldWrap>
-          <FieldWrap label="Event" htmlFor="au-event" required>
+          <FieldWrap label={tr("Event")} htmlFor="au-event" required>
             <select id="au-event" className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
               {EVENTS.map((x) => (
                 <option key={x} value={x}>
-                  {x}
+                  {isolate(x)}
                 </option>
               ))}
             </select>
           </FieldWrap>
         </div>
-        <FieldWrap label="Condition (CEL, optional)" htmlFor="au-cond" hint="Runs only when true, e.g. doc.grand_total > 100000.0">
+        <FieldWrap label={tr("Condition (CEL, optional)")} htmlFor="au-cond" hint="Runs only when true, e.g. doc.grand_total > 100000.0">
           <input
             id="au-cond"
             className="input mono"
@@ -2748,7 +2745,7 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
             onChange={(e) => setForm({ ...form, condition: e.target.value })}
           />
         </FieldWrap>
-        <FieldWrap label="Actions (JSON)" htmlFor="au-actions" hint="Values are CEL expressions: quote literal text, e.g. &quot;'Approved'&quot;.">
+        <FieldWrap label={tr("Actions (JSON)")} htmlFor="au-actions" hint="Values are CEL expressions: quote literal text, e.g. &quot;'Approved'&quot;.">
           <textarea
             id="au-actions"
             className="textarea mono"
@@ -2761,21 +2758,21 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
           />
         </FieldWrap>
         <div className="row">
-          <span className="muted">Insert template:</span>
+          <span className="muted">{tr("Insert template:")}</span>
           {Object.keys(TEMPLATES).map((t) => (
             <Button key={t} size="sm" icon="plus" onClick={() => addTemplate(t)}>
-              {t}
+              {isolate(t)}
             </Button>
           ))}
         </div>
         <label className="check-field">
           <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-          Active
+          {tr("Active")}
         </label>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Save automation
+            {tr("Save automation")}
           </Button>
         </div>
       </form>
@@ -2862,7 +2859,7 @@ function PluginAccess({ m }: { m: PluginManifest }) {
       "Records",
       m.permissions.map((p) => (
         <div key={p.entity}>
-          <span className="mono">{p.entity}</span>: {VERBS.filter((v) => p[v]).join(", ") || "no access"}
+          <span className="mono">{isolate(p.entity)}</span>: {VERBS.filter((v) => p[v]).join(", ") || tr("no access")}
         </div>
       )),
     ]);
@@ -2873,7 +2870,7 @@ function PluginAccess({ m }: { m: PluginManifest }) {
       "HTTP routes",
       m.routes.map((r) => (
         <div key={r.path}>
-          <span className="mono">{r.path}</span> {r.public ? <Badge tone="amber">public</Badge> : <span className="faint">signed in</span>}
+          <span className="mono">{isolate(r.path)}</span> {r.public ? <Badge tone="amber">{tr("public")}</Badge> : <span className="faint">{tr("signed in")}</span>}
         </div>
       )),
     ]);
@@ -2882,8 +2879,8 @@ function PluginAccess({ m }: { m: PluginManifest }) {
       "WebSockets",
       m.sockets.map((s) => (
         <div key={s.path}>
-          <span className="mono">{s.path}</span> {s.public ? <Badge tone="amber">public</Badge> : <span className="faint">signed in</span>}
-          {s.subprotocols?.length ? <span className="faint"> · {s.subprotocols.join(", ")}</span> : null}
+          <span className="mono">{isolate(s.path)}</span> {s.public ? <Badge tone="amber">{tr("public")}</Badge> : <span className="faint">{tr("signed in")}</span>}
+          {s.subprotocols?.length ? <span className="faint"> · {isolate(s.subprotocols.join(", "))}</span> : null}
         </div>
       )),
     ]);
@@ -2894,7 +2891,7 @@ function PluginAccess({ m }: { m: PluginManifest }) {
     <dl className="kv">
       {rows.map(([k, v]) => (
         <div key={k}>
-          <dt>{k}</dt>
+          <dt>{isolate(k)}</dt>
           <dd>{v}</dd>
         </div>
       ))}
@@ -2918,9 +2915,9 @@ function Plugins() {
   };
   const remove = async (p: Plugin) => {
     const ok = await confirmDialog({
-      title: `Delete plugin ${p.name}?`,
-      message: "It stops at once and its private data is removed. Records it created stay.",
-      confirmLabel: "Delete",
+      title: tr("Delete plugin {name}?", { name: p.name }),
+      message: tr("It stops at once and its private data is removed. Records it created stay."),
+      confirmLabel: tr("Delete"),
       danger: true,
     });
     if (ok && (await attempt(() => api.del(`/api/admin/plugins/${p.id}`), "Plugin deleted"))) void refresh();
@@ -2929,29 +2926,29 @@ function Plugins() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>Plugins</h2>
+        <h2>{tr("Plugins")}</h2>
         <span className="spacer" />
         <Button variant="primary" icon="upload" onClick={() => setInstalling({})}>
-          Install plugin
+          {tr("Install plugin")}
         </Button>
       </div>
       <Loaded q={q}>
         {(data) =>
           !data.plugins.length ? (
-            <EmptyState title="No plugins installed" icon="settings">
-              <p className="muted">Plugins add hooks, pages, device connections and integrations without changing Ferrum.</p>
+            <EmptyState title={tr("No plugins installed")} icon="settings">
+              <p className="muted">{tr("Plugins add hooks, pages, device connections and integrations without changing Ferrum.")}</p>
             </EmptyState>
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Plugin</th>
-                    <th scope="col">Uses</th>
-                    <th scope="col">Updated</th>
-                    <th scope="col">Enabled</th>
+                    <th scope="col">{tr("Plugin")}</th>
+                    <th scope="col">{tr("Uses")}</th>
+                    <th scope="col">{tr("Updated")}</th>
+                    <th scope="col">{tr("Enabled")}</th>
                     <th scope="col">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{tr("Actions")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -2960,38 +2957,38 @@ function Plugins() {
                     <tr key={p.id}>
                       <td>
                         <div>
-                          <span className="mono">{p.name}</span> {p.version && <span className="faint">v{p.version}</span>}
+                          <span className="mono">{isolate(p.name)}</span> {p.version && <span className="faint">v{isolate(p.version)}</span>}
                         </div>
-                        {p.description && <div className="muted">{p.description}</div>}
-                        <div className="mono faint" title={`SHA-256 ${p.sha256}`}>
-                          {p.sha256.slice(0, 12)}…
+                        {p.description && <div className="muted">{isolate(p.description)}</div>}
+                        <div className="mono faint" title={tr("SHA-256 {sha256}", { sha256: p.sha256 })}>
+                          {isolate(p.sha256.slice(0, 12))}…
                         </div>
                       </td>
                       <td>
                         <div className="chips">
                           {pluginUses(p.manifest).map((u) => (
                             <Badge key={u} tone={u.endsWith("public") ? "amber" : "blue"}>
-                              {u}
+                              {isolate(u)}
                             </Badge>
                           ))}
                         </div>
                       </td>
-                      <td className="nowrap">{formatDateTime(p.updated_at)}</td>
+                      <td className="nowrap">{isolate(formatDateTime(p.updated_at))}</td>
                       <td>
                         <label className="check-field cell-check" style={{ minHeight: 0 }}>
                           <input type="checkbox" checked={p.enabled} disabled={pending === p.id} onChange={() => void toggle(p)} />
-                          <span className="sr-only">{p.enabled ? "Disable" : "Enable"} {p.name}</span>
+                          <span className="sr-only">{p.enabled ? tr("Disable") : tr("Enable")} {isolate(p.name)}</span>
                         </label>
                       </td>
                       <td>
                         <div className="row" style={{ flexWrap: "nowrap" }}>
                           <Button size="sm" icon="settings" onClick={() => setSettings(p)}>
-                            Settings
+                            {tr("Settings")}
                           </Button>
                           <Button size="sm" icon="upload" onClick={() => setInstalling(p)}>
-                            New version
+                            {tr("New version")}
                           </Button>
-                          <Button size="sm" variant="danger" icon="trash" aria-label={`Delete plugin ${p.name}`} onClick={() => void remove(p)} />
+                          <Button size="sm" variant="danger" icon="trash" aria-label={tr("Delete plugin {name}", { name: p.name })} onClick={() => void remove(p)} />
                         </div>
                       </td>
                     </tr>
@@ -3056,7 +3053,7 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
     setFieldErrors([]);
     try {
       await api.post("/api/admin/plugins", { ...parsed.manifest, wasm_base64: await fileToBase64(file) });
-      toast(`Plugin ${String(parsed.manifest.name)} installed`);
+      toast(tr("Plugin {value} installed", { value: String(parsed.manifest.name) }));
       onDone();
       onClose();
     } catch (err) {
@@ -3068,16 +3065,16 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
   };
 
   return (
-    <Dialog open={!!value} onClose={onClose} title={value?.id ? `New version of ${value.name}` : "Install plugin"} wide>
+    <Dialog open={!!value} onClose={onClose} title={value?.id ? tr("New version of {name}", { name: String(value.name) }) : tr("Install plugin")} wide>
       <form className="stack" onSubmit={submit}>
         {message && (
           <Alert tone="error">
-            {message}
+            {isolate(message)}
             {fieldErrors.length > 0 && (
               <ul>
                 {fieldErrors.map((f, i) => (
                   <li key={i}>
-                    <span className="mono">{[f.row?.join("."), f.field].filter(Boolean).join(".")}</span>: {f.message}
+                    <span className="mono">{isolate([f.row?.join("."), f.field].filter(Boolean).join("."))}</span>: {isolate(f.message)}
                   </li>
                 ))}
               </ul>
@@ -3085,18 +3082,17 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
           </Alert>
         )}
         <p className="muted">
-          A plugin is a WebAssembly module and a manifest that declares what it may do. It runs sandboxed with only the access listed below; installing again with
-          the same name upgrades it in place.
+          {tr("A plugin is a WebAssembly module and a manifest that declares what it may do. It runs sandboxed with only the access listed below; installing again with the same name upgrades it in place.")}
         </p>
         <div className="form-grid">
-          <FieldWrap label="Module" htmlFor="pl-file" required>
+          <FieldWrap label={tr("Module")} htmlFor="pl-file" required>
             <input id="pl-file" type="file" accept=".wasm,.wat,application/wasm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </FieldWrap>
-          <FieldWrap label="Manifest file" htmlFor="pl-manifest-file" hint="Optional: loads a manifest.json into the editor">
+          <FieldWrap label={tr("Manifest file")} htmlFor="pl-manifest-file" hint={tr("Optional: loads a manifest.json into the editor")}>
             <input id="pl-manifest-file" type="file" accept=".json,application/json" onChange={(e) => void loadManifest(e.target.files?.[0])} />
           </FieldWrap>
         </div>
-        <FieldWrap label="Manifest" htmlFor="pl-manifest" error={parsed.error}>
+        <FieldWrap label={tr("Manifest")} htmlFor="pl-manifest" error={parsed.error}>
           <textarea
             id="pl-manifest"
             className="textarea mono"
@@ -3111,14 +3107,14 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
         </FieldWrap>
         {parsed.manifest && (
           <div>
-            <h3 className="field-label">This plugin will be able to</h3>
+            <h3 className="field-label">{tr("This plugin will be able to")}</h3>
             <PluginAccess m={parsed.manifest as PluginManifest} />
           </div>
         )}
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" icon="upload" loading={busy} disabled={!parsed.manifest}>
-            Install
+            {tr("Install")}
           </Button>
         </div>
       </form>
@@ -3168,7 +3164,7 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
     setMessage(null);
     try {
       await api.patch(`/api/admin/plugins/${plugin.id}/config`, { config });
-      toast("Settings saved");
+      toast(tr("Settings saved"));
       onDone();
       onClose();
     } catch (err) {
@@ -3180,37 +3176,37 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
 
   const keys = (plugin?.config_keys ?? []).filter((k) => !removed.includes(k));
   return (
-    <Dialog open={!!plugin} onClose={onClose} title={plugin ? `${plugin.name} settings` : ""} wide>
+    <Dialog open={!!plugin} onClose={onClose} title={plugin ? tr("{name} settings", { name: plugin.name }) : ""} wide>
       <form className="stack" onSubmit={save}>
-        {message && <Alert tone="error">{message}</Alert>}
+        {message && <Alert tone="error">{isolate(message)}</Alert>}
         {plugin?.manifest && (
           <div>
-            <h3 className="field-label">Access</h3>
+            <h3 className="field-label">{tr("Access")}</h3>
             <PluginAccess m={plugin.manifest} />
           </div>
         )}
         <div>
-          <h3 className="field-label">Settings</h3>
-          <p className="muted">Saved values are never shown again. Enter a key to set or replace it.</p>
+          <h3 className="field-label">{tr("Settings")}</h3>
+          <p className="muted">{tr("Saved values are never shown again. Enter a key to set or replace it.")}</p>
           {keys.length > 0 && (
             <div className="chips" style={{ margin: "8px 0" }}>
               {keys.map((k) => (
                 <span key={k} className="chip-removable">
-                  <span className="mono">{k}</span>
-                  <button type="button" className="icon-btn" aria-label={`Remove setting ${k}`} onClick={() => setRemoved((r) => [...r, k])}>
+                  <span className="mono">{isolate(k)}</span>
+                  <button type="button" className="icon-btn" aria-label={tr("Remove setting {k}", { k })} onClick={() => setRemoved((r) => [...r, k])}>
                     <Icon name="x" size={14} />
                   </button>
                 </span>
               ))}
             </div>
           )}
-          {removed.length > 0 && <p className="faint">Removing on save: {removed.join(", ")}</p>}
+          {removed.length > 0 && <p className="faint">{tr("Removing on save: {removed}", { removed: removed.join(", ") })}</p>}
           <div className="stack" style={{ gap: 8 }}>
             {rows.map((r, i) => (
               <div key={i} className="row" style={{ flexWrap: "nowrap" }}>
                 <input
                   className="input mono"
-                  aria-label={`Setting ${i + 1} key`}
+                  aria-label={tr("Setting {value} key", { value: i + 1 })}
                   placeholder="key"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -3220,8 +3216,8 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
                 />
                 <input
                   className="input"
-                  aria-label={`Setting ${i + 1} value`}
-                  placeholder={r.json ? '{"json": true}' : "value"}
+                  aria-label={tr("Setting {value} value", { value: i + 1 })}
+                  placeholder={r.json ? '{"json": true}' : tr("value")}
                   type={r.json ? "text" : "password"}
                   autoComplete="off"
                   autoCapitalize="none"
@@ -3231,22 +3227,22 @@ function PluginSettings({ plugin, onClose, onDone }: { plugin: Plugin | null; on
                   onChange={(e) => setRow(i, { value: e.target.value })}
                 />
                 <label className="check-field nowrap" style={{ minHeight: 0 }}>
-                  <input type="checkbox" checked={r.json} onChange={(e) => setRow(i, { json: e.target.checked })} /> JSON
+                  <input type="checkbox" checked={r.json} onChange={(e) => setRow(i, { json: e.target.checked })} /> {tr("JSON")}
                 </label>
-                <button type="button" className="icon-btn" aria-label={`Remove row ${i + 1}`} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>
+                <button type="button" className="icon-btn" aria-label={tr("Remove row {value}", { value: i + 1 })} onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>
                   <Icon name="trash" />
                 </button>
               </div>
             ))}
           </div>
           <Button size="sm" icon="plus" style={{ marginTop: 8 }} onClick={() => setRows((rs) => [...rs, { key: "", value: "", json: false }])}>
-            Add setting
+            {tr("Add setting")}
           </Button>
         </div>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Save
+            {tr("Save")}
           </Button>
         </div>
       </form>
@@ -3321,14 +3317,14 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
   };
   const revoke = async (k: ApiKey) => {
     const message = app ? "Apps using this password stop syncing immediately." : "Integrations using this key stop working immediately.";
-    if (!(await confirmDialog({ title: `Revoke ${k.name}?`, message, confirmLabel: "Revoke", danger: true }))) return;
+    if (!(await confirmDialog({ title: tr("Revoke {name}?", { name: k.name }), message, confirmLabel: tr("Revoke"), danger: true }))) return;
     if (await attempt(() => api.del(`/api/auth/api_keys/${k.id}`), app ? "App password revoked" : "API key revoked")) void refresh();
   };
 
   return (
     <section className="card">
-      <form className="toolbar" onSubmit={create} aria-label={app ? "Create an app password" : "Create an API key"}>
-        <FieldWrap label={app ? "App or device" : "Key name"} htmlFor="key-name" className="field-wide">
+      <form className="toolbar" onSubmit={create} aria-label={app ? tr("Create an app password") : tr("Create an API key")}>
+        <FieldWrap label={app ? tr("App or device") : tr("Key name")} htmlFor="key-name" className="field-wide">
           <input
             id="key-name"
             className="input"
@@ -3336,55 +3332,55 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={100}
-            placeholder={app ? "e.g. iPhone" : "e.g. Warehouse scanner"}
+            placeholder={app ? tr("e.g. iPhone") : tr("e.g. Warehouse scanner")}
           />
         </FieldWrap>
-        <FieldWrap label="Expires (optional)" htmlFor="key-exp">
+        <FieldWrap label={tr("Expires (optional)")} htmlFor="key-exp">
           <input id="key-exp" className="input" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </FieldWrap>
         {!app && (
           <FieldWrap
-            label="Only these records (optional)"
+            label={tr("Only these records (optional)")}
             htmlFor="key-records"
             className="field-wide"
-            hint="Entities and what the key may do with each, e.g. Customer=read; SalesInvoice=read+create. Empty: the whole API, as you."
+            hint={tr("Entities and what the key may do with each, e.g. Customer=read; SalesInvoice=read+create. Empty: the whole API, as you.")}
           >
             <input
               id="key-records"
               className="input"
               value={records}
               onChange={(e) => setRecords(e.target.value)}
-              placeholder="Customer=read; SalesInvoice=read+create"
+              placeholder={tr("Customer=read; SalesInvoice=read+create")}
             />
           </FieldWrap>
         )}
         <Button type="submit" variant="primary" icon="plus" loading={busy}>
-          {app ? "Create app password" : "Create key"}
+          {app ? tr("Create app password") : tr("Create key")}
         </Button>
       </form>
       {error && (
         <div className="card-body">
-          <Alert tone="error">{error}</Alert>
+          <Alert tone="error">{isolate(error)}</Alert>
         </div>
       )}
       <Loaded q={q}>
         {(all) => {
           const data = { keys: all.keys.filter((k) => (app ? k.scope === "dav" : !k.scope || k.scope.startsWith("records:"))) };
           return !data.keys.length ? (
-            <EmptyState title={app ? "No app passwords" : "No API keys"} icon="settings" />
+            <EmptyState title={app ? tr("No app passwords") : tr("No API keys")} icon="settings" />
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Name</th>
-                    <th scope="col">Key</th>
-                    {!app && <th scope="col">Reaches</th>}
-                    <th scope="col">Created</th>
-                    <th scope="col">Expires</th>
-                    <th scope="col">Last used</th>
+                    <th scope="col">{tr("Name")}</th>
+                    <th scope="col">{tr("Key")}</th>
+                    {!app && <th scope="col">{tr("Reaches")}</th>}
+                    <th scope="col">{tr("Created")}</th>
+                    <th scope="col">{tr("Expires")}</th>
+                    <th scope="col">{tr("Last used")}</th>
                     <th scope="col">
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">{tr("Actions")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -3392,17 +3388,17 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
                   {data.keys.map((k) => (
                     <tr key={k.id}>
                       <td>
-                        {k.name} {k.revoked_at && <Badge tone="red">revoked</Badge>}
+                        {isolate(k.name)} {k.revoked_at && <Badge tone="red">{tr("revoked")}</Badge>}
                       </td>
-                      <td className="mono">{k.prefix}</td>
-                      {!app && <td>{keyReaches(k.scope)}</td>}
-                      <td className="nowrap">{formatDateTime(k.created_at)}</td>
-                      <td className="nowrap">{k.expires_at ? formatDateTime(k.expires_at) : <span className="faint">never</span>}</td>
-                      <td className="nowrap">{k.last_used_at ? relativeTime(k.last_used_at) : <span className="faint">never</span>}</td>
+                      <td className="mono">{isolate(k.prefix)}</td>
+                      {!app && <td>{isolate(keyReaches(k.scope))}</td>}
+                      <td className="nowrap">{isolate(formatDateTime(k.created_at))}</td>
+                      <td className="nowrap">{k.expires_at ? formatDateTime(k.expires_at) : <span className="faint">{tr("never")}</span>}</td>
+                      <td className="nowrap">{k.last_used_at ? relativeTime(k.last_used_at) : <span className="faint">{tr("never")}</span>}</td>
                       <td>
                         {!k.revoked_at && (
                           <Button size="sm" variant="danger" onClick={() => void revoke(k)}>
-                            Revoke
+                            {tr("Revoke")}
                           </Button>
                         )}
                       </td>
@@ -3416,7 +3412,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
       </Loaded>
       <SecretDialog
         secret={created}
-        title={app ? "Your new app password" : "Your new API key"}
+        title={app ? tr("Your new app password") : tr("Your new API key")}
         note={
           app
             ? "Enter it in the app as the password, with your email as the user name. It cannot be shown again."
@@ -3433,22 +3429,20 @@ export function CalendarApps({ email }: { email: string }) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <p>
-        Add your Ferrum calendar and contacts to Apple Calendar and Contacts, Thunderbird, DAVx⁵ on Android or Outlook with a CalDAV add-in. In the app,
-        add a CalDAV account (and a CardDAV one for contacts) with:
+        {tr("Add your Ferrum calendar and contacts to Apple Calendar and Contacts, Thunderbird, DAVx⁵ on Android or Outlook with a CalDAV add-in. In the app, add a CalDAV account (and a CardDAV one for contacts) with:")}
       </p>
       <dl className="drive-facts">
-        <dt>Server</dt>
-        <dd className="mono">{location.origin}</dd>
-        <dt>Full address</dt>
-        <dd className="mono">{location.origin}/api/dav/comms/</dd>
-        <dt>User name</dt>
-        <dd className="mono">{email}</dd>
-        <dt>Password</dt>
-        <dd>an app password, made below for each app</dd>
+        <dt>{tr("Server")}</dt>
+        <dd className="mono">{isolate(location.origin)}</dd>
+        <dt>{tr("Full address")}</dt>
+        <dd className="mono">{tr("{origin}/api/dav/comms/", { origin: location.origin })}</dd>
+        <dt>{tr("User name")}</dt>
+        <dd className="mono">{isolate(email)}</dd>
+        <dt>{tr("Password")}</dt>
+        <dd>{tr("an app password, made below for each app")}</dd>
       </dl>
       <p className="faint">
-        Your calendar holds the events you organize and those you are invited to. Answering or deleting an invitation in the app answers it here. The
-        address books Colleagues and Contacts are read-only.
+        {tr("Your calendar holds the events you organize and those you are invited to. Answering or deleting an invitation in the app answers it here. The address books Colleagues and Contacts are read-only.")}
       </p>
       <ApiKeys scope="dav" />
     </div>

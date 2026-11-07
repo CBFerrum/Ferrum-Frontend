@@ -18,6 +18,7 @@ import {
 import { t } from "../../lib/i18n";
 import { Button, confirmDialog, Dialog, Field } from "../../ui/kit";
 import { sortedViews, viewNameError, type SavedView } from "./settings";
+import { t as tr, isolate } from "@ferrum/client";
 
 interface Props {
   views: Record<string, SavedView>;
@@ -56,11 +57,11 @@ export function SavedViews(p: Props) {
 
   const remove = async (v: SavedView) => {
     const ok = await confirmDialog({
-      title: v.shared ? `Stop sharing “${v.name}”?` : `Delete the view “${v.name}”?`,
+      title: v.shared ? tr("Stop sharing “{name}”?", { name: v.name }) : tr("Delete the view “{name}”?", { name: v.name }),
       message: v.shared
-        ? "It goes from everyone's list of views. Its records stay."
-        : "Only the view is deleted: its records, filters in the address bar and other views stay.",
-      confirmLabel: v.shared ? "Stop sharing" : "Delete view",
+        ? tr("It goes from everyone's list of views. Its records stay.")
+        : tr("Only the view is deleted: its records, filters in the address bar and other views stay."),
+      confirmLabel: v.shared ? tr("Stop sharing") : tr("Delete view"),
       danger: true,
     });
     if (ok) p.onDelete(v.id);
@@ -72,7 +73,7 @@ export function SavedViews(p: Props) {
         <DropdownMenuTrigger
           ref={trigger}
           className="btn btn-default btn-md max-w-[16rem]"
-          aria-label={`Saved views: ${a ? a.name : "standard view"}${p.modified ? ", with unsaved changes" : ""}`}
+          aria-label={tr("Saved views: {value}{value2}", { value: a ? a.name : "standard view", value2: p.modified ? ", with unsaved changes" : "" })}
         >
           <Bookmark className="size-4 shrink-0" aria-hidden="true" />
           <span className="truncate">{a ? a.name : t("Views")}</span>
@@ -91,27 +92,27 @@ export function SavedViews(p: Props) {
             fn();
           }}
         >
-          <DropdownMenuLabel className="text-xs text-muted-foreground">Your views</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">{tr("Your views")}</DropdownMenuLabel>
           <DropdownMenuRadioGroup value={a?.id ?? ""} onValueChange={(id) => p.onApply(p.views[id] ?? p.team[id] ?? null)}>
             <DropdownMenuRadioItem value="" className={ITEM}>
-              Standard view
+              {tr("Standard view")}
             </DropdownMenuRadioItem>
             {sortedViews(p.views).map((v) => (
               <DropdownMenuRadioItem key={v.id} value={v.id} className={ITEM}>
-                <span className="min-w-0 flex-1 truncate">{v.name}</span>
+                <span className="min-w-0 flex-1 truncate">{isolate(v.name)}</span>
                 {v.id === p.defaultId && (
                   <>
                     <Star className="size-3.5 fill-current text-warning" aria-hidden="true" />
-                    <span className="sr-only">(opens by default)</span>
+                    <span className="sr-only">{tr("(opens by default)")}</span>
                   </>
                 )}
               </DropdownMenuRadioItem>
             ))}
-            {teamViews.length > 0 && <DropdownMenuLabel className="text-xs text-muted-foreground">Shared with the team</DropdownMenuLabel>}
+            {teamViews.length > 0 && <DropdownMenuLabel className="text-xs text-muted-foreground">{tr("Shared with the team")}</DropdownMenuLabel>}
             {teamViews.map((v) => (
               <DropdownMenuRadioItem key={v.id} value={v.id} className={ITEM}>
-                <span className="min-w-0 flex-1 truncate">{v.name}</span>
-                {v.shared?.by && <span className="max-w-24 truncate text-xs text-muted-foreground">{v.shared.by}</span>}
+                <span className="min-w-0 flex-1 truncate">{isolate(v.name)}</span>
+                {v.shared?.by && <span className="max-w-24 truncate text-xs text-muted-foreground">{isolate(v.shared.by)}</span>}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
@@ -120,48 +121,48 @@ export function SavedViews(p: Props) {
             <>
               <DropdownMenuItem className={ITEM} onSelect={p.onSave}>
                 <Save aria-hidden="true" />
-                <span className="truncate">Save changes to “{a.name}”</span>
+                <span className="truncate">{tr("Save changes to “{name}”", { name: a.name })}</span>
               </DropdownMenuItem>
             </>
           )}
           {a && p.modified && (
             <DropdownMenuItem className={ITEM} onSelect={() => p.onApply(a)}>
               <RotateCcw aria-hidden="true" />
-              Discard changes
+              {tr("Discard changes")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem className={ITEM} onSelect={later(() => setNaming({ name: "" }))}>
             <Plus aria-hidden="true" />
-            Save as a new view…
+            {tr("Save as a new view…")}
           </DropdownMenuItem>
           {a && mine && (
             <>
               <DropdownMenuItem className={ITEM} onSelect={later(() => setNaming({ id: a.id, name: a.name }))}>
                 <Pencil aria-hidden="true" />
-                Rename…
+                {tr("Rename…")}
               </DropdownMenuItem>
               {!shared && (
                 <>
                   <DropdownMenuItem className={ITEM} onSelect={() => p.onDefault(isDefault ? null : a.id)}>
                     {isDefault ? <StarOff aria-hidden="true" /> : <Star aria-hidden="true" />}
-                    {isDefault ? "Stop opening the list with it" : "Open the list with this view"}
+                    {isDefault ? tr("Stop opening the list with it") : tr("Open the list with this view")}
                   </DropdownMenuItem>
                   <DropdownMenuItem className={ITEM} onSelect={() => p.onShare(a)}>
                     <Users aria-hidden="true" />
-                    Share with the team
+                    {tr("Share with the team")}
                   </DropdownMenuItem>
                 </>
               )}
               <DropdownMenuItem className={ITEM} variant="destructive" onSelect={later(() => void remove(a))}>
                 <Trash2 aria-hidden="true" />
-                {shared ? "Stop sharing…" : "Delete…"}
+                {shared ? tr("Stop sharing…") : tr("Delete…")}
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={!!naming} onClose={() => setNaming(null)} title={naming?.id ? "Rename view" : "Save as a new view"}>
+      <Dialog open={!!naming} onClose={() => setNaming(null)} title={naming?.id ? tr("Rename view") : tr("Save as a new view")}>
         {naming && (
           <NameForm
             initial={naming.name}
@@ -205,7 +206,7 @@ function NameForm({
   };
   return (
     <form className="stack" onSubmit={submit} noValidate>
-      <Field label="Name" htmlFor={`${id}-name`} required error={error ?? undefined} hint={renaming ? undefined : "Saves the current filters, search, sort and columns."}>
+      <Field label={tr("Name")} htmlFor={`${id}-name`} required error={error ?? undefined} hint={renaming ? undefined : tr("Saves the current filters, search, sort and columns.")}>
         <input
           id={`${id}-name`}
           className="input"
@@ -223,13 +224,13 @@ function NameForm({
       {!renaming && (
         <label className="check-field">
           <input type="checkbox" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} />
-          Open the list with this view
+          {tr("Open the list with this view")}
         </label>
       )}
       <div className="row" style={{ justifyContent: "flex-end" }}>
-        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onCancel}>{tr("Cancel")}</Button>
         <Button type="submit" variant="primary">
-          {renaming ? "Rename" : "Save view"}
+          {renaming ? tr("Rename") : tr("Save view")}
         </Button>
       </div>
     </form>

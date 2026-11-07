@@ -11,6 +11,7 @@ import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
 import { moduleLinks, ownModule, reportItems, STUDIO } from "./Shell";
 import { PATHS } from "./studio/space/model";
+import { t, isolate } from "@ferrum/client";
 
 /** The module's Space when the viewer may open one: the first by the server's order, as `useModuleSpace`
  *  picks it, from one list shared by every module card. */
@@ -20,7 +21,7 @@ function SpaceChip({ module }: { module: string }) {
   return (
     <Link className="chip" to={PATHS.space(space.id)}>
       <Icon name="space" size={14} />
-      {space.label || "Space"}
+      {space.label || t("Space")}
     </Link>
   );
 }
@@ -49,7 +50,7 @@ export function Home() {
     .filter((x) => x.links.length);
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? t("Good morning") : hour < 18 ? t("Good afternoon") : t("Good evening");
   const first = me?.user.full_name?.split(" ")[0];
 
   return (
@@ -57,12 +58,12 @@ export function Home() {
       <div className="page-head">
         <div>
           <h1 className="page-title">
-            {greeting}
+            {isolate(greeting)}
             {first ? `, ${first}` : ""}
           </h1>
           <p className="page-sub">
-            Pick a module{studio && <>, open your <Link to="/studio/dashboards">dashboards</Link></>}
-            <span className="keys-hint"> or press <span className="kbd">Ctrl</span> <span className="kbd">K</span> to jump anywhere</span>.
+            {t("Pick a module")}{studio && <>{t(", open your")} <Link to="/studio/dashboards">{t("dashboards")}</Link></>}
+            <span className="keys-hint"> {t("or press")} <span className="kbd">{t("Ctrl")}</span> <span className="kbd">K</span> {t("to jump anywhere")}</span>.
           </p>
         </div>
       </div>
@@ -70,15 +71,15 @@ export function Home() {
       <MyWork />
       <ScreenWidgets />
       {!modules.length ? (
-        <EmptyState title="Nothing to show yet">
-          <p className="muted">You do not have access to any module. Ask an administrator for a role.</p>
+        <EmptyState title={t("Nothing to show yet")}>
+          <p className="muted">{t("You do not have access to any module. Ask an administrator for a role.")}</p>
         </EmptyState>
       ) : (
         <div className="home-grid">
           {modules.map(({ m, links, key }) => (
             <section key={m.name} className="card" aria-labelledby={`mod-${m.name}`}>
               <div className="card-head">
-                <h2 id={`mod-${m.name}`}>{m.label}</h2>
+                <h2 id={`mod-${m.name}`}>{isolate(m.label)}</h2>
               </div>
               <div className="card-body stack">
                 <div className="chips">
@@ -86,7 +87,7 @@ export function Home() {
                   {links.map((l) => (
                     <Link key={l.to} className="chip" to={l.to}>
                       <Icon name={l.icon} size={14} />
-                      {l.label}
+                      {isolate(l.label)}
                     </Link>
                   ))}
                 </div>
@@ -119,7 +120,7 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
   return (
     <div>
       <h3 className="field-label" style={{ marginBottom: 4 }}>
-        Recent {entity.label_plural.toLowerCase()}
+        {t("Recent {value}", { value: entity.label_plural.toLowerCase() })}
       </h3>
       {q.isLoading || !meta ? (
         <div className="stack" style={{ gap: 8 }}>
@@ -127,9 +128,9 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
           <div className="skeleton" style={{ width: "70%" }} />
         </div>
       ) : q.error ? (
-        <p className="muted">{errorMessage(q.error)}</p>
+        <p className="muted">{isolate(errorMessage(q.error))}</p>
       ) : !rows.length ? (
-        <p className="faint">Nothing yet.</p>
+        <p className="faint">{t("Nothing yet.")}</p>
       ) : (
         <ul className="recent">
           {rows.map((r) => {
@@ -138,11 +139,11 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
             return (
               <li key={String(r.id)}>
                 <Link className="title" to={`/e/${entity.name}/${r.id}`}>
-                  {title}
+                  {isolate(title)}
                 </Link>
-                {r.number && r.number !== title ? <span className="faint nowrap">{String(r.number)}</span> : null}
+                {r.number && r.number !== title ? <span className="faint nowrap">{isolate(String(r.number))}</span> : null}
                 {entity.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[ds])}>{DOCSTATUS_LABEL[ds] ?? ds}</Badge>}
-                {typeof r.updated_at === "string" && <span className="faint nowrap">{relativeTime(r.updated_at)}</span>}
+                {typeof r.updated_at === "string" && <span className="faint nowrap">{isolate(relativeTime(r.updated_at))}</span>}
               </li>
             );
           })}
@@ -172,18 +173,18 @@ export function MyWork() {
   return (
     <section className="card my-work" aria-labelledby="my-work">
       <div className="card-head">
-        <h2 id="my-work">Assigned to you</h2>
+        <h2 id="my-work">{t("Assigned to you")}</h2>
         <span className="faint">{list.length}</span>
       </div>
       <ul className="recent">
         {list.slice(0, 8).map((a) => (
           <li key={a.id}>
             <Link to={`/e/${a.entity}/${a.record_id}`}>
-              <span className="cell-title">{a.title}</span> <span className="faint">{a.entity_label}</span>
+              <span className="cell-title">{isolate(a.title ?? "")}</span> <span className="faint">{isolate(a.entity_label ?? "")}</span>
             </Link>
-            {a.note && <div className="muted">{a.note}</div>}
-            {a.due_date && <Badge tone={a.due_date < today ? "red" : "neutral"}>due {a.due_date}</Badge>}
-            {a.priority === "High" && <Badge tone="red">High</Badge>}
+            {a.note && <div className="muted">{isolate(a.note)}</div>}
+            {a.due_date && <Badge tone={a.due_date < today ? "red" : "neutral"}>{t("due {due_date}", { due_date: a.due_date })}</Badge>}
+            {a.priority === "High" && <Badge tone="red">{t("High")}</Badge>}
           </li>
         ))}
       </ul>

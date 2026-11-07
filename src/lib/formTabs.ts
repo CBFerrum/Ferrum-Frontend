@@ -4,6 +4,7 @@
 // tab (not of the last one, which may be conditional or unrelated).
 
 import { layoutOf, tabsOf, unplaced, type FormSection } from "./formLayout";
+import { t } from "@ferrum/client";
 
 export interface FormViewSection<F> {
   key: string;
@@ -33,7 +34,7 @@ export function formSections<F extends { name: string }>(meta: { form: FormSecti
   const rest = unplaced(layout, meta);
   if (rest.length) {
     const first = tabs.length ? tabs[0] : null;
-    sections.push({ key: "rest", label: "Additional fields", columns: 2, collapsible: false, tab: first, visibleIf: null, fields: rest.map((n) => byName.get(n)!) });
+    sections.push({ key: "rest", label: t("Additional fields"), columns: 2, collapsible: false, tab: first, visibleIf: null, fields: rest.map((n) => byName.get(n)!) });
   }
   return { sections, tabs: tabs.length ? tabs : [null] };
 }

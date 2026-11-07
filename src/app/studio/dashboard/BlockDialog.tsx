@@ -19,9 +19,10 @@ import { CHART_ICON } from "./icons";
 import { EntityPicker, SearchSelect } from "./pickers";
 import { Messages } from "./ui";
 import { Markdown } from "./Widget";
+import { t as tr, isolate } from "@ferrum/client";
 
 export type OwnBlock = HeadingBlock | MarkdownBlock | ShortcutBlock | ListBlock;
-export const OWN_TITLE: Record<OwnBlock["type"], string> = { heading: "Heading", markdown: "Text", shortcut: "Shortcut", list: "Record list" };
+export const OWN_TITLE: Record<OwnBlock["type"], string> = { get heading() { return tr("Heading"); }, markdown: "Text", shortcut: "Shortcut", list: "Record list" };
 
 export const blankBlock = (type: OwnBlock["type"]): OwnBlock =>
   type === "heading" ? { type, text: "", level: 2 } : type === "markdown" ? { type, content: "" } : type === "shortcut" ? { type, label: "", entity: "", show_count: true } : { type, entity: "", limit: 5 };
@@ -100,26 +101,26 @@ function BlockForm({ initial, onSave, onClose }: { initial: OwnBlock; onSave: (b
       }}
     >
       <DialogHeader className="border-b p-4 pe-12">
-        <DialogTitle>{OWN_TITLE[b.type]}</DialogTitle>
-        <DialogDescription className="sr-only">Settings of the widget</DialogDescription>
+        <DialogTitle>{isolate(OWN_TITLE[b.type])}</DialogTitle>
+        <DialogDescription className="sr-only">{tr("Settings of the widget")}</DialogDescription>
       </DialogHeader>
       <div className="grid min-h-0 flex-1 gap-4 overflow-auto p-4">
         {b.type === "heading" && (
           <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
             <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-text`}>Text</Label>
+              <Label htmlFor={`${id}-text`}>{tr("Text")}</Label>
               <Input id={`${id}-text`} value={b.text} maxLength={200} autoFocus onChange={(e) => setB({ ...b, text: e.target.value })} />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-level`}>Size</Label>
+              <Label htmlFor={`${id}-level`}>{tr("Size")}</Label>
               <Select value={String(b.level ?? 2)} onValueChange={(v) => setB({ ...b, level: Number(v) as 1 | 2 | 3 })}>
                 <SelectTrigger id={`${id}-level`} className="h-9 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Large</SelectItem>
-                  <SelectItem value="2">Medium</SelectItem>
-                  <SelectItem value="3">Small</SelectItem>
+                  <SelectItem value="1">{tr("Large")}</SelectItem>
+                  <SelectItem value="2">{tr("Medium")}</SelectItem>
+                  <SelectItem value="3">{tr("Small")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -128,15 +129,15 @@ function BlockForm({ initial, onSave, onClose }: { initial: OwnBlock; onSave: (b
         {b.type === "markdown" && (
           <div className="grid gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor={`${id}-md`}>Text</Label>
+              <Label htmlFor={`${id}-md`}>{tr("Text")}</Label>
               <Textarea id={`${id}-md`} rows={8} value={b.content} maxLength={20000} autoFocus onChange={(e) => setB({ ...b, content: e.target.value })} className="font-mono text-sm" />
               <p className="text-xs text-muted-foreground">
-                Markdown: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>- list</code>, <code>[link](/app/e/Lead)</code>.
+                {tr("Markdown:")} <code>{tr("# Heading")}</code>, <code>{tr("**bold**")}</code>, <code>{tr("*italic*")}</code>, <code>{tr("- list")}</code>, <code>{tr("[link](/app/e/Lead)")}</code>.
               </p>
             </div>
             {b.content.trim() && (
               <div className="rounded-lg border p-3">
-                <p className="mb-1 text-xs text-muted-foreground">Preview</p>
+                <p className="mb-1 text-xs text-muted-foreground">{tr("Preview")}</p>
                 <Markdown source={b.content} />
               </div>
             )}
@@ -148,9 +149,9 @@ function BlockForm({ initial, onSave, onClose }: { initial: OwnBlock; onSave: (b
       </div>
       <DialogFooter className="border-t p-4">
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          {tr("Cancel")}
         </Button>
-        <Button type="submit">Apply</Button>
+        <Button type="submit">{tr("Apply")}</Button>
       </DialogFooter>
     </form>
   );
@@ -166,51 +167,51 @@ function ShortcutForm({ b, onChange, id }: { b: ShortcutBlock; onChange: (b: Sho
   return (
     <div className="grid gap-3">
       <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-label`}>Label</Label>
+        <Label htmlFor={`${id}-label`}>{tr("Label")}</Label>
         <Input id={`${id}-label`} value={b.label} maxLength={140} autoFocus onChange={(e) => onChange({ ...b, label: e.target.value })} />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-target`}>Opens</Label>
+        <Label htmlFor={`${id}-target`}>{tr("Opens")}</Label>
         <Select value={target} onValueChange={(t) => setTarget(t as Target)}>
           <SelectTrigger id={`${id}-target`} className="h-9 w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="entity">A list of records</SelectItem>
-            <SelectItem value="dashboard">A dashboard</SelectItem>
-            <SelectItem value="report">A saved report</SelectItem>
-            <SelectItem value="url">An address</SelectItem>
+            <SelectItem value="entity">{tr("A list of records")}</SelectItem>
+            <SelectItem value="dashboard">{tr("A dashboard")}</SelectItem>
+            <SelectItem value="report">{tr("A saved report")}</SelectItem>
+            <SelectItem value="url">{tr("An address")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       {target === "entity" && (
         <>
-          <EntityPicker value={b.entity || null} label="Records" onChange={(entity) => onChange({ ...b, entity, filters: null })} />
+          <EntityPicker value={b.entity || null} label={tr("Records")} onChange={(entity) => onChange({ ...b, entity, filters: null })} />
           <Label className="flex items-center gap-2 font-normal">
             <Checkbox checked={!!b.show_count} onCheckedChange={(c) => onChange({ ...b, show_count: c === true })} />
-            Show how many there are
+            {tr("Show how many there are")}
           </Label>
           {b.entity && (
             <div className="grid gap-1.5">
-              <span className="text-sm font-medium">Only records where</span>
+              <span className="text-sm font-medium">{tr("Only records where")}</span>
               <FilterEditor catalog={catalog.data} filters={filterList(b.filters)} onChange={(f) => onChange({ ...b, filters: f })} />
             </div>
           )}
         </>
       )}
       {target === "dashboard" && (
-        <SearchSelect value={b.dashboard} label="Dashboard" loading={dashboards.isLoading} options={(dashboards.data ?? []).map((d) => ({ value: d.id, label: d.label }))} onChange={(dashboard) => onChange({ ...b, dashboard })} placeholder="Choose a dashboard…" />
+        <SearchSelect value={b.dashboard} label={tr("Dashboard")} loading={dashboards.isLoading} options={(dashboards.data ?? []).map((d) => ({ value: d.id, label: d.label }))} onChange={(dashboard) => onChange({ ...b, dashboard })} placeholder={tr("Choose a dashboard…")} />
       )}
       {target === "report" && (
-        <SearchSelect value={b.report} label="Report" loading={reports.isLoading} options={(reports.data ?? []).map((r) => ({ value: r.id, label: r.label, group: r.base_entity ? plural(r.base_entity) : undefined }))} onChange={(report) => onChange({ ...b, report })} placeholder="Choose a report…" />
+        <SearchSelect value={b.report} label={tr("Report")} loading={reports.isLoading} options={(reports.data ?? []).map((r) => ({ value: r.id, label: r.label, group: r.base_entity ? plural(r.base_entity) : undefined }))} onChange={(report) => onChange({ ...b, report })} placeholder={tr("Choose a report…")} />
       )}
-      {target === "url" && <Input aria-label="Address" placeholder="/app/e/Lead or https://…" value={b.url ?? ""} onChange={(e) => onChange({ ...b, url: e.target.value })} />}
+      {target === "url" && <Input aria-label={tr("Address")} placeholder="/app/e/Lead or https://…" value={b.url ?? ""} onChange={(e) => onChange({ ...b, url: e.target.value })} />}
       <Label className="flex w-fit items-center gap-2 font-normal">
-        <input type="color" aria-label="Colour" value={b.color && /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : "#2f5bea"} onChange={(e) => onChange({ ...b, color: e.target.value.toLowerCase() })} className="size-8 cursor-pointer rounded border-0 bg-transparent p-0" />
-        {b.color ? "Colour" : "Colour (the theme's)"}
+        <input type="color" aria-label={tr("Colour")} value={b.color && /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : "#2f5bea"} onChange={(e) => onChange({ ...b, color: e.target.value.toLowerCase() })} className="size-8 cursor-pointer rounded border-0 bg-transparent p-0" />
+        {b.color ? tr("Colour") : tr("Colour (the theme's)")}
         {b.color && (
           <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ ...b, color: null })}>
-            Reset
+            {tr("Reset")}
           </Button>
         )}
       </Label>
@@ -234,17 +235,17 @@ function ListForm({ b, onChange, id }: { b: ListBlock; onChange: (b: ListBlock) 
   return (
     <div className="grid gap-3">
       <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-label`}>Title</Label>
-        <Input id={`${id}-label`} value={b.label ?? ""} maxLength={140} placeholder={m ? `Latest ${m.label_plural.toLowerCase()}` : "Latest records"} onChange={(e) => onChange({ ...b, label: e.target.value })} />
+        <Label htmlFor={`${id}-label`}>{tr("Title")}</Label>
+        <Input id={`${id}-label`} value={b.label ?? ""} maxLength={140} placeholder={m ? tr("Latest {value}", { value: m.label_plural.toLowerCase() }) : tr("Latest records")} onChange={(e) => onChange({ ...b, label: e.target.value })} />
       </div>
       <div className="grid gap-1.5">
-        <Label>Records</Label>
-        <EntityPicker value={b.entity || null} label="Records" onChange={(entity) => onChange({ ...b, entity, fields: [], filters: null, sort: null })} />
+        <Label>{tr("Records")}</Label>
+        <EntityPicker value={b.entity || null} label={tr("Records")} onChange={(entity) => onChange({ ...b, entity, fields: [], filters: null, sort: null })} />
       </div>
       {m && (
         <>
           <fieldset className="grid gap-1.5">
-            <legend className="mb-1 text-sm font-medium">Columns (up to 12; none: the list's own)</legend>
+            <legend className="mb-1 text-sm font-medium">{tr("Columns (up to 12; none: the list's own)")}</legend>
             <div className="grid max-h-48 gap-1 overflow-auto rounded-md border p-2 sm:grid-cols-2">
               {fields.map((f) => (
                 <Label key={f.name} className="flex items-center gap-2 text-sm font-normal">
@@ -253,50 +254,50 @@ function ListForm({ b, onChange, id }: { b: ListBlock; onChange: (b: ListBlock) 
                     disabled={!chosen.includes(f.name) && chosen.length >= 12}
                     onCheckedChange={(c) => onChange({ ...b, fields: c === true ? [...chosen, f.name] : chosen.filter((x) => x !== f.name) })}
                   />
-                  <span className="truncate">{f.label}</span>
+                  <span className="truncate">{isolate(f.label)}</span>
                 </Label>
               ))}
             </div>
           </fieldset>
           <div className="grid gap-2 sm:grid-cols-[1fr_9rem_6rem]">
             <div className="grid gap-1">
-              <Label className="text-xs font-normal text-muted-foreground">Order by</Label>
+              <Label className="text-xs font-normal text-muted-foreground">{tr("Order by")}</Label>
               <Select value={sortField || "created_at"} onValueChange={(f) => onChange({ ...b, sort: `${f} ${sortDir}` })}>
-                <SelectTrigger className="h-9 w-full" aria-label="Order by">
+                <SelectTrigger className="h-9 w-full" aria-label={tr("Order by")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="created_at">Created</SelectItem>
-                  <SelectItem value="updated_at">Last updated</SelectItem>
+                  <SelectItem value="created_at">{tr("Created")}</SelectItem>
+                  <SelectItem value="updated_at">{tr("Last updated")}</SelectItem>
                   {fields.map((f) => (
                     <SelectItem key={f.name} value={f.name}>
-                      {fieldLabel(m, f.name)}
+                      {isolate(fieldLabel(m, f.name))}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-xs font-normal text-muted-foreground">Direction</Label>
+              <Label className="text-xs font-normal text-muted-foreground">{tr("Direction")}</Label>
               <Select value={sortDir} onValueChange={(d) => onChange({ ...b, sort: `${sortField || "created_at"} ${d}` })}>
-                <SelectTrigger className="h-9 w-full" aria-label="Direction">
+                <SelectTrigger className="h-9 w-full" aria-label={tr("Direction")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="desc">Newest or largest first</SelectItem>
-                  <SelectItem value="asc">Oldest or smallest first</SelectItem>
+                  <SelectItem value="desc">{tr("Newest or largest first")}</SelectItem>
+                  <SelectItem value="asc">{tr("Oldest or smallest first")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1">
               <Label htmlFor={`${id}-limit`} className="text-xs font-normal text-muted-foreground">
-                How many
+                {tr("How many")}
               </Label>
               <Input id={`${id}-limit`} type="number" min={1} max={50} className="h-9" value={b.limit ?? 5} onChange={(e) => onChange({ ...b, limit: Math.min(Math.max(Math.trunc(Number(e.target.value)) || 1, 1), 50) })} />
             </div>
           </div>
           <div className="grid gap-1.5">
-            <span className="text-sm font-medium">Only records where</span>
+            <span className="text-sm font-medium">{tr("Only records where")}</span>
             <FilterEditor catalog={catalog.data} filters={filterList(b.filters)} onChange={(f) => onChange({ ...b, filters: f })} />
           </div>
         </>
@@ -313,25 +314,25 @@ export function WidgetPicker({ kind, onPick, onNew, onClose }: { kind: "charts" 
     <Dialog open={!!kind} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="sr-only">
-          <DialogTitle>Add a {noun}</DialogTitle>
-          <DialogDescription>Choose a saved {noun}, or create one.</DialogDescription>
+          <DialogTitle>{tr("Add a {noun}", { noun })}</DialogTitle>
+          <DialogDescription>{tr("Choose a saved {noun}, or create one.", { noun })}</DialogDescription>
         </DialogHeader>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-input-wrapper]]:h-12">
-          <CommandInput placeholder={`Search ${noun}s…`} />
+          <CommandInput placeholder={tr("Search {noun}s…", { noun })} />
           <CommandList className="max-h-[min(60vh,26rem)]">
             <CommandGroup>
               <CommandItem value="__new" onSelect={onNew}>
-                <Plus /> Create a new {noun}
+                <Plus /> {tr("Create a new {noun}", { noun })}
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
             {list.isLoading ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Loading…</p>
+              <p className="p-4 text-center text-sm text-muted-foreground">{tr("Loading…")}</p>
             ) : list.error ? (
-              <p className="p-4 text-center text-sm text-destructive">Could not load the {noun}s.</p>
+              <p className="p-4 text-center text-sm text-destructive">{tr("Could not load the {noun}s.", { noun })}</p>
             ) : (
               <>
-                <CommandEmpty>No {noun}s match.</CommandEmpty>
+                <CommandEmpty>{tr("No {noun}s match.", { noun })}</CommandEmpty>
                 <CommandGroup heading={`Saved ${noun}s`}>
                   {(list.data ?? []).map((r) => {
                     const type = "chart_type" in r ? r.chart_type : undefined;
@@ -339,7 +340,7 @@ export function WidgetPicker({ kind, onPick, onNew, onClose }: { kind: "charts" 
                     return (
                       <CommandItem key={r.id} value={r.id} keywords={[r.label, r.description ?? "", r.base_entity ?? ""]} onSelect={() => onPick(r.id)}>
                         <Icon />
-                        <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                        <span className="min-w-0 flex-1 truncate">{isolate(r.label)}</span>
                         <span className="text-xs text-muted-foreground">{type ? CHART_TYPE_LABEL[type] : (r.base_entity ?? "")}</span>
                       </CommandItem>
                     );

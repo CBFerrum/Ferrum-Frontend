@@ -24,6 +24,7 @@ import { LayoutHistory, ORIGINAL } from "./designer/History";
 import { SectionInspector } from "./designer/Inspector";
 import { FormPreview } from "./designer/Preview";
 import { layoutVersions, normalize, record, redo, restorePlan, saveProblem, startHistory, undo, type Customization, type SaveProblem } from "./designer/logic";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** Where an entity's form designer lives (relative to the app's base). */
 const metaPath = (entity: string) => `/api/meta/${encodeURIComponent(entity)}`;
@@ -46,8 +47,8 @@ export function FormDesignerPage() {
           <EmptyMedia variant="icon">
             <ShieldAlert aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>Administrator access required</EmptyTitle>
-          <EmptyDescription>Only administrators can change form layouts. Ask one of them to make this change.</EmptyDescription>
+          <EmptyTitle>{tr("Administrator access required")}</EmptyTitle>
+          <EmptyDescription>{tr("Only administrators can change form layouts. Ask one of them to make this change.")}</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -57,10 +58,10 @@ export function FormDesignerPage() {
 
 function DesignerLoader({ entity }: { entity: string }) {
   const meta = useEntityMeta(entity);
-  if (meta.error) return <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={`Could not load ${entity}`} />;
+  if (meta.error) return <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={tr("Could not load {entity}", { entity })} />;
   if (!meta.data) {
     return (
-      <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading the form layout">
+      <div className="flex flex-col gap-4" aria-busy="true" aria-label={tr("Loading the form layout")}>
         <Skeleton className="h-9 w-64" />
         <div className="grid gap-4 xl:grid-cols-[minmax(12rem,15rem)_minmax(0,1fr)_minmax(16rem,20rem)]">
           <Skeleton className="h-72 max-xl:hidden" />
@@ -144,7 +145,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
       // The form now renders this layout; keep the cache in step until the refetch lands.
       qc.setQueryData<EntityMeta>(["meta", E], (m) => (m ? { ...m, form: toForm(saved) } : m));
       setBase(saved);
-      toast("Form layout saved");
+      toast(tr("Form layout saved"));
       void qc.invalidateQueries({ queryKey: ["meta"] });
       void qc.invalidateQueries({ queryKey: ["customize"] });
     } catch (e) {
@@ -164,7 +165,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
   };
 
   const loadLatest = async () => {
-    if (!(await confirmDialog({ title: "Discard your changes?", message: "The designer loads the layout as it is saved now.", confirmLabel: "Discard", danger: true })))
+    if (!(await confirmDialog({ title: tr("Discard your changes?"), message: tr("The designer loads the layout as it is saved now."), confirmLabel: tr("Discard"), danger: true })))
       return;
     setBase(serverLayout);
     setHist(startHistory(serverLayout));
@@ -173,9 +174,9 @@ function Designer({ meta }: { meta: EntityMeta }) {
 
   const restore = async (target: Customization | null) => {
     const ok = await confirmDialog({
-      title: target ? `Restore the layout saved ${formatDateTime(target.created_at)}?` : `Restore the original ${meta.label} layout?`,
-      message: `${dirty ? "Your unsaved changes will be discarded. " : ""}The form switches to this layout for everyone. Later layouts stay in the history, switched off.`,
-      confirmLabel: "Restore",
+      title: target ? tr("Restore the layout saved {value}?", { value: formatDateTime(target.created_at) }) : tr("Restore the original {label} layout?", { label: meta.label }),
+      message: tr("{value}The form switches to this layout for everyone. Later layouts stay in the history, switched off.", { value: dirty ? "Your unsaved changes will be discarded. " : "" }),
+      confirmLabel: tr("Restore"),
       danger: dirty,
     });
     if (!ok) return;
@@ -191,7 +192,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
       setHist(startHistory(base)); // drop unsaved edits: the restored layout loads when the refetch lands
       setSaveError(null);
       setHistoryOpen(false);
-      toast("Layout restored");
+      toast(tr("Layout restored"));
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -205,7 +206,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
-    void confirmDialog({ title: "Leave without saving?", message: "Your changes to this layout will be lost.", confirmLabel: "Leave", danger: true }).then((ok) =>
+    void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this layout will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) =>
       ok ? blocker.proceed() : blocker.reset(),
     );
   }, [blocker]);
@@ -258,22 +259,22 @@ function Designer({ meta }: { meta: EntityMeta }) {
     <div className="min-w-0">
       <div className="page-head">
         <div className="min-w-0">
-          <nav className="crumbs" aria-label="Breadcrumb">
-            <Link to="/customize">Customize</Link>
+          <nav className="crumbs" aria-label={tr("Breadcrumb")}>
+            <Link to="/customize">{tr("Customize")}</Link>
             <ChevronRight className="size-3" aria-hidden="true" />
-            <Link to={`/customize/${encodeURIComponent(E)}`}>{meta.label}</Link>
+            <Link to={`/customize/${encodeURIComponent(E)}`}>{isolate(meta.label)}</Link>
           </nav>
-          <h1 className="page-title">{meta.label} form layout</h1>
+          <h1 className="page-title">{tr("{label} form layout", { label: meta.label })}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {custom.data &&
               (current ? (
-                <Badge variant="outline" title="The layout in use is a customization">
-                  Customized · saved {formatDateTime(current.created_at)}
+                <Badge variant="outline" title={tr("The layout in use is a customization")}>
+                  {tr("Customized · saved {value}", { value: formatDateTime(current.created_at) })}
                 </Badge>
               ) : (
-                <Badge variant="outline">Original layout</Badge>
+                <Badge variant="outline">{tr("Original layout")}</Badge>
               ))}
-            {dirty && <Badge className="bg-warning-soft text-warning">Unsaved changes</Badge>}
+            {dirty && <Badge className="bg-warning-soft text-warning">{tr("Unsaved changes")}</Badge>}
           </div>
         </div>
         <div className="page-actions">
@@ -281,31 +282,31 @@ function Designer({ meta }: { meta: EntityMeta }) {
             type="single"
             variant="outline"
             size="sm"
-            aria-label="View"
+            aria-label={tr("View")}
             value={mode}
             onValueChange={(v) => v && setMode(v as "design" | "preview")}
           >
             <ToggleGroupItem value="design" className="pointer-coarse:h-11">
-              Design
+              {tr("Design")}
             </ToggleGroupItem>
             <ToggleGroupItem value="preview" className="pointer-coarse:h-11">
-              Preview
+              {tr("Preview")}
             </ToggleGroupItem>
           </ToggleGroup>
-          <Button variant="outline" size="sm" className="pointer-coarse:h-11" disabled={!hist.past.length} onClick={() => step("undo")} title="Undo (Ctrl+Z)">
+          <Button variant="outline" size="sm" className="pointer-coarse:h-11" disabled={!hist.past.length} onClick={() => step("undo")} title={tr("Undo (Ctrl+Z)")}>
             <Undo2 aria-hidden="true" />
-            <span className="max-sm:sr-only">Undo</span>
+            <span className="max-sm:sr-only">{tr("Undo")}</span>
           </Button>
-          <Button variant="outline" size="sm" className="pointer-coarse:h-11" disabled={!hist.future.length} onClick={() => step("redo")} title="Redo (Ctrl+Shift+Z)">
+          <Button variant="outline" size="sm" className="pointer-coarse:h-11" disabled={!hist.future.length} onClick={() => step("redo")} title={tr("Redo (Ctrl+Shift+Z)")}>
             <Redo2 aria-hidden="true" />
-            <span className="max-sm:sr-only">Redo</span>
+            <span className="max-sm:sr-only">{tr("Redo")}</span>
           </Button>
           <Button variant="outline" size="sm" className="pointer-coarse:h-11" onClick={() => setHistoryOpen(true)}>
             <History aria-hidden="true" />
-            <span className="max-sm:sr-only">History</span>
+            <span className="max-sm:sr-only">{tr("History")}</span>
           </Button>
-          <Button size="sm" className="pointer-coarse:h-11" disabled={!dirty || saving || problems.length > 0} onClick={() => void save()} title="Save (Ctrl+S)">
-            {saving ? <Spinner /> : <Save aria-hidden="true" />} Save
+          <Button size="sm" className="pointer-coarse:h-11" disabled={!dirty || saving || problems.length > 0} onClick={() => void save()} title={tr("Save (Ctrl+S)")}>
+            {saving ? <Spinner /> : <Save aria-hidden="true" />} {tr("Save")}
           </Button>
         </div>
       </div>
@@ -314,11 +315,11 @@ function Designer({ meta }: { meta: EntityMeta }) {
         {warnings.length > 0 && (
           <Alert>
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>The server skipped customizations of {meta.label}</AlertTitle>
+            <AlertTitle>{tr("The server skipped customizations of {label}", { label: meta.label })}</AlertTitle>
             <AlertDescription>
               <ul className="list-disc ps-4">
                 {warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
+                  <li key={i}>{isolate(w)}</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -327,15 +328,15 @@ function Designer({ meta }: { meta: EntityMeta }) {
         {dirty && changedElsewhere && !saving && (
           <Alert>
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>This layout was changed elsewhere</AlertTitle>
+            <AlertTitle>{tr("This layout was changed elsewhere")}</AlertTitle>
             <AlertDescription>
-              <p>Another administrator saved or restored the {meta.label} layout after you opened it. Saving now replaces their version with yours.</p>
+              <p>{tr("Another administrator saved or restored the {label} layout after you opened it. Saving now replaces their version with yours.", { label: meta.label })}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => void loadLatest()}>
-                  Load their version
+                  {tr("Load their version")}
                 </Button>
                 <Button size="sm" onClick={() => void save(true)}>
-                  Save mine anyway
+                  {tr("Save mine anyway")}
                 </Button>
               </div>
             </AlertDescription>
@@ -344,21 +345,21 @@ function Designer({ meta }: { meta: EntityMeta }) {
         {saveError && (
           <Alert variant="destructive">
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>The layout was not saved</AlertTitle>
+            <AlertTitle>{tr("The layout was not saved")}</AlertTitle>
             <AlertDescription>
-              <p className="break-words">{saveError.message.split("\n")[0]}</p>
-              {saveError.sections.length > 0 && <p>The section concerned is highlighted.</p>}
+              <p className="break-words">{isolate(saveError.message.split("\n")[0])}</p>
+              {saveError.sections.length > 0 && <p>{tr("The section concerned is highlighted.")}</p>}
             </AlertDescription>
           </Alert>
         )}
         {problems.length > 0 && (
           <Alert variant="destructive">
             <TriangleAlert aria-hidden="true" />
-            <AlertTitle>Fix these before saving</AlertTitle>
+            <AlertTitle>{tr("Fix these before saving")}</AlertTitle>
             <AlertDescription>
               <ul className="list-disc ps-4">
                 {problems.map((p, i) => (
-                  <li key={i}>{p.message}</li>
+                  <li key={i}>{isolate(p.message)}</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -396,8 +397,8 @@ function Designer({ meta }: { meta: EntityMeta }) {
             }}
           >
             <SheetHeader>
-              <SheetTitle>Section settings</SheetTitle>
-              <SheetDescription>{selectedSection ? `Label, columns, tab and condition of “${selectedSection.label?.trim() || "Untitled section"}”.` : ""}</SheetDescription>
+              <SheetTitle>{tr("Section settings")}</SheetTitle>
+              <SheetDescription>{selectedSection ? tr("Label, columns, tab and condition of “{value}”.", { value: selectedSection.label?.trim() || "Untitled section" }) : ""}</SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-6">{inspector(false)}</div>
           </SheetContent>
@@ -407,8 +408,8 @@ function Designer({ meta }: { meta: EntityMeta }) {
       <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
         <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Layout history</SheetTitle>
-            <SheetDescription>Every layout saved for the {meta.label} form. Restoring one switches the form back to it.</SheetDescription>
+            <SheetTitle>{tr("Layout history")}</SheetTitle>
+            <SheetDescription>{tr("Every layout saved for the {label} form. Restoring one switches the form back to it.", { label: meta.label })}</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-6">
             <LayoutHistory

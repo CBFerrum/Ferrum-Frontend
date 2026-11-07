@@ -27,6 +27,7 @@ import {
 import { useDebounced } from "@/ui/kit";
 import { BLOCK_ICON, BlockSkeleton, BlockView } from "./BlockView";
 import { BLOCK_KINDS, blockIssues, cleanBlock, SHORTCUT_TARGETS, targetOf, type BlockType } from "./model";
+import { isolate } from "@ferrum/client";
 
 export const widgetError = (e: unknown): WidgetError =>
   e instanceof ApiError ? { error: e.code, message: e.message, fields: e.fields } : { error: "error", message: errorMessage(e) };
@@ -52,8 +53,8 @@ function Unfinished({ type, message }: { type: BlockType; message: string }) {
   return (
     <div className="flex h-full min-h-24 flex-col items-center justify-center gap-1 rounded-xl border border-dashed bg-muted/40 p-4 text-center text-sm">
       <Icon className="size-5 text-muted-foreground" aria-hidden="true" />
-      <span className="font-medium">{BLOCK_KINDS[type].label}</span>
-      <span className="text-muted-foreground">{message}</span>
+      <span className="font-medium">{isolate(BLOCK_KINDS[type].label)}</span>
+      <span className="text-muted-foreground">{isolate(message)}</span>
     </div>
   );
 }

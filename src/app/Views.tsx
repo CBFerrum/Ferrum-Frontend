@@ -10,6 +10,7 @@ import { can, recordTitle, type Doc, type EntityMeta, type Field, type ListRespo
 import { addDays, bar, dayOf, dayRangeFilters, monthGrid, movedTo, weekStart } from "../lib/views";
 import { Badge, Button, EmptyState, ErrorState, Icon, PageLoading, statusTone, toast } from "../ui/kit";
 import { CellValue } from "./widgets";
+import { t, isolate } from "@ferrum/client";
 
 /** The most records a view loads; filters narrow it. */
 const LIMIT = 500;
@@ -65,19 +66,19 @@ function useViewRows(meta: EntityMeta, key: unknown[], { filters, q }: Pick<View
 }
 
 function Truncated({ n }: { n: number }) {
-  return n >= LIMIT ? <p className="faint view-note">Showing the first {LIMIT}. Filter to narrow the view.</p> : null;
+  return n >= LIMIT ? <p className="faint view-note">{t("Showing the first {LIMIT}. Filter to narrow the view.", { LIMIT })}</p> : null;
 }
 
 function Card({ meta, row, fields, onOpen }: { meta: EntityMeta; row: Doc; fields: Field[]; onOpen?: (id: string) => void }) {
   return (
     <>
       <RecordLink className="cell-title" meta={meta} id={String(row.id)} onOpen={onOpen}>
-        {recordTitle(meta, row)}
+        {isolate(recordTitle(meta, row))}
       </RecordLink>
       {fields.map((f) =>
         row[f.name] === null || row[f.name] === undefined || row[f.name] === "" ? null : (
           <div key={f.name} className="card-field">
-            <span className="faint">{f.label}</span> <CellValue field={f} value={row[f.name]} title={row._titles?.[f.name]} />
+            <span className="faint">{isolate(f.label)}</span> <CellValue field={f} value={row[f.name]} title={row._titles?.[f.name]} />
           </div>
         ),
       )}
@@ -112,7 +113,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
     setMoving(String(r.id));
     try {
       await api.patch(docPath(meta.name, String(r.id)), { [field.name]: to || null }, { ifMatch: r.version });
-      toast(`${recordTitle(meta, r)} moved to ${to || `no ${field.label.toLowerCase()}`}`);
+      toast(t("{meta} moved to {value}", { meta: recordTitle(meta, r), value: to || `no ${field.label.toLowerCase()}` }));
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {
@@ -151,10 +152,10 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
               onDrop={drop(col)}
             >
               <header className="board-col-head">
-                <Badge tone={col ? statusTone(col) : "neutral"}>{col || `No ${field.label.toLowerCase()}`}</Badge>
+                <Badge tone={col ? statusTone(col) : "neutral"}>{col || t("No {value}", { value: field.label.toLowerCase() })}</Badge>
                 <span className="faint">{items.length}</span>
                 {canCreate && col && (
-                  <Link className="icon-btn board-add" to={`/e/${meta.name}/new?${new URLSearchParams({ [field.name]: col })}`} aria-label={`New ${meta.label} in ${col}`} title={`New in ${col}`}>
+                  <Link className="icon-btn board-add" to={`/e/${meta.name}/new?${new URLSearchParams({ [field.name]: col })}`} aria-label={t("New {label} in {col}", { label: meta.label, col })} title={t("New in {col}", { col })}>
                     <Icon name="plus" size={14} />
                   </Link>
                 )}
@@ -186,14 +187,14 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
                       {canMove && (
                         <select
                           className="select board-move"
-                          aria-label={`Move ${recordTitle(meta, r)} to`}
+                          aria-label={t("Move {meta} to", { meta: recordTitle(meta, r) })}
                           value={col}
                           disabled={moving === id}
                           onChange={(e) => void move(r, e.target.value)}
                         >
                           {columns.map((c) => (
                             <option key={c} value={c}>
-                              {c || `No ${field.label.toLowerCase()}`}
+                              {c || t("No {value}", { value: field.label.toLowerCase() })}
                             </option>
                           ))}
                         </select>
@@ -247,7 +248,7 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
     if (!day || dayOf(r[field.name]) === day) return;
     try {
       await api.patch(docPath(meta.name, String(r.id)), { [field.name]: movedTo(r[field.name], day) }, { ifMatch: r.version });
-      toast(`${recordTitle(meta, r)} moved to ${day}`);
+      toast(t("{meta} moved to {day}", { meta: recordTitle(meta, r), day }));
     } catch (e) {
       toast(errorMessage(e), "error");
     }
@@ -259,11 +260,11 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
   return (
     <div className="calendar">
       <div className="view-nav">
-        <Button size="sm" icon="left" aria-label="Previous month" onClick={() => shift(-1)} />
+        <Button size="sm" icon="left" aria-label={t("Previous month")} onClick={() => shift(-1)} />
         <h2 className="view-title" aria-live="polite">
-          {title}
+          {isolate(title)}
         </h2>
-        <Button size="sm" icon="chevronRight" aria-label="Next month" onClick={() => shift(1)} />
+        <Button size="sm" icon="chevronRight" aria-label={t("Next month")} onClick={() => shift(1)} />
         <Button
           size="sm"
           variant="ghost"
@@ -272,15 +273,15 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
             setSelected(today);
           }}
         >
-          Today
+          {t("Today")}
         </Button>
-        {res.isFetching && <span className="faint">Loading…</span>}
+        {res.isFetching && <span className="faint">{t("Loading…")}</span>}
       </div>
-      <div className="cal-grid" role="grid" aria-label={`${meta.label_plural} by ${field.label.toLowerCase()}, ${title}`}>
+      <div className="cal-grid" role="grid" aria-label={t("{label_plural} by {value}, {title}", { label_plural: meta.label_plural, value: field.label.toLowerCase(), title })}>
         <div className="cal-row" role="row">
           {WEEKDAYS.map((d) => (
             <div key={d} className="cal-weekday" role="columnheader">
-              {d}
+              {isolate(d)}
             </div>
           ))}
         </div>
@@ -332,14 +333,14 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
                             setOver(null);
                           }}
                         >
-                          {recordTitle(meta, r)}
+                          {isolate(recordTitle(meta, r))}
                         </RecordLink>
                       </li>
                     ))}
                     {items.length > 3 && (
                       <li>
                         <button type="button" className="cal-more" onClick={() => setSelected(day)}>
-                          +{items.length - 3} more
+                          +{items.length - 3} {t("more")}
                         </button>
                       </li>
                     )}
@@ -350,14 +351,14 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
           </div>
         ))}
       </div>
-      <section className="cal-agenda" aria-label={`Records on ${selected}`}>
+      <section className="cal-agenda" aria-label={t("Records on {selected}", { selected })}>
         <div className="row">
-          <h3>{new Date(`${selected}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}</h3>
+          <h3>{isolate(new Date(`${selected}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }))}</h3>
           <span className="spacer" />
           {canCreate && (
             <Link className="btn btn-md" to={`/e/${meta.name}/new?${new URLSearchParams({ [field.name]: selected })}`}>
               <Icon name="plus" />
-              New {meta.label}
+              {t("New {label}", { label: meta.label })}
             </Link>
           )}
         </div>
@@ -371,7 +372,7 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
                   <input
                     type="date"
                     className="input board-move"
-                    aria-label={`Move ${recordTitle(meta, r)} to`}
+                    aria-label={t("Move {meta} to", { meta: recordTitle(meta, r) })}
                     value={dayOf(r[field.name]) ?? ""}
                     onChange={(e) => void reschedule(r, e.target.value)}
                   />
@@ -380,7 +381,7 @@ export function CalendarView({ meta, field, onOpen, open, ...rest }: ViewProps &
             ))}
           </ul>
         ) : (
-          <p className="muted">Nothing on this day.</p>
+          <p className="muted">{t("Nothing on this day.")}</p>
         )}
       </section>
       <Truncated n={res.data?.rows.length ?? 0} />
@@ -412,33 +413,33 @@ export function TimelineView({ meta, start, end, onOpen, ...rest }: ViewProps & 
   return (
     <div>
       <div className="view-nav">
-        <Button size="sm" icon="left" aria-label="Earlier" onClick={() => setFrom(addDays(from, -28))} />
+        <Button size="sm" icon="left" aria-label={t("Earlier")} onClick={() => setFrom(addDays(from, -28))} />
         <h2 className="view-title" aria-live="polite">
-          {fmt(from)} – {fmt(to)}
+          {isolate(fmt(from))} – {isolate(fmt(to))}
         </h2>
-        <Button size="sm" icon="chevronRight" aria-label="Later" onClick={() => setFrom(addDays(from, 28))} />
+        <Button size="sm" icon="chevronRight" aria-label={t("Later")} onClick={() => setFrom(addDays(from, 28))} />
         <Button size="sm" variant="ghost" onClick={() => setFrom(addDays(weekStart(today), -7))}>
-          Today
+          {t("Today")}
         </Button>
-        {res.isFetching && <span className="faint">Loading…</span>}
+        {res.isFetching && <span className="faint">{t("Loading…")}</span>}
       </div>
       {res.isLoading ? (
         <PageLoading />
       ) : !rows.length ? (
-        <EmptyState title="Nothing in this period" icon="timeline">
+        <EmptyState title={t("Nothing in this period")} icon="timeline">
           <p className="muted">
-            Records appear here when their {start.label.toLowerCase()} and {end.label.toLowerCase()} overlap these weeks.
+            {t("Records appear here when their {value} and {value2} overlap these weeks.", { value: start.label.toLowerCase(), value2: end.label.toLowerCase() })}
           </p>
         </EmptyState>
       ) : (
         <div className="timeline-wrap">
           <div className="timeline" style={{ ["--weeks" as string]: WEEKS }}>
             <div className="tl-row tl-head">
-              <div className="tl-label faint">{meta.label}</div>
+              <div className="tl-label faint">{isolate(meta.label)}</div>
               <div className="tl-track">
                 {weeks.map((w) => (
                   <span key={w} className="tl-week">
-                    {fmt(w)}
+                    {isolate(fmt(w))}
                   </span>
                 ))}
               </div>
@@ -450,7 +451,7 @@ export function TimelineView({ meta, start, end, onOpen, ...rest }: ViewProps & 
               return (
                 <div key={String(r.id)} className="tl-row">
                   <RecordLink className="tl-label cell-title" meta={meta} id={String(r.id)} onOpen={onOpen} title={recordTitle(meta, r)}>
-                    {recordTitle(meta, r)}
+                    {isolate(recordTitle(meta, r))}
                   </RecordLink>
                   <div className="tl-track">
                     {todayAt && <span className="tl-today" style={{ left: `${todayAt.left + todayAt.width / 2}%` }} aria-hidden="true" />}

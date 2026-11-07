@@ -4,13 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ar from "../locales/ar";
 import hi from "../locales/hi";
 import { formatDate, formatDecimal } from "./format";
-import { addCatalog, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t } from "./i18n";
+import { addCatalog, addCatalogs, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t, wordsReady } from "./i18n";
 
 afterEach(() => applyLocale(null, undefined));
 
 describe("the interface's language", () => {
-  it("looks words up by their English, and keeps English where a catalog has nothing", () => {
+  it("looks words up by their English, and keeps English where a catalog has nothing", async () => {
     setLanguage("hi-IN");
+    await wordsReady();
     expect([t("Save"), t("Try again"), t("Nothing like this in any catalog")]).toEqual(["सहेजें", "फिर से कोशिश करें", "Nothing like this in any catalog"]);
     setLanguage("fr");
     expect(t("Save")).toBe("Save");
@@ -22,20 +23,36 @@ describe("the interface's language", () => {
     expect(t("{missing} stays", {})).toBe("{missing} stays");
   });
 
-  it("takes an app's own words over the interface's", () => {
+  it("takes an app's own words over the interface's", async () => {
     setLanguage("ar");
+    await wordsReady();
     addCatalog("ar", { Course: "دورة", Save: "احفظ" });
     expect([t("Course"), t("Save"), t("Cancel")]).toEqual(["دورة", "احفظ", "إلغاء"]);
   });
 
-  it("keeps English left on a page that reads right to left in its own order", () => {
+  it("keeps English left on a page that reads right to left in its own order", async () => {
     setLanguage("ar");
+    await wordsReady();
     // A sentence's full stop stays at its end, and a value stays where the sentence put it.
     expect(t("Every open job has a time.")).toBe("\u2068Every open job has a time.\u2069");
     expect(t("{n} items", { n: 2 })).toBe("\u20682 items\u2069");
     expect(t("Cancel")).toBe("إلغاء");
     setLanguage("hi");
+    await wordsReady();
     expect(t("Every open job has a time.")).toBe("Every open job has a time.");
+  });
+
+  it("fetches an app's own catalog for the page's language only, and another when it switches", async () => {
+    setLanguage("hi");
+    const fetched: string[] = [];
+    await addCatalogs({
+      ar: async () => (fetched.push("ar"), { default: { "A word of its own": "كلمة خاصة به" } }),
+      hi: async () => (fetched.push("hi"), { default: { "A word of its own": "इसका अपना शब्द" } }),
+    });
+    expect([fetched, t("A word of its own")]).toEqual([["hi"], "इसका अपना शब्द"]);
+    setLanguage("ar");
+    await wordsReady();
+    expect([fetched, t("A word of its own")]).toEqual([["hi", "ar"], "كلمة خاصة به"]);
   });
 
   it("sets text shown as it is apart on a page that reads right to left", () => {
@@ -92,8 +109,9 @@ describe("the catalogs", () => {
 });
 
 describe("a workspace's own words", () => {
-  it("stand over the catalog's in the page's language, and give the words it lacks", () => {
+  it("stand over the catalog's in the page's language, and give the words it lacks", async () => {
     applyLocale({ language: "ar", words: { Save: "احفظه", "Nothing like this in any catalog": "لا شيء مثله" } }, undefined);
+    await wordsReady();
     expect([t("Save"), t("Nothing like this in any catalog"), t("Cancel")]).toEqual(["احفظه", "لا شيء مثله", "إلغاء"]);
   });
 

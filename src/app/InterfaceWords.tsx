@@ -11,6 +11,7 @@ import { api, docPath, errorMessage, newKey } from "../lib/api";
 import { builtInWords, interfaceWords, LANGUAGES, t } from "../lib/i18n";
 import type { Doc, ListResponse } from "../lib/meta";
 import { Button, EmptyState, Spinner, toast } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 const E = "InterfaceWord";
 
@@ -57,12 +58,15 @@ export function InterfaceWords() {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const own = useQuery({ queryKey: ["interface-words", language], queryFn: ({ signal }) => ownWords(language, signal) });
-  const builtIn = builtInWords(language);
+  // The built-in catalogs are fetched as they are wanted (each is large).
+  const catalog = useQuery({ queryKey: ["built-in-words", language], queryFn: () => builtInWords(language), staleTime: Infinity });
+  const asked = useQuery({ queryKey: ["interface-words-asked"], queryFn: interfaceWords, staleTime: Infinity });
+  const builtIn = useMemo(() => catalog.data ?? {}, [catalog.data]);
   const words = useMemo(() => {
-    const all = of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : interfaceWords();
+    const all = of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : (asked.data ?? []);
     const q = find.trim().toLowerCase();
     return q ? all.filter((w) => w.toLowerCase().includes(q) || (builtIn[w] ?? "").toLowerCase().includes(q)) : all;
-  }, [find, builtIn, of, apps.data]);
+  }, [find, builtIn, of, apps.data, asked.data]);
   const written = (w: string) => draft[w] ?? (typeof own.data?.get(w)?.words === "string" ? String(own.data.get(w)?.words) : "");
   const pending = Object.keys(draft).filter((w) => change(own.data?.get(w), draft[w]) !== null);
 
@@ -102,7 +106,7 @@ export function InterfaceWords() {
         <select className="select" aria-label={t("Language")} value={offered.some((l) => l.tag === language) ? language : ""} onChange={(e) => e.target.value && pick(e.target.value)}>
           {offered.map((l) => (
             <option key={l.tag} value={l.tag}>
-              {l.name}
+              {isolate(l.name)}
             </option>
           ))}
           <option value="">{t("Another language…")}</option>
@@ -111,7 +115,7 @@ export function InterfaceWords() {
           className="input"
           style={{ maxWidth: 140 }}
           aria-label={t("Another language's tag")}
-          placeholder="fr, pt-BR"
+          placeholder={tr("fr, pt-BR")}
           value={other}
           onChange={(e) => setOther(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$/.test(other.trim()) && pick(other.trim())}
@@ -120,7 +124,7 @@ export function InterfaceWords() {
           <option value="">{t("The interface")}</option>
           {(apps.data?.apps ?? []).map((a) => (
             <option key={a.app} value={a.app}>
-              {a.title}
+              {isolate(a.title)}
             </option>
           ))}
         </select>
@@ -133,7 +137,7 @@ export function InterfaceWords() {
       {own.isLoading ? (
         <Spinner label={t("Loading…")} />
       ) : own.isError ? (
-        <EmptyState title={t("The workspace's words could not be read")}>{errorMessage(own.error)}</EmptyState>
+        <EmptyState title={t("The workspace's words could not be read")}>{isolate(errorMessage(own.error))}</EmptyState>
       ) : (
         <table className="table">
           <caption className="sr-only">{t("Interface words")}</caption>
@@ -147,7 +151,7 @@ export function InterfaceWords() {
           <tbody>
             {words.map((w) => (
               <tr key={w}>
-                <td dir="ltr">{w}</td>
+                <td dir="ltr">{isolate(w)}</td>
                 <td>{builtIn[w] ?? "—"}</td>
                 <td>
                   <input className="input" aria-label={t("{words} in this workspace", { words: w })} value={written(w)} onChange={(e) => setDraft((d) => ({ ...d, [w]: e.target.value }))} />

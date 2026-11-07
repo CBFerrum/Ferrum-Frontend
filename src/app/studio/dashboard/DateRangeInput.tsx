@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Range } from "./filters";
+import { t, isolate } from "@ferrum/client";
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const ALL = "__all";
@@ -73,7 +74,7 @@ export function DateRangeInput({
           max={which === "from" && ISO.test(to) ? to : undefined}
           min={which === "to" && ISO.test(from) ? from : undefined}
         />
-        {expression && <span className={cn("text-xs", r ? "text-muted-foreground" : "text-destructive")}>{r ? formatDate(r) : "Not a date or expression"}</span>}
+        {expression && <span className={cn("text-xs", r ? "text-muted-foreground" : "text-destructive")}>{r ? formatDate(r) : t("Not a date or expression")}</span>}
       </div>
     );
   };
@@ -84,14 +85,14 @@ export function DateRangeInput({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {allowEmpty && <SelectItem value={ALL}>{emptyLabel}</SelectItem>}
+          {allowEmpty && <SelectItem value={ALL}>{isolate(emptyLabel)}</SelectItem>}
           {DATE_PRESETS.map((p) => (
             <SelectItem key={p.id} value={p.id}>
-              {p.label}
+              {isolate(p.label)}
             </SelectItem>
           ))}
           <SelectSeparator />
-          <SelectItem value={CUSTOM}>Custom dates…</SelectItem>
+          <SelectItem value={CUSTOM}>{t("Custom dates…")}</SelectItem>
         </SelectContent>
       </Select>
       {choice === CUSTOM && (

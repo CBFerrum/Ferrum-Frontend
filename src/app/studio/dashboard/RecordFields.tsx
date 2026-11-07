@@ -14,11 +14,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { FILTER_TYPE_LABEL } from "./filters";
 import { FieldPicker } from "./pickers";
 import { Messages, Section } from "./ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 const SHARING: { value: Sharing; label: string; hint: string }[] = [
-  { value: "private", label: "Only me", hint: "Managers and administrators can still open it." },
-  { value: "roles", label: "People with these roles", hint: "Choose the roles below." },
-  { value: "everyone", label: "Everyone", hint: "Each person still sees only the data they may read." },
+  { value: "private", get label() { return tr("Only me"); }, get hint() { return tr("Managers and administrators can still open it."); } },
+  { value: "roles", get label() { return tr("People with these roles"); }, get hint() { return tr("Choose the roles below."); } },
+  { value: "everyone", get label() { return tr("Everyone"); }, get hint() { return tr("Each person still sees only the data they may read."); } },
 ];
 const NONE = "__none";
 
@@ -52,7 +53,7 @@ export function LabelFields({ value, onChange, issues, labelId }: { value: Commo
     <div className="grid gap-3">
       <div className="grid gap-1.5">
         <Label htmlFor={id}>
-          Title <span className="text-destructive" aria-hidden="true">*</span>
+          {tr("Title")} <span className="text-destructive" aria-hidden="true">*</span>
         </Label>
         <Input id={id} value={value.label} maxLength={140} required aria-invalid={err.length > 0 || undefined} aria-describedby={err.length ? `${id}-err` : undefined} onChange={(e) => onChange({ label: e.target.value }, "label")} />
         <div id={`${id}-err`}>
@@ -60,7 +61,7 @@ export function LabelFields({ value, onChange, issues, labelId }: { value: Commo
         </div>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-desc`}>Description</Label>
+        <Label htmlFor={`${id}-desc`}>{tr("Description")}</Label>
         <Textarea id={`${id}-desc`} rows={2} value={value.description ?? ""} onChange={(e) => onChange({ description: e.target.value }, "description")} />
       </div>
     </div>
@@ -77,26 +78,26 @@ export function SharingFields({ value, onChange, issues }: { value: Common; onCh
     onChange({ roles: names.map((role) => (known.get(role) ? { id: known.get(role), role } : { role })) }, "roles");
   };
   return (
-    <Section title="Sharing" hint="The data inside is always computed with each viewer's own permissions.">
-      <RadioGroup value={value.sharing} onValueChange={(v) => onChange({ sharing: v as Sharing })} aria-label="Who can open it" className="gap-2">
+    <Section title={tr("Sharing")} hint={tr("The data inside is always computed with each viewer's own permissions.")}>
+      <RadioGroup value={value.sharing} onValueChange={(v) => onChange({ sharing: v as Sharing })} aria-label={tr("Who can open it")} className="gap-2">
         {SHARING.map((s) => (
           <Label key={s.value} htmlFor={`${id}-${s.value}`} className="flex items-start gap-2.5 rounded-md border p-2.5 font-normal has-[[data-state=checked]]:border-primary">
             <RadioGroupItem id={`${id}-${s.value}`} value={s.value} className="mt-0.5" />
             <span className="grid gap-0.5">
-              <span className="text-sm font-medium">{s.label}</span>
-              <span className="text-xs text-muted-foreground">{s.hint}</span>
+              <span className="text-sm font-medium">{isolate(s.label)}</span>
+              <span className="text-xs text-muted-foreground">{isolate(s.hint)}</span>
             </span>
           </Label>
         ))}
       </RadioGroup>
       {value.sharing === "roles" && (
         <div className="grid gap-1.5">
-          <Label htmlFor={`${id}-roles`}>Roles</Label>
+          <Label htmlFor={`${id}-roles`}>{tr("Roles")}</Label>
           <ListInput
             id={`${id}-roles`}
             list={`${id}-role-list`}
             value={(value.roles ?? []).map((r) => r.role)}
-            placeholder="Sales Manager, Accounts User"
+            placeholder={tr("Sales Manager, Accounts User")}
             onChange={setRoles}
             aria-invalid={issuesAt(issues, "roles").length > 0 || undefined}
           />
@@ -105,22 +106,22 @@ export function SharingFields({ value, onChange, issues }: { value: Common; onCh
               <option key={r} value={r} />
             ))}
           </datalist>
-          <p className="text-xs text-muted-foreground">Separate roles with commas.</p>
+          <p className="text-xs text-muted-foreground">{tr("Separate roles with commas.")}</p>
           <Messages list={issuesAt(issues, "roles")} />
         </div>
       )}
       <div className="grid gap-1.5">
-        <Label htmlFor={`${id}-module`}>Module</Label>
+        <Label htmlFor={`${id}-module`}>{tr("Module")}</Label>
         <Select value={value.module || NONE} onValueChange={(m) => onChange({ module: m === NONE ? null : m })}>
           <SelectTrigger id={`${id}-module`} className="h-9 w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>None</SelectItem>
-            {value.module && !modules.some((m) => m.name === value.module) && <SelectItem value={value.module}>{value.module}</SelectItem>}
+            <SelectItem value={NONE}>{tr("None")}</SelectItem>
+            {value.module && !modules.some((m) => m.name === value.module) && <SelectItem value={value.module}>{isolate(value.module)}</SelectItem>}
             {modules.map((m) => (
               <SelectItem key={m.name} value={m.name}>
-                {m.label}
+                {isolate(m.label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -170,8 +171,8 @@ export function AcceptsEditor({
     if (name.trim()) set(name.trim().toLowerCase(), false);
   };
   return (
-    <Section title="Dashboard filters" hint="Filters of the dashboard it sits on apply automatically: a date range to its date field, any other filter to a field of the same name.">
-      {names.length === 0 && <p className="text-sm text-muted-foreground">{defs.length ? "" : "Open the builder from a dashboard to map its filters, or name a filter below."}</p>}
+    <Section title={tr("Dashboard filters")} hint={tr("Filters of the dashboard it sits on apply automatically: a date range to its date field, any other filter to a field of the same name.")}>
+      {names.length === 0 && <p className="text-sm text-muted-foreground">{defs.length ? "" : tr("Open the builder from a dashboard to map its filters, or name a filter below.")}</p>}
       {names.map((name) => {
         const def = defs.find((d) => d.name === name);
         const t = accepts[name];
@@ -181,30 +182,30 @@ export function AcceptsEditor({
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium">
                 {def?.label || name}
-                {def && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{FILTER_TYPE_LABEL[def.type]}</span>}
+                {def && <span className="ms-1.5 text-xs font-normal text-muted-foreground">{isolate(FILTER_TYPE_LABEL[def.type])}</span>}
               </span>
               {!def && (
-                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove the setting for ${name}`} onClick={() => set(name, undefined)}>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={tr("Remove the setting for {name}", { name })} onClick={() => set(name, undefined)}>
                   <Trash2 />
                 </Button>
               )}
             </div>
             <div className="grid gap-1.5 sm:grid-cols-[10rem_minmax(0,1fr)]">
               <Select value={mode} onValueChange={(m) => set(name, m === AUTO ? undefined : m === IGNORE ? false : params?.[0]?.name ?? catalog?.fields.find((f) => f.groupable)?.path ?? "")}>
-                <SelectTrigger aria-label={`${def?.label || name}: applies`} className="h-9 w-full">
+                <SelectTrigger aria-label={tr("{value}: applies", { value: def?.label || name })} className="h-9 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={AUTO}>Automatically</SelectItem>
-                  <SelectItem value={FIELD}>{params ? "To a parameter" : "To a field"}</SelectItem>
-                  <SelectItem value={IGNORE}>Not at all</SelectItem>
+                  <SelectItem value={AUTO}>{tr("Automatically")}</SelectItem>
+                  <SelectItem value={FIELD}>{params ? tr("To a parameter") : tr("To a field")}</SelectItem>
+                  <SelectItem value={IGNORE}>{tr("Not at all")}</SelectItem>
                 </SelectContent>
               </Select>
               {mode === FIELD &&
                 (params ? (
                   <Select value={typeof t === "string" ? t : undefined} onValueChange={(p) => set(name, p)}>
-                    <SelectTrigger aria-label={`${def?.label || name}: parameter`} className="h-9 w-full">
-                      <SelectValue placeholder="Choose a parameter…" />
+                    <SelectTrigger aria-label={tr("{value}: parameter", { value: def?.label || name })} className="h-9 w-full">
+                      <SelectValue placeholder={tr("Choose a parameter…")} />
                     </SelectTrigger>
                     <SelectContent>
                       {params.map((p) => (
@@ -215,7 +216,7 @@ export function AcceptsEditor({
                     </SelectContent>
                   </Select>
                 ) : (
-                  <FieldPicker catalog={catalog} which={def?.type === "date_range" || def?.type === "date" ? "date" : "any"} value={typeof t === "string" ? t : undefined} label={`${def?.label || name}: field`} onChange={(p) => set(name, p)} />
+                  <FieldPicker catalog={catalog} which={def?.type === "date_range" || def?.type === "date" ? "date" : "any"} value={typeof t === "string" ? t : undefined} label={tr("{value}: field", { value: def?.label || name })} onChange={(p) => set(name, p)} />
                 ))}
             </div>
           </div>
@@ -225,8 +226,8 @@ export function AcceptsEditor({
         <div className="flex gap-1.5">
           <Input
             id={adding}
-            placeholder="Filter name, such as company"
-            aria-label="Filter name to set up"
+            placeholder={tr("Filter name, such as company")}
+            aria-label={tr("Filter name to set up")}
             className="h-9"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -247,7 +248,7 @@ export function AcceptsEditor({
               }
             }}
           >
-            <Plus /> Add
+            <Plus /> {tr("Add")}
           </Button>
         </div>
       )}

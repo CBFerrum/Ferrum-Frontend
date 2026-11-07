@@ -33,6 +33,7 @@ import {
   type ListResponse,
 } from "../lib/meta";
 import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 export interface ControlProps {
   field: Field;
@@ -80,10 +81,10 @@ export function FieldControl(p: ControlProps) {
           <option value="">{disabled ? "" : "—"}</option>
           {options.map((o) => (
             <option key={o} value={o}>
-              {o}
+              {isolate(o)}
             </option>
           ))}
-          {v && !options.includes(v) && <option value={v}>{v}</option>}
+          {v && !options.includes(v) && <option value={v}>{isolate(v)}</option>}
         </select>
       );
     }
@@ -113,7 +114,7 @@ export function FieldControl(p: ControlProps) {
           type="datetime-local"
           className="input"
           {...common}
-          title={zone ? `On the workspace's clock (${zone})` : undefined}
+          title={zone ? tr("On the workspace's clock ({zone})", { zone }) : undefined}
           value={toZonedInput(value)}
           onChange={(e) => onChange(fromZonedInput(e.target.value))}
         />
@@ -121,7 +122,7 @@ export function FieldControl(p: ControlProps) {
       return zone && !p.compact ? (
         <span className="zoned">
           {input}
-          <span className="zoned-name faint">{zone}</span>
+          <span className="zoned-name faint">{isolate(zone)}</span>
         </span>
       ) : (
         input
@@ -187,12 +188,12 @@ export function FieldControl(p: ControlProps) {
         <div className="row" style={{ flexWrap: "nowrap" }}>
           <input
             type="color"
-            aria-label={`${f.label} colour picker`}
+            aria-label={tr("{label} colour picker", { label: f.label })}
             disabled={disabled}
             value={/^#[0-9a-f]{6}$/i.test(v) ? v : "#000000"}
             onChange={(e) => onChange(e.target.value)}
           />
-          <input className="input" {...common} placeholder="#rrggbb" value={v} onChange={(e) => onChange(orNull(e.target.value.trim()))} />
+          <input className="input" {...common} placeholder={tr("#rrggbb")} value={v} onChange={(e) => onChange(orNull(e.target.value.trim()))} />
         </div>
       );
     }
@@ -223,10 +224,10 @@ export function FieldControl(p: ControlProps) {
 export function NotInstalled({ entity }: { entity: string }) {
   const name = humanize(entity.replace(/([a-z0-9])([A-Z])/g, "$1_$2"));
   return (
-    <EmptyState title={`${name} is not in this workspace`} icon="apps">
-      <p className="muted">The app that adds it is not installed. An administrator can install it from Apps.</p>
+    <EmptyState title={tr("{name} is not in this workspace", { name })} icon="apps">
+      <p className="muted">{tr("The app that adds it is not installed. An administrator can install it from Apps.")}</p>
       <a className="btn btn-default btn-md" href="/store/?tab=store">
-        Open Apps
+        {tr("Open Apps")}
       </a>
     </EmptyState>
   );
@@ -412,7 +413,7 @@ export function LinkInput({
       {/* Out of the tab order while editable so Tab moves field to field (clear = select + Delete). */}
       <span className="combo-actions">
         {value && !disabled && (
-          <button type="button" tabIndex={-1} className="icon-btn icon-btn-sm" aria-label={`Clear ${label ?? name}`} onClick={() => onChange(null, "")}>
+          <button type="button" tabIndex={-1} className="icon-btn icon-btn-sm" aria-label={tr("Clear {value}", { value: label ?? name })} onClick={() => onChange(null, "")}>
             <Icon name="x" size={14} />
           </button>
         )}
@@ -421,22 +422,22 @@ export function LinkInput({
             className="icon-btn icon-btn-sm"
             tabIndex={disabled ? undefined : -1}
             to={`/e/${to}/${value}`}
-            aria-label={`Open ${resolved ?? name}`}
-            title={`Open ${name}`}
+            aria-label={tr("Open {value}", { value: resolved ?? name })}
+            title={tr("Open {name}", { name })}
           >
             <Icon name="external" size={14} />
           </Link>
         )}
       </span>
       {open && (
-        <ul className="listbox" role="listbox" id={listId} aria-label={`${name} matches`} style={listStyle}>
+        <ul className="listbox" role="listbox" id={listId} aria-label={tr("{name} matches", { name })} style={listStyle}>
           {results.isLoading || target.isLoading ? (
             <li className="option-empty" role="presentation">
-              Searching…
+              {tr("Searching…")}
             </li>
           ) : results.error ? (
             <li className="option-empty" role="presentation">
-              {errorMessage(results.error)}
+              {isolate(errorMessage(results.error))}
             </li>
           ) : !rows.length ? (
             <li className="option-empty" role="presentation">
@@ -458,8 +459,8 @@ export function LinkInput({
                   }}
                   onMouseEnter={() => setActive(i)}
                 >
-                  <span>{t}</span>
-                  {r.number && r.number !== t ? <small>{String(r.number)}</small> : null}
+                  <span>{isolate(t)}</span>
+                  {r.number && r.number !== t ? <small>{isolate(String(r.number))}</small> : null}
                 </li>
               );
             })
@@ -512,7 +513,7 @@ function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId 
             </button>
           ) : (
             <a href={v} target="_blank" rel="noopener noreferrer">
-              {v}
+              {isolate(v)}
             </a>
           )}
           {!disabled && (
@@ -537,7 +538,7 @@ function AttachInput({ value, onChange, id, disabled, invalid, entity, recordId 
           e.target.value = "";
         }}
       />
-      {busy && <Spinner small label="Uploading" />}
+      {busy && <Spinner small label={tr("Uploading")} />}
     </div>
   );
 }
@@ -583,7 +584,7 @@ export function JsonInput({ value, onChange, id, disabled, invalid, describedBy,
           }
         }}
       />
-      {error && <p className="field-error">{error}</p>}
+      {error && <p className="field-error">{isolate(error)}</p>}
     </>
   );
 }
@@ -604,9 +605,9 @@ export function CellValue({
   if (value === null || value === undefined || value === "") return null;
   if (field.name === "docstatus" && typeof value === "number") {
     const label = DOCSTATUS_LABEL[value] ?? String(value);
-    return <Badge tone={statusTone(label)}>{label}</Badge>;
+    return <Badge tone={statusTone(label)}>{isolate(label)}</Badge>;
   }
-  if (field.name === "status" || field.name === "workflow_state") return <Badge tone={statusTone(value)}>{String(value)}</Badge>;
+  if (field.name === "status" || field.name === "workflow_state") return <Badge tone={statusTone(value)}>{isolate(String(value))}</Badge>;
   switch (field.type) {
     case "link":
       return <>{title ?? shortId(value)}</>;
@@ -614,20 +615,20 @@ export function CellValue({
       return value === true ? (
         <>
           <Icon name="check" />
-          <span className="sr-only">Yes</span>
+          <span className="sr-only">{tr("Yes")}</span>
         </>
       ) : (
-        <span className="sr-only">No</span>
+        <span className="sr-only">{tr("No")}</span>
       );
     case "secret": // write-only: `true` when saved, or a new value typed in this form; never shown
       return (
         <>
           <span aria-hidden="true">••••••••</span>
-          <span className="sr-only">Set</span>
+          <span className="sr-only">{tr("Set")}</span>
         </>
       );
     default:
-      return <>{formatValue(field as Field, value, { currencyPrecision })}</>;
+      return <>{isolate(formatValue(field as Field, value, { currencyPrecision }))}</>;
   }
 }
 
@@ -756,7 +757,7 @@ export function TableGrid({
                         (f) =>
                           fieldState(f, { doc: r, parent, user }, locked).visible && (
                             <div key={f.name}>
-                              <dt>{f.label}</dt>
+                              <dt>{isolate(f.label)}</dt>
                               <dd>
                                 <CellValue field={f} value={r[f.name]} title={r._titles?.[f.name]} currencyPrecision={precisionOf(f, r)} />
                               </dd>
@@ -766,22 +767,22 @@ export function TableGrid({
                     </dl>
                     {errs.length > 0 && (
                       <p className="field-error" id={errId}>
-                        {errs.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · ")}
+                        {isolate(errs.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · "))}
                       </p>
                     )}
                     <div className="grid-card-actions">
-                      <Button aria-label={`${locked ? "View" : "Edit"} row ${i + 1}`} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
-                        {locked ? "View" : "Edit"}
+                      <Button aria-label={tr("{value} row {value2}", { value: locked ? "View" : "Edit", value2: i + 1 })} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
+                        {locked ? tr("View") : tr("Edit")}
                       </Button>
                       {!locked && (
                         <>
-                          <button type="button" className="icon-btn" aria-label={`Move row ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                          <button type="button" className="icon-btn" aria-label={tr("Move row {value} up", { value: i + 1 })} disabled={i === 0} onClick={() => move(i, -1)}>
                             <Icon name="up" />
                           </button>
-                          <button type="button" className="icon-btn" aria-label={`Move row ${i + 1} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
+                          <button type="button" className="icon-btn" aria-label={tr("Move row {value} down", { value: i + 1 })} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
                             <Icon name="down" />
                           </button>
-                          <button type="button" className="icon-btn" aria-label={`Remove row ${i + 1}`} onClick={() => remove(i)}>
+                          <button type="button" className="icon-btn" aria-label={tr("Remove row {value}", { value: i + 1 })} onClick={() => remove(i)}>
                             <Icon name="trash" />
                           </button>
                         </>
@@ -803,7 +804,7 @@ export function TableGrid({
                 </th>
                 {cols.map((f) => (
                   <th key={f.name} scope="col" className={NUMERIC_TYPES.has(f.type) ? "num" : undefined}>
-                    {f.label}
+                    {isolate(f.label)}
                     {f.required && (
                       <span className="req" aria-hidden="true">
                         *
@@ -836,7 +837,7 @@ export function TableGrid({
                                   field={f}
                                   id={cellId(i, f.name)}
                                   compact
-                                  label={`${f.label}, row ${i + 1}`}
+                                  label={tr("{label}, row {value}", { label: f.label, value: i + 1 })}
                                   value={r[f.name]}
                                   title={r._titles?.[f.name]}
                                   disabled={st.disabled}
@@ -847,7 +848,7 @@ export function TableGrid({
                                   recordId={recordId}
                                   onChange={(v, t) => update(i, f.name, v, t)}
                                 />
-                                {err && <div className="cell-error">{err.message}</div>}
+                                {err && <div className="cell-error">{isolate(err.message)}</div>}
                               </>
                             ) : (
                               <span className="faint">—</span>
@@ -856,24 +857,24 @@ export function TableGrid({
                         );
                       })}
                       <td className="grid-actions">
-                        <button type="button" className="icon-btn icon-btn-sm" aria-label={`Show all fields of row ${i + 1}`} title="All fields" onClick={() => setEditing(i)}>
+                        <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Show all fields of row {value}", { value: i + 1 })} title={tr("All fields")} onClick={() => setEditing(i)}>
                           <Icon name="expand" size={14} />
                         </button>
                         {!locked && (
                           <>
-                            <button type="button" className="icon-btn icon-btn-sm" aria-label={`Move row ${i + 1} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                            <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Move row {value} up", { value: i + 1 })} disabled={i === 0} onClick={() => move(i, -1)}>
                               <Icon name="up" size={14} />
                             </button>
                             <button
                               type="button"
                               className="icon-btn icon-btn-sm"
-                              aria-label={`Move row ${i + 1} down`}
+                              aria-label={tr("Move row {value} down", { value: i + 1 })}
                               disabled={i === rows.length - 1}
                               onClick={() => move(i, 1)}
                             >
                               <Icon name="down" size={14} />
                             </button>
-                            <button type="button" className="icon-btn icon-btn-sm" aria-label={`Remove row ${i + 1}`} onClick={() => remove(i)}>
+                            <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Remove row {value}", { value: i + 1 })} onClick={() => remove(i)}>
                               <Icon name="trash" size={14} />
                             </button>
                           </>
@@ -883,7 +884,7 @@ export function TableGrid({
                     {other.length > 0 && (
                       <tr className="row-errors">
                         <td colSpan={cols.length + 2}>
-                          Row {i + 1}: {other.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · ")}
+                          {tr("Row")} {i + 1}: {isolate(other.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · "))}
                         </td>
                       </tr>
                     )}
@@ -912,11 +913,11 @@ export function TableGrid({
       <Dialog
         open={editing !== null && !!rows[editing]}
         onClose={() => setEditing(null)}
-        title={`${child.label} — row ${(editing ?? 0) + 1}`}
+        title={tr("{label} — row {value}", { label: child.label, value: (editing ?? 0) + 1 })}
         wide
         footer={
           <Button variant="primary" onClick={() => setEditing(null)}>
-            Done
+            {tr("Done")}
           </Button>
         }
       >
@@ -947,9 +948,9 @@ export function TableGrid({
                 <div key={f.name} className="field">
                   <div className="check-field">
                     {control}
-                    <label htmlFor={fid}>{f.label}</label>
+                    <label htmlFor={fid}>{isolate(f.label)}</label>
                   </div>
-                  {err && <p className="field-error">{err.message}</p>}
+                  {err && <p className="field-error">{isolate(err.message)}</p>}
                 </div>
               ) : (
                 <FieldWrap key={f.name} label={f.label} htmlFor={fid} required={st.required} error={err?.message} hint={f.description}>
@@ -971,26 +972,26 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
   if (value === true && !editing) {
     return (
       <div className="row" style={{ flexWrap: "nowrap", minHeight: 34 }}>
-        <span className="mono faint" aria-label={`${f.label} is set`}>
+        <span className="mono faint" aria-label={tr("{label} is set", { label: f.label })}>
           ••••••••
         </span>
-        <Badge tone="green">Saved</Badge>
+        <Badge tone="green">{tr("Saved")}</Badge>
         {!disabled && (
           <>
-            <Button size="sm" variant="ghost" aria-label={`Replace ${f.label}`} onClick={() => setEditing(true)}>
-              Replace
+            <Button size="sm" variant="ghost" aria-label={tr("Replace {label}", { label: f.label })} onClick={() => setEditing(true)}>
+              {tr("Replace")}
             </Button>
             <Button
               size="sm"
               variant="ghost"
-              aria-label={`Remove ${f.label}`}
+              aria-label={tr("Remove {label}", { label: f.label })}
               onClick={async () => {
                 // Ask: once saved, a removed secret is gone, and on a phone a tap meant for Replace can land here.
-                const ok = await confirmDialog({ title: `Remove ${f.label}?`, message: "It is deleted when you save.", confirmLabel: "Remove", danger: true });
+                const ok = await confirmDialog({ title: tr("Remove {label}?", { label: f.label }), message: tr("It is deleted when you save."), confirmLabel: tr("Remove"), danger: true });
                 if (ok) onChange(null);
               }}
             >
-              Remove
+              {tr("Remove")}
             </Button>
           </>
         )}
@@ -1008,7 +1009,7 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
         disabled={disabled}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
-        placeholder={value === null && !editing ? "Not set" : "Enter a new value"}
+        placeholder={value === null && !editing ? tr("Not set") : tr("Enter a new value")}
         value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value === "" ? (editing ? true : null) : e.target.value)}
       />
@@ -1021,7 +1022,7 @@ function SecretInput({ field: f, value, onChange, disabled, id, invalid, describ
             onChange(true);
           }}
         >
-          Keep current
+          {tr("Keep current")}
         </Button>
       )}
     </div>

@@ -22,6 +22,7 @@ import { listParams, type DrillPoint, type DrillTarget } from "./drill";
 import { NumberCardView } from "./NumberCardView";
 import { Markdown } from "./MarkdownView";
 import { plainLink, SmartLink } from "./ui";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** What widgets need from the dashboard they sit on. */
 export interface WidgetEnv {
@@ -74,7 +75,7 @@ export function WidgetFrame({ title, label, accent, menu, handle, children, clas
           {menu && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`} className="text-muted-foreground pointer-coarse:size-10">
+                <Button variant="ghost" size="icon-sm" aria-label={tr("Actions for {label}", { label })} className="text-muted-foreground pointer-coarse:size-10">
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -99,10 +100,10 @@ export function WidgetErrorBody({ error }: { error: WidgetError | unknown }) {
     <div className="flex h-full items-start gap-2 overflow-auto text-sm text-muted-foreground" role="alert">
       <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
       <div className="min-w-0">
-        <p>{message}</p>
+        <p>{isolate(message)}</p>
         {fields.map((f, i) => (
           <p key={i} className="text-xs">
-            {f.field}: {f.message}
+            {isolate(f.field)}: {isolate(f.message)}
           </p>
         ))}
       </div>
@@ -152,20 +153,20 @@ export function ChartWidget({
     <>
       <DropdownMenuItem onSelect={() => setTable((t) => !t)}>
         {table ? <ChartColumn /> : <Table2 />}
-        {table ? "Show as chart" : "Show as table"}
+        {table ? tr("Show as chart") : tr("Show as table")}
       </DropdownMenuItem>
       <DropdownMenuItem onSelect={() => setExpanded(true)}>
-        <Expand /> Expand
+        <Expand /> {tr("Expand")}
       </DropdownMenuItem>
       {drillable && (
         <DropdownMenuItem onSelect={() => void drill(undefined)}>
-          <ListTree /> View records
+          <ListTree /> {tr("View records")}
         </DropdownMenuItem>
       )}
       {writable && chart.id && !editMenu && (
         <DropdownMenuItem asChild>
           <Link to={`/studio/charts/${chart.id}`} className={plainLink}>
-            <Pencil /> Edit chart
+            <Pencil /> {tr("Edit chart")}
           </Link>
         </DropdownMenuItem>
       )}
@@ -179,14 +180,14 @@ export function ChartWidget({
   );
   return (
     <>
-      <WidgetFrame title={chart.label} label={`${chart.label}, ${CHART_TYPE_LABEL[chart.chart_type as ChartType]?.toLowerCase() ?? ""} chart`} menu={menu} handle={handle}>
+      <WidgetFrame title={chart.label} label={tr("{label}, {value} chart", { label: chart.label, value: CHART_TYPE_LABEL[chart.chart_type as ChartType]?.toLowerCase() ?? "" })} menu={menu} handle={handle}>
         {view()}
       </WidgetFrame>
       <Dialog open={expanded} onOpenChange={setExpanded}>
         <DialogContent className="flex h-[min(85vh,52rem)] max-w-[calc(100%-2rem)] flex-col sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>{chart.label}</DialogTitle>
-            <DialogDescription className="sr-only">The chart, enlarged</DialogDescription>
+            <DialogTitle>{isolate(chart.label)}</DialogTitle>
+            <DialogDescription className="sr-only">{tr("The chart, enlarged")}</DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1">{expanded && view(true)}</div>
         </DialogContent>
@@ -205,12 +206,12 @@ export function CardWidget({ data, handle, editMenu }: { data: CardWidgetData; h
   const menu = (
     <>
       <DropdownMenuItem onSelect={open}>
-        <ListTree /> View records
+        <ListTree /> {tr("View records")}
       </DropdownMenuItem>
       {writable && data.card.id && !editMenu && (
         <DropdownMenuItem asChild>
           <Link to={`/studio/cards/${data.card.id}`} className={plainLink}>
-            <Pencil /> Edit number card
+            <Pencil /> {tr("Edit number card")}
           </Link>
         </DropdownMenuItem>
       )}
@@ -223,7 +224,7 @@ export function CardWidget({ data, handle, editMenu }: { data: CardWidgetData; h
     </>
   );
   return (
-    <WidgetFrame title={label} label={`${label}, number card`} accent={data.card.color} menu={menu} handle={handle}>
+    <WidgetFrame title={label} label={tr("{label}, number card", { label })} accent={data.card.color} menu={menu} handle={handle}>
       <NumberCardView data={data} title={label} onDrill={open} />
     </WidgetFrame>
   );
@@ -238,14 +239,14 @@ function ShortcutBody({ w }: { w: Extract<ResolvedWidget, { type: "shortcut" }> 
   const count = w.count != null ? formatDecimal(w.count, 0) : null;
   const inner = (
     <span className="flex h-full min-h-0 flex-col justify-between gap-1 text-start">
-      <span className="line-clamp-2 text-sm font-medium">{w.label}</span>
+      <span className="line-clamp-2 text-sm font-medium">{isolate(w.label)}</span>
       {count !== null ? (
         <span className="text-2xl font-semibold tabular-nums" style={{ color: accent }}>
-          {count}
+          {isolate(count)}
         </span>
       ) : (
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <ExternalLink className="size-3.5" aria-hidden="true" /> {w.title ?? (w.entity ? meta.data?.label_plural : w.url) ?? "Open"}
+          <ExternalLink className="size-3.5" aria-hidden="true" /> {w.title ?? (w.entity ? meta.data?.label_plural : w.url) ?? tr("Open")}
         </span>
       )}
     </span>
@@ -280,13 +281,13 @@ function ListBody({ w }: { w: Extract<ResolvedWidget, { type: "list"; error?: un
   const meta = useEntityMeta(w.entity);
   const m = meta.data;
   const fields = w.fields.length ? w.fields : m ? [...(m.title_field ? [m.title_field] : []), ...m.list.columns].filter((n, i, a) => a.indexOf(n) === i).slice(0, 3) : [];
-  if (!w.rows.length) return <p className="py-4 text-center text-sm text-muted-foreground">Nothing here yet.</p>;
+  if (!w.rows.length) return <p className="py-4 text-center text-sm text-muted-foreground">{tr("Nothing here yet.")}</p>;
   return (
     <ul className="divide-y text-sm">
       {w.rows.map((r: Doc) => (
         <li key={String(r.id)} className="flex min-w-0 items-baseline gap-3 py-1.5">
           <Link to={`/e/${w.entity}/${String(r.id)}`} className="min-w-0 flex-1 truncate font-medium">
-            {recordTitle(m, r)}
+            {isolate(recordTitle(m, r))}
           </Link>
           {fields
             .filter((f) => f !== m?.title_field)
@@ -317,7 +318,7 @@ export function ChartById({ id, handle, editMenu }: { id: string; handle?: React
   const q = useChartData(id, { values: env.values, filter_defs: env.filterDefs });
   if (!q.data)
     return (
-      <WidgetFrame title="Chart" label="Chart" handle={handle} menu={editMenu}>
+      <WidgetFrame title={tr("Chart")} label={tr("Chart")} handle={handle} menu={editMenu}>
         {q.error ? <WidgetErrorBody error={q.error} /> : <Skeleton className="h-full w-full" />}
       </WidgetFrame>
     );
@@ -329,7 +330,7 @@ export function CardById({ id, handle, editMenu }: { id: string; handle?: ReactN
   const q = useCardData(id, { values: env.values, filter_defs: env.filterDefs });
   if (!q.data)
     return (
-      <WidgetFrame title="Number card" label="Number card" handle={handle} menu={editMenu}>
+      <WidgetFrame title={tr("Number card")} label={tr("Number card")} handle={handle} menu={editMenu}>
         {q.error ? <WidgetErrorBody error={q.error} /> : <Skeleton className="h-full w-full" />}
       </WidgetFrame>
     );
@@ -364,12 +365,12 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
   switch (widget.type) {
     case "shortcut":
       return (
-        <WidgetFrame label={`${widget.label}, shortcut`} accent={widget.color} handle={handle} menu={menu} title={handle || menu ? widget.label : undefined}>
+        <WidgetFrame label={tr("{label}, shortcut", { label: widget.label })} accent={widget.color} handle={handle} menu={menu} title={handle || menu ? widget.label : undefined}>
           {widget.error ? <WidgetErrorBody error={widget.error} /> : <ShortcutBody w={widget} />}
         </WidgetFrame>
       );
     case "list": {
-      const label = widget.label || title || "Latest records";
+      const label = widget.label || title || tr("Latest records");
       return (
         <WidgetFrame title={label} label={label} handle={handle} menu={menu} bodyClassName="overflow-auto @container">
           {widget.error ? <WidgetErrorBody error={widget.error} /> : <ListBody w={widget} />}
@@ -378,7 +379,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
     }
     case "markdown":
       return (
-        <WidgetFrame label={title ?? "Note"} handle={handle} menu={menu} title={handle || menu ? (title ?? "Note") : undefined} bodyClassName="overflow-auto">
+        <WidgetFrame label={title ?? tr("Note")} handle={handle} menu={menu} title={handle || menu ? (title ?? tr("Note")) : undefined} bodyClassName="overflow-auto">
           <Markdown source={widget.content} />
         </WidgetFrame>
       );
@@ -387,11 +388,11 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
       return (
         <div className={cn("flex h-full min-h-0 items-end gap-1", (handle || menu) && "rounded-xl border border-dashed bg-card/50 px-1")}>
           {handle}
-          <H className={cn("min-w-0 flex-1 truncate pb-0.5 font-semibold", widget.level <= 1 ? "text-lg" : widget.level === 2 ? "text-base" : "text-sm text-muted-foreground")}>{widget.text}</H>
+          <H className={cn("min-w-0 flex-1 truncate pb-0.5 font-semibold", widget.level <= 1 ? "text-lg" : widget.level === 2 ? "text-base" : "text-sm text-muted-foreground")}>{isolate(widget.text)}</H>
           {menu && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={`Actions for heading ${widget.text}`} className="text-muted-foreground">
+                <Button variant="ghost" size="icon-sm" aria-label={tr("Actions for heading {text}", { text: widget.text })} className="text-muted-foreground">
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
@@ -409,19 +410,19 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
           <ul className="space-y-1 text-sm">
             {widget.items.map((l, i) => {
               const href = l.entity ? `/e/${l.entity}` : l.report ? `/studio/reports/${l.report}` : l.dashboard ? `/studio/dashboards/${l.dashboard}` : l.builtin ? `/r/${l.builtin}` : l.url;
-              return <li key={i}>{href ? <SmartLink href={href}>{l.label}</SmartLink> : l.label}</li>;
+              return <li key={i}>{href ? <SmartLink href={href}>{isolate(l.label)}</SmartLink> : l.label}</li>;
             })}
           </ul>
         </WidgetFrame>
       );
     case "onboarding":
       return (
-        <WidgetFrame title={widget.title ?? "Getting started"} label={widget.title ?? "Getting started"} handle={handle} menu={menu} bodyClassName="overflow-auto">
+        <WidgetFrame title={widget.title ?? tr("Getting started")} label={widget.title ?? tr("Getting started")} handle={handle} menu={menu} bodyClassName="overflow-auto">
           <ol className="space-y-1.5 text-sm">
             {widget.steps.map((s, i) => (
               <li key={i} className="flex items-start gap-2">
-                {s.done ? <CheckCircle2 className="mt-0.5 size-4 text-success" aria-label="Done" /> : <Circle className="mt-0.5 size-4 text-muted-foreground" aria-label="To do" />}
-                <span>{s.url ? <SmartLink href={s.url}>{s.label}</SmartLink> : s.label}</span>
+                {s.done ? <CheckCircle2 className="mt-0.5 size-4 text-success" aria-label={tr("Done")} /> : <Circle className="mt-0.5 size-4 text-muted-foreground" aria-label={tr("To do")} />}
+                <span>{s.url ? <SmartLink href={s.url}>{isolate(s.label)}</SmartLink> : s.label}</span>
               </li>
             ))}
           </ol>
@@ -429,7 +430,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
       );
     default:
       return (
-        <WidgetFrame title={title ?? "Widget"} label={title ?? "Widget"} handle={handle} menu={menu}>
+        <WidgetFrame title={title ?? tr("Widget")} label={title ?? tr("Widget")} handle={handle} menu={menu}>
           <WidgetErrorBody error={widget.error} />
         </WidgetFrame>
       );

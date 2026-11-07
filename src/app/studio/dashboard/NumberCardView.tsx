@@ -5,6 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCardValue, formatChange, isSafeColor, toNumber, type CardWidgetData } from "@/lib/studio";
 import { formatPeriod } from "./charts";
+import { t, isolate } from "@ferrum/client";
 
 const COMPARED = { previous_period: "previous period", previous_year: "same period last year" } as const;
 
@@ -43,21 +44,21 @@ export function NumberCardView({ data, title, onDrill, className }: { data: Card
   const number = (
     <>
       {/* The full value where it fits, the compact one in narrow cards. */}
-      <span className="hidden @[12rem]:inline">{value}</span>
-      <span className="@[12rem]:hidden">{compact}</span>
+      <span className="hidden @[12rem]:inline">{isolate(value)}</span>
+      <span className="@[12rem]:hidden">{isolate(compact)}</span>
     </>
   );
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-1 @container", className)}>
       <div className="min-w-0 shrink-0">
-        {period && <p className="truncate text-xs text-muted-foreground">{period}</p>}
+        {period && <p className="truncate text-xs text-muted-foreground">{isolate(period)}</p>}
         {onDrill ? (
           <button
             type="button"
             onClick={onDrill}
             className="max-w-full truncate rounded text-start text-2xl font-semibold tabular-nums hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none @xs:text-3xl"
-            title={`${value}: view the records`}
-            aria-label={`${title}: ${value}. View the records`}
+            title={t("{value}: view the records", { value })}
+            aria-label={t("{title}: {value}. View the records", { title, value })}
           >
             {number}
           </button>
@@ -67,23 +68,23 @@ export function NumberCardView({ data, title, onDrill, className }: { data: Card
           </p>
         )}
         {change && (
-          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs" title={previous ? `${previous} in the ${against}` : undefined}>
+          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs" title={previous ? t("{previous} in the {against}", { previous, against }) : undefined}>
             <span className={cn("inline-flex items-center gap-0.5 font-medium tabular-nums", dir === "up" ? "text-success" : dir === "down" ? "text-destructive" : "text-muted-foreground")}>
               <Arrow className="size-3.5" aria-hidden="true" />
-              <span className="sr-only">{dir === "up" ? "Up" : dir === "down" ? "Down" : "No change"}</span>
-              {change}
+              <span className="sr-only">{dir === "up" ? t("Up") : dir === "down" ? t("Down") : t("No change")}</span>
+              {isolate(change)}
             </span>
-            <span className="truncate text-muted-foreground">vs {cmp ? COMPARED[cmp.kind] : "before"}</span>
+            <span className="truncate text-muted-foreground">{t("vs")} {cmp ? COMPARED[cmp.kind] : t("before")}</span>
           </p>
         )}
       </div>
       {/* The trend takes the room left, and gives way in short cards. */}
       {data.sparkline && data.sparkline.length > 1 && (
         <div className="flex min-h-0 flex-1 items-end">
-          <Sparkline points={data.sparkline} color={accent} label={`${title}: trend over ${data.sparkline.length} periods`} />
+          <Sparkline points={data.sparkline} color={accent} label={t("{title}: trend over {length} periods", { title, length: data.sparkline.length })} />
         </div>
       )}
-      {data.sparkline_error && <p className="text-xs text-muted-foreground">The trend could not be drawn: {data.sparkline_error.message}</p>}
+      {data.sparkline_error && <p className="text-xs text-muted-foreground">{t("The trend could not be drawn: {message}", { message: data.sparkline_error.message })}</p>}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { type FormEvent, useState } from "react";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import { ago, connectionFacts, type ConnectionHealth, type Run, runWords } from "../lib/connections";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
+import { t, isolate } from "@ferrum/client";
 
 interface Connector {
   provider: string;
@@ -36,11 +37,11 @@ interface Drift {
 }
 
 const KINDS: Record<string, string> = {
-  conflict: "Changed on both sides",
-  refused: "Refused here",
-  differs: "Differs",
-  missing_here: "Only at the provider",
-  missing_there: "Only here",
+  get conflict() { return t("Changed on both sides"); },
+  get refused() { return t("Refused here"); },
+  get differs() { return t("Differs"); },
+  get missing_here() { return t("Only at the provider"); },
+  get missing_there() { return t("Only here"); },
 };
 
 const words = (capability: string) => capability.replace(/_/g, " ");
@@ -50,7 +51,7 @@ function Differences({ id, onChange }: { id: string; onChange: () => void }) {
   if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   if (!q.data) return <PageLoading />;
   const open = q.data.drift.filter((d) => !d.resolved_at);
-  if (!open.length) return <p className="muted">Nothing is waiting for a person.</p>;
+  if (!open.length) return <p className="muted">{t("Nothing is waiting for a person.")}</p>;
   const resolve = async (d: Drift) => {
     try {
       await api.post(`/api/admin/connection-drift/${d.id}/resolve`, {});
@@ -64,9 +65,9 @@ function Differences({ id, onChange }: { id: string; onChange: () => void }) {
     <table className="table">
       <thead>
         <tr>
-          <th>What</th>
-          <th>Stream</th>
-          <th>Their record</th>
+          <th>{t("What")}</th>
+          <th>{t("Stream")}</th>
+          <th>{t("Their record")}</th>
           <th />
         </tr>
       </thead>
@@ -74,11 +75,11 @@ function Differences({ id, onChange }: { id: string; onChange: () => void }) {
         {open.map((d) => (
           <tr key={d.id}>
             <td>{KINDS[d.kind] ?? d.kind}</td>
-            <td>{d.stream}</td>
-            <td className="mono">{d.external_id}</td>
+            <td>{isolate(d.stream)}</td>
+            <td className="mono">{isolate(d.external_id)}</td>
             <td className="num">
               <Button size="sm" onClick={() => void resolve(d)}>
-                Dealt with
+                {t("Dealt with")}
               </Button>
             </td>
           </tr>
@@ -102,7 +103,7 @@ function History({ id, onChange }: { id: string; onChange: () => void }) {
     setBusy(r.id);
     try {
       await api.post(`/api/jobs/${r.id}/retry`, {});
-      toast("Tried again");
+      toast(t("Tried again"));
       await q.refetch();
       onChange();
     } catch (e) {
@@ -116,18 +117,18 @@ function History({ id, onChange }: { id: string; onChange: () => void }) {
     <div className="stack">
       {q.data.streams.length > 0 && (
         <p className="muted">
-          {q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} ${s.records === 1 ? "record" : "records"}`).join(" · ")}
+          {isolate(q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} ${s.records === 1 ? "record" : "records"}`).join(" · "))}
         </p>
       )}
       {q.data.runs.length === 0 ? (
-        <p className="muted">It has done nothing yet.</p>
+        <p className="muted">{t("It has done nothing yet.")}</p>
       ) : (
         <table className="table">
           <thead>
             <tr>
-              <th>What</th>
-              <th>How it went</th>
-              <th>When</th>
+              <th>{t("What")}</th>
+              <th>{t("How it went")}</th>
+              <th>{t("When")}</th>
               <th />
             </tr>
           </thead>
@@ -136,16 +137,16 @@ function History({ id, onChange }: { id: string; onChange: () => void }) {
               const w = runWords(r);
               return (
                 <tr key={r.id}>
-                  <td>{w.what}</td>
+                  <td>{isolate(w.what)}</td>
                   <td>
-                    <Badge tone={w.tone}>{r.status}</Badge>
-                    {r.last_error ? <span className="muted"> {r.last_error}</span> : null}
+                    <Badge tone={w.tone}>{isolate(r.status)}</Badge>
+                    {r.last_error ? <span className="muted"> {isolate(r.last_error)}</span> : null}
                   </td>
-                  <td>{ago(r.finished_at ?? r.created_at, now)}</td>
+                  <td>{isolate(ago(r.finished_at ?? r.created_at, now))}</td>
                   <td className="num">
                     {w.again && (
                       <Button size="sm" loading={busy === r.id} onClick={() => void again(r)}>
-                        Try again
+                        {t("Try again")}
                       </Button>
                     )}
                   </td>
@@ -178,67 +179,67 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
   };
   const disconnect = async () => {
     const ok = await confirmDialog({
-      title: `Disconnect ${c.name}?`,
-      message: "It stops at once and its credentials are forgotten. What it brought in stays, and connecting again finds it.",
-      confirmLabel: "Disconnect",
+      title: t("Disconnect {name}?", { name: c.name }),
+      message: t("It stops at once and its credentials are forgotten. What it brought in stays, and connecting again finds it."),
+      confirmLabel: t("Disconnect"),
       danger: true,
     });
-    if (ok) await run("disconnect", () => api.del(`/api/admin/connections/${c.id}`), `${c.name} disconnected`);
+    if (ok) await run("disconnect", () => api.del(`/api/admin/connections/${c.id}`), t("{name} disconnected", { name: c.name }));
   };
   return (
     <section className="card connection" aria-label={c.name}>
       <header className="connection-head">
         <div>
-          <h3>{c.name}</h3>
+          <h3>{isolate(c.name)}</h3>
           <p className="muted">
             {connector?.label ?? c.provider}
-            {connector?.api_version ? ` · API ${connector.api_version}` : ""}
-            {c.linked ? ` · ${c.linked.toLocaleString()} ${c.linked === 1 ? "record" : "records"} linked` : ""}
+            {connector?.api_version ? t(" · API {api_version}", { api_version: connector.api_version }) : ""}
+            {c.linked ? t(" · {value} {value2} linked", { value: c.linked.toLocaleString(), value2: c.linked === 1 ? "record" : "records" }) : ""}
           </p>
         </div>
         <div className="row">
-          <Button size="sm" loading={busy === "test"} onClick={() => void run("test", () => api.post(`/api/admin/connections/${c.id}/test`, {}), "It works")}>
-            Test
+          <Button size="sm" loading={busy === "test"} onClick={() => void run("test", () => api.post(`/api/admin/connections/${c.id}/test`, {}), t("It works"))}>
+            {t("Test")}
           </Button>
-          <Button size="sm" disabled={!c.enabled} loading={busy === "sync"} onClick={() => void run("sync", () => api.post(`/api/admin/connections/${c.id}/sync`, {}), "Sync queued")}>
-            Sync now
+          <Button size="sm" disabled={!c.enabled} loading={busy === "sync"} onClick={() => void run("sync", () => api.post(`/api/admin/connections/${c.id}/sync`, {}), t("Sync queued"))}>
+            {t("Sync now")}
           </Button>
-          <Button size="sm" disabled={!c.enabled} loading={busy === "compare"} onClick={() => void run("compare", () => api.post(`/api/admin/connections/${c.id}/reconcile`, {}), "Comparison queued")}>
-            Compare
+          <Button size="sm" disabled={!c.enabled} loading={busy === "compare"} onClick={() => void run("compare", () => api.post(`/api/admin/connections/${c.id}/reconcile`, {}), t("Comparison queued"))}>
+            {t("Compare")}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => void disconnect()}>
-            Disconnect
+            {t("Disconnect")}
           </Button>
         </div>
       </header>
       <dl className="connection-facts">
         {facts.map((f) => (
           <div key={f.label} data-tone={f.tone} title={f.detail}>
-            <dt>{f.label}</dt>
-            <dd>{f.value}</dd>
+            <dt>{isolate(f.label)}</dt>
+            <dd>{isolate(f.value)}</dd>
           </div>
         ))}
       </dl>
-      {c.last_error && <Alert tone="error">{c.last_error}</Alert>}
+      {c.last_error && <Alert tone="error">{isolate(c.last_error)}</Alert>}
       {!!c.health.drift && (
         <div className="connection-more">
           <button type="button" className="link-btn" aria-expanded={showing} onClick={() => setShowing((s) => !s)}>
-            {showing ? "Hide the differences" : `See the ${c.health.drift} ${c.health.drift === 1 ? "difference" : "differences"}`}
+            {showing ? t("Hide the differences") : t("See the {drift} {value}", { drift: c.health.drift, value: c.health.drift === 1 ? "difference" : "differences" })}
           </button>
           {showing && <Differences id={c.id} onChange={refresh} />}
         </div>
       )}
       <div className="connection-more">
         <button type="button" className="link-btn" aria-expanded={history} onClick={() => setHistory((s) => !s)}>
-          {history ? "Hide what it did" : "See what it did lately"}
+          {history ? t("Hide what it did") : t("See what it did lately")}
         </button>
         {history && <History id={c.id} onChange={refresh} />}
       </div>
       {!!connector?.capabilities?.length && (
         <div className="connection-can">
-          <span className="faint">Can</span>
+          <span className="faint">{t("Can")}</span>
           {connector.capabilities.map((k) => (
-            <Badge key={k}>{words(k)}</Badge>
+            <Badge key={k}>{isolate(words(k))}</Badge>
           ))}
         </div>
       )}
@@ -275,27 +276,27 @@ function AddConnection({ connector, onClose, onDone }: { connector: Connector; o
     }
   };
   return (
-    <Dialog open onClose={onClose} title={`Connect ${connector.label}`}>
+    <Dialog open onClose={onClose} title={t("Connect {label}", { label: connector.label })}>
       <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{error}</Alert>}
-        {connector.requirements && <Alert tone="warning">{connector.requirements}</Alert>}
-        <Field label="Name" htmlFor="connection-name" required>
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        {connector.requirements && <Alert tone="warning">{isolate(connector.requirements)}</Alert>}
+        <Field label={t("Name")} htmlFor="connection-name" required>
           <input id="connection-name" className="input" required value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Settings" htmlFor="connection-config" hint="As this connector's guide describes them, in JSON.">
+        <Field label={t("Settings")} htmlFor="connection-config" hint={t("As this connector's guide describes them, in JSON.")}>
           <textarea id="connection-config" className="textarea mono" rows={3} value={config} onChange={(e) => setConfig(e.target.value)} />
         </Field>
-        <Field label="Credentials" htmlFor="connection-credentials" hint="Sealed when saved and never shown again.">
+        <Field label={t("Credentials")} htmlFor="connection-credentials" hint={t("Sealed when saved and never shown again.")}>
           <textarea id="connection-credentials" className="textarea mono" rows={3} autoComplete="off" spellCheck={false} value={credentials} onChange={(e) => setCredentials(e.target.value)} />
         </Field>
-        <Field label="What goes where" htmlFor="connection-mapping" hint="Which of its streams land in which records, in JSON (docs/connectors.md).">
+        <Field label={t("What goes where")} htmlFor="connection-mapping" hint={t("Which of its streams land in which records, in JSON (docs/connectors.md).")}>
           <textarea id="connection-mapping" className="textarea mono" rows={5} value={mapping} onChange={(e) => setMapping(e.target.value)} />
         </Field>
-        <p className="muted">It stays off until a test proves it works.</p>
+        <p className="muted">{t("It stays off until a test proves it works.")}</p>
         <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
-            Save
+            {t("Save")}
           </Button>
         </div>
       </form>
@@ -323,38 +324,38 @@ export function Connections() {
       {rows.length ? (
         rows.map((c) => <ConnectionCard key={c.id} c={c} connector={offered.find((o) => o.provider === c.provider)} refresh={refresh} />)
       ) : (
-        <EmptyState title="Nothing is connected yet" icon="file">
-          <p className="muted">A connection links this workspace to an account at another system.</p>
+        <EmptyState title={t("Nothing is connected yet")} icon="file">
+          <p className="muted">{t("A connection links this workspace to an account at another system.")}</p>
         </EmptyState>
       )}
       <section aria-labelledby="connectors-available">
         <h3 id="connectors-available" className="connection-title">
-          Available here
+          {t("Available here")}
         </h3>
         {offered.length ? (
           <ul className="connector-list">
             {offered.map((o) => (
               <li key={o.provider} className="card">
                 <div>
-                  <strong>{o.label}</strong>
+                  <strong>{isolate(o.label)}</strong>
                   <p className="muted">
-                    {o.family} · API {o.api_version}
+                    {t("{family} · API {api_version}", { family: o.family ?? "", api_version: o.api_version ?? "" })}
                   </p>
-                  {o.requirements && <p className="muted">{o.requirements}</p>}
+                  {o.requirements && <p className="muted">{isolate(o.requirements)}</p>}
                   <p className="connection-can">
                     {(o.capabilities ?? []).map((k) => (
-                      <Badge key={k}>{words(k)}</Badge>
+                      <Badge key={k}>{isolate(words(k))}</Badge>
                     ))}
                   </p>
                 </div>
                 <Button size="sm" onClick={() => setAdding(o)}>
-                  Connect
+                  {t("Connect")}
                 </Button>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="muted">No connector is installed in this workspace. They come with apps and plugins.</p>
+          <p className="muted">{t("No connector is installed in this workspace. They come with apps and plugins.")}</p>
         )}
       </section>
       {adding && (
@@ -364,7 +365,7 @@ export function Connections() {
           onDone={() => {
             setAdding(null);
             refresh();
-            toast("Saved. Test it to turn it on.");
+            toast(t("Saved. Test it to turn it on."));
           }}
         />
       )}

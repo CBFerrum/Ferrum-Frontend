@@ -66,6 +66,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { humanize } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { t } from "@ferrum/client";
 
 export const SPACE_ICONS: Record<string, LucideIcon> = {
   home: House,
@@ -149,11 +150,11 @@ export function IconPicker({ id, value, onChange }: { id?: string; value: string
       <PopoverTrigger asChild>
         <Button id={id} type="button" variant="outline" className="w-full justify-start gap-2 font-normal pointer-coarse:min-h-11">
           <SpaceIcon name={value || undefined} className="size-4" />
-          <span className={cn(!value && "text-muted-foreground")}>{value ? iconLabel(value) : "Choose an icon"}</span>
+          <span className={cn(!value && "text-muted-foreground")}>{value ? iconLabel(value) : t("Choose an icon")}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(20rem,calc(100vw-2rem))] p-3">
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search icons" aria-label="Search icons" className="mb-2" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Search icons")} aria-label={t("Search icons")} className="mb-2" />
         {names.length ? (
           <ToggleGroup
             type="single"
@@ -163,7 +164,7 @@ export function IconPicker({ id, value, onChange }: { id?: string; value: string
               if (v) onChange(v);
               setOpen(false);
             }}
-            aria-label="Icons"
+            aria-label={t("Icons")}
             className="grid w-full grid-cols-7 gap-1"
           >
             {names.map((n) => (
@@ -179,7 +180,7 @@ export function IconPicker({ id, value, onChange }: { id?: string; value: string
             ))}
           </ToggleGroup>
         ) : (
-          <p className="py-4 text-center text-sm text-muted-foreground">No icons match “{q.trim()}”.</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">{t("No icons match “{q}”.", { q: q.trim() })}</p>
         )}
         {value && (
           <Button
@@ -192,7 +193,7 @@ export function IconPicker({ id, value, onChange }: { id?: string; value: string
               setOpen(false);
             }}
           >
-            No icon
+            {t("No icon")}
           </Button>
         )}
       </PopoverContent>

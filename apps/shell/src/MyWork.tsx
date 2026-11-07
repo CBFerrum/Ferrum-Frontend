@@ -6,7 +6,7 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AtSign, CalendarClock, Check, ClipboardCheck, Inbox, Stamp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { shell } from "@ferrum/client";
+import { shell, t, isolate } from "@ferrum/client";
 import { AppIcon } from "@ferrum/kit";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
@@ -56,7 +56,7 @@ interface PlatformWork {
   partial: boolean;
 }
 
-const PLATFORM: Record<string, string> = { assigned: "Assigned", approvals: "Approvals", mentions: "Mentions" };
+const PLATFORM: Record<string, string> = { get assigned() { return t("Assigned"); }, get approvals() { return t("Approvals"); }, get mentions() { return t("Mentions"); } };
 /** How long an app's provider may take. */
 const PROVIDER_MS = 5000;
 const FIRST = 8;
@@ -170,7 +170,7 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
     setDone((d) => new Set(d).add(item.key));
     try {
       await api.post(`/api/assignments/${encodeURIComponent(item.assignment)}/close`, { status: "Done" });
-      toast("Marked as done");
+      toast(t("Marked as done"));
       void queryClient.invalidateQueries({ queryKey: ["work"] });
     } catch (e) {
       setDone((d) => {
@@ -191,24 +191,24 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
   return (
     <section className="shell-work" aria-labelledby="shell-work-title">
       <div className="shell-work-head">
-        <h2 id="shell-work-title">My work</h2>
+        <h2 id="shell-work-title">{t("My work")}</h2>
         {items.length > 0 && (
-          <ToggleGroup type="single" variant="outline" size="sm" value={filter} onValueChange={(v) => v && (setFilter(v), setAll(false))} aria-label="Show">
+          <ToggleGroup type="single" variant="outline" size="sm" value={filter} onValueChange={(v) => v && (setFilter(v), setAll(false))} aria-label={t("Show")}>
             <ToggleGroupItem value="all">
-              All <span className="shell-work-count">{items.length}</span>
+              {t("All")} <span className="shell-work-count">{items.length}</span>
             </ToggleGroupItem>
             {sources
               .filter((s) => counts.get(s.id))
               .map((s) => (
                 <ToggleGroupItem key={s.id} value={s.id}>
-                  {s.label} <span className="shell-work-count">{counts.get(s.id)}</span>
+                  {isolate(s.label)} <span className="shell-work-count">{counts.get(s.id)}</span>
                 </ToggleGroupItem>
               ))}
           </ToggleGroup>
         )}
       </div>
       {loading && !items.length ? (
-        <div className="shell-work-list" aria-busy="true" aria-label="Loading your work">
+        <div className="shell-work-list" aria-busy="true" aria-label={t("Loading your work")}>
           {[0, 1, 2].map((n) => (
             <div key={n} className="flex items-center gap-3 px-4 py-3">
               <Skeleton className="size-8 rounded-full" />
@@ -225,8 +225,8 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
             <EmptyMedia variant="icon">
               <Inbox />
             </EmptyMedia>
-            <EmptyTitle>Nothing is waiting for you</EmptyTitle>
-            <EmptyDescription>What is assigned to you, decisions you make, and mentions show up here, from every app.</EmptyDescription>
+            <EmptyTitle>{t("Nothing is waiting for you")}</EmptyTitle>
+            <EmptyDescription>{t("What is assigned to you, decisions you make, and mentions show up here, from every app.")}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -240,9 +240,9 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
                   {item.kind === "app" && source?.app ? <AppIcon name={source.app.icon} color={source.app.color} title={source.app.title} tile size={14} /> : (KIND_ICON[item.kind] ?? <CalendarClock aria-hidden />)}
                 </ItemMedia>
                 <ItemContent className="min-w-0">
-                  <ItemTitle className="shell-work-title">{item.title}</ItemTitle>
+                  <ItemTitle className="shell-work-title">{isolate(item.title)}</ItemTitle>
                   {(item.subtitle || filter === "all") && (
-                    <ItemDescription className="shell-work-sub">{[item.subtitle, filter === "all" && item.kind === "app" ? source?.label : null].filter(Boolean).join(" · ")}</ItemDescription>
+                    <ItemDescription className="shell-work-sub">{isolate([item.subtitle, filter === "all" && item.kind === "app" ? source?.label : null].filter(Boolean).join(" · "))}</ItemDescription>
                   )}
                 </ItemContent>
               </>
@@ -257,10 +257,10 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
                   <div className="shell-work-link">{body}</div>
                 )}
                 <ItemActions className="shell-work-actions">
-                  {item.priority === "High" && <Badge tone="red">High</Badge>}
-                  {due && <Badge tone={due.tone}>{due.text}</Badge>}
+                  {item.priority === "High" && <Badge tone="red">{t("High")}</Badge>}
+                  {due && <Badge tone={due.tone}>{isolate(due.text)}</Badge>}
                   {item.assignment && (
-                    <Button variant="ghost" size="sm" className="shell-work-done" aria-label={`Mark “${item.title}” done`} title="Mark done" onClick={() => void markDone(item)}>
+                    <Button variant="ghost" size="sm" className="shell-work-done" aria-label={t("Mark “{title}” done", { title: item.title })} title={t("Mark done")} onClick={() => void markDone(item)}>
                       <Check aria-hidden size={16} />
                     </Button>
                   )}
@@ -272,14 +272,14 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
       )}
       {shown.length > FIRST && (
         <Button variant="ghost" size="sm" className="shell-work-more" onClick={() => setAll((a) => !a)}>
-          {all ? "Show fewer" : `Show all ${shown.length}`}
+          {all ? t("Show fewer") : t("Show all {length}", { length: shown.length })}
         </Button>
       )}
       {failed.length > 0 && !loading && (
         <p className="shell-work-note" role="status">
-          Could not load {failed.join(", ")}.{" "}
+          {t("Could not load {failed}.", { failed: failed.join(", ") })}{isolate(" ")}
           <button type="button" className="shell-link" onClick={() => void queryClient.invalidateQueries({ queryKey: ["work"] })}>
-            Try again
+            {t("Try again")}
           </button>
         </p>
       )}

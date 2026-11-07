@@ -9,6 +9,7 @@ import { formatDate, formatDateTime } from "../lib/format";
 import { useMe } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
+import { t as tr, isolate } from "@ferrum/client";
 
 export interface AppSummary {
   id: string;
@@ -103,7 +104,7 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (need.live) {
-    return <p className="muted">{`${need.app}'s licence is live${need.period_end ? ` until ${formatDate(need.period_end.slice(0, 10))}` : ""}.`}</p>;
+    return <p className="muted">{tr("{app}'s licence is live{value}.", { app: need.app, value: need.period_end ? ` until ${formatDate(need.period_end.slice(0, 10))}` : "" })}</p>;
   }
   const give = async (e: FormEvent) => {
     e.preventDefault();
@@ -116,7 +117,7 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
     setError(null);
     try {
       await api.put(`/api/admin/apps/${need.app}/licence`, { licence });
-      toast(`${need.app}'s licence kept`);
+      toast(tr("{app}'s licence kept", { app: need.app }));
       onGiven();
     } catch (err) {
       setError(errorMessage(err, false));
@@ -127,21 +128,21 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
   const given = need.given ? ` The licence given ${need.last_error ? `could not be checked: ${need.last_error}` : "has lapsed: renew it in the store"}.` : "";
   return (
     <form className="stack" onSubmit={(e) => void give(e)}>
-      <Alert tone="info">{`${need.app} is sold in the store at ${storeHost(need.store)}: give the licence you bought for this workspace, from Your purchases there.${given}`}</Alert>
-      {error && <Alert tone="error">{error}</Alert>}
-      <Field label={`Licence for ${need.app}`}>
+      <Alert tone="info">{tr("{app} is sold in the store at {value}: give the licence you bought for this workspace, from Your purchases there.{given}", { app: need.app, value: storeHost(need.store), given })}</Alert>
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      <Field label={tr("Licence for {app}", { app: need.app })}>
         <input className="input" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off" spellCheck={false} required />
       </Field>
       <div className="row">
         <Button type="submit" icon="check" loading={busy}>
-          Give the licence
+          {tr("Give the licence")}
         </Button>
       </div>
     </form>
   );
 }
 
-const RUNTIME_LABEL = { native: "Built in", wasm: "Sandboxed", meta: "No code", service: "Runs elsewhere" } as const;
+const RUNTIME_LABEL = { get native() { return tr("Built in"); }, get wasm() { return tr("Sandboxed"); }, get meta() { return tr("No code"); }, get service() { return tr("Runs elsewhere"); } } as const;
 const RUNTIME_TONE = { native: "purple", wasm: "green", meta: "neutral", service: "blue" } as const;
 
 /** Words for a permission section key: `entities` → "Entities". */
@@ -171,15 +172,15 @@ function describeObject(o: Record<string, unknown>): string {
 
 export function PermissionList({ permissions }: { permissions: Permissions }) {
   const sections = Object.entries(permissions).filter(([k, v]) => permissionLines(v, k).length > 0);
-  if (!sections.length) return <p className="muted">This app asks for no access beyond its own records.</p>;
+  if (!sections.length) return <p className="muted">{tr("This app asks for no access beyond its own records.")}</p>;
   return (
     <dl className="kv">
       {sections.map(([k, v]) => (
         <div key={k}>
-          <dt>{sectionLabel(k)}</dt>
+          <dt>{isolate(sectionLabel(k))}</dt>
           <dd>
             {permissionLines(v, k).map((l) => (
-              <div key={l}>{l}</div>
+              <div key={l}>{isolate(l)}</div>
             ))}
           </dd>
         </div>
@@ -192,7 +193,7 @@ function AppIcon({ app }: { app: AppSummary }) {
   if (app.icon_url) return <img className="app-icon" src={app.icon_url} alt="" />;
   return (
     <span className="app-icon app-icon-letter" aria-hidden="true">
-      {app.name.slice(0, 2)}
+      {isolate(app.name.slice(0, 2))}
     </span>
   );
 }
@@ -206,31 +207,31 @@ export function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; c
           <h3 className="app-name">
             {onOpen ? (
               <button type="button" className="link-btn" onClick={onOpen}>
-                {app.name}
+                {isolate(app.name)}
               </button>
             ) : (
               app.name
             )}
           </h3>
           <div className="faint app-meta">
-            v{app.version}
-            {app.publisher && <> · {app.publisher}</>}
+            v{isolate(app.version)}
+            {app.publisher && <> · {isolate(app.publisher)}</>}
             {app.verified && (
               <>
-                {" "}
-                <Badge tone="blue">Verified</Badge>
+                {isolate(" ")}
+                <Badge tone="blue">{tr("Verified")}</Badge>
               </>
             )}
           </div>
         </div>
       </div>
-      {addonOf && <div className="faint app-meta">Add-on of {addonOf}</div>}
-      <p className="muted app-summary">{app.summary}</p>
+      {addonOf && <div className="faint app-meta">{tr("Add-on of {addonOf}", { addonOf })}</div>}
+      <p className="muted app-summary">{isolate(app.summary)}</p>
       <div className="chips">
         <Badge tone={RUNTIME_TONE[app.runtime] ?? "neutral"}>{RUNTIME_LABEL[app.runtime] ?? app.runtime}</Badge>
-        {app.private && <Badge tone="amber">Private</Badge>}
+        {app.private && <Badge tone="amber">{tr("Private")}</Badge>}
         {(app.categories ?? []).slice(0, 2).map((c) => (
-          <Badge key={c}>{c}</Badge>
+          <Badge key={c}>{isolate(c)}</Badge>
         ))}
       </div>
       {children && <div className="row app-actions">{children}</div>}
@@ -248,22 +249,22 @@ export function AppsPage() {
   if (me.isLoading) return <PageLoading />;
   if (!me.data?.user.is_admin) {
     return (
-      <EmptyState title="Administrator access required" icon="alert">
-        <p className="muted">Ask an administrator to install or remove apps.</p>
+      <EmptyState title={tr("Administrator access required")} icon="alert">
+        <p className="muted">{tr("Ask an administrator to install or remove apps.")}</p>
       </EmptyState>
     );
   }
   const tabs = [
-    { id: "installed", label: `Installed${q.data ? ` (${q.data.installed.length})` : ""}` },
-    { id: "store", label: "Store" },
-    ...(q.data && q.data.uploads !== "off" ? [{ id: "upload", label: "Upload" }] : []),
+    { id: "installed", label: tr("Installed{value}", { value: q.data ? ` (${q.data.installed.length})` : "" }) },
+    { id: "store", label: tr("Store") },
+    ...(q.data && q.data.uploads !== "off" ? [{ id: "upload", label: tr("Upload") }] : []),
   ];
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Apps</h1>
-          <p className="page-sub">Add features to this workspace — each app asks before it gets access.</p>
+          <h1 className="page-title">{tr("Apps")}</h1>
+          <p className="page-sub">{tr("Add features to this workspace — each app asks before it gets access.")}</p>
         </div>
       </div>
       <Tabs id="apps" tabs={tabs} value={tab} onChange={(t) => setSp({ tab: t }, { replace: true })} />
@@ -311,40 +312,40 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   };
   const uninstall = async (a: Installed) => {
     const ok = await confirmDialog({
-      title: `Remove ${a.name}?`,
-      message: "Its menus, roles and automations go away for everyone in this workspace. Records it created are kept unless you also delete its data below.",
-      confirmLabel: "Remove",
+      title: tr("Remove {name}?", { name: a.name }),
+      message: tr("Its menus, roles and automations go away for everyone in this workspace. Records it created are kept unless you also delete its data below."),
+      confirmLabel: tr("Remove"),
       danger: true,
     });
     if (!ok) return;
     const deleteData = await confirmDialog({
-      title: `Also delete ${a.name}'s data?`,
-      message: "Deleting removes every record this app stores, for this workspace only. This cannot be undone. Choose Keep to leave the data in place.",
-      confirmLabel: "Delete data",
-      cancelLabel: "Keep data",
+      title: tr("Also delete {name}'s data?", { name: a.name }),
+      message: tr("Deleting removes every record this app stores, for this workspace only. This cannot be undone. Choose Keep to leave the data in place."),
+      confirmLabel: tr("Delete data"),
+      cancelLabel: tr("Keep data"),
       danger: true,
     });
     setBusy(a.id);
     try {
       const r = await api.del<{ leftovers?: string[] }>(`/api/admin/apps/${a.id}${deleteData ? "?delete_data=true" : ""}`);
-      toast(`${a.name} removed`);
+      toast(tr("{name} removed", { name: a.name }));
       // What it brought in (a suite's members) and nothing else needs: offered for removal too.
       const left = r?.leftovers ?? [];
       const name = (id: string) => data.installed.find((x) => x.id === id)?.name ?? id;
       if (
         left.length &&
         (await confirmDialog({
-          title: `Also remove what ${a.name} brought in?`,
-          message: `Nothing else needs ${left.map(name).join(", ")}. Their records are kept.`,
-          confirmLabel: "Remove them",
-          cancelLabel: "Keep them",
+          title: tr("Also remove what {name} brought in?", { name: a.name }),
+          message: tr("Nothing else needs {value}. Their records are kept.", { value: left.map(name).join(", ") }),
+          confirmLabel: tr("Remove them"),
+          cancelLabel: tr("Keep them"),
           danger: true,
         }))
       ) {
         for (const id of left) {
           await api.del(`/api/admin/apps/${id}`);
         }
-        toast(`${left.map(name).join(", ")} removed`);
+        toast(tr("{value} removed", { value: left.map(name).join(", ") }));
       }
       await refresh();
     } catch (e) {
@@ -356,8 +357,8 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   };
   if (!data.installed.length) {
     return (
-      <EmptyState title="No apps installed" icon="apps">
-        <p className="muted">Open the Store tab to add CRM, Helpdesk, HR, POS and more.</p>
+      <EmptyState title={tr("No apps installed")} icon="apps">
+        <p className="muted">{tr("Open the Store tab to add CRM, Helpdesk, HR, POS and more.")}</p>
       </EmptyState>
     );
   }
@@ -366,26 +367,26 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
       {byParent(data.installed).map(({ app: a, depth }) => (
         <AppCard key={a.id} app={a} addonOf={depth ? (data.installed.find((p) => p.id === a.parent)?.name ?? a.parent ?? undefined) : undefined}>
           <label className="check-field" style={{ minHeight: 0 }}>
-            <input type="checkbox" checked={a.enabled} disabled={busy === a.id} onChange={() => void toggle(a)} /> Enabled
+            <input type="checkbox" checked={a.enabled} disabled={busy === a.id} onChange={() => void toggle(a)} /> {tr("Enabled")}
           </label>
           {lapsed.has(a.id) && (
             <Badge tone="amber" title={lapsed.get(a.id)}>
-              Licence lapsed
+              {tr("Licence lapsed")}
             </Badge>
           )}
           <span className="spacer" />
           {a.enabled && settings.has(a.id) && (
             <Link className="btn btn-default btn-sm" to={`/apps/${a.id}/settings`}>
-              Settings
+              {tr("Settings")}
             </Link>
           )}
           {a.update && (
             <Button size="sm" variant="primary" icon="upload" onClick={() => onInstall({ id: a.id, version: a.update!.version, upgrade: true })}>
-              Update to {a.update.version}
+              {tr("Update to {version}", { version: a.update.version })}
             </Button>
           )}
-          <Button size="sm" variant="danger" icon="trash" aria-label={`Remove ${a.name}`} disabled={busy === a.id} onClick={() => void uninstall(a)} />
-          <span className="faint app-installed">Installed {formatDateTime(a.installed_at)}</span>
+          <Button size="sm" variant="danger" icon="trash" aria-label={tr("Remove {name}", { name: a.name })} disabled={busy === a.id} onClick={() => void uninstall(a)} />
+          <span className="faint app-installed">{tr("Installed {value}", { value: formatDateTime(a.installed_at) })}</span>
         </AppCard>
       ))}
     </div>
@@ -430,26 +431,26 @@ function Store({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: s
     <div className="stack">
       {data.stores.some((s) => !s.ok) && (
         <Alert tone="warning">
-          {data.stores
+          {isolate(data.stores
             .filter((s) => !s.ok)
             .map((s) => `${s.url}: ${s.error ?? "unreachable"}`)
-            .join("; ")}{" "}
-          — showing apps already available on this server.
+            .join("; "))}{isolate(" ")}
+          {tr("— showing apps already available on this server.")}
         </Alert>
       )}
       <form className="row" role="search" onSubmit={submit}>
-        <input className="input" type="search" placeholder="Search apps…" aria-label="Search apps" value={text} onChange={(e) => setText(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+        <input className="input" type="search" placeholder={tr("Search apps…")} aria-label={tr("Search apps")} value={text} onChange={(e) => setText(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
         <Button type="submit" icon="search">
-          Search
+          {tr("Search")}
         </Button>
       </form>
-      <div className="chips" role="group" aria-label="Categories">
+      <div className="chips" role="group" aria-label={tr("Categories")}>
         <button type="button" className="chip" aria-pressed={!category} onClick={() => setCategory("")}>
-          All
+          {tr("All")}
         </button>
         {CATEGORIES.map((c) => (
           <button key={c} type="button" className="chip" aria-pressed={category === c} onClick={() => setCategory(category === c ? "" : c)}>
-            {sectionLabel(c)}
+            {isolate(sectionLabel(c))}
           </button>
         ))}
       </div>
@@ -458,17 +459,17 @@ function Store({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: s
       ) : store.isLoading ? (
         <PageLoading />
       ) : !store.data?.apps.length ? (
-        <EmptyState title="No apps found" icon="search" />
+        <EmptyState title={tr("No apps found")} icon="search" />
       ) : (
         <div className="app-grid">
           {store.data.apps.map((a) => (
             <AppCard key={a.id} app={a} onOpen={() => onInstall({ id: a.id })}>
               <span className="spacer" />
               {installed.has(a.id) ? (
-                <Badge tone="green">Installed</Badge>
+                <Badge tone="green">{tr("Installed")}</Badge>
               ) : (
                 <Button size="sm" variant="primary" icon="plus" onClick={() => onInstall({ id: a.id })}>
-                  Install
+                  {tr("Install")}
                 </Button>
               )}
             </AppCard>
@@ -503,16 +504,16 @@ function Upload({ data, onUploaded }: { data: AppsResponse; onUploaded: (id: str
   return (
     <form className="card stack" style={{ padding: 16, maxWidth: 640 }} onSubmit={submit}>
       <p>
-        Upload an app bundle (<span className="mono">.fapp</span>) built with <span className="mono">ferrum-app pack</span>.{" "}
+        {tr("Upload an app bundle (")}<span className="mono">{tr(".fapp")}</span>{tr(") built with")} <span className="mono">{tr("ferrum-app pack")}</span>.{isolate(" ")}
         {data.uploads === "private"
-          ? "Uploaded apps stay private to this workspace and run sandboxed; apps that bring their own tables must come from the store."
-          : "Uploaded apps become available on this server; you review their permissions before installing."}
+          ? tr("Uploaded apps stay private to this workspace and run sandboxed; apps that bring their own tables must come from the store.")
+          : tr("Uploaded apps become available on this server; you review their permissions before installing.")}
       </p>
-      {error && <Alert tone="error">{error}</Alert>}
-      <input type="file" accept=".fapp,application/gzip" aria-label="App bundle" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      <input type="file" accept=".fapp,application/gzip" aria-label={tr("App bundle")} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       <div className="row" style={{ justifyContent: "flex-end" }}>
         <Button type="submit" variant="primary" icon="upload" loading={busy} disabled={!file}>
-          Upload and review
+          {tr("Upload and review")}
         </Button>
       </div>
     </form>
@@ -561,66 +562,66 @@ export function InstallDialog({
   const p = plan.data;
   const unlicensed = (p?.licences ?? []).filter((l) => !l.live);
   return (
-    <Dialog open={!!request} onClose={close} title={p ? `${request?.upgrade ? "Update" : "Install"} ${p.app.name}` : "App"} wide>
+    <Dialog open={!!request} onClose={close} title={p ? `${request?.upgrade ? "Update" : "Install"} ${p.app.name}` : tr("App")} wide>
       {plan.isLoading ? (
-        <PageLoading label="Checking the app…" />
+        <PageLoading label={tr("Checking the app…")} />
       ) : plan.error ? (
         <ErrorState error={plan.error} onRetry={() => plan.refetch()} />
       ) : p ? (
         <div className="stack">
-          {error && <Alert tone="error">{error}</Alert>}
+          {error && <Alert tone="error">{isolate(error)}</Alert>}
           <div className="row" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
             <AppIcon app={p.app} />
             <div style={{ minWidth: 0 }}>
-              <strong>{p.app.name}</strong> <span className="faint">v{p.app.version}</span>
-              <p className="muted">{p.app.summary}</p>
+              <strong>{isolate(p.app.name)}</strong> <span className="faint">v{isolate(p.app.version)}</span>
+              <p className="muted">{isolate(p.app.summary)}</p>
               <div className="chips">
                 <Badge tone={RUNTIME_TONE[p.app.runtime] ?? "neutral"}>{RUNTIME_LABEL[p.app.runtime] ?? p.app.runtime}</Badge>
-                {p.app.license && <Badge>{p.app.license}</Badge>}
-                {p.app.publisher && <Badge>{p.app.publisher}</Badge>}
+                {p.app.license && <Badge>{isolate(p.app.license)}</Badge>}
+                {p.app.publisher && <Badge>{isolate(p.app.publisher)}</Badge>}
                 {p.app.isolated && (
-                  <Badge tone="amber" title="Its interface runs in a frame of its own, without your session">
-                    Isolated
+                  <Badge tone="amber" title={tr("Its interface runs in a frame of its own, without your session")}>
+                    {tr("Isolated")}
                   </Badge>
                 )}
               </div>
             </div>
           </div>
           {!!p.app.screenshots?.length && (
-            <div className="app-shots" role="list" aria-label={`Pictures of ${p.app.name}`}>
+            <div className="app-shots" role="list" aria-label={tr("Pictures of {name}", { name: p.app.name })}>
               {p.app.screenshots.map((src, i) => (
                 <a key={src} role="listitem" href={src} target="_blank" rel="noopener noreferrer">
-                  <img src={src} alt={`${p.app.name}, picture ${i + 1}`} loading="lazy" />
+                  <img src={src} alt={tr("{name}, picture {value}", { name: p.app.name, value: i + 1 })} loading="lazy" />
                 </a>
               ))}
             </div>
           )}
-          {p.app.description && <p className="comment-text">{p.app.description}</p>}
+          {p.app.description && <p className="comment-text">{isolate(p.app.description)}</p>}
           {p.app.equipment && (
             <div>
-              <h3 className="field-label">Equipment it describes</h3>
+              <h3 className="field-label">{tr("Equipment it describes")}</h3>
               <ul>
                 {p.app.equipment.profiles.map((e) => (
                   <li key={`${e.vendor}|${e.model}|${e.scheme}`}>
-                    {e.vendor} {e.model} <span className="faint">({e.scheme})</span>
+                    {isolate(e.vendor)} {isolate(e.model)} <span className="faint">({isolate(e.scheme)})</span>
                   </li>
                 ))}
               </ul>
               {p.app.equipment.acceptance.length > 0 && (
-                <p className="muted">{`Before a device of these is commissioned, it passes on site: ${p.app.equipment.acceptance.join(", ")}.`}</p>
+                <p className="muted">{tr("Before a device of these is commissioned, it passes on site: {value}.", { value: p.app.equipment.acceptance.join(", ") })}</p>
               )}
-              <p className="faint">What the app describes, not what anyone tried with it.</p>
+              <p className="faint">{tr("What the app describes, not what anyone tried with it.")}</p>
             </div>
           )}
           {p.steps.filter((s) => s.action !== "already").length > 1 && (
             <div>
-              <h3 className="field-label">Also installs</h3>
+              <h3 className="field-label">{tr("Also installs")}</h3>
               <ul>
                 {p.steps
                   .filter((s) => s.action !== "already" && s.id !== p.app.id)
                   .map((s) => (
                     <li key={s.id}>
-                      {s.name || s.id} {s.version}
+                      {s.name || s.id} {isolate(s.version)}
                     </li>
                   ))}
               </ul>
@@ -628,12 +629,12 @@ export function InstallDialog({
           )}
           {!!p.increases?.length && (
             <Alert tone="warning">
-              This version asks for more access: {p.increases.join("; ")}
+              {tr("This version asks for more access: {value}", { value: p.increases.join("; ") })}
             </Alert>
           )}
           {(p.warnings ?? []).map((w) => (
             <Alert key={w} tone="warning">
-              {w}
+              {isolate(w)}
             </Alert>
           ))}
           {(p.licences ?? []).map((l) => (
@@ -641,21 +642,21 @@ export function InstallDialog({
           ))}
           <div>
             <h3 className="field-label">
-              <Icon name="alert" size={14} /> This app will be able to
+              <Icon name="alert" size={14} /> {tr("This app will be able to")}
             </h3>
             <PermissionList permissions={p.permissions} />
           </div>
           <div className="row" style={{ justifyContent: "flex-end" }}>
-            <Button onClick={close}>Cancel</Button>
+            <Button onClick={close}>{tr("Cancel")}</Button>
             <Button
               variant="primary"
               icon="check"
               loading={busy}
               disabled={unlicensed.length > 0}
-              title={unlicensed.length ? "Give its licence first" : undefined}
+              title={unlicensed.length ? tr("Give its licence first") : undefined}
               onClick={() => void install()}
             >
-              {request?.upgrade ? "Allow and update" : "Allow and install"}
+              {request?.upgrade ? tr("Allow and update") : tr("Allow and install")}
             </Button>
           </div>
         </div>

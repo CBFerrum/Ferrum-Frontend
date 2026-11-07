@@ -13,6 +13,7 @@ import { Badge, ErrorState, Icon, Spinner, statusTone, toast } from "../../ui/ki
 import { CollabPanel } from "../Collab";
 import { CellValue, FieldControl } from "../widgets";
 import { Related } from "./Related";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** Field kinds edited in the full form: rows, files, long text, and values worked out elsewhere. */
 const FORM_ONLY = new Set(["table", "attach", "image", "code", "json", "html", "markdown", "richtext", "secret"]);
@@ -86,12 +87,12 @@ function PeekField({ meta, field, doc, locked, user, precision, save }: {
   const editable = !state.disabled && inlineEditable(field) && can(meta.permissions, "write");
   return (
     <div className="peek-row">
-      <dt>{field.label}</dt>
+      <dt>{isolate(field.label)}</dt>
       <dd>
         {editing ? (
           <EditValue field={field} doc={doc} onDone={() => setEditing(false)} save={(v) => save(field.name, v)} />
         ) : editable ? (
-          <button type="button" className="peek-value" aria-label={`Change ${field.label}`} onClick={() => setEditing(true)}>
+          <button type="button" className="peek-value" aria-label={tr("Change {label}", { label: field.label })} onClick={() => setEditing(true)}>
             {cell}
           </button>
         ) : (
@@ -118,7 +119,7 @@ export function useRecord(meta: EntityMeta, id: string) {
     } catch (e) {
       // What was on screen is out of date: show what is true now rather than the failed edit.
       if (isStale(e)) {
-        toast("Someone else changed this record; here it is as it stands now.", "error");
+        toast(tr("Someone else changed this record; here it is as it stands now."), "error");
         void qc.invalidateQueries({ queryKey: key });
       } else toast(errorMessage(e), "error");
     }
@@ -142,7 +143,7 @@ export function RecordFields({ meta, doc, save, only }: { meta: EntityMeta; doc:
           if (!fields.length) return null;
           return (
             <section key={s.key} className="peek-section">
-              {s.label && <h3>{s.label}</h3>}
+              {s.label && <h3>{isolate(s.label)}</h3>}
               <dl>
                 {fields.map((f) => (
                   <PeekField
@@ -171,23 +172,23 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
   const doc = q.data;
   const tabs = [["details", "Details"], ...(meta.linked_from?.length ? [["related", "Related"]] : []), ["discussion", "Discussion"]] as ["details" | "related" | "discussion", string][];
   return (
-    <aside className="peek" aria-label={doc ? recordTitle(meta, doc) : `${meta.label} details`}>
+    <aside className="peek" aria-label={doc ? recordTitle(meta, doc) : tr("{label} details", { label: meta.label })}>
       <header className="peek-head">
         <div className="peek-title">
           <h2>{doc ? recordTitle(meta, doc) : "…"}</h2>
-          {typeof doc?.status === "string" && <Badge tone={statusTone(doc.status)}>{doc.status}</Badge>}
+          {typeof doc?.status === "string" && <Badge tone={statusTone(doc.status)}>{isolate(doc.status)}</Badge>}
         </div>
-        <Link className="icon-btn" to={`/e/${E}/${id}`} aria-label="Open the full record" title="Open the full record">
+        <Link className="icon-btn" to={`/e/${E}/${id}`} aria-label={tr("Open the full record")} title={tr("Open the full record")}>
           <Icon name="expand" size={15} />
         </Link>
-        <button type="button" className="icon-btn" aria-label="Close" title="Close (Esc)" onClick={onClose}>
+        <button type="button" className="icon-btn" aria-label={tr("Close")} title={tr("Close (Esc)")} onClick={onClose}>
           <Icon name="x" size={15} />
         </button>
       </header>
       <div className="peek-tabs" role="tablist">
         {tabs.map(([t, label]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-            {label}
+            {isolate(label)}
           </button>
         ))}
       </div>
@@ -195,7 +196,7 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
         {q.error ? (
           <ErrorState error={q.error} onRetry={() => void q.refetch()} />
         ) : !doc ? (
-          <Spinner label="Loading" />
+          <Spinner label={tr("Loading")} />
         ) : tab === "discussion" ? (
           <CollabPanel entity={E} id={id} canWrite={can(meta.permissions, "write")} />
         ) : tab === "related" ? (

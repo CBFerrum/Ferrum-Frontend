@@ -82,6 +82,7 @@ import { addSection, moveField, removeField, removeSection, renameTab, setSectio
 import type { EntityMeta, Field } from "../../lib/meta";
 import { toast } from "../../ui/kit";
 import { containerOf, moveFieldToTab, normalize, nudgeField, nudgeSection, nudgeTab, placeSection, plural, removeTab, sectionTitle, tabLabel, tabNameProblem } from "./logic";
+import { t as tr, isolate } from "@ferrum/client";
 
 /** What a draggable or drop target is. Ids: `f:<field>`, `s:<section>`, `c:<section>|c:palette`, `t:<tab index>`. */
 type DragData =
@@ -387,7 +388,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
             >
               {shown.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  With no sections the form shows every field in one untitled section. Add a section to arrange them.
+                  {tr("With no sections the form shows every field in one untitled section. Add a section to arrange them.")}
                 </div>
               ) : (
                 <SortableContext items={sections.map((s) => `s:${s.key}`)} strategy={verticalListSortingStrategy}>
@@ -397,7 +398,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
                 </SortableContext>
               )}
               <Button id="fd-add-section" variant="outline" className="w-full border-dashed pointer-coarse:h-11" onClick={addHere}>
-                <Plus aria-hidden="true" /> Add section{tabs.length > 1 ? ` to ${tabLabel(current)}` : ""}
+                <Plus aria-hidden="true" /> {tr("Add section")}{tabs.length > 1 ? tr(" to {current}", { current: tabLabel(current) }) : ""}
               </Button>
             </div>
           </div>
@@ -426,7 +427,7 @@ function TabStrip({ tabs, current }: { tabs: (string | null)[]; current: string 
   };
   const addTab = () =>
     c.askTabName({
-      title: "Add a tab",
+      title: tr("Add a tab"),
       action: "Add tab",
       initial: "",
       returnTo: "fd-add-tab",
@@ -440,14 +441,14 @@ function TabStrip({ tabs, current }: { tabs: (string | null)[]; current: string 
     });
   return (
     <div className="mb-3 flex flex-wrap items-center gap-1 border-b pb-2">
-      <div role="tablist" aria-label="Form tabs" className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-0.5" onKeyDown={onKeyDown}>
+      <div role="tablist" aria-label={tr("Form tabs")} className="flex min-w-0 flex-1 gap-1 overflow-x-auto p-0.5" onKeyDown={onKeyDown}>
         {tabs.map((t, i) => (
           <TabButton key={tabKey(t)} tab={t} index={i} selected={t === current} />
         ))}
       </div>
       {tabs.length > 0 && <TabMenu tab={current} index={tabs.indexOf(current)} />}
       <Button id="fd-add-tab" variant="ghost" size="sm" className="pointer-coarse:h-11" onClick={addTab}>
-        <Plus aria-hidden="true" /> Add tab
+        <Plus aria-hidden="true" /> {tr("Add tab")}
       </Button>
     </div>
   );
@@ -473,11 +474,11 @@ function TabButton({ tab, index, selected }: { tab: string | null; index: number
         isOver && "bg-primary-soft text-foreground ring-2 ring-primary",
       )}
     >
-      {tabLabel(tab)}
+      {isolate(tabLabel(tab))}
       <span className="text-xs text-muted-foreground tabular-nums" aria-hidden="true">
         {count}
       </span>
-      <span className="sr-only">, {plural(count, "field")}</span>
+      <span className="sr-only">, {isolate(plural(count, "field"))}</span>
     </button>
   );
 }
@@ -489,7 +490,7 @@ function TabMenu({ tab, index }: { tab: string | null; index: number }) {
   const rename = () => {
     c.focusAfter("fd-tab-name");
     c.askTabName({
-      title: `Rename ${tabLabel(tab)}`,
+      title: tr("Rename {tab}", { tab: tabLabel(tab) }),
       action: "Rename",
       initial: tab ?? "",
       current: tab,
@@ -511,25 +512,25 @@ function TabMenu({ tab, index }: { tab: string | null; index: number }) {
     c.change(removeTab(c.layout, tab));
     c.showTab(null);
     c.focusAfter("fd-tab-0");
-    toast(`Tab “${tab}” removed: its sections moved to Details.`, "info");
+    toast(tr("Tab “{tab}” removed: its sections moved to Details.", { tab }), "info");
   };
   return (
     <DropdownMenu>
-      <MenuButton id="fd-tab-menu" label={`Actions for tab ${tabLabel(tab)}`} />
+      <MenuButton id="fd-tab-menu" label={tr("Actions for tab {tab}", { tab: tabLabel(tab) })} />
       <DropdownMenuContent align="end" onCloseAutoFocus={c.restoreFocus}>
-        <DropdownMenuLabel className="text-xs text-muted-foreground">{tabLabel(tab)}</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">{isolate(tabLabel(tab))}</DropdownMenuLabel>
         <DropdownMenuItem onSelect={rename}>
-          <Pencil aria-hidden="true" /> Rename…
+          <Pencil aria-hidden="true" /> {tr("Rename…")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={left === c.layout} onSelect={() => move(left, index - 1)}>
-          <ArrowLeft aria-hidden="true" /> Move left
+          <ArrowLeft aria-hidden="true" /> {tr("Move left")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={right === c.layout} onSelect={() => move(right, index + 1)}>
-          <ArrowRight aria-hidden="true" /> Move right
+          <ArrowRight aria-hidden="true" /> {tr("Move right")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" disabled={tab === null} onSelect={remove}>
-          <Trash2 aria-hidden="true" /> Remove tab
+          <Trash2 aria-hidden="true" /> {tr("Remove tab")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -573,11 +574,11 @@ export function TabNameDialog({
       >
         <form className="grid gap-4" onSubmit={submit} noValidate>
           <DialogHeader>
-            <DialogTitle>{state.title}</DialogTitle>
-            <DialogDescription>Sections in the same tab show together under it.</DialogDescription>
+            <DialogTitle>{isolate(state.title)}</DialogTitle>
+            <DialogDescription>{tr("Sections in the same tab show together under it.")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <Label htmlFor="fd-tab-name">Tab name</Label>
+            <Label htmlFor="fd-tab-name">{tr("Tab name")}</Label>
             <Input
               id="fd-tab-name"
               value={name}
@@ -589,15 +590,15 @@ export function TabNameDialog({
             />
             {tried && problem && (
               <p id="fd-tab-name-error" className="text-sm text-destructive">
-                {problem}
+                {isolate(problem)}
               </p>
             )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {tr("Cancel")}
             </Button>
-            <Button type="submit">{state.action}</Button>
+            <Button type="submit">{isolate(state.action)}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -624,7 +625,7 @@ function SectionCard({ s, first, last }: { s: LayoutSection; first: boolean; las
       ref={sortable.setNodeRef}
       style={{ transform: CSS.Translate.toString(sortable.transform), transition: sortable.transition }}
       role="group"
-      aria-label={`Section ${title}`}
+      aria-label={tr("Section {title}", { title })}
       className={cn(
         "rounded-lg border bg-card text-card-foreground shadow-xs",
         selected && "border-primary ring-1 ring-primary",
@@ -633,7 +634,7 @@ function SectionCard({ s, first, last }: { s: LayoutSection; first: boolean; las
       )}
     >
       <header className="flex min-w-0 items-center gap-1 border-b px-1 py-1">
-        <DragHandle id={`fd-sh-${s.key}`} label={`Drag section ${title}`} ref={sortable.setActivatorNodeRef} {...sortable.attributes} {...sortable.listeners} />
+        <DragHandle id={`fd-sh-${s.key}`} label={tr("Drag section {title}", { title })} ref={sortable.setActivatorNodeRef} {...sortable.attributes} {...sortable.listeners} />
         <button
           type="button"
           id={`fd-st-${s.key}`}
@@ -641,19 +642,19 @@ function SectionCard({ s, first, last }: { s: LayoutSection; first: boolean; las
           aria-pressed={c.wide ? selected : undefined}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-start text-sm font-semibold outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11"
         >
-          <span className={cn("truncate", !s.label?.trim() && "font-normal text-muted-foreground italic")}>{title}</span>
-          <span className="sr-only">, settings</span>
+          <span className={cn("truncate", !s.label?.trim() && "font-normal text-muted-foreground italic")}>{isolate(title)}</span>
+          <span className="sr-only">{tr(", settings")}</span>
           {flagged && <CircleAlert className="size-4 shrink-0 text-destructive" aria-hidden="true" />}
-          {flagged && <span className="sr-only">, has a problem</span>}
+          {flagged && <span className="sr-only">{tr(", has a problem")}</span>}
         </button>
         <span className="flex shrink-0 items-center gap-1 max-sm:hidden" aria-hidden="true">
-          <Badge variant="secondary">{plural(cols, "column")}</Badge>
-          {s.collapsible && <Badge variant="outline">Collapsible</Badge>}
+          <Badge variant="secondary">{isolate(plural(cols, "column"))}</Badge>
+          {s.collapsible && <Badge variant="outline">{tr("Collapsible")}</Badge>}
         </span>
         {s.visible_if?.trim() && (
-          <Badge variant="outline" title={`Shows only if ${s.visible_if}`} className="max-w-32 shrink-0">
+          <Badge variant="outline" title={tr("Shows only if {visible_if}", { visible_if: s.visible_if })} className="max-w-32 shrink-0">
             <Eye aria-hidden="true" />
-            <span className="truncate">Conditional</span>
+            <span className="truncate">{tr("Conditional")}</span>
           </Badge>
         )}
         <SectionMenu s={s} first={first} last={last} />
@@ -673,7 +674,7 @@ function SectionCard({ s, first, last }: { s: LayoutSection; first: boolean; las
         </SortableContext>
         {!s.fields.length && (
           <p className="col-span-full self-center px-2 py-3 text-center text-sm text-muted-foreground">
-            Drop fields here, or use a field’s menu to move it into this section. Empty sections are not saved.
+            {tr("Drop fields here, or use a field’s menu to move it into this section. Empty sections are not saved.")}
           </p>
         )}
       </div>
@@ -696,7 +697,7 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
   };
   const newTab = () => {
     c.focusAfter("fd-tab-name");
-    c.askTabName({ title: "Move to a new tab", action: "Move", initial: "", returnTo: `fd-sm-${s.key}`, onSubmit: (name) => toTab(name) });
+    c.askTabName({ title: tr("Move to a new tab"), action: "Move", initial: "", returnTo: `fd-sm-${s.key}`, onSubmit: (name) => toTab(name) });
   };
   const addBelow = () => {
     const [next, key] = addSection(c.layout, tab, s.key);
@@ -706,11 +707,11 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
   };
   const remove = () => {
     act(removeSection(c.layout, s.key), "fd-add-section");
-    if (s.fields.length) toast(`Section deleted: its ${plural(s.fields.length, "field")} moved to Unplaced fields.`, "info");
+    if (s.fields.length) toast(tr("Section deleted: its {value} moved to Unplaced fields.", { value: plural(s.fields.length, "field") }), "info");
   };
   return (
     <DropdownMenu>
-      <MenuButton id={`fd-sm-${s.key}`} label={`Actions for section ${title}`} />
+      <MenuButton id={`fd-sm-${s.key}`} label={tr("Actions for section {title}", { title })} />
       <DropdownMenuContent align="end" onCloseAutoFocus={c.restoreFocus}>
         <DropdownMenuItem
           onSelect={() => {
@@ -718,36 +719,36 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
             c.focusAfter("fd-insp-label");
           }}
         >
-          <Settings2 aria-hidden="true" /> Settings…
+          <Settings2 aria-hidden="true" /> {tr("Settings…")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={first} onSelect={() => act(nudgeSection(c.layout, s.key, -1))}>
-          <ArrowUp aria-hidden="true" /> Move up
+          <ArrowUp aria-hidden="true" /> {tr("Move up")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={last} onSelect={() => act(nudgeSection(c.layout, s.key, 1))}>
-          <ArrowDown aria-hidden="true" /> Move down
+          <ArrowDown aria-hidden="true" /> {tr("Move down")}
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <FolderInput aria-hidden="true" /> Move to tab
+            <FolderInput aria-hidden="true" /> {tr("Move to tab")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className={SUBMENU}>
             {(tabs.includes(null) ? tabs : [null, ...tabs]).map((t) => (
               <DropdownMenuItem key={tabKey(t)} disabled={t === tab} onSelect={() => toTab(t)}>
-                {tabLabel(t)}
+                {isolate(tabLabel(t))}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={newTab}>
-              <Plus aria-hidden="true" /> New tab…
+              <Plus aria-hidden="true" /> {tr("New tab…")}
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuItem onSelect={addBelow}>
-          <ListPlus aria-hidden="true" /> Add section below
+          <ListPlus aria-hidden="true" /> {tr("Add section below")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={remove}>
-          <Trash2 aria-hidden="true" /> Delete section
+          <Trash2 aria-hidden="true" /> {tr("Delete section")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -758,8 +759,8 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
 
 function typeLabel(f: Field | undefined, meta: EntityMeta): string {
   if (!f) return "";
-  if (f.type === "link" && f.to) return `link → ${f.to}`;
-  if (f.type === "table") return `table of ${meta.children[f.name]?.label ?? "rows"}`;
+  if (f.type === "link" && f.to) return tr("link → {to}", { to: f.to });
+  if (f.type === "table") return tr("table of {value}", { value: meta.children[f.name]?.label ?? "rows" });
   return f.type;
 }
 
@@ -775,14 +776,14 @@ function FieldText({ name }: { name: string }) {
             *
           </span>
         )}
-        {f?.required && <span className="sr-only">, required</span>}
+        {f?.required && <span className="sr-only">{tr(", required")}</span>}
         {f?.hidden && <EyeOff className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
-        {f?.hidden && <span className="sr-only">, hidden</span>}
+        {f?.hidden && <span className="sr-only">{tr(", hidden")}</span>}
         {f?.visible_if && <Eye className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
-        {f?.visible_if && <span className="sr-only">, shown on a condition</span>}
+        {f?.visible_if && <span className="sr-only">{tr(", shown on a condition")}</span>}
       </div>
       <div className="truncate font-mono text-xs text-muted-foreground">
-        {name} · {typeLabel(f, c.meta)}
+        {isolate(name)} · {isolate(typeLabel(f, c.meta))}
       </div>
     </div>
   );
@@ -807,7 +808,7 @@ function FieldCard({ name, first, last, inPalette }: { name: string; first: bool
         sortable.isDragging && "opacity-40",
       )}
     >
-      <DragHandle id={`fd-fh-${name}`} label={`Drag field ${label}`} ref={sortable.setActivatorNodeRef} {...sortable.attributes} {...sortable.listeners} />
+      <DragHandle id={`fd-fh-${name}`} label={tr("Drag field {label}", { label })} ref={sortable.setActivatorNodeRef} {...sortable.attributes} {...sortable.listeners} />
       <FieldText name={name} />
       {inPalette ? <PaletteMenu name={name} label={label} /> : <FieldMenu name={name} label={label} first={first} last={last} />}
     </div>
@@ -818,16 +819,16 @@ function FieldCard({ name, first, last, inPalette }: { name: string; first: bool
 function Destinations({ exclude, onPick }: { exclude?: string; onPick: (key: string) => void }) {
   const c = useCanvas();
   const tabs = tabsOf(c.layout);
-  if (!tabs.length) return <DropdownMenuItem disabled>Add a section first</DropdownMenuItem>;
+  if (!tabs.length) return <DropdownMenuItem disabled>{tr("Add a section first")}</DropdownMenuItem>;
   return tabs.map((t, i) => (
     <DropdownMenuGroup key={tabKey(t)}>
       {i > 0 && <DropdownMenuSeparator />}
-      <DropdownMenuLabel className="text-xs text-muted-foreground">{tabLabel(t)}</DropdownMenuLabel>
+      <DropdownMenuLabel className="text-xs text-muted-foreground">{isolate(tabLabel(t))}</DropdownMenuLabel>
       {c.layout
         .filter((s) => (s.tab || null) === t)
         .map((s) => (
           <DropdownMenuItem key={s.key} disabled={s.key === exclude} onSelect={() => onPick(s.key)}>
-            <span className={cn("truncate", !s.label?.trim() && "text-muted-foreground italic")}>{sectionTitle(s)}</span>
+            <span className={cn("truncate", !s.label?.trim() && "text-muted-foreground italic")}>{isolate(sectionTitle(s))}</span>
           </DropdownMenuItem>
         ))}
     </DropdownMenuGroup>
@@ -854,17 +855,17 @@ function FieldMenu({ name, label, first, last }: { name: string; label: string; 
   };
   return (
     <DropdownMenu>
-      <MenuButton id={`fd-fm-${name}`} label={`Actions for field ${label}`} />
+      <MenuButton id={`fd-fm-${name}`} label={tr("Actions for field {label}", { label })} />
       <DropdownMenuContent align="end" onCloseAutoFocus={c.restoreFocus}>
         <DropdownMenuItem disabled={first} onSelect={() => act(nudgeField(c.layout, name, -1))}>
-          <ArrowUp aria-hidden="true" /> Move up
+          <ArrowUp aria-hidden="true" /> {tr("Move up")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={last} onSelect={() => act(nudgeField(c.layout, name, 1))}>
-          <ArrowDown aria-hidden="true" /> Move down
+          <ArrowDown aria-hidden="true" /> {tr("Move down")}
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
-            <FolderInput aria-hidden="true" /> Move to…
+            <FolderInput aria-hidden="true" /> {tr("Move to…")}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className={SUBMENU}>
             <Destinations exclude={containerOf(c.layout, name)} onPick={moveTo} />
@@ -872,7 +873,7 @@ function FieldMenu({ name, label, first, last }: { name: string; label: string; 
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => act(removeField(c.layout, name), "fd-palette")}>
-          <Undo2 aria-hidden="true" /> Take off the layout
+          <Undo2 aria-hidden="true" /> {tr("Take off the layout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -884,9 +885,9 @@ function PaletteMenu({ name, label }: { name: string; label: string }) {
   const moveTo = useMoveTo(name);
   return (
     <DropdownMenu>
-      <MenuButton id={`fd-pm-${name}`} label={`Add field ${label} to a section`} icon={<Plus />} />
+      <MenuButton id={`fd-pm-${name}`} label={tr("Add field {label} to a section", { label })} icon={<Plus />} />
       <DropdownMenuContent align="end" onCloseAutoFocus={c.restoreFocus} className={SUBMENU}>
-        <DropdownMenuLabel>Add {label} to…</DropdownMenuLabel>
+        <DropdownMenuLabel>{tr("Add {label} to…", { label })}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <Destinations onPick={moveTo} />
       </DropdownMenuContent>
@@ -906,7 +907,7 @@ function Palette() {
   const list = q ? all.filter((n) => n.toLowerCase().includes(q) || (c.fields.get(n)?.label ?? "").toLowerCase().includes(q)) : all;
   const title = (
     <>
-      Unplaced fields
+      {tr("Unplaced fields")}
       <Badge variant="secondary" className="tabular-nums">
         {all.length}
       </Badge>
@@ -942,13 +943,12 @@ function Palette() {
       {(c.wide || open) && (
         <div id="fd-palette-list" className="flex min-h-0 flex-col gap-2 p-3">
           <p className="text-xs text-muted-foreground">
-            The form shows these under “Additional fields” at the end of its first tab. Drag one onto a section or use its + menu; drag a field here to take it
-            off the layout.
+            {tr("The form shows these under “Additional fields” at the end of its first tab. Drag one onto a section or use its + menu; drag a field here to take it off the layout.")}
           </p>
           {all.length > 6 && (
             <div className="relative">
               <Search className="pointer-events-none absolute top-1/2 start-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input type="search" aria-label="Search unplaced fields" placeholder="Search fields" value={query} onChange={(e) => setQuery(e.target.value)} className="ps-8" />
+              <Input type="search" aria-label={tr("Search unplaced fields")} placeholder={tr("Search fields")} value={query} onChange={(e) => setQuery(e.target.value)} className="ps-8" />
             </div>
           )}
           <div className="-mx-1 flex min-h-0 flex-col gap-1.5 overflow-y-auto px-1 py-0.5">
@@ -957,8 +957,8 @@ function Palette() {
                 <FieldCard key={n} name={n} first last inPalette />
               ))}
             </SortableContext>
-            {!all.length && <p className="py-4 text-center text-sm text-muted-foreground">Every field has a place on the layout.</p>}
-            {all.length > 0 && !list.length && <p className="py-4 text-center text-sm text-muted-foreground">No unplaced field matches “{query.trim()}”.</p>}
+            {!all.length && <p className="py-4 text-center text-sm text-muted-foreground">{tr("Every field has a place on the layout.")}</p>}
+            {all.length > 0 && !list.length && <p className="py-4 text-center text-sm text-muted-foreground">{tr("No unplaced field matches “{query}”.", { query: query.trim() })}</p>}
           </div>
         </div>
       )}
@@ -1013,8 +1013,8 @@ function DragPreview({ data }: { data: DragData }) {
     <div className="flex w-72 max-w-[80vw] cursor-grabbing items-center gap-2 rounded-lg border bg-card px-2 py-2 shadow-lg ring-2 ring-primary">
       <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold">{sectionTitle(s)}</div>
-        <div className="text-xs text-muted-foreground">{plural(s.fields.length, "field")}</div>
+        <div className="truncate text-sm font-semibold">{isolate(sectionTitle(s))}</div>
+        <div className="text-xs text-muted-foreground">{isolate(plural(s.fields.length, "field"))}</div>
       </div>
     </div>
   );
