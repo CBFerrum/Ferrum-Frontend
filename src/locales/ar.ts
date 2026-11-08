@@ -3056,6 +3056,7 @@ const words: Record<string, string> = {
   "Undone by {action} if a later step fails.": "يُتراجَع عنه بواسطة {action} إذا فشلت خطوة لاحقة.",
   "Say where the run goes when its outcome is unknown (If its outcome is unknown): the check refuses it otherwise.": "حدّد إلى أين يذهب التشغيل عندما تكون نتيجته غير معروفة (إذا كانت نتيجته غير معروفة): وإلا يرفضه الفحص.",
   "now": "الآن",
+  "How many business days": "كم يوم عمل",
 };
 
 export default words;

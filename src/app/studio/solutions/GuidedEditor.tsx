@@ -4,7 +4,7 @@
 // setting added in the source) is kept as it was. Structured steps are shown, and edited in the source.
 
 import { Plus, Trash2 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,7 +246,7 @@ function ProcessSteps({
           </Button>
         </div>
       </nav>
-      <section aria-label={tr("Inspector")} className="min-w-0 rounded-md border p-3">
+      <section id="guided-inspector" tabIndex={-1} aria-label={tr("Inspector")} className="min-w-0 rounded-md border p-3">
         {sel ? (
           <Inspector source={source} p={p} path={sel.path} step={sel.step} onChange={onChange} onSelect={onSelect} catalog={catalog} outputType={types?.steps?.[sel.step.id]} />
         ) : (
@@ -503,23 +503,46 @@ export function inputFields(c: CatalogEntry | undefined): { key: string; require
   return out;
 }
 
+/** How many whole business days a text says, if it says one in range: anything else changes nothing. */
+export function businessDays(text: string): number | null {
+  const n = Number(text);
+  return text.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= 260 ? n : null;
+}
+
 function WaitField({ label, value, onChange, calendars }: { label: string; value: unknown; onChange: (v: unknown) => void; calendars: string[] }) {
   const business = value !== null && typeof value === "object";
   const v = value as { business_days?: number; calendar?: string } | string | number | undefined;
+  const group = useId();
+  const stored = business ? ((v as { business_days?: number }).business_days ?? 1) : 1;
+  // The text as typed: emptying the field to type another number, or a stray key, never rewrites the deadline.
+  const [days, setDays] = useState(String(stored));
+  useEffect(() => setDays(String(stored)), [stored]);
   return (
     <fieldset className="grid gap-2 rounded-md border p-2">
       <legend className="px-1 text-sm">{label}</legend>
       <div className="flex gap-3 text-sm">
         <label className="flex items-center gap-1">
-          <input type="radio" checked={!business} onChange={() => onChange("P2D")} /> {tr("A duration")}
+          <input type="radio" name={group} checked={!business} onChange={() => onChange("P2D")} /> {tr("A duration")}
         </label>
         <label className="flex items-center gap-1">
-          <input type="radio" checked={business} onChange={() => onChange({ business_days: 2, calendar: calendars[0] ?? "" })} /> {tr("Business days")}
+          <input type="radio" name={group} checked={business} onChange={() => onChange({ business_days: 2, calendar: calendars[0] ?? "" })} /> {tr("Business days")}
         </label>
       </div>
       {business ? (
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input type="number" min={1} max={260} aria-label={tr("Business days")} value={(v as { business_days?: number }).business_days ?? 1} onChange={(e) => onChange({ ...(v as object), business_days: Number(e.target.value) || 1 })} />
+          <Input
+            type="number"
+            min={1}
+            max={260}
+            aria-label={tr("How many business days")}
+            value={days}
+            onChange={(e) => {
+              setDays(e.target.value);
+              const n = businessDays(e.target.value);
+              if (n !== null && n !== stored) onChange({ ...(v as object), business_days: n });
+            }}
+            onBlur={() => setDays(String(stored))}
+          />
           <select aria-label={tr("Calendar")} className="h-9 rounded-md border bg-transparent px-2 text-sm" value={(v as { calendar?: string }).calendar ?? ""} onChange={(e) => onChange({ ...(v as object), calendar: e.target.value })}>
             <option value="">{tr("Choose a calendar…")}</option>
             {calendars.map((c) => (

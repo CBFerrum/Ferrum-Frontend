@@ -3056,6 +3056,7 @@ const words: Record<string, string> = {
   "Undone by {action} if a later step fails.": "बाद का कोई चरण विफल होने पर {action} से पूर्ववत किया जाता है।",
   "Say where the run goes when its outcome is unknown (If its outcome is unknown): the check refuses it otherwise.": "बताएँ कि परिणाम अज्ञात होने पर रन कहाँ जाता है (यदि इसका परिणाम अज्ञात है): अन्यथा जाँच इसे अस्वीकार करती है।",
   "now": "अब",
+  "How many business days": "कितने कार्य दिवस",
 };
 
 export default words;
