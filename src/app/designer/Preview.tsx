@@ -2,6 +2,7 @@
 // sections and tabs from formSections (lib/formTabs.ts), the same widgets and styles, and the same
 // section and field conditions, for a new record or one of the latest records.
 
+import { placed } from "../../lib/placed";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Label } from "@/components/ui/label";
@@ -51,7 +52,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
   const hidden: string[] = [];
   const shown = view.sections.flatMap((s) => {
     if (s.visibleIf && evaluate(s.visibleIf, scope) === false) {
-      hidden.push(s.label ?? "Untitled section");
+      hidden.push(s.label ?? tr("Untitled section"));
       return [];
     }
     const items = s.fields.flatMap((f) => {
@@ -127,7 +128,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
       );
     }
     return (
-      <FieldWrap key={f.name} label={f.label} htmlFor={fid} required={st.required} hint={f.description} className={WIDE.has(f.type) ? "span-all" : ""}>
+      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} hint={isolate(f.description)} className={WIDE.has(f.type) ? "span-all" : ""}>
         {control}
       </FieldWrap>
     );
@@ -136,7 +137,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
   const details = (t: string) =>
     shown.map(({ s, items }) =>
       tabId(s.tab) !== t ? null : (
-        <PreviewSection key={s.key} label={s.label} collapsible={s.collapsible}>
+        <PreviewSection key={s.key} label={isolate(s.label)} collapsible={s.collapsible}>
           <div className="form-grid" style={{ "--cols": Math.min(Math.max(s.columns, 1), 4) } as CSSProperties}>
             {items.map(({ f, st }) => renderField(f, st, items.length === 1 && f.label === s.label))}
           </div>
@@ -172,8 +173,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
           </div>
         )}
         <p className="min-w-48 flex-1 text-sm text-muted-foreground">
-          {tr("Read-only: the form as it will look")}{unsaved ? tr(" with your unsaved changes") : ""}{tr(". Section and field conditions follow the chosen record.")}
-          {recent.isError ? tr(" The latest records could not be loaded.") : ""}
+          {placed(tr("Read-only: the form as it will look{p1}. Section and field conditions follow the chosen record.{p2}"), { p1: unsaved ? tr(" with your unsaved changes") : "", p2: recent.isError ? tr(" The latest records could not be loaded.") : "" })}
         </p>
       </div>
       {pick !== NEW && record.isLoading ? (
@@ -186,7 +186,7 @@ export function FormPreview({ meta, layout, unsaved }: { meta: EntityMeta; layou
         <>
           {hidden.length > 0 && (
             <p className="mb-3 text-sm text-muted-foreground">
-              {tr("Hidden by their condition")}{pick === NEW ? tr(" on a new record") : tr(" on this record")}: {isolate(hidden.join(", "))}.
+              {(pick === NEW ? tr("Hidden by their condition on a new record") : tr("Hidden by their condition on this record"))}: {isolate(hidden.join(", "))}.
             </p>
           )}
           {!shown.length ? (

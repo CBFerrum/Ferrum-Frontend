@@ -66,7 +66,7 @@ export function ReportList() {
     try {
       const rec = await studio.get("reports", r.id);
       const s = stateFromRecord(rec);
-      if (!s) throw new Error("This report’s settings could not be read.");
+      if (!s) throw new Error(tr("This report’s settings could not be read."));
       navigate(`/studio/reports/new?q=${encodeParam({ ...recordFromState(s), view: s.view, label: tr("Copy of {label}", { label: rec.label }).slice(0, 140) })}`);
     } catch (e) {
       toast(errorMessage(e), "error");

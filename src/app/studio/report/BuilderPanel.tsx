@@ -186,7 +186,7 @@ function ColumnsSection({ d, setDraft, fields, fieldLabel, issues }: SectionProp
         </SortableList>
       )}
       <div>
-        <FieldPicker add="Add column" label={t("Add column")} fields={fields.filter((f) => !used.has(f.path))} onChange={(c) => setDraft((x) => ({ ...x, fields: [...x.fields, { field: c.path }] }))} />
+        <FieldPicker add={t("Add column")} label={t(t("Add column"))} fields={fields.filter((f) => !used.has(f.path))} onChange={(c) => setDraft((x) => ({ ...x, fields: [...x.fields, { field: c.path }] }))} />
       </div>
     </PanelSection>
   );
@@ -250,7 +250,7 @@ function GroupSection({ d, setDraft, fields, byPath, fieldLabel, issues }: Secti
         </SortableList>
       )}
       <div>
-        <FieldPicker add="Add group" label={t("Add group")} fields={groupable} onChange={(c) => setDraft((x) => ({ ...x, group_by: [...x.group_by, pick(c)] }))} />
+        <FieldPicker add={t("Add group")} label={t(t("Add group"))} fields={groupable} onChange={(c) => setDraft((x) => ({ ...x, group_by: [...x.group_by, pick(c)] }))} />
       </div>
     </PanelSection>
   );
@@ -345,7 +345,7 @@ function MeasuresSection({ d, setDraft, fields, fieldLabel, issues }: SectionPro
                   fields={measurable(fields, m.fn)}
                   value={m.field ?? ""}
                   label={t("Measure {value}: field", { value: i + 1 })}
-                  placeholder={t("Choose the field to {value}", { value: m.fn === "count_distinct" ? "count" : AGG_LABEL[m.fn].toLowerCase() })}
+                  placeholder={m.fn === "count_distinct" ? t("Choose the field to count") : t("Choose the field to {value}", { value: AGG_LABEL[m.fn].toLowerCase() })}
                   none={m.fn === "count" ? { label: t("Records"), onSelect: () => set(i, { fn: m.fn, ...(m.label ? { label: m.label } : {}) }) } : undefined}
                   invalid={invalid}
                   onChange={(c) => set(i, { ...m, field: c.path })}
@@ -403,7 +403,7 @@ function PivotSection({ d, setDraft, fields, byPath, issues }: Omit<SectionProps
           {choices.map((c) => (
             <Label key={String(c.value)} className="font-normal">
               <Checkbox
-                aria-label={c.label}
+                aria-label={isolate(c.label)}
                 checked={declared.includes(c.value)}
                 onCheckedChange={(on) => declare(on === true ? choices.filter((x) => x.value === c.value || declared.includes(x.value)).map((x) => x.value) : declared.filter((v) => v !== c.value))}
               />

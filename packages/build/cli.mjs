@@ -5,11 +5,14 @@
 //                                                               vite.config.mjs uses ./vite.mjs)
 //
 //   build      vite build into dist/, then dist/.source: a digest of the sources it was built from,
-//              and dist/words.json: the words its sources give t(), for a workspace to translate
+//              and dist/words.json: the words its sources give t(), for a workspace to translate;
+//              and dist/names/<language>.json, its catalogs of the names its model and manifest
+//              give pages (src/locales/names), which the server merges for every page
+//              (/api/shell/names)
 //   check      fails unless dist/ was built from the sources as they are now (run in CI): the
 //              app's crate carries dist/, so a source change without a build would ship stale files;
 //              and unless its own catalogs (src/locales/*.json) hold only words it asks for,
-//              each keeping its {places}; and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
+//              each keeping its {places}, as its names (src/locales/names/*.json) keep theirs; and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
 //              compressed, CSS ≤ 50 KB)
 //   dev        Vite's development server for the interface (--port N, default 5173): on a
 //              Ferrum server with FERRUM_DEV_UI=true, `ferrum-app dev --ui http://localhost:5173`
@@ -19,11 +22,11 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { measure } from "./budgets.mjs";
-import { catalogIssues, wordsOf } from "./words.mjs";
+import { catalogIssues, namesIssues, wordsOf } from "./words.mjs";
 
 const web = fileURLToPath(new URL("../../", import.meta.url));
 const ui = process.cwd();
@@ -78,6 +81,11 @@ switch (process.argv[2]) {
     writeFileSync(join(ui, "dist", ".source"), `${JSON.stringify(stamp, null, 2)}\n`);
     const words = existsSync(join(ui, "src")) ? wordsOf(join(ui, "src")) : [];
     if (words.length) writeFileSync(join(ui, "dist", "words.json"), `${JSON.stringify(words)}\n`);
+    const names = join(ui, "src", "locales", "names");
+    if (existsSync(names)) {
+      mkdirSync(join(ui, "dist", "names"), { recursive: true });
+      for (const f of readdirSync(names).sort()) if (f.endsWith(".json")) copyFileSync(join(names, f), join(ui, "dist", "names", f));
+    }
     console.log(`ferrum-ui: dist/ built from sources ${stamp.sources.slice(0, 12)}${words.length ? `, ${words.length} words for t()` : ""}`);
     break;
   }
@@ -93,7 +101,7 @@ switch (process.argv[2]) {
     const now = sourceDigest();
     if (stamp.sources !== now) fail(`dist/ was built from other sources (${String(stamp.sources).slice(0, 12)}, now ${now.slice(0, 12)}): run the build in ui/ and commit dist/`);
     console.log(`ferrum-ui: dist/ matches its sources (${now.slice(0, 12)})`);
-    const issues = existsSync(join(ui, "src")) ? catalogIssues(join(ui, "src")) : [];
+    const issues = existsSync(join(ui, "src")) ? [...catalogIssues(join(ui, "src")), ...namesIssues(join(ui, "src"))] : [];
     if (issues.length) fail(`its catalogs:\n  ${issues.join("\n  ")}`);
     const size = measure(join(ui, "dist"), "ferrum-ui: dist/");
     console.log(size.line);

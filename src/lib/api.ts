@@ -2,7 +2,7 @@
 // errors (the dev server restarts now and then), authenticated downloads and print previews.
 
 export { ApiError, errorMessage, isStale, parseApiError, type FieldError } from "@ferrum/client";
-import { parseApiError } from "@ferrum/client";
+import { parseApiError, t as tr } from "@ferrum/client";
 
 // ── session ──
 
@@ -202,9 +202,9 @@ export function withPrintCsp(html: string): string {
 export async function openPrint(path: string): Promise<void> {
   // Open synchronously (inside the click) so pop-up blockers allow it, then fill it in.
   const win = window.open("", "_blank");
-  if (!win) throw new Error("The print window was blocked. Allow pop-ups for this site and try again.");
-  win.document.title = "Preparing print…";
-  win.document.body.textContent = "Preparing print preview…";
+  if (!win) throw new Error(tr("The print window was blocked. Allow pop-ups for this site and try again."));
+  win.document.title = tr("Preparing print…");
+  win.document.body.textContent = tr("Preparing print preview…");
   try {
     const html = await request<string>(path);
     const url = URL.createObjectURL(new Blob([withPrintCsp(html)], { type: "text/html" }));

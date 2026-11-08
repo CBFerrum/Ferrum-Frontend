@@ -175,7 +175,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
   const restore = async (target: Customization | null) => {
     const ok = await confirmDialog({
       title: target ? tr("Restore the layout saved {value}?", { value: formatDateTime(target.created_at) }) : tr("Restore the original {label} layout?", { label: meta.label }),
-      message: tr("{value}The form switches to this layout for everyone. Later layouts stay in the history, switched off.", { value: dirty ? "Your unsaved changes will be discarded. " : "" }),
+      message: tr("{value}The form switches to this layout for everyone. Later layouts stay in the history, switched off.", { value: dirty ? tr("Your unsaved changes will be discarded. ") : "" }),
       confirmLabel: tr("Restore"),
       danger: dirty,
     });
@@ -187,7 +187,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
       const latest = await custom.refetch({ throwOnError: true });
       const fresh = layoutVersions(latest.data?.customizations ?? [], E).versions;
       const goal = target && (fresh.find((v) => v.id === target.id) ?? null);
-      if (target && !goal) throw new Error("That layout is no longer in the history.");
+      if (target && !goal) throw new Error(tr("That layout is no longer in the history."));
       for (const s of restorePlan(fresh, goal)) await api.put(`/api/customize/${s.id}/active`, { active: s.active });
       setHist(startHistory(base)); // drop unsaved edits: the restored layout loads when the refetch lands
       setSaveError(null);
@@ -398,7 +398,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
           >
             <SheetHeader>
               <SheetTitle>{tr("Section settings")}</SheetTitle>
-              <SheetDescription>{selectedSection ? tr("Label, columns, tab and condition of “{value}”.", { value: selectedSection.label?.trim() || "Untitled section" }) : ""}</SheetDescription>
+              <SheetDescription>{selectedSection ? tr("Label, columns, tab and condition of “{value}”.", { value: selectedSection.label?.trim() || tr("Untitled section") }) : ""}</SheetDescription>
             </SheetHeader>
             <div className="px-4 pb-6">{inspector(false)}</div>
           </SheetContent>

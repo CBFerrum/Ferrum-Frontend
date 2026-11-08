@@ -38,9 +38,6 @@ interface Props {
   onReset: () => void;
 }
 
-const INSTRUCTIONS =
-  "To move a column, press Space or Enter on its handle, use the up and down arrow keys, then press Space or Enter again to drop it, or Escape to cancel.";
-
 const ICON_BTN =
   "grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:cursor-default aria-disabled:opacity-35 aria-disabled:hover:bg-transparent pointer-coarse:size-11";
 
@@ -135,7 +132,7 @@ export function ColumnChooser({ choices, shown, widths, viewName, customized, on
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            accessibility={{ announcements, screenReaderInstructions: { draggable: INSTRUCTIONS } }}
+            accessibility={{ announcements, screenReaderInstructions: { draggable: t("To move a column, press Space or Enter on its handle, use the up and down arrow keys, then press Space or Enter again to drop it, or Escape to cancel.") } }}
             onDragStart={() => setDragging(true)}
             onDragCancel={() => setDragging(false)}
             onDragEnd={onDragEnd}
@@ -226,7 +223,7 @@ function ShownColumn(p: {
         <input id={p.boxId} type="checkbox" checked aria-disabled={p.only || undefined} onChange={p.onHide} />
         <span className="min-w-0 truncate">{isolate(p.label)}</span>
       </label>
-      <WidthInput label={p.label} width={p.width} onChange={p.onWidth} />
+      <WidthInput label={isolate(p.label)} width={p.width} onChange={p.onWidth} />
       <button type="button" className={ICON_BTN} aria-label={tr("Move {label} up", { label: p.label })} aria-disabled={p.first || undefined} onClick={() => !p.first && p.onMove(-1)}>
         <ChevronUp className="size-4" aria-hidden="true" />
       </button>

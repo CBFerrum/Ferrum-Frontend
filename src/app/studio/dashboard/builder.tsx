@@ -2,6 +2,7 @@
 // unsaved changes, saving with version checks and a rebase onto a newer version on 409, server
 // errors by field), the header with its actions, and the notice on package records.
 
+import { placed } from "../../../lib/placed";
 import { useMemo, useState, type ReactNode } from "react";
 import { Copy, Lock, Redo2, Save, Undo2 } from "lucide-react";
 import { errorMessage, isStale } from "@/lib/api";
@@ -147,7 +148,7 @@ export function BuilderToolbar({
   onCancel,
   cancelLabel = "Cancel",
   extra,
-  saveLabel = "Save",
+  saveLabel = t("Save"),
 }: {
   canUndo: boolean;
   canRedo: boolean;
@@ -207,8 +208,7 @@ export function ConflictNotice({ conflict, noun, onDismiss }: { conflict: Confli
       <AlertTitle>{t("Someone else saved this {noun} while you were editing", { noun })}</AlertTitle>
       <AlertDescription>
         <p>
-          {t("Their changes are now combined with yours.")}
-          {conflict.fields.length > 0 && t(" You both changed {value}: your version is kept.", { value: conflict.fields.join(", ") })} {t("Review the preview, then save again.")}
+          {placed(t("Their changes are now combined with yours.{p1} Review the preview, then save again."), { p1: conflict.fields.length > 0 && t(" You both changed {value}: your version is kept.", { value: conflict.fields.join(", ") }) })}
         </p>
         <Button type="button" size="sm" variant="outline" className="mt-1" onClick={onDismiss}>
           {t("Got it")}

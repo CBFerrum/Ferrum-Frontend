@@ -23,22 +23,22 @@ export type SpecFilter = [string, FilterOp, unknown];
 export type Filters = SpecFilter[] | Record<string, unknown>;
 
 export const BUCKET_LABEL: Record<Bucket, string> = {
-  day: "Day",
-  week: "Week",
-  month: "Month",
-  quarter: "Quarter",
-  year: "Year",
-  fiscal_quarter: "Fiscal Quarter",
-  fiscal_year: "Fiscal Year",
+  get day() { return tr("Day"); },
+  get week() { return tr("Week"); },
+  get month() { return tr("Month"); },
+  get quarter() { return tr("Quarter"); },
+  get year() { return tr("Year"); },
+  get fiscal_quarter() { return tr("Fiscal Quarter"); },
+  get fiscal_year() { return tr("Fiscal Year"); },
 };
 
 export const AGG_LABEL: Record<Agg, string> = {
-  count: "Count",
-  count_distinct: "Distinct count",
-  sum: "Sum",
-  avg: "Average",
-  min: "Minimum",
-  max: "Maximum",
+  get count() { return tr("Count"); },
+  get count_distinct() { return tr("Distinct count"); },
+  get sum() { return tr("Sum"); },
+  get avg() { return tr("Average"); },
+  get min() { return tr("Minimum"); },
+  get max() { return tr("Maximum"); },
 };
 
 export interface FieldSel {
@@ -929,40 +929,40 @@ export function specIssues(spec: Spec, catalog?: FieldCatalog): Issue[] {
   const out: Issue[] = [];
   const add = (path: string, message: string) => out.push({ path, message });
   const field = new Map(catalog?.fields.map((f) => [f.path, f]));
-  if (!spec.entity) add("entity", "Choose what to report on");
-  spec.fields?.forEach((f, i) => f.field || add(`fields[${i}].field`, "Choose a field"));
+  if (!spec.entity) add("entity", tr("Choose what to report on"));
+  spec.fields?.forEach((f, i) => f.field || add(`fields[${i}].field`, tr("Choose a field")));
   spec.group_by?.forEach((g, i) => {
-    if (!g.field) add(`group_by[${i}].field`, "Choose a field");
-    else if (!g.bucket && field.get(g.field)?.bucket_required) add(`group_by[${i}].bucket`, "Choose a period: date-times are grouped by day, week, month, quarter or year");
+    if (!g.field) add(`group_by[${i}].field`, tr("Choose a field"));
+    else if (!g.bucket && field.get(g.field)?.bucket_required) add(`group_by[${i}].bucket`, tr("Choose a period: date-times are grouped by day, week, month, quarter or year"));
   });
   spec.measures?.forEach((m, i) => {
     if (!m.field) {
-      if (m.fn !== "count") add(`measures[${i}].field`, `Choose the field for ${AGG_LABEL[m.fn].toLowerCase()}`);
+      if (m.fn !== "count") add(`measures[${i}].field`, tr("Choose the field for {value}", { value: AGG_LABEL[m.fn].toLowerCase() }));
       return;
     }
     const f = field.get(m.field);
-    if (f && m.fn !== "count" && !f.aggregates.includes(m.fn)) add(`measures[${i}]`, `${AGG_LABEL[m.fn]} does not apply to ${f.label}`);
+    if (f && m.fn !== "count" && !f.aggregates.includes(m.fn)) add(`measures[${i}]`, tr("{value} does not apply to {label}", { value: AGG_LABEL[m.fn], label: f.label }));
   });
   const grouped = !!(spec.group_by?.length || spec.measures?.length || spec.pivot || spec.time_series);
-  if (grouped && !spec.measures?.length) add("measures", "Add at least one measure, such as a count");
-  if (spec.pivot && !spec.pivot.field) add("pivot.field", "Choose a field");
+  if (grouped && !spec.measures?.length) add("measures", tr("Add at least one measure, such as a count"));
+  if (spec.pivot && !spec.pivot.field) add("pivot.field", tr("Choose a field"));
   for (const key of ["time_series", "date_range"] as const) {
     const r = spec[key];
     if (!r) continue;
-    if (!r.field) add(`${key}.field`, "Choose a date field");
+    if (!r.field) add(`${key}.field`, tr("Choose a date field"));
     for (const end of ["from", "to"] as const) {
       const v = r[end];
-      if (v && resolveDate(v) === null) add(`${key}.${end}`, "Use a date (YYYY-MM-DD) or an expression such as today-30d or start_of_month");
+      if (v && resolveDate(v) === null) add(`${key}.${end}`, tr("Use a date (YYYY-MM-DD) or an expression such as today-30d or start_of_month"));
     }
   }
   const range = spec.time_series ?? spec.date_range;
-  if (spec.compare && !(range?.from && range.to)) add("compare", "Comparing needs a period with a start and an end");
+  if (spec.compare && !(range?.from && range.to)) add("compare", tr("Comparing needs a period with a start and an end"));
   spec.formulas?.forEach((f, i) => {
-    if (!f.label) add(`formulas[${i}].label`, "Name the column");
-    if (!f.expr) add(`formulas[${i}].expr`, "Write the formula, e.g. [Revenue] - [Cost]");
+    if (!f.label) add(`formulas[${i}].label`, tr("Name the column"));
+    if (!f.expr) add(`formulas[${i}].expr`, tr("Write the formula, e.g. [Revenue] - [Cost]"));
   });
-  spec.sort?.forEach((s, i) => s.by || add(`sort[${i}].by`, "Choose a column"));
-  if (Array.isArray(spec.filters)) spec.filters.forEach((f, i) => f[0] || add(`filters[${i}]`, "Choose a field"));
+  spec.sort?.forEach((s, i) => s.by || add(`sort[${i}].by`, tr("Choose a column")));
+  if (Array.isArray(spec.filters)) spec.filters.forEach((f, i) => f[0] || add(`filters[${i}]`, tr("Choose a field")));
   return out;
 }
 
@@ -1027,7 +1027,7 @@ export const isNumericColumn = (c: ResultColumn) => NUMERIC_TYPES.has(c.type) &&
 export function formatCell(c: ResultColumn, value: unknown, row?: ResultRow, o: CellOptions = {}): string {
   const title = row?._titles?.[c.name];
   if (title) return title;
-  if (value === null || value === undefined || value === "") return c.role === "dimension" ? "(not set)" : "";
+  if (value === null || value === undefined || value === "") return c.role === "dimension" ? tr("(not set)") : "";
   if (c.bucket) return formatBucket(value, c.bucket, o.fyStartMonth, o.locale);
   const f = c.format;
   const styled = { int: "int", currency: "currency", percent: "percent", number: "decimal" } as Record<string, string>;
@@ -1322,7 +1322,7 @@ export function toChart(result: ResultLike, o: ChartOptions = {}): ChartModel {
  */
 export function chartIssues(type: ChartType, columns: ResultColumn[] | undefined, x?: string | null, y: string[] = [], colors: string[] = []): string[] {
   const errs: string[] = [];
-  if (colors.length > 20 || colors.some((c) => !isSafeColor(c))) errs.push("colors: at most 20 colors, each #rgb, #rrggbb, #rrggbbaa or a lower-case color name");
+  if (colors.length > 20 || colors.some((c) => !isSafeColor(c))) errs.push(tr("colors: at most 20 colors, each #rgb, #rrggbb, #rrggbbaa or a lower-case color name"));
   if (!columns?.some((c) => c.role)) return errs;
   const dims = columns.filter((c) => c.role === "dimension").map((c) => c.name);
   const values = columns.filter((c) => c.role && VALUE_ROLES.has(c.role)).map((c) => c.name);
@@ -1330,12 +1330,12 @@ export function chartIssues(type: ChartType, columns: ResultColumn[] | undefined
   for (const v of y) if (!values.includes(v)) errs.push(tr("y: '{v}' is not a measure of the query (one of: {values})", { v, values: values.join(", ") }));
   const measures = y.length || columns.filter((c) => c.role === "measure").length;
   const dated = columns.some((c) => c.role === "dimension" && c.type === "date");
-  if (type === "number" && (dims.length || measures !== 1)) errs.push("a number chart shows one measure without dimensions");
+  if (type === "number" && (dims.length || measures !== 1)) errs.push(tr("a number chart shows one measure without dimensions"));
   else if (["pie", "donut", "percentage", "funnel"].includes(type) && (dims.length !== 1 || measures !== 1))
-    errs.push("pie, donut, percentage and funnel charts need exactly one dimension and one measure");
-  else if (type === "heatmap" && !dated) errs.push("a heatmap needs a date dimension (a time series by day works best)");
-  else if (type === "scatter" && measures < 2) errs.push("a scatter chart needs two measures (x and y values)");
-  else if (["bar", "stacked_bar", "line", "area"].includes(type) && !dims.length) errs.push("bar, line and area charts need at least one dimension (group_by or time_series)");
+    errs.push(tr("pie, donut, percentage and funnel charts need exactly one dimension and one measure"));
+  else if (type === "heatmap" && !dated) errs.push(tr("a heatmap needs a date dimension (a time series by day works best)"));
+  else if (type === "scatter" && measures < 2) errs.push(tr("a scatter chart needs two measures (x and y values)"));
+  else if (["bar", "stacked_bar", "line", "area"].includes(type) && !dims.length) errs.push(tr("bar, line and area charts need at least one dimension (group_by or time_series)"));
   return errs;
 }
 

@@ -100,8 +100,7 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
 
       {!def && (
         <Alert tone={catalogError ? "warning" : "info"}>
-          {catalogError ? t("Could not load the report catalogue. ") : t("This report publishes no parameters. ")}
-          {t("You can still run it.")}
+          {(catalogError ? t("Could not load the report catalogue. You can still run it.") : t("This report publishes no parameters. You can still run it."))}
         </Alert>
       )}
 
@@ -232,7 +231,7 @@ function ReportTable({ data }: { data: ReportResult }) {
       )}
       <div className="table-wrap">
         <table className="table report">
-          <caption className="sr-only">{data.label ?? data.name}</caption>
+          <caption className="sr-only">{isolate(data.label ?? data.name)}</caption>
           <thead>
             <tr>
               {cols.map((c) => (

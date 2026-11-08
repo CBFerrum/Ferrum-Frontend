@@ -38,7 +38,7 @@ export interface SearchSelectProps {
   fallbackLabel?: string;
 }
 
-export function SearchSelect({ id, value, options, onChange, onClear, placeholder = "Choose…", label, invalid, disabled, loading, className, fallbackLabel }: SearchSelectProps) {
+export function SearchSelect({ id, value, options, onChange, onClear, placeholder = t("Choose…"), label, invalid, disabled, loading, className, fallbackLabel }: SearchSelectProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
   const groups = useMemo(() => {
@@ -98,7 +98,7 @@ export function SearchSelect({ id, value, options, onChange, onClear, placeholde
         </PopoverContent>
       </Popover>
       {onClear && value && !disabled && (
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={t("Clear {value}", { value: label ?? "the choice" })} onClick={onClear}>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={t("Clear {value}", { value: label ?? t("the choice") })} onClick={onClear}>
           <X />
         </Button>
       )}
@@ -107,14 +107,14 @@ export function SearchSelect({ id, value, options, onChange, onClear, placeholde
 }
 
 const TYPE_HINT: Record<string, string> = {
-  int: "number",
-  decimal: "number",
-  currency: "money",
+  get int() { return t("number"); },
+  get decimal() { return t("number"); },
+  get currency() { return t("money"); },
   percent: "%",
-  date: "date",
-  datetime: "date-time",
-  link: "link",
-  select: "choice",
+  get date() { return t("date"); },
+  get datetime() { return t("date-time"); },
+  get link() { return t("link"); },
+  get select() { return t("choice"); },
   get check() { return t("yes/no"); },
 };
 

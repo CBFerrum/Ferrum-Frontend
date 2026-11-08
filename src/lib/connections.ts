@@ -42,8 +42,8 @@ export function ago(at: string, now: Date): string {
 }
 
 const SIGN_IN: Record<string, [string, Tone]> = {
-  none: ["No credentials", "neutral"],
-  untested: ["Not tested", "amber"],
+  get none(): [string, Tone] { return [t("No credentials"), "neutral"]; },
+  get untested(): [string, Tone] { return [t("Not tested"), "amber"]; },
   ok: ["Working", "green"],
   failing: ["Failing", "red"],
 };
@@ -60,7 +60,7 @@ export function connectionFacts(h: ConnectionHealth, now: Date): Fact[] {
     { label: t("Last sync"), value: h.freshness ? ago(h.freshness, now) : "Never", tone: seen ? (stale ? "amber" : "green") : "neutral" },
     {
       label: t("Provider"),
-      value: waiting ? `Left alone until ${formatDateTime(waiting.toISOString())}` : failures ? `${failures} failed in a row` : "Answering",
+      value: waiting ? t("Left alone until {value}", { value: formatDateTime(waiting.toISOString()) }) : failures ? t("{failures} failed in a row", { failures }) : t("Answering"),
       tone: waiting ? "amber" : failures ? "amber" : "green",
       detail: waiting ? (h.quota?.reason ?? undefined) : undefined,
     },
@@ -86,7 +86,7 @@ export interface Run {
 /** What a run was, in words, and its tone: a failed one is what someone tries again. */
 export function runWords(r: Run): { what: string; tone: Tone; again: boolean } {
   const what =
-    r.kind === "platform.connector.sync" ? "Read" : r.kind === "platform.connector.deliver" ? `Sent${r.stream ? t(" on {stream}", { stream: r.stream }) : ""}` : r.kind === "platform.connector.reconcile" ? "Compared" : r.kind;
+    r.kind === "platform.connector.sync" ? t("Read") : r.kind === "platform.connector.deliver" ? `Sent${r.stream ? t(" on {stream}", { stream: r.stream }) : ""}` : r.kind === "platform.connector.reconcile" ? t("Compared") : r.kind;
   const tone: Tone = r.status === "done" ? "green" : r.status === "failed" ? "red" : r.status === "cancelled" ? "neutral" : "amber";
   return { what, tone, again: r.status === "failed" };
 }

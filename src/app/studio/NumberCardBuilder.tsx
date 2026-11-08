@@ -134,7 +134,7 @@ function CardEditor({
       if (created) leave.current();
       onSaved(r, created);
     },
-    noun: "number card",
+    noun: t("number card"),
   });
   const { rec, query } = b.draft;
   const allowLeave = () => leave.current();
@@ -154,7 +154,7 @@ function CardEditor({
   const debouncedKey = useDebounced(reqKey, 400);
   const req = useMemo(() => (debouncedKey ? JSON.parse(debouncedKey) : undefined), [debouncedKey]);
   const preview = useCardPreview(req);
-  const missingLabel = rec.label.trim() ? [] : [{ path: "label", message: "Give the number card a title" }];
+  const missingLabel = rec.label.trim() ? [] : [{ path: "label", message: t("Give the number card a title") }];
   const issues = [...b.serverIssues, ...fieldIssues(preview.error).map(asRecordIssue), ...(showIssues ? [...local, ...missingLabel] : [])];
   const ranged = !!(query.period?.from && query.period.to);
 
@@ -170,7 +170,7 @@ function CardEditor({
     await b.save();
   };
   const cancel = async () => {
-    if (b.dirty && !b.standard && !(await confirm({ title: t("Discard your changes?"), message: "The number card keeps its last saved settings.", confirmLabel: t("Discard"), danger: true }))) return;
+    if (b.dirty && !b.standard && !(await confirm({ title: t("Discard your changes?"), message: t("The number card keeps its last saved settings."), confirmLabel: t("Discard"), danger: true }))) return;
     allowLeave();
     onClose();
   };
@@ -187,7 +187,7 @@ function CardEditor({
   };
   const del = async () => {
     if (!b.base.id) return;
-    const ok = await confirm({ title: t("Delete “{label}”?", { label: b.base.label }), message: "The number card is removed for everyone. Dashboards that show it must drop it first.", confirmLabel: t("Delete"), danger: true });
+    const ok = await confirm({ title: t("Delete “{label}”?", { label: b.base.label }), message: t("The number card is removed for everyone. Dashboards that show it must drop it first."), confirmLabel: t("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: b.base.id, version: b.base.version });
@@ -204,8 +204,8 @@ function CardEditor({
       {...b}
       onSave={() => void doSave()}
       onCancel={() => void cancel()}
-      cancelLabel={embedded || b.dirty ? "Cancel" : "Back"}
-      saveLabel={embedded && !b.base.id ? "Save and add" : "Save"}
+      cancelLabel={embedded || b.dirty ? t("Cancel") : t("Back")}
+      saveLabel={embedded && !b.base.id ? t("Save and add") : t("Save")}
       extra={
         b.base.id && (
           <DropdownMenu>
@@ -306,8 +306,8 @@ function CardEditor({
         />
       </div>
       <div className={cn(embedded && "min-h-0 flex-1 overflow-auto p-4")}>
-        {b.standard && <StandardNotice noun="number card" onDuplicate={() => void duplicate()} />}
-        {b.conflict && <ConflictNotice conflict={b.conflict} noun="number card" onDismiss={b.dismissConflict} />}
+        {b.standard && <StandardNotice noun={t("number card")} onDuplicate={() => void duplicate()} />}
+        {b.conflict && <ConflictNotice conflict={b.conflict} noun={t("number card")} onDismiss={b.dismissConflict} />}
         <div className="grid gap-4 lg:grid-cols-[minmax(20rem,28rem)_minmax(0,1fr)] lg:items-start">
           <div className={cn("order-2 grid gap-4 lg:order-1", b.standard && "pointer-events-none opacity-60")} inert={b.standard || undefined}>
             <LabelFields value={rec} onChange={setRec} issues={issues} labelId="card-label" />

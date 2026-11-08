@@ -1,3 +1,4 @@
+import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, errorMessage, request } from "../lib/api";
@@ -62,7 +63,7 @@ export function RecoveryCodes({ codes, onDone, doneLabel = "Done" }: { codes: st
     }
   };
   const download = () => {
-    const url = URL.createObjectURL(new Blob([`Ferrum recovery codes (each works once)\n\n${text}\n`], { type: "text/plain" }));
+    const url = URL.createObjectURL(new Blob([t("Ferrum recovery codes (each works once)\n\n{text}\n", { text })], { type: "text/plain" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = "ferrum-recovery-codes.txt";
@@ -130,7 +131,7 @@ export function TwoFactorSetup({ token, onEnabled, onCancel }: { token?: string;
     }
   };
 
-  if (done) return <RecoveryCodes codes={done.recovery_codes} onDone={() => onEnabled(done)} doneLabel="Continue" />;
+  if (done) return <RecoveryCodes codes={done.recovery_codes} onDone={() => onEnabled(done)} doneLabel={t("Continue")} />;
   if (error) return <Alert tone="error">{isolate(error)}</Alert>;
   if (!begun) return <PageLoading label={t("Preparing…")} />;
   return (
@@ -261,7 +262,7 @@ export function TwoFactorSettings() {
   return (
     <div className="stack">
       <Alert tone="success">
-        {t("Two-factor sign-in is on. {recovery_codes_left} recovery code", { recovery_codes_left: s.recovery_codes_left })}{s.recovery_codes_left === 1 ? "" : "s"} {t("left.")}
+        {placed(t("Two-factor sign-in is on. {recovery_codes_left} recovery code{p1} left."), { recovery_codes_left: s.recovery_codes_left, p1: s.recovery_codes_left === 1 ? "" : "s" })}
       </Alert>
       {mode === "codes" ? (
         <form className="stack" onSubmit={newCodes}>

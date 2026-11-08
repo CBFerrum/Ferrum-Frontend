@@ -93,7 +93,7 @@ export function FieldControl(p: ControlProps) {
         <LinkInput
           to={f.to ?? ""}
           value={typeof value === "string" ? value : null}
-          title={p.title}
+          title={isolate(p.title)}
           onChange={onChange}
           linkFilters={f.link_filters}
           id={p.id}
@@ -580,7 +580,7 @@ export function JsonInput({ value, onChange, id, disabled, invalid, describedBy,
             onChange(draft.trim() ? JSON.parse(draft) : null);
             setError(null);
           } catch {
-            setError("Not valid JSON");
+            setError(tr("Not valid JSON"));
           }
         }}
       />
@@ -745,7 +745,7 @@ export function TableGrid({
         {phone ? (
           rows.length ? (
             // List semantics stated explicitly: Safari drops them for unstyled lists.
-            <ol className="grid-cards" role="list" aria-label={child.label}>
+            <ol className="grid-cards" role="list" aria-label={isolate(child.label)}>
               {rows.map((r, i) => {
                 const errs = errors.filter((e) => e.row?.[1] === i);
                 const errId = `${gridId}-${i}-errors`;
@@ -771,7 +771,7 @@ export function TableGrid({
                       </p>
                     )}
                     <div className="grid-card-actions">
-                      <Button aria-label={tr("{value} row {value2}", { value: locked ? "View" : "Edit", value2: i + 1 })} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
+                      <Button aria-label={(locked ? tr("View row {value2}", { value2: i + 1 }) : tr("Edit row {value2}", { value2: i + 1 }))} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
                         {locked ? tr("View") : tr("Edit")}
                       </Button>
                       {!locked && (
@@ -796,7 +796,7 @@ export function TableGrid({
             <p className="grid-empty">{t("No rows yet.")}</p>
           )
         ) : (
-          <table className="grid" aria-label={child.label}>
+          <table className="grid" aria-label={isolate(child.label)}>
             <thead>
               <tr>
                 <th className="grid-idx" scope="col">
@@ -953,7 +953,7 @@ export function TableGrid({
                   {err && <p className="field-error">{isolate(err.message)}</p>}
                 </div>
               ) : (
-                <FieldWrap key={f.name} label={f.label} htmlFor={fid} required={st.required} error={err?.message} hint={f.description}>
+                <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err?.message} hint={isolate(f.description)}>
                   {control}
                 </FieldWrap>
               );

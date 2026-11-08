@@ -10,7 +10,7 @@ import { t as tr } from "@ferrum/client";
 /** A tab's label as the form shows it (`null` is the untitled first tab). */
 export const tabLabel = (tab: string | null) => tab ?? "Details";
 
-export const sectionTitle = (s: Pick<LayoutSection, "label">) => s.label?.trim() || "Untitled section";
+export const sectionTitle = (s: Pick<LayoutSection, "label">) => s.label?.trim() || tr("Untitled section");
 
 /** The section holding `field`, or "palette" when no section places it. */
 export const containerOf = (layout: LayoutSection[], field: string) => layout.find((s) => s.fields.includes(field))?.key ?? "palette";
@@ -80,10 +80,10 @@ export const removeTab = (layout: LayoutSection[], tab: string) => normalize(ren
 /** Why `name` cannot name a tab (`current` when renaming one), or null. Names are unique ignoring case. */
 export function tabNameProblem(name: string, layout: LayoutSection[], current?: string | null): string | null {
   const n = name.trim();
-  if (!n) return "Give the tab a name.";
+  if (!n) return tr("Give the tab a name.");
   if (current && n === current) return null;
-  if (n.toLowerCase() === "details") return "“Details” is the name of the untitled first tab.";
-  if (tabsOf(layout).some((t) => t !== null && t !== current && t.toLowerCase() === n.toLowerCase())) return "A tab with this name already exists.";
+  if (n.toLowerCase() === "details") return tr("“Details” is the name of the untitled first tab.");
+  if (tabsOf(layout).some((t) => t !== null && t !== current && t.toLowerCase() === n.toLowerCase())) return tr("A tab with this name already exists.");
   return null;
 }
 
@@ -154,9 +154,9 @@ function bracketProblem(code: string): string | null {
   const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
   for (const c of code) {
     if (c === "(" || c === "[" || c === "{") open.push(c);
-    else if (c in pairs && open.pop() !== pairs[c]) return "The brackets or parentheses do not match.";
+    else if (c in pairs && open.pop() !== pairs[c]) return tr("The brackets or parentheses do not match.");
   }
-  return open.length ? "A bracket or parenthesis is not closed." : null;
+  return open.length ? tr("A bracket or parenthesis is not closed.") : null;
 }
 
 /**
@@ -164,10 +164,10 @@ function bracketProblem(code: string): string | null {
  * when the layout is saved and is the authority; this catches common slips early and says whether the
  * browser preview can evaluate it.
  */
-export function conditionHint(src: string, fields: string[], entityLabel = "this form"): Hint | null {
+export function conditionHint(src: string, fields: string[], entityLabel = tr("this form")): Hint | null {
   if (!src.trim()) return null;
   const blanked = blankStrings(src);
-  if (blanked === null) return { tone: "error", message: "A quoted text is not closed." };
+  if (blanked === null) return { tone: "error", message: tr("A quoted text is not closed.") };
   const brackets = bracketProblem(blanked);
   if (brackets) return { tone: "error", message: brackets };
   if (/[=!]==/.test(blanked)) return { tone: "error", message: "Compare with == or != (=== and !== are not allowed)." };
@@ -188,10 +188,10 @@ export function conditionHint(src: string, fields: string[], entityLabel = "this
   if (evaluate(src, { doc: {}, user: {} }) === undefined) {
     return {
       tone: "info",
-      message: "The browser cannot evaluate this condition (it may use functions or arithmetic), so the preview shows the section. The server checks it on save.",
+      message: tr("The browser cannot evaluate this condition (it may use functions or arithmetic), so the preview shows the section. The server checks it on save."),
     };
   }
-  return { tone: "ok", message: "The section shows while this condition is true." };
+  return { tone: "ok", message: tr("The section shows while this condition is true.") };
 }
 
 // ── save errors ──
@@ -208,7 +208,7 @@ export function saveProblem(message: string, layout: LayoutSection[]): SaveProbl
   let sections: string[] = [];
   const field = /^the layout places (?:unknown field (\S+)|(\S+) twice)/.exec(text);
   if (text.startsWith("section condition '")) {
-    sections = layout.filter((s) => s.visible_if?.trim() && text.startsWith(`section condition '${s.visible_if.trim()}':`)).map((s) => s.key);
+    sections = layout.filter((s) => s.visible_if?.trim() && text.startsWith(tr("section condition '{value}':", { value: s.visible_if.trim() }))).map((s) => s.key);
   } else if (field) {
     const name = field[1] ?? field[2];
     sections = layout.filter((s) => s.fields.includes(name)).map((s) => s.key);

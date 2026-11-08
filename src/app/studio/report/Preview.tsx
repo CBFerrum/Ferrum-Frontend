@@ -2,6 +2,7 @@
 // (row limit, pivot columns, child-table rows, the period and its comparison), loading and empty
 // states, and the table-or-chart switch.
 
+import { placed } from "../../../lib/placed";
 import { ChartColumn, Info, SearchX, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import type { CellOptions, ChartSettings, ColumnSetting, ResultColumn, ResultMet
 import { ResultChart } from "./ResultChart";
 import { ResultTable, type ColumnEditor } from "./ResultTable";
 import type { ViewMode } from "./state";
-import { t } from "@ferrum/client";
+import { t, isolate } from "@ferrum/client";
 
 const range = (from: string | null | undefined, to: string | null | undefined) =>
   from && to ? `${formatDate(from)} – ${formatDate(to)}` : from ? t("from {from}", { from: formatDate(from) }) : to ? t("until {to}", { to: formatDate(to) }) : "";
@@ -26,7 +27,7 @@ export function ResultNotices({ meta, entityLabel, onMoreRows }: { meta: ResultM
   if (meta.truncated)
     notes.push(
       <span key="t">
-        {t("More rows match than the first {value} shown", { value: meta.row_count.toLocaleString() })}{meta.row_count < 10_000 ? "" : t(" (the most a report shows)")}.
+        {(meta.row_count < 10_000 ? t("More rows match than the first {value} shown", { value: meta.row_count.toLocaleString() }) : t("More rows match than the first {value} shown (the most a report shows)", { value: meta.row_count.toLocaleString() }))}.
         {onMoreRows && meta.row_count < 10_000 && (
           <Button variant="link" size="sm" className="h-auto px-1 py-0" onClick={onMoreRows}>
             {t("Show more rows")}
@@ -35,7 +36,7 @@ export function ResultNotices({ meta, entityLabel, onMoreRows }: { meta: ResultM
       </span>,
     );
   if (meta.pivot_truncated) notes.push(<span key="p">{t("Only the {pivot_columns} largest pivot columns are shown; the totals still cover every value.", { pivot_columns: meta.pivot_columns ?? "" })}</span>);
-  if (meta.grain) notes.push(<span key="g">{t("Counting rows of “{grain}” (a child table of", { grain: meta.grain })} {entityLabel ?? meta.entity}{t("), not whole records.")}</span>);
+  if (meta.grain) notes.push(<span key="g">{placed(t("Counting rows of “{grain}” (a child table of {p1}), not whole records."), { grain: meta.grain, p1: entityLabel ?? meta.entity })}</span>);
   if (meta.compare) notes.push(<span key="c">{t("{value}, compared with {value2}.", { value: range(meta.compare.from, meta.compare.to), value2: range(meta.compare.previous_from, meta.compare.previous_to) })}</span>);
   else if (meta.date_range && (meta.date_range.from || meta.date_range.to)) notes.push(<span key="d">{t("Period: {value}.", { value: range(meta.date_range.from, meta.date_range.to) })}</span>);
   if (!notes.length) return null;
@@ -106,7 +107,7 @@ export function ResultView(p: ResultViewProps) {
   if (p.view === "chart")
     return (
       <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-        <ResultChart result={{ columns: p.columns, rows: p.rows, totals: p.totals }} settings={p.chart} options={p.options} title={p.title} />
+        <ResultChart result={{ columns: p.columns, rows: p.rows, totals: p.totals }} settings={p.chart} options={p.options} title={isolate(p.title)} />
       </div>
     );
   return (

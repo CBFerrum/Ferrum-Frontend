@@ -129,19 +129,19 @@ export function SpaceEditor() {
   const perms = meta?.entities.find((e) => e.name === "Space")?.permissions;
 
   if (!can(perms, id ? "write" : "create"))
-    return <Notice title={id ? tr("You can’t edit spaces") : tr("You can’t create spaces")} text="Ask an administrator for a role that may change spaces." />;
+    return <Notice title={id ? tr("You can’t edit spaces") : tr("You can’t create spaces")} text={tr("Ask an administrator for a role that may change spaces.")} />;
   if (source.isLoading || (moduleName && reports.isLoading)) return <EditorSkeleton />;
   if (source.error)
     return (
       <Notice
         title={source.error instanceof ApiError && source.error.status === 404 ? tr("This space doesn’t exist") : tr("The space could not be loaded")}
-        text={source.error instanceof ApiError && source.error.status === 404 ? "It may have been deleted, or it isn’t shared with you." : errorMessage(source.error)}
+        text={source.error instanceof ApiError && source.error.status === 404 ? tr("It may have been deleted, or it isn’t shared with you.") : errorMessage(source.error)}
         retry={() => void source.refetch()}
       />
     );
   if (id && source.data?.is_standard)
     return (
-      <Notice title={tr("This space comes with an app")} text="Standard spaces can’t be changed. Make a copy to customize: the copy is yours to edit and share.">
+      <Notice title={tr("This space comes with an app")} text={tr("Standard spaces can’t be changed. Make a copy to customize: the copy is yours to edit and share.")}>
         <Button asChild>
           <Link to={PATHS.copySpace(id)}>
             <Copy /> {tr("Duplicate to customize")}
@@ -340,7 +340,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
       setSelected(null);
       setTab("space");
     }
-    setSaid(fn === undo ? "Undone." : "Redone.");
+    setSaid(fn === undo ? tr("Undone.") : tr("Redone."));
   };
 
   // ── saving ──
@@ -349,7 +349,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
     const problems = draftIssues(draft);
     setAttempted(true);
     if (problems.length) {
-      toast(tr("Fix {value} marked in red before saving.", { value: problems.length === 1 ? "the problem" : `the ${problems.length} problems` }), "error");
+      toast(problems.length === 1 ? tr("Fix the problem marked in red before saving.") : tr("Fix the {n} problems marked in red before saving.", { n: problems.length }), "error");
       const m = /^blocks\[(\d+)\]/.exec(problems[0].path);
       if (m) select(draft.blocks[Number(m[1])].key, true);
       else {
@@ -406,7 +406,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
 
   const doDelete = async () => {
     if (!saved.id) return;
-    const ok = await confirmDialog({ title: tr("Delete “{value}”?", { value: draft.label || "this space" }), message: tr("Everyone it is shared with loses it. This can’t be undone."), confirmLabel: tr("Delete"), danger: true });
+    const ok = await confirmDialog({ title: tr("Delete “{value}”?", { value: draft.label || tr("this space") }), message: tr("Everyone it is shared with loses it. This can’t be undone."), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: saved.id, version: saved.version });
@@ -461,7 +461,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
   const keys = draft.blocks.map((b) => b.key);
   const nameAt = (id: UniqueIdentifier) => {
     const b = draft.blocks.find((x) => x.key === id);
-    return b ? titleOf(b.block) : "Block";
+    return b ? titleOf(b.block) : tr("Block");
   };
   const position = (id: UniqueIdentifier) => keys.indexOf(String(id)) + 1;
   const announcements: Announcements = {
@@ -519,9 +519,9 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
           </Link>
         </Button>
         <div className="min-w-0 flex-1 basis-48">
-          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? tr("Edit {value}", { value: draft.label.trim() || "space" }) : tr("New space")}</h1>
+          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? draft.label.trim() ? tr("Edit {value}", { value: draft.label.trim() }) : tr("Edit space") : tr("New space")}</h1>
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {save.isPending ? tr("Saving…") : dirty ? tr("Unsaved changes") : saved.id ? tr("Saved{value}{value2}", { value: updated ? ` ${relativeTime(updated)}` : "", value2: by ? ` by ${by}` : "" }) : tr("Not saved yet")}
+            {save.isPending ? tr("Saving…") : dirty ? tr("Unsaved changes") : saved.id ? updated ? (by ? tr("Saved {when} by {by}", { when: relativeTime(updated), by }) : tr("Saved {when}", { when: relativeTime(updated) })) : by ? tr("Saved by {by}", { by }) : tr("Saved") : tr("Not saved yet")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -622,7 +622,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
               onDragEnd={onDragEnd}
               accessibility={{
                 announcements,
-                screenReaderInstructions: { draggable: "To move a block, press Space or Enter, then use the arrow keys. Press Space or Enter again to drop it, or Escape to cancel." },
+                screenReaderInstructions: { draggable: tr("To move a block, press Space or Enter, then use the arrow keys. Press Space or Enter again to drop it, or Escape to cancel.") },
               }}
             >
               <SortableContext items={keys} strategy={rectSortingStrategy}>
@@ -890,7 +890,7 @@ function EmptyCanvas({ onAdd, onStarter }: { onAdd: (t: BlockType) => void; onSt
                 <CommandInput placeholder={tr("Search modules…")} />
                 <CommandList>
                   <CommandEmpty>{tr("No module matches.")}</CommandEmpty>
-                  <CommandGroup heading="Shortcuts, links and recent records of">
+                  <CommandGroup heading={tr("Shortcuts, links and recent records of")}>
                     {modules.map(({ module, starter }) => (
                       <CommandItem
                         key={module.name}
@@ -1017,9 +1017,9 @@ function SpaceSettings({
         <RadioGroup id="space-sharing" value={draft.sharing} onValueChange={(v) => set("sharing", v as SpaceDraft["sharing"])} aria-labelledby="space-sharing-label" className="gap-2">
           {(
             [
-              ["private", "Only you", "Administrators and Studio managers can open every space."],
-              ["roles", "People with chosen roles", "Each of them sees the blocks with their own permissions."],
-              ["everyone", "Everyone in the workspace", "Each person sees the blocks with their own permissions."],
+              ["private", tr("Only you"), tr("Administrators and Studio managers can open every space.")],
+              ["roles", tr("People with chosen roles"), tr("Each of them sees the blocks with their own permissions.")],
+              ["everyone", tr("Everyone in the workspace"), tr("Each person sees the blocks with their own permissions.")],
             ] as const
           ).map(([value, label, hint]) => (
             <label key={value} htmlFor={`space-sharing-${value}`} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary-soft/40">
@@ -1090,7 +1090,7 @@ function RolesPicker({ id, value, onChange, errors }: { id: string; value: strin
               <CommandEmpty>{all.isLoading ? tr("Loading roles…") : tr("No role matches.")}</CommandEmpty>
               {typed && !options.includes(typed) && !value.includes(typed) && (
                 <CommandGroup>
-                  <CommandItem value={`add ${typed}`} onSelect={() => (toggle(typed), setQ(""))}>
+                  <CommandItem value={tr("add {typed}", { typed })} onSelect={() => (toggle(typed), setQ(""))}>
                     <Plus /> {tr("Add “{typed}”", { typed })}
                   </CommandItem>
                 </CommandGroup>

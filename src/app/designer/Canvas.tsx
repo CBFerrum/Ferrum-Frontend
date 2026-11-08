@@ -315,7 +315,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
     if (!d) return "item";
     if (d.type === "field") return tr("field {value}", { value: fields.get(d.name)?.label ?? d.name });
     if (d.type === "tab") return tr("tab {value}", { value: tabLabel(d.tab) });
-    if (d.key === "palette") return "unplaced fields";
+    if (d.key === "palette") return tr("unplaced fields");
     const s = (draftRef.current ?? layout).find((x) => x.key === d.key);
     return tr("section {title}", { title: s ? sectionTitle(s) : "" });
   };
@@ -332,7 +332,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
       over ? tr("{value} is over {value2}.", { value: cap(describe(dataOf(active))), value2: position(dataOf(over)) }) : tr("{value} is not over a place to drop.", { value: cap(describe(dataOf(active))) }),
     onDragEnd: ({ active, over }) =>
       over ? tr("{value} was dropped on {value2}.", { value: cap(describe(dataOf(active))), value2: describe(dataOf(over)) }) : tr("{value} was put back.", { value: cap(describe(dataOf(active))) }),
-    onDragCancel: ({ active }) => `Moving ${describe(dataOf(active))} was cancelled; it is back where it was.`,
+    onDragCancel: ({ active }) => tr("Moving {value} was cancelled; it is back where it was.", { value: describe(dataOf(active)) }),
   };
 
   const addHere = () => {
@@ -372,7 +372,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
           announcements,
           screenReaderInstructions: {
             draggable:
-              "To move this item, press Space or Enter, move it with the arrow keys, then press Space or Enter to drop it, or Escape to cancel. Its menu has the same moves.",
+              tr("To move this item, press Space or Enter, move it with the arrow keys, then press Space or Enter to drop it, or Escape to cancel. Its menu has the same moves."),
           },
         }}
       >
@@ -398,7 +398,7 @@ export function Canvas({ meta, layout, onChange, tab, onTab, selected, onSelect,
                 </SortableContext>
               )}
               <Button id="fd-add-section" variant="outline" className="w-full border-dashed pointer-coarse:h-11" onClick={addHere}>
-                <Plus aria-hidden="true" /> {tr("Add section")}{tabs.length > 1 ? tr(" to {current}", { current: tabLabel(current) }) : ""}
+                <Plus aria-hidden="true" /> {(tabs.length > 1 ? tr("Add section to {current}", { current: tabLabel(current) }) : tr("Add section"))}
               </Button>
             </div>
           </div>
@@ -428,7 +428,7 @@ function TabStrip({ tabs, current }: { tabs: (string | null)[]; current: string 
   const addTab = () =>
     c.askTabName({
       title: tr("Add a tab"),
-      action: "Add tab",
+      action: tr("Add tab"),
       initial: "",
       returnTo: "fd-add-tab",
       onSubmit: (name) => {
@@ -760,7 +760,7 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
 function typeLabel(f: Field | undefined, meta: EntityMeta): string {
   if (!f) return "";
   if (f.type === "link" && f.to) return tr("link → {to}", { to: f.to });
-  if (f.type === "table") return tr("table of {value}", { value: meta.children[f.name]?.label ?? "rows" });
+  if (f.type === "table") return meta.children[f.name]?.label ? tr("table of {value}", { value: meta.children[f.name].label }) : tr("table of rows");
   return f.type;
 }
 
@@ -770,7 +770,7 @@ function FieldText({ name }: { name: string }) {
   return (
     <div className="min-w-0 flex-1 py-1">
       <div className="flex min-w-0 items-center gap-1 text-sm font-medium">
-        <span className="truncate">{f?.label ?? name}</span>
+        <span className="truncate">{isolate(f?.label ?? name)}</span>
         {f?.required && (
           <span className="text-destructive" aria-hidden="true">
             *

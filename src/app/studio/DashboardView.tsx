@@ -215,7 +215,7 @@ function DashboardViewer({
     }
   };
   const del = async () => {
-    const ok = await confirm({ title: tr("Delete “{label}”?", { label: d.label }), message: "The dashboard is removed for everyone. Its charts and number cards stay.", confirmLabel: tr("Delete"), danger: true });
+    const ok = await confirm({ title: tr("Delete “{label}”?", { label: d.label }), message: tr("The dashboard is removed for everyone. Its charts and number cards stay."), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id });
@@ -243,8 +243,8 @@ function DashboardViewer({
             {tr("Dashboards")}
           </Link>
         }
-        title={d.label}
-        description={d.description}
+        title={isolate(d.label)}
+        description={isolate(d.description)}
         actions={
           <>
             <UpdatedAgo at={updatedAt} fetching={fetching} refresh={refresh} />
@@ -380,8 +380,8 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     if (w?.type === "card") return w.card.label;
     if (it.type === "heading") return tr("heading {text}", { text: it.text });
     if (it.type === "shortcut") return tr("shortcut {label}", { label: it.label });
-    if (it.type === "list") return it.label || "record list";
-    return it.type === "markdown" ? "text" : it.type === "chart" ? "chart" : "number card";
+    if (it.type === "list") return it.label || tr("record list");
+    return it.type === "markdown" ? "text" : it.type === "chart" ? "chart" : tr("number card");
   };
 
   useEffect(() => {
@@ -403,13 +403,13 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     const next = moveBy(items, it.i, dx, dy);
     setLayout(next, `move-${it.i}`);
     const now = next.find((x) => x.i === it.i)!;
-    say(now.x === it.x && now.y === it.y ? "It cannot move further that way." : tr("Moved {it} to {now}.", { it: titleOf(it), now: describePlace(now) }));
+    say(now.x === it.x && now.y === it.y ? tr("It cannot move further that way.") : tr("Moved {it} to {now}.", { it: titleOf(it), now: describePlace(now) }));
   };
   const resizeItem = (it: Placed, dw: number, dh: number) => {
     const next = resizeBy(items, it.i, dw, dh);
     setLayout(next, `size-${it.i}`);
     const now = next.find((x) => x.i === it.i)!;
-    say(now.w === it.w && now.h === it.h ? "It cannot change size further that way." : tr("Resized {it}: {now}.", { it: titleOf(it), now: describePlace(now) }));
+    say(now.w === it.w && now.h === it.h ? tr("It cannot change size further that way.") : tr("Resized {it}: {now}.", { it: titleOf(it), now: describePlace(now) }));
   };
   const removeIt = (it: Placed) => {
     setLayout(removeItem(items, it.i));
@@ -418,7 +418,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
   };
 
   const doSave = async () => {
-    const local = [...filterDefIssues(draft.filters), ...(draft.label.trim() ? [] : [{ path: "label", message: "Give the dashboard a title" }])];
+    const local = [...filterDefIssues(draft.filters), ...(draft.label.trim() ? [] : [{ path: "label", message: tr("Give the dashboard a title") }])];
     if (local.length) {
       setIssues(local);
       setSettings(true);
@@ -450,7 +450,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
     }
   };
   const cancel = async () => {
-    if (dirty && !(await confirm({ title: tr("Discard your changes?"), message: "The dashboard keeps its last saved layout.", confirmLabel: tr("Discard"), danger: true }))) return;
+    if (dirty && !(await confirm({ title: tr("Discard your changes?"), message: tr("The dashboard keeps its last saved layout."), confirmLabel: tr("Discard"), danger: true }))) return;
     onExit(allowLeave);
   };
   const duplicateStandard = async () => {
@@ -498,7 +498,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
       </DropdownMenuItem>
       {(it.type === "chart" || it.type === "card") && (
         <DropdownMenuItem onSelect={() => setPicker(it.type === "chart" ? "charts" : "cards")}>
-          <ChartColumn /> {tr("Add another")} {it.type === "chart" ? tr("chart") : tr("number card")}
+          <ChartColumn /> {(it.type === "chart" ? tr("Add another chart") : tr("Add another number card"))}
         </DropdownMenuItem>
       )}
       <DropdownMenuSub>

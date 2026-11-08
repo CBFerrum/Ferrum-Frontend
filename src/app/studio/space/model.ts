@@ -80,9 +80,9 @@ export type LinkTarget = (typeof LINK_TARGETS)[number];
 
 export const TARGET_LABEL: Record<LinkTarget, string> = {
   entity: "List",
-  report: "Saved report",
-  dashboard: "Dashboard",
-  builtin: "Built-in report",
+  get report() { return tr("Saved report"); },
+  get dashboard() { return tr("Dashboard"); },
+  get builtin() { return tr("Built-in report"); },
   url: "Address",
 };
 
@@ -209,8 +209,8 @@ const empty = (v: unknown) => {
 
 function filterIssues(f: Filters | null | undefined, path: string, add: (path: string, message: string) => void) {
   filterList(f).forEach(([field, op, value], i) => {
-    if (!str(field)) add(`${path}[${i}]`, "Choose a field to filter on");
-    else if (op !== "is" && empty(value)) add(`${path}[${i}]`, "Enter a value to filter by");
+    if (!str(field)) add(`${path}[${i}]`, tr("Choose a field to filter on"));
+    else if (op !== "is" && empty(value)) add(`${path}[${i}]`, tr("Enter a value to filter by"));
   });
 }
 
@@ -218,53 +218,53 @@ function filterIssues(f: Filters | null | undefined, path: string, add: (path: s
 export function blockIssues(b: SpaceBlock): Issue[] {
   const out: Issue[] = [];
   const add = (path: string, message: string) => out.push({ path, message });
-  if (b.width != null && (!Number.isInteger(b.width) || b.width < 1 || b.width > 12)) add("width", "A block is 1 to 12 columns wide");
+  if (b.width != null && (!Number.isInteger(b.width) || b.width < 1 || b.width > 12)) add("width", tr("A block is 1 to 12 columns wide"));
   switch (b.type) {
     case "shortcut": {
-      if (!labelOk(b.label)) add("label", "Give the shortcut a label (up to 140 characters)");
+      if (!labelOk(b.label)) add("label", tr("Give the shortcut a label (up to 140 characters)"));
       const kind = targetOf(b, SHORTCUT_TARGETS);
       const value = str(b[kind]);
-      const missing = { entity: "Choose the list it opens", report: "Choose a report", dashboard: "Choose a dashboard", url: "Enter the address it opens" };
+      const missing = { entity: tr("Choose the list it opens"), report: tr("Choose a report"), dashboard: tr("Choose a dashboard"), url: tr("Enter the address it opens") };
       if (!value) add(kind, missing[kind]);
       else if (kind === "url" && !urlOk(value)) add("url", URL_HINT);
       if (kind === "entity") filterIssues(b.filters, "filters", add);
-      if (str(b.color) && !isSafeColor(str(b.color))) add("color", "Use a color such as #2f5bea or teal");
+      if (str(b.color) && !isSafeColor(str(b.color))) add("color", tr("Use a color such as #2f5bea or teal"));
       break;
     }
     case "links":
-      if (!labelOk(b.label)) add("label", "Give the card a title (up to 140 characters)");
-      if (!b.items.length || b.items.length > 50) add("items", "A link card holds 1 to 50 links");
+      if (!labelOk(b.label)) add("label", tr("Give the card a title (up to 140 characters)"));
+      if (!b.items.length || b.items.length > 50) add("items", tr("A link card holds 1 to 50 links"));
       b.items.forEach((l, i) => {
-        if (!labelOk(l.label)) add(`items[${i}].label`, "Give the link a label");
+        if (!labelOk(l.label)) add(`items[${i}].label`, tr("Give the link a label"));
         const kind = targetOf(l, LINK_TARGETS);
         const value = str(l[kind]);
-        if (!value) add(`items[${i}].${kind}`, "Choose where the link goes");
+        if (!value) add(`items[${i}].${kind}`, tr("Choose where the link goes"));
         else if (kind === "url" && !urlOk(value)) add(`items[${i}].url`, URL_HINT);
       });
       break;
     case "chart":
-      if (!str(b.chart)) add("chart", "Choose a chart");
+      if (!str(b.chart)) add("chart", tr("Choose a chart"));
       break;
     case "card":
-      if (!str(b.card)) add("card", "Choose a number card");
+      if (!str(b.card)) add("card", tr("Choose a number card"));
       break;
     case "list":
-      if (!str(b.entity)) add("entity", "Choose the list to show");
-      if ((b.fields?.length ?? 0) > 12) add("fields", "Show at most 12 fields");
-      if (b.limit != null && (!Number.isInteger(b.limit) || b.limit < 1 || b.limit > 50)) add("limit", "Show 1 to 50 records");
+      if (!str(b.entity)) add("entity", tr("Choose the list to show"));
+      if ((b.fields?.length ?? 0) > 12) add("fields", tr("Show at most 12 fields"));
+      if (b.limit != null && (!Number.isInteger(b.limit) || b.limit < 1 || b.limit > 50)) add("limit", tr("Show 1 to 50 records"));
       filterIssues(b.filters, "filters", add);
       break;
     case "markdown":
-      if (chars(b.content ?? "") > 20_000) add("content", "Text is limited to 20,000 characters");
+      if (chars(b.content ?? "") > 20_000) add("content", tr("Text is limited to 20,000 characters"));
       break;
     case "heading":
-      if (!str(b.text) || chars(str(b.text)) > 200) add("text", "Enter the heading (up to 200 characters)");
-      if (b.level != null && ![1, 2, 3].includes(b.level)) add("level", "Choose a size");
+      if (!str(b.text) || chars(str(b.text)) > 200) add("text", tr("Enter the heading (up to 200 characters)"));
+      if (b.level != null && ![1, 2, 3].includes(b.level)) add("level", tr("Choose a size"));
       break;
     case "onboarding":
-      if (!b.steps.length || b.steps.length > 20) add("steps", "Onboarding has 1 to 20 steps");
+      if (!b.steps.length || b.steps.length > 20) add("steps", tr("Onboarding has 1 to 20 steps"));
       b.steps.forEach((s, i) => {
-        if (!labelOk(s.label)) add(`steps[${i}].label`, "Give the step a label");
+        if (!labelOk(s.label)) add(`steps[${i}].label`, tr("Give the step a label"));
         if (str(s.url) && !urlOk(str(s.url))) add(`steps[${i}].url`, URL_HINT);
         if (str(s.entity)) filterIssues(s.filters, `steps[${i}].filters`, add);
       });
@@ -337,12 +337,12 @@ export const sameDraft = (a: SpaceDraft, b: SpaceDraft) => JSON.stringify(record
 /** Problems to fix before saving, at record paths (`label`, `blocks[2].items[0].url`). */
 export function draftIssues(d: SpaceDraft): Issue[] {
   const out: Issue[] = [];
-  if (!labelOk(d.label)) out.push({ path: "label", message: "Give the space a name (up to 140 characters)" });
-  if (chars(d.icon.trim()) > 40) out.push({ path: "icon", message: "An icon name is up to 40 characters" });
-  if (chars(d.module.trim()) > 63) out.push({ path: "module", message: "A module name is up to 63 characters" });
-  if (!Number.isInteger(d.sequence)) out.push({ path: "sequence", message: "Use a whole number" });
-  if (d.sharing === "roles" && !d.roles.some((r) => r.trim())) out.push({ path: "roles", message: "Choose the roles to share with" });
-  if (d.blocks.length > 100) out.push({ path: "blocks", message: "A space holds up to 100 blocks" });
+  if (!labelOk(d.label)) out.push({ path: "label", message: tr("Give the space a name (up to 140 characters)") });
+  if (chars(d.icon.trim()) > 40) out.push({ path: "icon", message: tr("An icon name is up to 40 characters") });
+  if (chars(d.module.trim()) > 63) out.push({ path: "module", message: tr("A module name is up to 63 characters") });
+  if (!Number.isInteger(d.sequence)) out.push({ path: "sequence", message: tr("Use a whole number") });
+  if (d.sharing === "roles" && !d.roles.some((r) => r.trim())) out.push({ path: "roles", message: tr("Choose the roles to share with") });
+  if (d.blocks.length > 100) out.push({ path: "blocks", message: tr("A space holds up to 100 blocks") });
   d.blocks.forEach((b, n) => {
     for (const i of blockIssues(b.block)) out.push({ path: `blocks[${n}]${i.path.startsWith("[") ? "" : "."}${i.path}`, message: i.message });
   });
@@ -554,16 +554,16 @@ export function opLabel(op: FilterOp, kind: FilterKind): string {
   const dated = kind === "date" || kind === "datetime";
   const labels: Partial<Record<FilterOp, string>> = {
     "=": "is",
-    "!=": "is not",
-    ">": dated ? "after" : "more than",
-    ">=": dated ? "on or after" : "at least",
-    "<": dated ? "before" : "less than",
-    "<=": dated ? "on or before" : "at most",
+    "!=": tr("is not"),
+    ">": dated ? "after" : tr("more than"),
+    ">=": dated ? tr("on or after") : tr("at least"),
+    "<": dated ? "before" : tr("less than"),
+    "<=": dated ? tr("on or before") : tr("at most"),
     like: "contains",
-    "not like": "does not contain",
-    in: "is any of",
-    "not in": "is none of",
-    is: "is set or not",
+    "not like": tr("does not contain"),
+    in: tr("is any of"),
+    "not in": tr("is none of"),
+    is: tr("is set or not"),
   };
   return labels[op] ?? op;
 }

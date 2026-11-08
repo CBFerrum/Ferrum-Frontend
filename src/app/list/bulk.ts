@@ -115,19 +115,19 @@ export function describeOp(op: BulkOp): { running: (what: string) => string; don
   const plain = (ing: string, ed: string) => ({ running: (w: string) => `${ing} ${w}…`, done: (w: string) => `${w} ${ed}` });
   switch (op.op) {
     case "update":
-      return plain("Updating", "updated");
+      return plain(tr("Updating"), "updated");
     case "delete":
-      return plain("Deleting", "deleted");
+      return plain(tr("Deleting"), "deleted");
     case "submit":
-      return plain("Submitting", "submitted");
+      return plain(tr("Submitting"), "submitted");
     case "cancel":
-      return plain("Cancelling", "cancelled");
+      return plain(tr("Cancelling"), "cancelled");
     case "assign":
-      return plain("Assigning", "assigned");
+      return plain(tr("Assigning"), "assigned");
     case "add_tags":
-      return plain("Tagging", "tagged");
+      return plain(tr("Tagging"), "tagged");
     case "remove_tags":
-      return plain("Removing tags from", "untagged");
+      return plain(tr("Removing tags from"), "untagged");
     case "workflow":
       return { running: (w) => tr("Applying “{action}” to {w}…", { action: op.action, w }), done: (w) => tr("“{action}” applied to {w}", { action: op.action, w }) };
   }
@@ -135,7 +135,7 @@ export function describeOp(op: BulkOp): { running: (what: string) => string; don
 
 /** One record's failure as a sentence: field errors (with labels) when there are some. */
 export function rowErrorText(meta: EntityMeta, e: BulkRowError | undefined): string {
-  if (!e) return "Failed.";
+  if (!e) return tr("Failed.");
   const fields = (e.fields ?? []).map((f) => `${fieldLabel(meta, f.field)}: ${f.message}`);
   const text = fields.length ? fields.join("; ") : e.message;
   return e.error_id ? tr("{text} (reference {error_id})", { text, error_id: e.error_id }) : text;

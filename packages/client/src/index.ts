@@ -3,6 +3,7 @@
 // (with fallbacks where no shell runs, as in a test or a page opened outside one), and requests to
 // the API with the browser's session, with the platform's errors and version checks handled.
 
+import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
@@ -30,8 +31,8 @@ export {
   zoneLabel,
   type FormatOptions,
 } from "../../../src/lib/format";
-export { addCatalog, addCatalogs, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
-import { applyLocale } from "../../../src/lib/i18n";
+export { addCatalog, addCatalogs, addNames, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
+import { applyLocale, namesFrom } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
 export interface Bootstrap {
@@ -62,7 +63,7 @@ export interface Bootstrap {
   api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
   /** `words`: the workspace's own words in the language (Admin, Interface words), over the catalogs. */
-  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string> };
+  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
@@ -107,6 +108,8 @@ export function bootstrap(): Bootstrap | null {
   // Read once per page: its words, direction and formats follow the person's language from here,
   // and its times the workspace's clock.
   if (cached) {
+    // The names of the workspace's models come through the API, with this page's credentials.
+    namesFrom((url) => request(url));
     applyLocale(cached.locale);
     setTimeZone(cached.locale?.timezone);
     setDisplayZone(cached.locale?.display_timezone);
@@ -302,8 +305,8 @@ const fallback: Shell = {
   },
   breadcrumbs: noop,
   badge: noop,
-  intent: Object.assign(() => Promise.reject(Object.assign(new Error("no shell: intents are not available"), { code: "no_handler" })), {
-    request: () => Promise.reject(new Error("this page was not opened for an intent")),
+  intent: Object.assign(() => Promise.reject(Object.assign(new Error(tr("no shell: intents are not available")), { code: "no_handler" })), {
+    request: () => Promise.reject(new Error(tr("this page was not opened for an intent"))),
     done: noop,
     cancel: noop,
   }) as Intent,
@@ -498,9 +501,9 @@ export function withPrintCsp(html: string): string {
 export async function openPrint(path: string): Promise<void> {
   // Opened inside the click, so pop-up blockers allow it, then filled in.
   const win = window.open("", "_blank");
-  if (!win) throw new Error("The print window was blocked. Allow pop-ups for this site and try again.");
-  win.document.title = "Preparing print…";
-  win.document.body.textContent = "Preparing print preview…";
+  if (!win) throw new Error(tr("The print window was blocked. Allow pop-ups for this site and try again."));
+  win.document.title = tr("Preparing print…");
+  win.document.body.textContent = tr("Preparing print preview…");
   try {
     const html = await request<string>(path);
     const url = URL.createObjectURL(new Blob([withPrintCsp(html)], { type: "text/html" }));
@@ -585,7 +588,7 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
   try {
     res = await fetch(up.url, { method: up.method, headers: up.headers, body: file });
   } catch {
-    throw new Error("Could not reach the file storage service. Check your connection, or ask an administrator to allow uploads from this site.");
+    throw new Error(tr("Could not reach the file storage service. Check your connection, or ask an administrator to allow uploads from this site."));
   }
   if (!res.ok) throw new Error(`The file storage service refused the upload (${res.status}).`);
   return api.post<StoredFile>(`/api/files/uploads/${up.upload_id}/complete`);

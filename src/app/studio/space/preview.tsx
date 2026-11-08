@@ -27,7 +27,7 @@ import {
 import { useDebounced } from "@/ui/kit";
 import { BLOCK_ICON, BlockSkeleton, BlockView } from "./BlockView";
 import { BLOCK_KINDS, blockIssues, cleanBlock, SHORTCUT_TARGETS, targetOf, type BlockType } from "./model";
-import { isolate } from "@ferrum/client";
+import { isolate, t } from "@ferrum/client";
 
 export const widgetError = (e: unknown): WidgetError =>
   e instanceof ApiError ? { error: e.code, message: e.message, fields: e.fields } : { error: "error", message: errorMessage(e) };
@@ -79,7 +79,7 @@ export function BlockPreview({ block }: { block: SpaceBlock }) {
     case "heading":
       return <BlockView widget={{ type: "heading", text: b.text, level: b.level ?? 2 }} />;
     case "markdown":
-      return b.content.trim() ? <BlockView widget={{ type: "markdown", content: b.content }} /> : <Unfinished type="markdown" message="Write some text" />;
+      return b.content.trim() ? <BlockView widget={{ type: "markdown", content: b.content }} /> : <Unfinished type="markdown" message={t("Write some text")} />;
   }
 }
 
@@ -121,7 +121,7 @@ function ListPreview({ b }: { b: ListBlock }) {
 
 function ChartPreview({ b }: { b: ChartBlock }) {
   const q = useChartData(b.chart);
-  const label = useRecordLabels("charts").get(b.chart) ?? "Chart";
+  const label = useRecordLabels("charts").get(b.chart) ?? t("Chart");
   if (q.isLoading) return <BlockSkeleton type="chart" />;
   if (!q.data) return <BlockView widget={{ type: "chart", chart: { label, chart_type: "bar" }, error: widgetError(q.error) }} />;
   return <BlockView widget={{ type: "chart", chart: q.data.chart, data: q.data.data }} />;
@@ -129,7 +129,7 @@ function ChartPreview({ b }: { b: ChartBlock }) {
 
 function CardPreview({ b }: { b: CardBlock }) {
   const q = useCardData(b.card);
-  const label = useRecordLabels("cards").get(b.card) ?? "Number card";
+  const label = useRecordLabels("cards").get(b.card) ?? t("Number card");
   if (q.isLoading) return <BlockSkeleton type="card" />;
   if (!q.data) return <BlockView widget={{ type: "card", card: { label }, error: widgetError(q.error) }} />;
   return <BlockView widget={{ ...q.data, type: "card" }} />;

@@ -34,7 +34,7 @@ export function browserName(ua: string): string {
  *  browser out itself and signs out everywhere for every workspace too (`everywhere`). */
 export function Devices({
   signOutHere = () => shell().session.signOut(),
-  everywhere = { path: "/api/auth/logout_all", message: "Every browser and app signed in as you is signed out, this one too. API keys keep working." },
+  everywhere = { path: "/api/auth/logout_all", message: t("Every browser and app signed in as you is signed out, this one too. API keys keep working.") },
 }: {
   signOutHere?: () => void;
   everywhere?: { path: string; message: string };
