@@ -3133,6 +3133,12 @@ const words: Record<string, string> = {
   "Diagram": "مخطط",
   "Goes on to {targets}": "تمضي إلى {targets}",
   "The source is not valid JSON, so the diagram cannot show it: {error}": "المصدر ليس JSON صالحًا، لذا لا يستطيع المخطط عرضه: {error}",
+  "Evidence": "الأدلة",
+  "Downloaded": "تم التنزيل",
+  "{size} KB": "{size} ك.ب",
+  "No files yet. What is attached here is for this task alone.": "لا ملفات بعد. ما يُرفق هنا لهذه المهمة وحدها.",
+  "Attach a file": "أرفق ملفًا",
+  "Attached": "أُرفق",
 };
 
 export default words;
