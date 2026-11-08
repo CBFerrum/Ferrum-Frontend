@@ -21,7 +21,7 @@ export function DateRangeInput({
   onChange,
   label,
   allowEmpty = true,
-  emptyLabel = "All time",
+  emptyLabel = t("All time"),
   invalid,
   className,
 }: {

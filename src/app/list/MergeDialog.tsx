@@ -49,7 +49,7 @@ function Compare({ meta, a, b, onClose, onDone }: { meta: EntityMeta; a: Doc; b:
       const values = mergedValues(fields, other, picks);
       if (Object.keys(values).length) await api.patch(docPath(meta.name, keepId), values, { ifMatch: keep.version });
       const done = await api.post<{ links_moved: number }>(docPath(meta.name, keepId, "merge"), { duplicate: String(other.id), reason: reason.trim() });
-      toast(t("Merged. {links_moved} {value} moved to {meta}.", { links_moved: done.links_moved, value: done.links_moved === 1 ? "link" : "links", meta: recordTitle(meta, keep) }));
+      toast((done.links_moved === 1 ? t("Merged. {links_moved} link moved to {meta}.", { links_moved: done.links_moved, meta: recordTitle(meta, keep) }) : t("Merged. {links_moved} links moved to {meta}.", { links_moved: done.links_moved, meta: recordTitle(meta, keep) })));
       void qc.invalidateQueries({ queryKey: ["list", meta.name] });
       void qc.invalidateQueries({ queryKey: ["view", meta.name] });
       void qc.invalidateQueries({ queryKey: ["peek", meta.name] });

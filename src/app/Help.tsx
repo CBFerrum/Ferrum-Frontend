@@ -110,7 +110,7 @@ export function HelpArticle() {
         ) : (
           <li>{article(meta.label) === "an" ? tr("An") : "A"} {tr("{value} counts as soon as it is saved, and can be changed later.", { value: meta.label.toLowerCase() })}</li>
         )}
-        {meta.numbering ? <li>{tr("Each gets its number when it is")} {meta.numbering.on === "submit" ? tr("submitted") : tr("saved")}: {isolate(meta.numbering.template)}.</li> : null}
+        {meta.numbering ? <li>{(meta.numbering.on === "submit" ? tr("Each gets its number when it is submitted") : tr("Each gets its number when it is saved"))}: {isolate(meta.numbering.template)}.</li> : null}
         {meta.company_scoped ? <li>{tr("It belongs to one company; people limited to some companies see only theirs.")}</li> : null}
         {meta.workflow ? <li>{tr("It goes through {value}, as the people allowed to move it decide.", { value: meta.workflow.states.map((s) => s.name).join(", then ") })}</li> : null}
       </ul>
@@ -133,7 +133,7 @@ export function HelpArticle() {
                     {f.required ? <span className="muted"> {tr("(required)")}</span> : f.required_if ? <span className="muted"> {tr("(sometimes required)")}</span> : null}
                   </td>
                   <td>{isolate(kind(f, meta, labelOf))}{f.read_only ? tr(", filled in for you") : ""}</td>
-                  <td>{f.description ?? ""}</td>
+                  <td>{isolate(f.description ?? "")}</td>
                 </tr>
               ))}
             </tbody>

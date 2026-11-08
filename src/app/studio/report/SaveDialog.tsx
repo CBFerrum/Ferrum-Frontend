@@ -33,9 +33,9 @@ export interface SaveMeta {
 export type SaveMode = "create" | "copy" | "settings";
 
 const TITLE: Record<SaveMode, [string, string]> = {
-  create: ["Save report", "Save"],
-  copy: ["Save a copy", "Save copy"],
-  settings: ["Report settings", "Save"],
+  get create(): [string, string] { return [t("Save report"), t("Save")]; },
+  get copy(): [string, string] { return [t("Save a copy"), t("Save copy")]; },
+  get settings(): [string, string] { return [t("Report settings"), t("Save")]; },
 };
 
 /** Roles to share with: the workspace's for administrators, else the viewer's own (the server checks every name). */
@@ -76,7 +76,7 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
   const modules = index.data?.modules ?? [];
   const [title, action] = TITLE[mode];
   const labelIssues = issuesAt(issues, "label");
-  const roleIssues = [...issuesAt(issues, "roles"), ...(missingRoles ? ["Choose at least one role"] : [])];
+  const roleIssues = [...issuesAt(issues, "roles"), ...(missingRoles ? [t("Choose at least one role")] : [])];
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (m.sharing === "roles" && !m.roles.length) return setMissingRoles(true);
@@ -129,9 +129,9 @@ export function SaveDialog({ mode, initial, busy, issues, general, onCancel, onS
             <RadioGroup value={m.sharing} onValueChange={(v) => setM({ ...m, sharing: v as Sharing })} className="gap-2">
               {(
                 [
-                  ["private", Lock, "Only me", "Administrators and report managers can still open it."],
-                  ["roles", Users, "People with chosen roles", undefined],
-                  ["everyone", Globe, "Everyone in the workspace", undefined],
+                  ["private", Lock, t("Only me"), t("Administrators and report managers can still open it.")],
+                  ["roles", Users, t("People with chosen roles"), undefined],
+                  ["everyone", Globe, t("Everyone in the workspace"), undefined],
                 ] as const
               ).map(([value, Icon, text, hint]) => (
                 <Label key={value} htmlFor={`${id}-${value}`} className="items-start gap-3 rounded-md border border-border p-3 font-normal has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">

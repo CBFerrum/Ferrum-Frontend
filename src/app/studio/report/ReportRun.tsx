@@ -270,7 +270,7 @@ export function ReportRun({ id }: { id: string }) {
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {isolate(data.meta.row_count.toLocaleString())} {data.meta.row_count === 1 ? t("row") : t("rows")} {t("· computed in {n} ms", { n: Math.round(data.meta.sql_ms) })}
+            {data.meta.row_count === 1 ? t("1 row · computed in {ms} ms", { ms: Math.round(data.meta.sql_ms) }) : t("{n} rows · computed in {ms} ms", { n: data.meta.row_count.toLocaleString(), ms: Math.round(data.meta.sql_ms) })}
           </p>
         </div>
       )}

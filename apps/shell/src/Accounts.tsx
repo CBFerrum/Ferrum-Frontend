@@ -5,6 +5,7 @@
 // the person shows the one step it needs: going on as this account, adding the workspace (proving
 // once that its account is theirs), its single sign-on, two-factor sign-in, or no access.
 
+import { placed } from "../../../src/lib/placed";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, KeyRound, LogOut, Plus } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -249,7 +250,7 @@ function Home() {
           signOutHere={() => void signOut()}
           everywhere={{
             path: "/api/accounts/sign-out-everywhere",
-            message: "Every browser and app signed in to your Ferrum account, or to any workspace you added, is signed out, this one too.",
+            message: t("Every browser and app signed in to your Ferrum account, or to any workspace you added, is signed out, this one too."),
           }}
         />
       </Card>
@@ -377,7 +378,7 @@ function Join({ request, join, go }: StepProps & { join: NonNullable<EnterReques
   return (
     <>
       <p className="acct-quiet">
-        {t("{name} has an account for", { name: ws.name })} <strong>{isolate(email ?? "")}</strong>{t(". Show it is yours once; from then on you go in with your Ferrum account.")}
+        {placed(t("{name} has an account for {p1}. Show it is yours once; from then on you go in with your Ferrum account."), { name: ws.name, p1: <strong>{isolate(email ?? "")}</strong> })}
       </p>
       {join.click ? (
         <>

@@ -79,7 +79,7 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
   try {
     res = await fetch(up.url, { method: up.method, headers: up.headers, body: file });
   } catch {
-    throw new Error("Could not reach the file storage service. Check your connection, or ask an administrator to allow uploads from this site.");
+    throw new Error(t("Could not reach the file storage service. Check your connection, or ask an administrator to allow uploads from this site."));
   }
   if (!res.ok) throw new Error(t("The file storage service refused the upload ({status}).", { status: res.status }));
   return api.post<StoredFile>(`/api/files/uploads/${up.upload_id}/complete`);

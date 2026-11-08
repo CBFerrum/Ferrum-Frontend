@@ -1,5 +1,6 @@
 // Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, domains, personal data, workspace settings.
 
+import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
@@ -162,11 +163,16 @@ function PersonalData() {
           reason: reason.trim(),
         },
       );
-      const kept = res.retained.length ? `; ${res.retained.length} kept for the reasons given` : "";
-      const exports = res.exports_deleted ? `; ${res.exports_deleted} stored ${res.exports_deleted === 1 ? "export" : "exports"} deleted` : "";
-      toast(
-        tr("Erased {length} {value}{value2}; {audit_events_redacted} history entries redacted{kept}{exports}", { length: res.erased.length, value: res.erased.length === 1 ? "record" : "records", value2: res.account_erased ? " and the login account" : "", audit_events_redacted: res.audit_events_redacted, kept, exports }),
-      );
+      const n = res.erased.length;
+      const said = [
+        n === 1
+          ? res.account_erased ? tr("Erased 1 record and the login account") : tr("Erased 1 record")
+          : res.account_erased ? tr("Erased {n} records and the login account", { n }) : tr("Erased {n} records", { n }),
+        tr("{n} history entries redacted", { n: res.audit_events_redacted }),
+        ...(res.retained.length ? [tr("{n} kept for the reasons given", { n: res.retained.length })] : []),
+        ...(res.exports_deleted ? [res.exports_deleted === 1 ? tr("1 stored export deleted") : tr("{n} stored exports deleted", { n: res.exports_deleted })] : []),
+      ];
+      toast(said.join("; "));
       setFound(null);
       setReason("");
     } catch (err) {
@@ -225,11 +231,7 @@ function PersonalData() {
                       <td className="muted">
                         {r.table ? (
                           <>
-                            {r.erases.includes(r.table)
-                              ? tr("their ")
-                              : tr("{value} in their ", { value: r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", ") })}
-                            {r.rows === 1 ? tr("row") : tr("{rows} rows", { rows: String(r.rows) })} {tr("of")} <FieldLabels entity={r.entity} names={[r.table]} />
-                            {r.erases.includes(r.table) ? tr(", removed") : ""}
+                            {placed(r.erases.includes(r.table) ? (r.rows === 1 ? tr("their row of {table}, removed") : tr("their {rows} rows of {table}, removed", { rows: String(r.rows) })) : r.rows === 1 ? tr("{value} in their row of {table}", { value: r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", ") }) : tr("{value} in their {rows} rows of {table}", { value: r.erases.map((f) => f.slice(r.table!.length + 1).replace(/_/g, " ")).join(", "), rows: String(r.rows) }), { table: <FieldLabels entity={r.entity} names={[r.table]} /> })}
                           </>
                         ) : (
                           <FieldLabels entity={r.entity} names={r.erases} />
@@ -400,7 +402,7 @@ function WorkspaceExport() {
   const making = latest?.status === "queued" || latest?.status === "running";
   const start = async () => {
     setBusy(true);
-    if (await attempt(() => api.post("/api/admin/export", {}), "The export is being made")) await qc.invalidateQueries({ queryKey: ["admin", "exports"] });
+    if (await attempt(() => api.post("/api/admin/export", {}), tr("The export is being made"))) await qc.invalidateQueries({ queryKey: ["admin", "exports"] });
     setBusy(false);
   };
   const save = (part: { id: string; file_name: string }) => void attempt(() => downloadFile(`/api/jobs/${latest!.id}/parts/${part.id}`, part.file_name));
@@ -434,11 +436,13 @@ function WorkspaceExport() {
         {latest?.status === "done" && !gone && (
           <>
             <p className="faint">
-              {tr("Made")} {latest.finished_at ? formatDateTime(latest.finished_at) : ""}{tr("; kept {days} days, unless a personal-data erasure deletes it first.", { days })}
+              {placed(tr("Made {p1}; kept {days} days, unless a personal-data erasure deletes it first."), { p1: latest.finished_at ? formatDateTime(latest.finished_at) : "", days: days })}
             </p>
             {latest.result?.files_missing ? (
               <Alert tone="warning">
-                {latest.result.files_missing} {latest.result.files_missing === 1 ? tr("file") : tr("files")} {tr("the storage no longer has")} {latest.result.files_missing === 1 ? tr("was") : tr("were")} {tr("left out; the export's manifest names them.")}
+                {latest.result.files_missing === 1
+                  ? tr("1 file the storage no longer has was left out; the export's manifest names it.")
+                  : tr("{n} files the storage no longer has were left out; the export's manifest names them.", { n: latest.result.files_missing })}
               </Alert>
             ) : null}
             <ul className="stack" style={{ gap: 4 }}>
@@ -505,7 +509,7 @@ function PlanAndUsage() {
         {(u) => (
           <>
             <p className="muted">{u.plan ? tr("This workspace is on the {plan} plan.", { plan: u.plan }) : tr("This workspace is on no plan: its operator sets what it may use.")}</p>
-            {u.state !== "active" && <Alert tone="warning">{tr("This workspace's account is {state}{value}", { state: u.state, value: u.note ? `: ${u.note}` : "." })}</Alert>}
+            {u.state !== "active" && <Alert tone="warning">{(u.note ? tr("This workspace's account is {state}: {note}", { state: u.state, note: u.note }) : tr("This workspace's account is {state}.", { state: u.state }))}</Alert>}
             <table className="table">
               <thead>
                 <tr>
@@ -862,7 +866,7 @@ function Users() {
       confirmLabel: u.is_active ? tr("Deactivate") : tr("Activate"),
       danger: u.is_active,
     });
-    if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/active`, { active: !u.is_active }), u.is_active ? "User deactivated" : "User activated")))
+    if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/active`, { active: !u.is_active }), u.is_active ? tr("User deactivated") : tr("User activated"))))
       void refresh();
   };
   const resetTwoFactor = async (u: User) => {
@@ -872,7 +876,7 @@ function Users() {
       confirmLabel: tr("Reset"),
       danger: true,
     });
-    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/two-factor/reset`), "Two-factor sign-in reset"))) void refresh();
+    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/two-factor/reset`), tr("Two-factor sign-in reset")))) void refresh();
   };
   const unlinkSso = async (u: User) => {
     const ok = await confirmDialog({
@@ -880,7 +884,7 @@ function Users() {
       message: tr("For an identity that changed at the provider, or an account handed to someone else: their next single sign-on links the identity it brings."),
       confirmLabel: tr("Unlink"),
     });
-    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/sso/unlink`), "Unlinked"))) void refresh();
+    if (ok && (await attempt(() => api.post(`/api/admin/users/${u.id}/sso/unlink`), tr("Unlinked")))) void refresh();
   };
   const changeKind = async (u: User) => {
     const toPortal = (u.kind ?? "member") === "member";
@@ -891,7 +895,7 @@ function Users() {
         : tr("They will use the workspace's apps with the roles you give them. They are signed out everywhere now."),
       confirmLabel: toPortal ? tr("Make portal person") : tr("Make member"),
     });
-    if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/kind`, { kind: toPortal ? "portal" : "member" }), "Changed"))) void refresh();
+    if (ok && (await attempt(() => api.put(`/api/admin/users/${u.id}/kind`, { kind: toPortal ? "portal" : "member" }), tr("Changed")))) void refresh();
   };
 
   return (
@@ -1084,7 +1088,7 @@ function EditRolesDialog({ user, roles, onClose, onDone }: { user: User | null; 
     if (!user) return;
     setBusy(true);
     const until = roleEnds(value, through, user.role_until);
-    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value, until }), "Roles updated");
+    const ok = await attempt(() => api.put(`/api/admin/users/${user.id}/roles`, { roles: value, until }), tr("Roles updated"));
     setBusy(false);
     if (ok) {
       onDone();
@@ -1333,7 +1337,7 @@ function Roles() {
   };
 
   const entities = [...(index?.entities ?? [])].sort((a, b) => a.label.localeCompare(b.label));
-  const label = (name: string) => (name === "*" ? "All entities (*)" : (index?.entities.find((e) => e.name === name)?.label ?? name));
+  const label = (name: string) => (name === "*" ? tr("All entities (*)") : (index?.entities.find((e) => e.name === name)?.label ?? name));
 
   return (
     <Loaded q={roles}>
@@ -1517,7 +1521,7 @@ function RoleConflicts({ roles }: { roles: string[] }) {
       confirmLabel: tr("Allow together"),
       danger: true,
     });
-    if (ok && (await attempt(() => api.del("/api/admin/role-conflicts", { query: { role_a: c.role_a, role_b: c.role_b } }), "Allowed together"))) void refresh();
+    if (ok && (await attempt(() => api.del("/api/admin/role-conflicts", { query: { role_a: c.role_a, role_b: c.role_b } }), tr("Allowed together")))) void refresh();
   };
   return (
     <section className="card card-pad stack" aria-labelledby="conflicts-title">
@@ -1748,7 +1752,7 @@ function Packages() {
   const install = async (p: Package) => {
     const ok = await confirmDialog({
       title: tr("Install {value}?", { value: p.label ?? p.name }),
-      message: tr("This adds its entities, roles and data to the workspace{value}.", { value: p.depends.length ? ` (requires ${p.depends.join(", ")})` : "" }),
+      message: (p.depends.length ? tr("This adds its entities, roles and data to the workspace (requires {value1}).", { value1: p.depends.join(", ") }) : tr("This adds its entities, roles and data to the workspace.")),
       confirmLabel: tr("Install"),
     });
     if (!ok) return;
@@ -1766,7 +1770,7 @@ function Packages() {
             {data.packages.map((p) => (
               <section key={p.name} className="card">
                 <div className="card-head">
-                  <h2>{p.label ?? p.name}</h2>
+                  <h2>{isolate(p.label ?? p.name)}</h2>
                   <span className="faint mono">
                     {isolate(p.name)}@{isolate(p.version)}
                   </span>
@@ -1804,9 +1808,9 @@ interface Backfill {
 }
 
 const BACKFILL_STATE: Record<Backfill["state"], { tone: "green" | "amber" | "neutral"; text: string }> = {
-  waiting: { tone: "neutral", text: "Waiting for the upkeep" },
-  running: { tone: "amber", text: "Running" },
-  done: { tone: "green", text: "Done" },
+  waiting: { tone: "neutral", get text() { return tr("Waiting for the upkeep"); } },
+  running: { tone: "amber", get text() { return tr("Running"); } },
+  done: { tone: "green", get text() { return tr("Done"); } },
 };
 
 /** Data the installed packages' releases move in batches: how far each got, and the rows it could
@@ -1913,10 +1917,10 @@ const TARGET_LABEL = (t: string, apps: { app: string; title: string }[]) =>
   t === "shell" ? tr("This workspace") : t === "portal" ? tr("The portal") : tr("{value}'s public site", { value: apps.find((a) => `site:${a.app}` === t)?.title ?? t.slice(5) });
 
 const DOMAIN_STATUS: Record<Domain["status"], { tone: "green" | "amber" | "red" | "neutral"; text: string }> = {
-  verified: { tone: "green", text: "Working" },
-  pending: { tone: "amber", text: "Waiting for DNS" },
-  failing: { tone: "red", text: "Not reaching Ferrum" },
-  released: { tone: "neutral", text: "Released, redirecting" },
+  verified: { tone: "green", get text() { return tr("Working"); } },
+  pending: { tone: "amber", get text() { return tr("Waiting for DNS"); } },
+  failing: { tone: "red", get text() { return tr("Not reaching Ferrum"); } },
+  released: { tone: "neutral", get text() { return tr("Released, redirecting"); } },
 };
 
 /** The workspace's own addresses: for itself, its portal and its apps' public sites. A custom
@@ -1970,7 +1974,7 @@ function Domains() {
       confirmLabel: tr("Remove"),
       danger: true,
     });
-    if (ok && (await attempt(() => api.del(`/api/admin/domains/${encodeURIComponent(d.host)}`), "Domain removed"))) void refresh();
+    if (ok && (await attempt(() => api.del(`/api/admin/domains/${encodeURIComponent(d.host)}`), tr("Domain removed")))) void refresh();
   };
   return (
     <section className="card">
@@ -1985,15 +1989,13 @@ function Domains() {
         {(data) => (
           <div className="card-body stack">
             <p className="muted">
-              {tr("Use your own address for this workspace, its portal or an app's public site.")}{isolate(" ")}
-              {data.point_to ? (
+              {placed(tr("Use your own address for this workspace, its portal or an app's public site. {p1} Ferrum checks it within a few minutes and serves it with its own certificate."), { p1: data.point_to ? (
                 <>
-                  {tr("Point the domain at")} <span className="mono">{isolate(data.point_to)}</span> {tr("with a CNAME record;")}
+                  {placed(tr("Point the domain at {p1} with a CNAME record;"), { p1: <span className="mono">{isolate(data.point_to)}</span> })}
                 </>
               ) : (
                 <>{tr("Point the domain at this server;")}</>
-              )}{isolate(" ")}
-              {tr("Ferrum checks it within a few minutes and serves it with its own certificate.")}
+              ) })}
             </p>
             {!data.domains.length ? (
               <EmptyState title={tr("No domains yet")} icon="external" />
@@ -2114,7 +2116,7 @@ function Webhooks() {
   };
   const remove = async (w: Webhook) => {
     if (!(await confirmDialog({ title: tr("Delete webhook {name}?", { name: w.name }), message: tr("Pending deliveries are dropped."), confirmLabel: tr("Delete"), danger: true }))) return;
-    if (await attempt(() => api.del(`/api/admin/webhooks/${w.id}`), "Webhook deleted")) void refresh();
+    if (await attempt(() => api.del(`/api/admin/webhooks/${w.id}`), tr("Webhook deleted"))) void refresh();
   };
 
   return (
@@ -2209,7 +2211,7 @@ function Webhooks() {
       <SecretDialog
         secret={secret?.secret ?? null}
         title={tr("Webhook signing secret")}
-        note={tr("This secret is shown only once. {value}", { value: secret?.note ?? "Use it to verify the X-Ferrum-Signature header." })}
+        note={tr("This secret is shown only once. {value}", { value: secret?.note ?? tr("Use it to verify the X-Ferrum-Signature header.") })}
         onClose={() => setSecret(null)}
       />
     </section>
@@ -2254,11 +2256,14 @@ function SingleSignOn() {
   const remove = async (p: SsoProvider) => {
     const ok = await confirmDialog({
       title: tr("Remove {label}?", { label: p.label }),
-      message: tr("Its button leaves the sign-in page and {linked_users} linked account{value} unlinked. The accounts stay.", { linked_users: p.linked_users, value: p.linked_users === 1 ? " is" : "s are" }),
+      message:
+        p.linked_users === 1
+          ? tr("Its button leaves the sign-in page and 1 linked account is unlinked. The accounts stay.")
+          : tr("Its button leaves the sign-in page and {linked_users} linked accounts are unlinked. The accounts stay.", { linked_users: p.linked_users }),
       confirmLabel: tr("Remove"),
       danger: true,
     });
-    if (ok && (await attempt(() => api.del(`/api/admin/sso/${p.id}`), "Provider removed"))) void refresh();
+    if (ok && (await attempt(() => api.del(`/api/admin/sso/${p.id}`), tr("Provider removed")))) void refresh();
   };
   const copy = async (value: string, what: string) => {
     try {
@@ -2293,15 +2298,15 @@ function SingleSignOn() {
         <p className="muted">
           {tr("People sign in with their account at an OpenID Connect provider (Microsoft Entra ID, Okta, Google Workspace, Keycloak, Auth0…). Register Ferrum there as a web application with this redirect URI, then add the provider here with the client ID and secret it gives you.")}
         </p>
-        {copyable(ssoRedirectUri(), "Redirect URI", q.data?.saml ? "Redirect URI (OpenID Connect)" : undefined)}
+        {copyable(ssoRedirectUri(), tr("Redirect URI"), q.data?.saml ? tr("Redirect URI (OpenID Connect)") : undefined)}
         {q.data?.saml && (
           <>
             <p className="muted">
               {tr("Or through a SAML 2.0 identity provider (AD FS, Entra ID, Okta, OneLogin, PingFederate, Keycloak…): give it this workspace's metadata address, or its entity ID and assertion consumer service, then add the provider here with its metadata.")}
             </p>
-            {copyable(q.data.saml.metadata_url, "Metadata address", q.data.saml.metadata_url === q.data.saml.entity_id ? "Metadata address, also its entity ID" : "Metadata address")}
-            {q.data.saml.metadata_url !== q.data.saml.entity_id && copyable(q.data.saml.entity_id, "Entity ID", "Entity ID")}
-            {copyable(q.data.saml.acs_url, "Assertion consumer service", "Assertion consumer service (HTTP-POST)")}
+            {copyable(q.data.saml.metadata_url, tr("Metadata address"), q.data.saml.metadata_url === q.data.saml.entity_id ? tr("Metadata address, also its entity ID") : tr("Metadata address"))}
+            {q.data.saml.metadata_url !== q.data.saml.entity_id && copyable(q.data.saml.entity_id, tr("Entity ID"), tr("Entity ID"))}
+            {copyable(q.data.saml.acs_url, tr("Assertion consumer service"), tr("Assertion consumer service (HTTP-POST)"))}
           </>
         )}
       </div>
@@ -2578,7 +2583,7 @@ const EVENTS = ["created", "updated", "submitted", "cancelled", "deleted"];
 const TEMPLATES: Record<string, unknown> = {
   "Set fields": { type: "set_fields", values: { remarks: "'Updated by automation'" } },
   "Create document": { type: "create_document", entity: "Project", values: { project_name: "'Follow-up for ' + doc.number" } },
-  Notify: { type: "notify", to: "owner", get title() { return tr("'Document ' + doc.number + ' needs attention'"); }, body: "doc.remarks" },
+  Notify: { type: "notify", to: "owner", title: "'Document ' + doc.number + ' needs attention'", body: "doc.remarks" },
   Email: { type: "email", to: "doc.email", subject: "'Update on ' + doc.number", body: "'Hello, your document has changed.'" },
 };
 
@@ -2589,7 +2594,7 @@ function Automations() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "automations"] });
   const remove = async (a: Automation) => {
     if (!(await confirmDialog({ title: tr("Delete automation {name}?", { name: a.name }), confirmLabel: tr("Delete"), danger: true }))) return;
-    if (await attempt(() => api.del(`/api/admin/automations/${a.id}`), "Automation deleted")) void refresh();
+    if (await attempt(() => api.del(`/api/admin/automations/${a.id}`), tr("Automation deleted"))) void refresh();
   };
   return (
     <section className="card">
@@ -2677,7 +2682,7 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
       setForm({ ...form, actions: JSON.stringify(next, null, 2) });
       setError(null);
     } catch {
-      setError("Fix the actions JSON before adding a template.");
+      setError(tr("Fix the actions JSON before adding a template."));
     }
   };
 
@@ -2687,9 +2692,9 @@ function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automatio
     try {
       actions = JSON.parse(form.actions);
     } catch {
-      return setError("Actions must be valid JSON (an array of action objects).");
+      return setError(tr("Actions must be valid JSON (an array of action objects)."));
     }
-    if (!Array.isArray(actions)) return setError("Actions must be a JSON array.");
+    if (!Array.isArray(actions)) return setError(tr("Actions must be a JSON array."));
     setBusy(true);
     setError(null);
     try {
@@ -2829,7 +2834,7 @@ function fileToBase64(file: File): Promise<string> {
       const url = String(r.result);
       resolve(url.slice(url.indexOf(",") + 1));
     };
-    r.onerror = () => reject(r.error ?? new Error("Could not read the file"));
+    r.onerror = () => reject(r.error ?? new Error(tr("Could not read the file")));
     r.readAsDataURL(file);
   });
 }
@@ -2856,18 +2861,18 @@ function PluginAccess({ m }: { m: PluginManifest }) {
   const rows: [string, ReactNode][] = [];
   if (m.permissions?.length)
     rows.push([
-      "Records",
+      tr("Records"),
       m.permissions.map((p) => (
         <div key={p.entity}>
           <span className="mono">{isolate(p.entity)}</span>: {VERBS.filter((v) => p[v]).join(", ") || tr("no access")}
         </div>
       )),
     ]);
-  if (m.entities?.length) rows.push(["Brings entities", m.entities.map((e) => e.label ?? e.name).join(", ")]);
-  if (m.hooks?.length) rows.push(["Runs on", m.hooks.map((h) => `${h.entity === "*" ? "every entity" : h.entity} · ${h.stage}`).join("; ")]);
+  if (m.entities?.length) rows.push([tr("Brings entities"), m.entities.map((e) => e.label ?? e.name).join(", ")]);
+  if (m.hooks?.length) rows.push([tr("Runs on"), m.hooks.map((h) => `${h.entity === "*" ? "every entity" : h.entity} · ${h.stage}`).join("; ")]);
   if (m.routes?.length)
     rows.push([
-      "HTTP routes",
+      tr("HTTP routes"),
       m.routes.map((r) => (
         <div key={r.path}>
           <span className="mono">{isolate(r.path)}</span> {r.public ? <Badge tone="amber">{tr("public")}</Badge> : <span className="faint">{tr("signed in")}</span>}
@@ -2884,9 +2889,9 @@ function PluginAccess({ m }: { m: PluginManifest }) {
         </div>
       )),
     ]);
-  if (m.subscriptions?.length) rows.push(["Listens to", m.subscriptions.join(", ")]);
+  if (m.subscriptions?.length) rows.push([tr("Listens to"), m.subscriptions.join(", ")]);
   if (m.schedules?.length) rows.push(["Schedules", m.schedules.map((s) => tr("{name} every {n} min", { name: s.name, n: Math.round(s.every_seconds / 60) })).join("; ")]);
-  rows.push(["Calls out to", m.http_hosts?.length ? m.http_hosts.join(", ") : "nothing (no network access)"]);
+  rows.push([tr("Calls out to"), m.http_hosts?.length ? m.http_hosts.join(", ") : tr("nothing (no network access)")]);
   return (
     <dl className="kv">
       {rows.map(([k, v]) => (
@@ -2920,7 +2925,7 @@ function Plugins() {
       confirmLabel: tr("Delete"),
       danger: true,
     });
-    if (ok && (await attempt(() => api.del(`/api/admin/plugins/${p.id}`), "Plugin deleted"))) void refresh();
+    if (ok && (await attempt(() => api.del(`/api/admin/plugins/${p.id}`), tr("Plugin deleted")))) void refresh();
   };
 
   return (
@@ -3011,8 +3016,8 @@ const MANIFEST_TEMPLATE = { name: "", version: "0.1.0", description: "", hooks: 
 export function parseManifest(text: string): { manifest?: Record<string, unknown>; error?: string } {
   try {
     const v: unknown = JSON.parse(text);
-    if (!v || typeof v !== "object" || Array.isArray(v)) return { error: "The manifest must be a JSON object." };
-    if (typeof (v as { name?: unknown }).name !== "string" || !(v as { name: string }).name.trim()) return { error: "The manifest needs a name." };
+    if (!v || typeof v !== "object" || Array.isArray(v)) return { error: tr("The manifest must be a JSON object.") };
+    if (typeof (v as { name?: unknown }).name !== "string" || !(v as { name: string }).name.trim()) return { error: tr("The manifest needs a name.") };
     return { manifest: v as Record<string, unknown> };
   } catch (e) {
     return { error: tr("Not valid JSON: {message}", { message: (e as Error).message }) };
@@ -3044,10 +3049,10 @@ function PluginDialog({ value, onClose, onDone }: { value: Partial<Plugin> | nul
   };
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!parsed.manifest) return setMessage(parsed.error ?? "Check the manifest.");
+    if (!parsed.manifest) return setMessage(parsed.error ?? tr("Check the manifest."));
     if (value?.id && parsed.manifest.name !== value.name) return setMessage(tr("A new version must keep the name {name}.", { name: String(value.name) }));
-    if (!file) return setMessage("Choose the plugin module (.wasm, or .wat text).");
-    if (file.size > 8 * 1024 * 1024) return setMessage("Plugin modules are limited to 8 MB.");
+    if (!file) return setMessage(tr("Choose the plugin module (.wasm, or .wat text)."));
+    if (file.size > 8 * 1024 * 1024) return setMessage(tr("Plugin modules are limited to 8 MB."));
     setBusy(true);
     setMessage(null);
     setFieldErrors([]);
@@ -3278,7 +3283,7 @@ export function recordsScope(typed: string): string | undefined {
 /** What a key reaches, in words. */
 export function keyReaches(scope?: string | null): string {
   if (scope?.startsWith("records:")) return scope.slice("records:".length).split(";").join(", ").replaceAll("+", " and ").replaceAll("=", ": ");
-  return "the whole API";
+  return tr("the whole API");
 }
 
 /** Your keys to the API, or (`scope="dav"`) your app passwords for calendar and contacts apps. */
@@ -3316,9 +3321,9 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
     }
   };
   const revoke = async (k: ApiKey) => {
-    const message = app ? "Apps using this password stop syncing immediately." : "Integrations using this key stop working immediately.";
+    const message = app ? tr("Apps using this password stop syncing immediately.") : tr("Integrations using this key stop working immediately.");
     if (!(await confirmDialog({ title: tr("Revoke {name}?", { name: k.name }), message, confirmLabel: tr("Revoke"), danger: true }))) return;
-    if (await attempt(() => api.del(`/api/auth/api_keys/${k.id}`), app ? "App password revoked" : "API key revoked")) void refresh();
+    if (await attempt(() => api.del(`/api/auth/api_keys/${k.id}`), app ? tr("App password revoked") : tr("API key revoked"))) void refresh();
   };
 
   return (
@@ -3415,7 +3420,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
         title={app ? tr("Your new app password") : tr("Your new API key")}
         note={
           app
-            ? "Enter it in the app as the password, with your email as the user name. It cannot be shown again."
+            ? tr("Enter it in the app as the password, with your email as the user name. It cannot be shown again.")
             : "Store this key now: it cannot be shown again. Send it as Authorization: Bearer <key>."
         }
         onClose={() => setCreated(null)}

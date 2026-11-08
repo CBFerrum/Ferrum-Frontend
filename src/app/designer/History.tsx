@@ -90,7 +90,7 @@ export function LayoutHistory({
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{t("Original layout")}</p>
               <p className="text-xs text-muted-foreground">
-                {meta.custom ? t("As the entity was defined") : t("As its app defines it")}{t(", without layout customizations.")}
+                {(meta.custom ? t("As the entity was defined, without layout customizations.") : t("As its app defines it, without layout customizations."))}
               </p>
             </div>
             {!current && <Badge>{t("In use")}</Badge>}

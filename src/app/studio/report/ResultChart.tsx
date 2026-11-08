@@ -68,7 +68,7 @@ function slices(model: ChartModel, colors?: string[] | null): Slice[] {
   if (!s) return [];
   return model.rows.flatMap((r, i) => {
     const v = r[s.key];
-    return typeof v === "number" && v > 0 ? [{ name: r.label || "(not set)", value: v, fmt: r.fmt[s.key] ?? "", fill: chartColor(i, colors) }] : [];
+    return typeof v === "number" && v > 0 ? [{ name: r.label || tr("(not set)"), value: v, fmt: r.fmt[s.key] ?? "", fill: chartColor(i, colors) }] : [];
   });
 }
 

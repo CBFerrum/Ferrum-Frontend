@@ -100,7 +100,7 @@ function SavedEditor({ id }: { id: string }) {
       <div className="grid gap-3">
         <ErrorState
           title={record.error instanceof ApiError && [403, 404].includes(record.error.status) ? tr("This report cannot be edited here") : tr("The report could not be opened")}
-          error={record.error ?? new Error("Not found.")}
+          error={record.error ?? new Error(tr("Not found."))}
           onRetry={() => void record.refetch()}
         />
         <p className="text-center text-sm">
@@ -115,7 +115,7 @@ function SavedEditor({ id }: { id: string }) {
 
 const reducer = (h: History<BuilderState>, a: HistoryAction<BuilderState>) => historyReducer(h, a);
 const META_FIELDS = new Set(["label", "description", "sharing", "roles", "module"]);
-const AREA: Record<string, string> = { columns: "Columns", chart: "Chart", kind: "Report shape", spec: "Report settings" };
+const AREA: Record<string, string> = { get columns() { return tr("Columns"); }, get chart() { return tr("Chart"); }, get kind() { return tr("Report shape"); }, get spec() { return tr("Report settings"); } };
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
 const metaOf = (r: ReportRecord | undefined, label = ""): SaveMeta => ({
@@ -305,7 +305,7 @@ function Editor({ record }: { record?: ReportRecord }) {
       const other = all.filter((i) => !meta.includes(i) && !i.path.startsWith("spec."));
       setMetaIssues(meta);
       setSaveIssues(specs);
-      const messages = [...other.map((i) => `${AREA[i.path.split(/[.[]/)[0]] ?? i.path}: ${i.message}`), ...(specs.length ? ["Some report settings need a fix: they are marked in the settings panel."] : [])];
+      const messages = [...other.map((i) => `${AREA[i.path.split(/[.[]/)[0]] ?? i.path}: ${i.message}`), ...(specs.length ? [tr("Some report settings need a fix: they are marked in the settings panel.")] : [])];
       setGeneral(all.length ? messages : [errorMessage(e)]);
       if (meta.length && !dialog) setDialog(asNew ? (rec ? "copy" : "create") : "settings");
       if (!dialog && !meta.length) toast(all.length ? messages.join(" ") : errorMessage(e), "error");
@@ -502,7 +502,7 @@ function Editor({ record }: { record?: ReportRecord }) {
             />
           )}
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {isolate(result.meta.row_count.toLocaleString())} {result.meta.row_count === 1 ? tr("row") : tr("rows")} {tr("· computed in {n} ms", { n: Math.round(result.meta.sql_ms) })}
+            {result.meta.row_count === 1 ? tr("1 row · computed in {ms} ms", { ms: Math.round(result.meta.sql_ms) }) : tr("{n} rows · computed in {ms} ms", { n: result.meta.row_count.toLocaleString(), ms: Math.round(result.meta.sql_ms) })}
           </p>
         </div>
       </div>

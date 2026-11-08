@@ -280,15 +280,15 @@ export function useCurrencyPrecision(): (currencyId: unknown) => number | undefi
 
 export const SYSTEM_FIELD_LABELS: Record<string, string> = {
   id: "ID",
-  number: "Number",
-  docstatus: "Document Status",
-  version: "Version",
-  workflow_state: "Workflow State",
-  amended_from: "Amended From",
-  created_at: "Created",
-  created_by: "Created By",
-  updated_at: "Last Updated",
-  updated_by: "Updated By",
+  get number() { return tr("Number"); },
+  get docstatus() { return tr("Document Status"); },
+  get version() { return tr("Version"); },
+  get workflow_state() { return tr("Workflow State"); },
+  get amended_from() { return tr("Amended From"); },
+  get created_at() { return tr("Created"); },
+  get created_by() { return tr("Created By"); },
+  get updated_at() { return tr("Last Updated"); },
+  get updated_by() { return tr("Updated By"); },
 };
 
 export const DOCSTATUS_LABEL = ["Draft", "Submitted", "Cancelled"] as const;

@@ -4,6 +4,7 @@
 // primitives (Button, Dialog… as plain building blocks) are `@ferrum/kit/primitives`.
 export * from "../../../src/ui/kit";
 export { cn, insideNativeDialog } from "../../../src/lib/utils";
+export { placed } from "../../../src/lib/placed";
 export { Markdown } from "../../../src/app/studio/dashboard/MarkdownView";
 export { goBack, PageHeader, useUnsavedGuard } from "../../../src/app/studio/dashboard/ui";
 export { AppIcon } from "./AppIcon";

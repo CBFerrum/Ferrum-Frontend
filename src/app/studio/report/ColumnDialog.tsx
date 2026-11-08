@@ -12,7 +12,7 @@ import { formatCell, isNumericColumn, type CellOptions, type ColumnFormat, type 
 import { RULE_OPS } from "./state";
 import { t, isolate } from "@ferrum/client";
 
-const STYLE_LABEL: Record<FormatStyle | "auto", string> = { auto: "Automatic", number: "Number", int: "Whole number", currency: "Currency", percent: "Percent", bar: "Data bar" };
+const STYLE_LABEL: Record<FormatStyle | "auto", string> = { get auto() { return t("Automatic"); }, get number() { return t("Number"); }, get int() { return t("Whole number"); }, currency: "Currency", get percent() { return t("Percent"); }, get bar() { return t("Data bar"); } };
 const OP_LABEL: Record<FormatRule["op"], string> = { "=": "equals", get "!="() { return t("is not"); }, get ">"() { return t("greater than"); }, get ">="() { return t("at least"); }, get "<"() { return t("less than"); }, get "<="() { return t("at most"); }, between: "between" };
 const PALETTE = ["#16a34a", "#dc2626", "#d97706", "#2563eb", "#7c3aed", "#0891b2"];
 

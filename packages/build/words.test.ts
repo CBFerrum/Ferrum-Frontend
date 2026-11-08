@@ -31,3 +31,21 @@ describe("an app's own catalogs", () => {
     ]);
   });
 });
+
+describe("an app's names", () => {
+  it("are objects of text, each keeping its places, and no catalog of its pages' words", async () => {
+    const { catalogIssues, namesIssues } = await import("./words.mjs");
+    const dir = mkdtempSync(join(tmpdir(), "ferrum-names-"));
+    mkdirSync(join(dir, "locales", "names"), { recursive: true });
+    writeFileSync(join(dir, "Home.tsx"), `t("Save")`);
+    writeFileSync(join(dir, "locales", "ar.json"), JSON.stringify({ Save: "حفظ" }));
+    writeFileSync(join(dir, "locales", "names", "ar.json"), JSON.stringify({ Lead: "عميل محتمل", "Overdue by {days}": "متأخر", Junk: " " }));
+    writeFileSync(join(dir, "locales", "names", "hi.json"), "[1]");
+    expect(catalogIssues(dir)).toEqual([]);
+    expect(namesIssues(dir)).toEqual([
+      'locales/names/ar.json: "Overdue by {days}" keeps other places than {days}',
+      'locales/names/ar.json: "Junk" has no words',
+      "locales/names/hi.json: not an object of names",
+    ]);
+  });
+});

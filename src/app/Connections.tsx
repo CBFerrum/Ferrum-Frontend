@@ -192,9 +192,9 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
         <div>
           <h3>{isolate(c.name)}</h3>
           <p className="muted">
-            {connector?.label ?? c.provider}
+            {isolate(connector?.label ?? c.provider)}
             {connector?.api_version ? t(" · API {api_version}", { api_version: connector.api_version }) : ""}
-            {c.linked ? t(" · {value} {value2} linked", { value: c.linked.toLocaleString(), value2: c.linked === 1 ? "record" : "records" }) : ""}
+            {c.linked ? (c.linked === 1 ? t(" · {value} record linked", { value: c.linked.toLocaleString() }) : t(" · {value} records linked", { value: c.linked.toLocaleString() })) : ""}
           </p>
         </div>
         <div className="row">
@@ -224,7 +224,7 @@ function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector
       {!!c.health.drift && (
         <div className="connection-more">
           <button type="button" className="link-btn" aria-expanded={showing} onClick={() => setShowing((s) => !s)}>
-            {showing ? t("Hide the differences") : t("See the {drift} {value}", { drift: c.health.drift, value: c.health.drift === 1 ? "difference" : "differences" })}
+            {showing ? t("Hide the differences") : (c.health.drift === 1 ? t("See the {drift} difference", { drift: c.health.drift }) : t("See the {drift} differences", { drift: c.health.drift }))}
           </button>
           {showing && <Differences id={c.id} onChange={refresh} />}
         </div>
@@ -252,7 +252,7 @@ const asJson = (text: string, field: string) => {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    throw new ApiError(422, "invalid", `${field} is not valid JSON`, [{ field, message: "is not valid JSON" }] as FieldError[]);
+    throw new ApiError(422, "invalid", t("{field} is not valid JSON", { field }), [{ field, message: t("is not valid JSON") }] as FieldError[]);
   }
 };
 

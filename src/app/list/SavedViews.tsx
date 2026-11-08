@@ -73,7 +73,7 @@ export function SavedViews(p: Props) {
         <DropdownMenuTrigger
           ref={trigger}
           className="btn btn-default btn-md max-w-[16rem]"
-          aria-label={tr("Saved views: {value}{value2}", { value: a ? a.name : "standard view", value2: p.modified ? ", with unsaved changes" : "" })}
+          aria-label={(p.modified ? tr("Saved views: {value}, with unsaved changes", { value: a ? a.name : tr("standard view") }) : tr("Saved views: {value}", { value: a ? a.name : tr("standard view") }))}
         >
           <Bookmark className="size-4 shrink-0" aria-hidden="true" />
           <span className="truncate">{a ? a.name : t("Views")}</span>

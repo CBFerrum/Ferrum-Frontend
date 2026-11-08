@@ -22,17 +22,17 @@ import {
 import { t as tr } from "@ferrum/client";
 
 export const CHART_TYPE_LABEL: Record<ChartType, string> = {
-  bar: "Bar",
-  stacked_bar: "Stacked bar",
-  line: "Line",
-  area: "Area",
-  pie: "Pie",
-  donut: "Donut",
-  percentage: "Percentage",
-  heatmap: "Heatmap",
-  scatter: "Scatter",
-  funnel: "Funnel",
-  number: "Number",
+  get bar() { return tr("Bar"); },
+  get stacked_bar() { return tr("Stacked bar"); },
+  get line() { return tr("Line"); },
+  get area() { return tr("Area"); },
+  get pie() { return tr("Pie"); },
+  get donut() { return tr("Donut"); },
+  get percentage() { return tr("Percentage"); },
+  get heatmap() { return tr("Heatmap"); },
+  get scatter() { return tr("Scatter"); },
+  get funnel() { return tr("Funnel"); },
+  get number() { return tr("Number"); },
 };
 
 /** The value columns a chart can plot: numbers that are measures (or, for built-in reports, any number column). */

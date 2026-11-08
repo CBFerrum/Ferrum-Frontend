@@ -93,12 +93,12 @@ export function ActionDialog({
   };
 
   return (
-    <Dialog open onClose={onClose} title={action.label}>
+    <Dialog open onClose={onClose} title={isolate(action.label)}>
       <form className="stack" onSubmit={submit}>
         {action.confirm && <p className="muted">{isolate(action.confirm)}</p>}
         {error && <Alert tone="error">{isolate(error)}</Alert>}
         {params.map((p) => (
-          <Field key={p.name} label={p.label} htmlFor={`action-${p.name}`} required={p.required} error={fieldError(p.name)} hint={p.description ?? undefined}>
+          <Field key={p.name} label={isolate(p.label)} htmlFor={`action-${p.name}`} required={p.required} error={fieldError(p.name)} hint={isolate(p.description ?? undefined)}>
             {control(p)}
           </Field>
         ))}

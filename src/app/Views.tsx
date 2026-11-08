@@ -113,7 +113,7 @@ export function BoardView({ meta, field, onOpen, open, ...rest }: ViewProps & { 
     setMoving(String(r.id));
     try {
       await api.patch(docPath(meta.name, String(r.id)), { [field.name]: to || null }, { ifMatch: r.version });
-      toast(t("{meta} moved to {value}", { meta: recordTitle(meta, r), value: to || `no ${field.label.toLowerCase()}` }));
+      toast(to ? t("{meta} moved to {value}", { meta: recordTitle(meta, r), value: to }) : t("{meta}: {field} cleared", { meta: recordTitle(meta, r), field: field.label }));
     } catch (e) {
       toast(errorMessage(e), "error");
     } finally {

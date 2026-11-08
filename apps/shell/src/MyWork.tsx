@@ -82,11 +82,11 @@ export function byUrgency(items: WorkItem[], today = localDay()): WorkItem[] {
 }
 
 function dueLabel(due: string, today: string): { text: string; tone: "red" | "amber" | "neutral" } {
-  if (due < today) return { text: "Overdue", tone: "red" };
-  if (due === today) return { text: "Today", tone: "amber" };
+  if (due < today) return { text: t("Overdue"), tone: "red" };
+  if (due === today) return { text: t("Today"), tone: "amber" };
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (due === localDay(tomorrow)) return { text: "Tomorrow", tone: "neutral" };
+  if (due === localDay(tomorrow)) return { text: t("Tomorrow"), tone: "neutral" };
   const d = new Date(`${due}T00:00:00`);
   return { text: Number.isNaN(d.getTime()) ? due : d.toLocaleDateString(undefined, { day: "numeric", month: "short" }), tone: "neutral" };
 }
@@ -237,7 +237,7 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
             const body = (
               <>
                 <ItemMedia variant="icon" className="shell-work-media">
-                  {item.kind === "app" && source?.app ? <AppIcon name={source.app.icon} color={source.app.color} title={source.app.title} tile size={14} /> : (KIND_ICON[item.kind] ?? <CalendarClock aria-hidden />)}
+                  {item.kind === "app" && source?.app ? <AppIcon name={source.app.icon} color={source.app.color} title={isolate(source.app.title)} tile size={14} /> : (KIND_ICON[item.kind] ?? <CalendarClock aria-hidden />)}
                 </ItemMedia>
                 <ItemContent className="min-w-0">
                   <ItemTitle className="shell-work-title">{isolate(item.title)}</ItemTitle>

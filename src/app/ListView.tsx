@@ -622,7 +622,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                       <tr key={i} role="row">
                         {!phone && <td role="cell" />}
                         {columns.map((c) => (
-                          <td key={c.name} role="cell" data-label={c.label}>
+                          <td key={c.name} role="cell" data-label={isolate(c.label)}>
                             <div className="skeleton" />
                           </td>
                         ))}
@@ -661,7 +661,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                             );
                             const content = i !== 0 ? cell : phone ? <span className="flex items-center gap-1">{box}{title}</span> : title;
                             return (
-                              <td key={c.name} role="cell" data-label={c.label} className={NUMERIC_TYPES.has(c.field.type) && c.name !== "docstatus" ? "num" : undefined}>
+                              <td key={c.name} role="cell" data-label={isolate(c.label)} className={NUMERIC_TYPES.has(c.field.type) && c.name !== "docstatus" ? "num" : undefined}>
                                 {c.name in widths ? (
                                   <div className="truncate" style={sized(c.name)}>
                                     {content}

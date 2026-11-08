@@ -1,5 +1,6 @@
 // The design system: small, accessible building blocks styled by styles.css.
 
+import { isolate } from "@ferrum/client";
 import {
   cloneElement,
   Component,
@@ -219,7 +220,7 @@ export function Dialog({
         <div className="dialog-inner">
           <header className="dialog-header">
             <h2 id={titleId}>{title}</h2>
-            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <button type="button" className="icon-btn" aria-label={t("Close")} onClick={onClose}>
               <Icon name="x" />
             </button>
           </header>
@@ -277,7 +278,7 @@ export function Tabs({
           className="tab"
           onClick={() => onChange(t.id)}
         >
-          {t.label}
+          {typeof t.label === "string" ? isolate(t.label) : t.label}
         </button>
       ))}
     </div>
@@ -394,10 +395,10 @@ export function Toaster() {
   const list = useSyncExternalStore(toasts.subscribe, toasts.get);
   return (
     <div className="toaster" role="status" aria-live="polite">
-      {list.map((t) => (
-        <div key={t.id} className={`toast toast-${t.tone}`}>
-          <span>{t.message}</span>
-          <button type="button" className="icon-btn" aria-label="Dismiss notification" onClick={() => dismissToast(t.id)}>
+      {list.map((n) => (
+        <div key={n.id} className={`toast toast-${n.tone}`}>
+          <span>{n.message}</span>
+          <button type="button" className="icon-btn" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -434,7 +435,7 @@ export function ConfirmHost() {
     <Dialog
       open={!!req}
       onClose={() => close(false)}
-      title={req?.title ?? ""}
+      title={isolate(req?.title ?? "")}
       footer={
         <>
           {!req?.noCancel && <Button onClick={() => close(false)}>{req?.cancelLabel ?? t("Cancel")}</Button>}

@@ -59,7 +59,7 @@ export function LoadingBlock({ rows = 3, className }: { rows?: number; className
   );
 }
 
-export function ErrorBlock({ error, onRetry, title = "Something went wrong", className }: { error: unknown; onRetry?: () => void; title?: string; className?: string }) {
+export function ErrorBlock({ error, onRetry, title = t("Something went wrong"), className }: { error: unknown; onRetry?: () => void; title?: string; className?: string }) {
   return (
     <Empty className={cn("border", className)} role="alert">
       <EmptyHeader>
@@ -151,7 +151,7 @@ export function useUnsavedGuard(dirty: boolean, when?: BlockerFunction): { allow
   useEffect(() => {
     if (blocker.state !== "blocked" || asked.current) return;
     asked.current = true;
-    void confirm({ title: t("Discard your changes?"), message: "You have unsaved changes. Leaving now discards them.", confirmLabel: t("Discard"), danger: true }).then((ok) => {
+    void confirm({ title: t("Discard your changes?"), message: t("You have unsaved changes. Leaving now discards them."), confirmLabel: t("Discard"), danger: true }).then((ok) => {
       asked.current = false;
       if (ok) blocker.proceed();
       else blocker.reset();

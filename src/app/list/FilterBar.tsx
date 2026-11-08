@@ -5,7 +5,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { EMPTY, isWord, joinNumber, joinRange, PERIODS, SET, splitNumber, splitRange, type FilterState } from "../../lib/filters";
+import { EMPTY, isWord, joinNumber, joinRange, periods, SET, splitNumber, splitRange, type FilterState } from "../../lib/filters";
 import { t } from "../../lib/i18n";
 import type { Field } from "../../lib/meta";
 import { Field as FieldWrap, Icon, useDebounced } from "../../ui/kit";
@@ -13,15 +13,15 @@ import { LinkInput, useLinkTitle } from "../widgets";
 import { t as tr, isolate } from "@ferrum/client";
 
 const NUMBERS = new Set(["int", "decimal", "currency", "percent"]);
-const NUMBER_WORDS: Record<string, string> = { ">=": "at least", "<=": "at most", ">": "over", "<": "under" };
+const NUMBER_WORDS: Record<string, string> = { get ">="() { return tr("at least"); }, get "<="() { return tr("at most"); }, ">": "over", "<": "under" };
 
 /** The filters a chip shows in its text, from `f.<field>`. */
 export function chipText(f: Field, value: string): string {
-  if (value === EMPTY) return "is empty";
-  if (value === SET) return "has a value";
+  if (value === EMPTY) return tr("is empty");
+  if (value === SET) return tr("has a value");
   if (f.type === "check") return value === "1" ? "Yes" : "No";
   if (f.type === "date" || f.type === "datetime") {
-    const word = PERIODS.find(([k]) => k === value);
+    const word = periods().find(([k]) => k === value);
     if (word) return word[1];
     const [from, to] = splitRange(value);
     return from && to ? (from === to ? from : `${from} – ${to}`) : from ? tr("from {from}", { from }) : to ? tr("until {to}", { to }) : "";
@@ -48,7 +48,7 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
   switch (f.type) {
     case "select":
       return (
-        <FieldWrap label={f.label} htmlFor={id}>
+        <FieldWrap label={isolate(f.label)} htmlFor={id}>
           <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
             <option value="">{tr("All")}</option>
             {(f.options ?? []).map((o) => (
@@ -61,7 +61,7 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
       );
     case "check":
       return (
-        <FieldWrap label={f.label} htmlFor={id}>
+        <FieldWrap label={isolate(f.label)} htmlFor={id}>
           <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
             <option value="">{tr("All")}</option>
             <option value="1">{tr("Yes")}</option>
@@ -71,7 +71,7 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
       );
     case "link":
       return (
-        <FieldWrap label={f.label} htmlFor={id}>
+        <FieldWrap label={isolate(f.label)} htmlFor={id}>
           <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} placeholder={tr("Any")} onChange={(v) => onChange(v ?? "")} />
         </FieldWrap>
       );
@@ -79,13 +79,13 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
     case "datetime": {
       const [from, to] = isWord(value) ? ["", ""] : splitRange(value);
       return (
-        <FieldWrap label={f.label} htmlFor={id}>
+        <FieldWrap label={isolate(f.label)} htmlFor={id}>
           <div className="range">
             <input id={id} className="input" type="date" aria-label={tr("{label} from", { label: f.label })} value={from} onChange={(e) => onChange(joinRange(e.target.value, to))} />
             <input className="input" type="date" aria-label={tr("{label} to", { label: f.label })} value={to} onChange={(e) => onChange(joinRange(from, e.target.value))} />
           </div>
           <div className="filter-words" role="group" aria-label={tr("Periods")}>
-            {PERIODS.map(([word, label]) => (
+            {periods().map(([word, label]) => (
               <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(word)}>
                 {isolate(label)}
               </button>
@@ -98,9 +98,9 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
     case "decimal":
     case "currency":
     case "percent":
-      return <NumberFilter id={id} label={f.label} value={isWord(value) ? "" : value} onChange={onChange} />;
+      return <NumberFilter id={id} label={isolate(f.label)} value={isWord(value) ? "" : value} onChange={onChange} />;
     default:
-      return <TextFilter id={id} label={f.label} value={isWord(value) ? "" : value} onChange={onChange} />;
+      return <TextFilter id={id} label={isolate(f.label)} value={isWord(value) ? "" : value} onChange={onChange} />;
   }
 }
 
@@ -109,8 +109,8 @@ function Presence({ value, onChange }: { value: string; onChange: (v: string) =>
   return (
     <div className="filter-words" role="group" aria-label={tr("Whether it has a value")}>
       {[
-        [EMPTY, "Is empty"],
-        [SET, "Has a value"],
+        [EMPTY, tr("Is empty")],
+        [SET, tr("Has a value")],
       ].map(([word, label]) => (
         <button key={word} type="button" className="filter-word" aria-pressed={value === word} onClick={() => onChange(value === word ? "" : word)}>
           {isolate(label)}

@@ -132,7 +132,7 @@ export default function QueryInput(p: ControlProps) {
         ) : result ? (
           <>
             <ResultNotices meta={result.meta} />
-            {result.rows.length ? <ResultTable columns={shown} rows={result.rows.slice(0, 20)} totals={result.totals} sort={d.sort} options={options} caption={p.label ?? "Preview"} /> : <NoRows />}
+            {result.rows.length ? <ResultTable columns={shown} rows={result.rows.slice(0, 20)} totals={result.totals} sort={d.sort} options={options} caption={p.label ?? t("Preview")} /> : <NoRows />}
           </>
         ) : null}
       </div>
