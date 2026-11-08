@@ -111,9 +111,20 @@ export interface Run {
   finished_at?: string | null;
 }
 export type RunStatus = "starting" | "running" | "needs_attention" | "cancelling" | "completed" | "refused" | "cancelled";
+/** A move of the run onto another release, as recorded on it: planned, approved, carried out or refused. */
+export interface RunMove {
+  action: "plan_migration" | "approve_migration" | "migrated" | "migration_refused";
+  at: string;
+  by?: string | null;
+  diff: { release?: string; to?: string; map?: Record<string, string>; digest?: string; moved?: string[]; why?: string[]; reason?: string };
+}
 export interface RunDetail extends Run {
   output?: unknown;
   state?: unknown;
+  release?: { id: string; version?: string | null };
+  generation?: number | null;
+  trigger_event?: number | null;
+  moves?: RunMove[];
   tasks: { id: string; activation: string; kind: TaskKind; label: string; status: string; deadline?: string | null }[];
 }
 export type TaskKind = "task" | "case" | "recovery" | "attention";
@@ -195,10 +206,12 @@ export interface CatalogEvent {
 
 // ───────────────────────────── hooks ─────────────────────────────
 
-export function useSolutions() {
+/** The solutions a person may author; `enabled` false asks nothing (for people who author none). */
+export function useSolutions(enabled = true) {
   return useQuery({
     queryKey: ["solutions"],
     queryFn: () => api.get<{ drafts: DraftRow[]; releases: ReleaseRow[]; calendars: Calendar[]; profile: string }>(`${BASE}/solutions`),
+    enabled,
   });
 }
 
@@ -228,8 +241,71 @@ export function useReleaseReview(id: string | undefined) {
 }
 export const reviewRelease = (id: string, body: { digest: string; privileges: string[]; approve: boolean; reason: string }) =>
   api.post(`${BASE}/solutions/releases/${id}/review`, body);
+/** What an activation changed: going back to an earlier release is this too, a new generation selecting it. */
+export interface Activated {
+  generation: number;
+  replaced?: { release: string; version: string } | null;
+  handed_over?: { automation: string; name: string } | null;
+  open_elsewhere: number;
+  kept: string;
+}
 export const activateRelease = (id: string, expected_generation: number | null) =>
-  api.post<{ generation: number }>(`${BASE}/solutions/releases/${id}/activate`, expected_generation === null ? {} : { expected_generation });
+  api.post<Activated>(`${BASE}/solutions/releases/${id}/activate`, expected_generation === null ? {} : { expected_generation });
+
+/** One side of a shadow comparison: how the replay ended, what its decisions came to, its steps and effects. */
+export interface ShadowSide {
+  outcome: string;
+  decisions: Record<string, unknown>;
+  steps: string[];
+  effects: { step?: string; capability?: string; input?: unknown; action?: string; to?: unknown }[];
+  not_modelled: string[];
+}
+export interface ShadowCase {
+  run?: string;
+  event?: number;
+  at: string;
+  same: boolean;
+  differences: string[];
+  now: ShadowSide;
+  candidate: ShadowSide;
+}
+/** A candidate beside what runs now, replayed on what happened: nothing ran, changed or was kept. */
+export interface Shadow {
+  against: { kind: "release"; release: string; version: string } | { kind: "automation"; automation: string; name: string };
+  candidate: { solution: string; version: string; artifact_digest: string };
+  compared: number;
+  differing: number;
+  cases: ShadowCase[];
+  note: string;
+}
+export const shadowRelease = (release: string, last = 20) => api.post<Shadow>(`${BASE}/solutions/shadow`, { release, last });
+
+/** A release as a pack for another workspace: its source, digests, what it needs and its review; no secret. */
+export interface Pack {
+  format: string;
+  solution: string;
+  version: string;
+  label?: string | null;
+  source: string;
+  source_digest: string;
+  artifact_digest: string;
+  needs: { capabilities: { id: string; version: string }[]; events: string[]; calendars: string[] };
+  evidence: unknown;
+  exported_at: string;
+}
+export const releasePack = (id: string) => api.get<Pack>(`${BASE}/solutions/releases/${id}/pack`);
+export interface PackTakenIn {
+  draft: { id: string; solution: string; label: string; version: number };
+  check: { ok: boolean; diagnostics: Diagnostic[] };
+  to_map: string[];
+  note: string;
+}
+export const importPack = (pack: unknown) => api.post<PackTakenIn>(`${BASE}/solutions/import/pack`, { pack });
+
+/** Moving a waiting run onto the release that runs now: one administrator plans, another approves. */
+export const planMove = (run: string, release: string, map: Record<string, string>) =>
+  api.post<{ digest: string; moved: string[]; next: string }>(`${BASE}/runs/${run}/migrate/plan`, { release, map });
+export const approveMove = (run: string, digest: string, reason: string) => api.post<{ delivered: boolean; note: string }>(`${BASE}/runs/${run}/migrate`, { digest, reason });
 export const deactivateSolution = (solution: string, expected_generation: number) =>
   api.post(`${BASE}/solutions/${encodeURIComponent(solution)}/deactivate`, { expected_generation });
 
