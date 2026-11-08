@@ -9,7 +9,7 @@ import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, relativeTime } from "../lib/format";
-import { can, useMe, useMetaIndex, useReports, type EntitySummary, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
+import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
@@ -29,7 +29,7 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
-import { dashboardNav, reportNav, spaceNav } from "./studio/nav";
+import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
 
 // The person's menu's dialogs load when one is opened: every interface's first script holds this
 // frame (docs/plan/apps-ui.md §12.9).
@@ -41,7 +41,14 @@ type NavItem = { label: string; to: string; icon: string };
 
 /** The Studio app (package and module): its records open in their builders, not the generic list and form. */
 export const STUDIO = "studio";
-export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav];
+export const studioNav: NavItem[] = [...reportNav, ...dashboardNav, ...spaceNav, ...solutionNav];
+
+/** Studio's links for `me`: solutions are an author's (administrators and the Solution Author role), so the
+ *  others are not led to a page that refuses them; everyone has tasks and their runs. */
+export function studioLinks(me: Me | null | undefined): NavItem[] {
+  const author = !!me && (me.user.is_admin || me.user.roles.includes("Solution Author"));
+  return author ? studioNav : studioNav.filter((n) => n.to !== "/studio/solutions");
+}
 
 /** The POS app's till, first in its module. */
 export const POS = "pos";
@@ -59,8 +66,8 @@ export const docsNav: NavItem = { get label() { return tr("Documents"); }, to: "
 
 /** A module's links (sidebar group, home card): its readable entities and reports; `meet` when
  *  video meetings are set up. */
-export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false): NavItem[] {
-  if (m.name === STUDIO) return studioNav;
+export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false, me?: Me | null): NavItem[] {
+  if (m.name === STUDIO) return studioLinks(me);
   const links = m.items.flatMap((item) => {
     if (item.startsWith("report:")) {
       const name = item.slice(7);
@@ -182,6 +189,17 @@ function Shell() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setNavOpen(false), [location.pathname]);
+  // After a route change the keyboard and a screen reader start in the new page, not where the old page's
+  // link was; a page that put focus in itself already keeps it.
+  const routed = useRef(false);
+  useEffect(() => {
+    if (!routed.current) {
+      routed.current = true;
+      return;
+    }
+    const main = document.getElementById("main");
+    if (main && !main.contains(document.activeElement)) main.focus({ preventScroll: true });
+  }, [location.pathname]);
   useEffect(() => {
     if (navOpen) document.querySelector<HTMLElement>(".sidebar a")?.focus();
   }, [navOpen]);
@@ -320,9 +338,9 @@ function Sidebar() {
     return [...meta.modules]
       .filter((m) => ownModule(m, meta))
       .sort((a, b) => a.order - b.order)
-      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet) }))
+      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet, me) }))
       .filter((g) => g.items.length);
-  }, [meta, reports, meet]);
+  }, [meta, reports, meet, me]);
 
   return (
     <nav aria-label={tr("Main")}>
@@ -444,7 +462,7 @@ function useNavTargets(): NavTarget[] {
       if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: tr("New {label}", { label: e.label }), hint, to: `/e/${e.name}/new` });
     }
     for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: tr("Report"), to: `/r/${r.name}` });
-    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioNav) out.push({ label: n.label, hint: tr("Studio"), to: n.to });
+    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioLinks(me)) out.push({ label: n.label, hint: tr("Studio"), to: n.to });
     if (frameHasPages && meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
       out.push({ label: tr("POS Register"), hint: tr("POS"), to: registerNav.to });
     // Under the platform's bar, Comms and Docs are apps of their own, in its launcher.
