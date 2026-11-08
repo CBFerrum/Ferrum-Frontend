@@ -1,16 +1,17 @@
 // Customer solutions (Ferrum's docs/logic/studio.md, BUILDER_UX §3): the drafts people are editing and the
 // releases kept, each with whether it runs, waits for review or was rejected. A new solution starts from a
-// template or empty. The server lists only what the person may author; a release is reviewed by someone else.
+// template or empty, or arrives as a pack from another workspace, as a draft with what must be mapped here. The
+// server lists only what the person may author; a release is reviewed by someone else.
 
-import { CalendarDays, FileCode2, ListChecks, Plus, Workflow } from "lucide-react";
-import { useState } from "react";
+import { CalendarDays, FileCode2, ListChecks, Plus, Upload, Workflow } from "lucide-react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { errorMessage } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
-import { createDraft, printSource, useSolutions, type ReleaseRow, type Source } from "@/lib/solutions";
+import { createDraft, importPack, printSource, useSolutions, type PackTakenIn, type ReleaseRow, type Source } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
 import { Alert, ErrorState, toast } from "@/ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
@@ -53,6 +54,24 @@ export function SolutionsPage() {
   const q = useSolutions();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [taken, setTaken] = useState<PackTakenIn | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const takeIn = async (e: ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0];
+    e.target.value = "";
+    if (!chosen) return;
+    setBusy(true);
+    try {
+      const got = await importPack(JSON.parse(await chosen.text()));
+      setTaken(got);
+      toast(tr("Taken in as a draft"));
+      await q.refetch();
+    } catch (err) {
+      toast(err instanceof SyntaxError ? tr("That file is not a pack: it is not JSON.") : errorMessage(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   const start = async (kind: "empty" | "approval") => {
     setBusy(true);
     try {
@@ -113,6 +132,10 @@ export function SolutionsPage() {
           <h2 id="drafts-heading" className="flex-1 text-base font-semibold">
             {tr("Drafts")}
           </h2>
+          <input ref={file} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} aria-label={tr("Pack file")} onChange={takeIn} />
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => file.current?.click()}>
+            <Upload aria-hidden /> {tr("Take in a pack")}
+          </Button>
           <Button size="sm" variant="outline" disabled={busy} onClick={() => start("empty")}>
             <FileCode2 aria-hidden /> {tr("Empty solution")}
           </Button>
@@ -120,6 +143,7 @@ export function SolutionsPage() {
             <Plus aria-hidden /> {tr("New approval")}
           </Button>
         </div>
+        {taken && <PackArrived taken={taken} />}
         {drafts.length === 0 ? (
           <p className="text-sm text-muted-foreground">{tr("No drafts yet. Start from an approval, or an empty solution.")}</p>
         ) : (
@@ -186,6 +210,36 @@ export function SolutionsPage() {
           </Table>
         )}
       </section>
+    </div>
+  );
+}
+
+/** A pack taken in: a draft here, and what must be mapped before it can run. */
+export function PackArrived({ taken }: { taken: PackTakenIn }) {
+  return (
+    <div className="mb-3" role="status">
+      <Alert tone={taken.to_map.length > 0 ? "warning" : "info"}>
+        <span className="grid gap-1">
+          <span>
+            {tr("{label} arrived as a draft. Nothing of it runs until it is checked here, kept as a release, reviewed by someone else and activated.", {
+              label: isolate(taken.draft.label || taken.draft.solution),
+            })}
+          </span>
+          {taken.to_map.length > 0 && (
+            <>
+              <span>{tr("To map before it can run here:")}</span>
+              <ul className="list-disc ps-5">
+                {taken.to_map.map((m, i) => (
+                  <li key={i}>{isolate(m)}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <Link className="underline underline-offset-2" to={`/studio/solutions/drafts/${taken.draft.id}`}>
+            {tr("Open the draft")}
+          </Link>
+        </span>
+      </Alert>
     </div>
   );
 }
