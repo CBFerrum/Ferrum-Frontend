@@ -3133,6 +3133,12 @@ const words: Record<string, string> = {
   "Diagram": "आरेख",
   "Goes on to {targets}": "आगे {targets} पर जाता है",
   "The source is not valid JSON, so the diagram cannot show it: {error}": "स्रोत मान्य JSON नहीं है, इसलिए आरेख इसे नहीं दिखा सकता: {error}",
+  "Evidence": "साक्ष्य",
+  "Downloaded": "डाउनलोड हुआ",
+  "{size} KB": "{size} KB",
+  "No files yet. What is attached here is for this task alone.": "अभी कोई फ़ाइल नहीं। यहाँ जो जोड़ा जाता है वह केवल इसी कार्य के लिए है।",
+  "Attach a file": "फ़ाइल जोड़ें",
+  "Attached": "जोड़ा गया",
 };
 
 export default words;

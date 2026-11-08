@@ -3,7 +3,7 @@
 // the server says so and the page offers to look again. A recovery resumes only where its process allows, or
 // ends the run refused; there is no way to call it a success.
 
-import { ArrowLeft, CheckCircle2, Forward, RotateCcw, Search, Square, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Forward, Paperclip, RotateCcw, Search, Square, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { acknowledgeTask, caseTaskDone, closeCase, decideTask, delegateTask, lookUpTask, recoverTask, useTask, useTasks, type FormField, type Lookup, type Task, type TaskEvent, type TaskKind } from "@/lib/solutions";
+import {
+  acknowledgeTask,
+  attachEvidence,
+  caseTaskDone,
+  closeCase,
+  decideTask,
+  delegateTask,
+  downloadEvidence,
+  lookUpTask,
+  recoverTask,
+  useTask,
+  useTasks,
+  type FormField,
+  type Lookup,
+  type Task,
+  type TaskEvent,
+  type TaskKind,
+} from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
 import { Alert, ErrorState, toast } from "@/ui/kit";
 import { Field } from "@/app/studio/solutions/field";
@@ -117,6 +134,7 @@ export function TaskPage() {
       ) : (
         <Acknowledge task={t} onDone={() => q.refetch()} />
       )}
+      {(t.kind === "task" || t.kind === "case") && <Evidence task={t} onDone={() => q.refetch()} />}
       <History events={t.history ?? []} />
     </div>
   );
@@ -330,6 +348,57 @@ function Recover({ task, onDone }: { task: Task; onDone: () => void }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Files given as evidence for this task's decision. They are added and read only by those who may decide this task,
+// or administrators, and only through this task (FLC-HUMAN-006); a closed task's evidence stays as it was.
+function Evidence({ task, onDone }: { task: Task; onDone: () => void }) {
+  const { busy, act } = useAct(onDone);
+  const files = task.evidence ?? [];
+  const inputId = `evidence-${task.id}`;
+  return (
+    <section className="grid gap-2 rounded-md border p-3" aria-label={tr("Evidence")}>
+      <span className="font-medium">{tr("Evidence")}</span>
+      {files.length ? (
+        <ul className="grid gap-1">
+          {files.map((f) => (
+            <li key={f.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => act(() => downloadEvidence(task.id, f), tr("Downloaded"))}>
+                <Download aria-hidden /> {isolate(f.file_name)}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {tr("{size} KB", { size: Math.max(1, Math.round(f.size / 1024)) })}
+                {f.by ? ` · ${isolate(f.by)}` : ""} · {formatDateTime(f.at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">{tr("No files yet. What is attached here is for this task alone.")}</p>
+      )}
+      {task.status === "open" && (
+        <div>
+          <input
+            id={inputId}
+            type="file"
+            className="peer sr-only"
+            disabled={busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void act(() => attachEvidence(task.id, file), tr("Attached"));
+            }}
+          />
+          <label
+            htmlFor={inputId}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-sm text-sm underline-offset-2 hover:underline peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
+          >
+            <Paperclip aria-hidden /> {tr("Attach a file")}
+          </label>
+        </div>
+      )}
+    </section>
   );
 }
 

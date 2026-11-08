@@ -4,7 +4,7 @@
 // parsed source in place and writes it back, so a setting it does not know survives (BUILDER_UX §4).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { api, download, request } from "./api";
 
 const BASE = "/api/app/studio";
 
@@ -157,6 +157,8 @@ export interface Task extends TaskRow {
   status: string;
   deadline_basis?: { calendar?: string; revision?: number; zone?: string; adjusted?: string } | null;
   detail: { tasks?: CaseTask[]; why?: string; evidence?: unknown; reason?: string; resumable?: boolean; lookup?: Lookup };
+  /** Files attached to this task as evidence for its decision, oldest first. */
+  evidence?: Evidence[];
   /** Who did what on it, oldest first. */
   history?: TaskEvent[];
 }
@@ -375,6 +377,24 @@ export interface Lookup {
   effects: LookedUp[];
 }
 export const lookUpTask = (id: string) => api.post<Lookup>(`${BASE}/tasks/${id}/look-up`, {});
+/** A file attached to a task as evidence: added and read only by those who may decide that task, or administrators. */
+export interface Evidence {
+  id: string;
+  file_name: string;
+  content_type: string;
+  size: number;
+  sha256: string;
+  at: string;
+  by?: string;
+}
+export const attachEvidence = (task: string, file: File) =>
+  request<Evidence>(`${BASE}/tasks/${task}/evidence`, {
+    method: "POST",
+    body: file,
+    query: { name: file.name },
+    headers: { "content-type": file.type || "application/octet-stream" },
+  });
+export const downloadEvidence = (task: string, e: Evidence) => download(`${BASE}/tasks/${task}/evidence/${e.id}`, e.file_name);
 export const acknowledgeTask = (id: string, reason: string) => api.post(`${BASE}/tasks/${id}/acknowledge`, { reason });
 
 export function useCalendars() {
