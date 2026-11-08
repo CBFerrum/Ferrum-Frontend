@@ -3120,6 +3120,19 @@ const words: Record<string, string> = {
   "How often steps were tried": "चरणों को कितनी बार आज़माया गया",
   "tried {n} times": "{n} बार आज़माया गया",
   "last: done": "अंतिम: पूरा",
+  "Was it done?": "क्या यह हुआ?",
+  "Look it up": "जाँचें",
+  "Look it up again": "फिर से जाँचें",
+  "Looked up": "जाँचा गया",
+  "On record": "दर्ज है",
+  "Not on record": "दर्ज नहीं है",
+  "Looked up {when}": "{when} को जाँचा गया",
+  "If a step's outcome came back unknown, this says whether it was done, by its receipt.": "अगर किसी चरण का परिणाम अज्ञात लौटा, तो यह उसकी रसीद से बताता है कि वह हुआ या नहीं।",
+  "It was done: its receipt is here. Resuming repeats the step under its key, which the receipt answers; nothing is done twice.": "यह हो चुका है: इसकी रसीद यहाँ है। फिर शुरू करने पर चरण अपनी कुंजी से दोहराया जाता है, जिसका उत्तर रसीद देती है; कुछ भी दो बार नहीं होता।",
+  "It was not done here: no receipt, and a receipt is written with the effect itself. Resuming does it once.": "यह यहाँ नहीं हुआ: कोई रसीद नहीं, और रसीद प्रभाव के साथ ही लिखी जाती है। फिर शुरू करने पर यह एक बार होता है।",
+  "Diagram": "आरेख",
+  "Goes on to {targets}": "आगे {targets} पर जाता है",
+  "The source is not valid JSON, so the diagram cannot show it: {error}": "स्रोत मान्य JSON नहीं है, इसलिए आरेख इसे नहीं दिखा सकता: {error}",
 };
 
 export default words;

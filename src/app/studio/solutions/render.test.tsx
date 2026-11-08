@@ -9,10 +9,11 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import { violations } from "../../../test/axe";
 import type { Me } from "@/lib/meta";
-import { parseSource, printSource, type ReleaseReview, type ReleaseRow, type RunDetail, type Shadow, type Task } from "@/lib/solutions";
+import { parseSource, printSource, routesOf, type ReleaseReview, type ReleaseRow, type RunDetail, type Shadow, type Task } from "@/lib/solutions";
 import { MovePanel, RunPage, RunsPage, WhatHappened } from "../runs/RunsPage";
 import { TaskPage, TasksPage } from "../runs/TasksPage";
 import { CalendarsPage } from "./CalendarsPage";
+import { Diagram, layout } from "./Diagram";
 import { businessDays, GuidedEditor } from "./GuidedEditor";
 import { ActivationNote, ReleasePage, ShadowResult } from "./ReleasePage";
 import { PackArrived, SolutionsPage, template } from "./SolutionsPage";
@@ -106,6 +107,29 @@ describe("solution screens", () => {
     expect(t).toContain("Tell both sides");
     expect(t).toContain("Told A");
     expect(t).toContain("Never the requester, whatever roles they hold.");
+  });
+
+  it("draws a process as a diagram: each step a button, its routes said too, the chosen step's settings beside it", () => {
+    const source = parseSource(printSource(template("approval"))).source!;
+    const html = render(<Diagram source={source} onChange={() => {}} selected={{ process: "approval", path: [], step: "review" }} onSelect={() => {}} />);
+    const t = text(html);
+    for (const n of source.processes![0].nodes) expect(t).toContain(n.label || n.id);
+    expect(t).toContain("Goes on to");
+    expect(t).toContain("Never the requester, whatever roles they hold.");
+    expect((html.match(/marker-end=/g) ?? []).length).toBe(layout(source.processes![0]).edges.length);
+  });
+
+  it("lays a process out without dropping or changing anything", () => {
+    const p = parseSource(printSource(template("approval"))).source!.processes![0];
+    p.nodes.push({ type: "end", id: "orphan", label: "Nobody comes here", outcome: "completed", custom: { kept: true } });
+    const before = JSON.stringify(p);
+    const drawn = layout(p);
+    expect(JSON.stringify(p)).toBe(before);
+    expect(drawn.placed.map((x) => x.step.id).sort()).toEqual(p.nodes.map((n) => n.id).sort());
+    expect(drawn.placed.find((x) => x.step.id === p.entry)!.layer).toBe(0);
+    expect(drawn.placed.find((x) => x.step.id === "orphan")!.layer).toBe(Math.max(...drawn.placed.map((x) => x.layer)));
+    const routes = p.nodes.flatMap((n) => routesOf(n)).filter(([, to]) => p.nodes.some((m) => m.id === to));
+    expect(drawn.edges.length).toBe(routes.length);
   });
 
   it("says what a step's capability promises, and what a read does not", () => {
@@ -233,6 +257,31 @@ describe("run and task screens", () => {
     expect(t).toContain("To (their email)");
     const spent = text(render(<TaskPage />, "/t/t4", "/t/:id", client([[["tasks", "t4"], { ...task, id: "t4", handed_on: 1 }]])));
     expect(spent).not.toContain("Hand it on");
+  });
+
+  it("shows what looking up a lost answer found, kept on the item", () => {
+    const lookup = {
+      by: "u1",
+      at: "2026-11-09T10:00:00Z",
+      effects: [
+        {
+          activation: "order",
+          on_record: true,
+          capability: "procs.order.create",
+          at: "2026-11-09T09:59:00Z",
+          meaning: "It was done: its receipt is here. Resuming repeats the step under its key, which the receipt answers; nothing is done twice.",
+        },
+      ],
+    };
+    const recovery: Task = { ...task, id: "t5", kind: "recovery", label: "Outcome unknown", form: [], material: {}, detail: { reason: "Find out whether the order was made.", resumable: true, lookup } };
+    const t = text(render(<TaskPage />, "/t/t5", "/t/:id", client([[["tasks", "t5"], recovery]])));
+    expect(t).toContain("On record");
+    expect(t).toContain("procs.order.create");
+    expect(t).toContain("nothing is done twice");
+    expect(t).toContain("Look it up again");
+    const fresh = text(render(<TaskPage />, "/t/t6", "/t/:id", client([[["tasks", "t6"], { ...recovery, id: "t6", detail: { reason: "Find out.", resumable: true } }]])));
+    expect(fresh).toContain("Look it up");
+    expect(fresh).not.toContain("On record");
   });
 
   it("says why a recovery cannot resume, where a keyboard reaches it", () => {
