@@ -125,6 +125,8 @@ export interface RunDetail extends Run {
   generation?: number | null;
   trigger_event?: number | null;
   moves?: RunMove[];
+  /** How often each step was tried, and how its last try went. */
+  attempts?: Record<string, { attempts: number; last: string; first_at?: string; last_at?: string }>;
   tasks: { id: string; activation: string; kind: TaskKind; label: string; status: string; deadline?: string | null }[];
 }
 export type TaskKind = "task" | "case" | "recovery" | "attention";
