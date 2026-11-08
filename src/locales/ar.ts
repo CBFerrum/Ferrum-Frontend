@@ -3024,6 +3024,22 @@ const words: Record<string, string> = {
   "Processes about this record": "العمليات المتعلقة بهذا السجل",
   "Waiting on {role}: {task}": "بانتظار {role}: {task}",
   "a person": "شخص",
+  "First step": "الخطوة الأولى",
+  "What happened": "ما الذي حدث",
+  "outcome unknown: {why}": "النتيجة غير معروفة: {why}",
+  "What it did": "ما الذي فعله",
+  "undone": "تم التراجع عنه",
+  "settled after it was no longer wanted": "اكتمل بعد أن لم يعد مطلوبًا",
+  "What was done": "ما الذي تم",
+  "handed it to {to}": "سلّمها إلى {to}",
+  "did {part}": "أنجز {part}",
+  "closed the case": "أغلق الحالة",
+  "resumed the run": "استأنف التشغيل",
+  "ended the run refused": "أنهى التشغيل مرفوضًا",
+  "acknowledged it": "أقرّ بها",
+  "To (their email)": "إلى (بريده الإلكتروني)",
+  "approved it": "وافق عليها",
+  "rejected it": "رفضها",
 };
 
 export default words;

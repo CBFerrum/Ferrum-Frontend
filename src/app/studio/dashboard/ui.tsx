@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useBlocker, useHref, type BlockerFunction, type NavigateFunction } from "react-router";
-import { bootstrap, t, isolate } from "@ferrum/client";
+import { bootstrap, shell, t, isolate } from "@ferrum/client";
 import { AlertCircle, RefreshCw, type LucideIcon } from "lucide-react";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,14 @@ export const useReducedMotion = () =>
   );
 
 export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+  // A page named in words names the tab and the bar too, so a screen reader and a list of tabs tell pages apart;
+  // the app's own name comes back when the page goes.
+  const named = typeof title === "string" ? title.replace(/[\u2066-\u2069]/g, "").trim() : "";
+  useEffect(() => {
+    if (!named) return;
+    shell().title(named);
+    return () => shell().title("");
+  }, [named]);
   return (
     <header className="mb-4 flex flex-wrap items-start gap-3">
       <div className="min-w-0 flex-1 basis-64">

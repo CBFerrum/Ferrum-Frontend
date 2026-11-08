@@ -3024,6 +3024,22 @@ const words: Record<string, string> = {
   "Processes about this record": "इस रिकॉर्ड से जुड़ी प्रक्रियाएँ",
   "Waiting on {role}: {task}": "{role} की प्रतीक्षा: {task}",
   "a person": "एक व्यक्ति",
+  "First step": "पहला चरण",
+  "What happened": "क्या हुआ",
+  "outcome unknown: {why}": "परिणाम अज्ञात: {why}",
+  "What it did": "इसने क्या किया",
+  "undone": "पूर्ववत",
+  "settled after it was no longer wanted": "अब ज़रूरत न रहने के बाद पूरा हुआ",
+  "What was done": "क्या किया गया",
+  "handed it to {to}": "इसे {to} को सौंपा",
+  "did {part}": "{part} किया",
+  "closed the case": "मामला बंद किया",
+  "resumed the run": "रन फिर से शुरू किया",
+  "ended the run refused": "रन को अस्वीकृत के रूप में समाप्त किया",
+  "acknowledged it": "इसे स्वीकार किया",
+  "To (their email)": "किसे (उनका ईमेल)",
+  "approved it": "इसे स्वीकृत किया",
+  "rejected it": "इसे अस्वीकार किया",
 };
 
 export default words;

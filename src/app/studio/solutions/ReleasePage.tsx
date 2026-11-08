@@ -15,7 +15,8 @@ import { formatDateTime } from "@/lib/format";
 import { useMe } from "@/lib/meta";
 import { activateRelease, deactivateSolution, reviewRelease, useReleaseReview, type Change } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
-import { Alert, ErrorState, Field, toast } from "@/ui/kit";
+import { Alert, ErrorState, toast } from "@/ui/kit";
+import { Field } from "./field";
 import { useQueryClient } from "@tanstack/react-query";
 import { t as tr, isolate } from "@ferrum/client";
 

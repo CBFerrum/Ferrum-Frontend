@@ -10,7 +10,8 @@ import { errorMessage } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { saveCalendar, useCalendars, type Calendar } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
-import { ErrorState, Field, toast } from "@/ui/kit";
+import { ErrorState, toast } from "@/ui/kit";
+import { Field } from "./field";
 import { useQueryClient } from "@tanstack/react-query";
 import { t as tr, isolate } from "@ferrum/client";
 

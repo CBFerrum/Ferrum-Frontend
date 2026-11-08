@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { defaultScenario, describe, outline, simulate, type Scenario, type Simulation, type Source } from "@/lib/solutions";
-import { Alert, Field } from "@/ui/kit";
+import { Alert } from "@/ui/kit";
+import { Field } from "./field";
 import { t as tr, isolate } from "@ferrum/client";
 
 const SOURCE_LABEL: Record<string, string> = { stand_in: "stand-in", not_modelled: "not modelled", deadline: "deadline" };

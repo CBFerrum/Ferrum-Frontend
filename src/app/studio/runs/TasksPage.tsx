@@ -4,7 +4,7 @@
 // ends the run refused; there is no way to call it a success.
 
 import { ArrowLeft, CheckCircle2, Forward, RotateCcw, Square, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { acknowledgeTask, caseTaskDone, closeCase, decideTask, delegateTask, recoverTask, useTask, useTasks, type FormField, type Task, type TaskKind } from "@/lib/solutions";
+import { acknowledgeTask, caseTaskDone, closeCase, decideTask, delegateTask, recoverTask, useTask, useTasks, type FormField, type Task, type TaskEvent, type TaskKind } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
-import { Alert, ErrorState, Field, toast } from "@/ui/kit";
+import { Alert, ErrorState, toast } from "@/ui/kit";
+import { Field } from "@/app/studio/solutions/field";
 import { useQueryClient } from "@tanstack/react-query";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -26,11 +27,6 @@ export function TasksPage() {
   return (
     <div className="mx-auto max-w-5xl p-4">
       <PageHeader
-        eyebrow={
-          <Link to="/studio/solutions" className="inline-flex items-center gap-1 hover:underline">
-            <ArrowLeft className="size-3" aria-hidden /> {tr("Solutions")}
-          </Link>
-        }
         title={tr("Tasks")}
         description={tr("What processes are waiting on you for.")}
       />
@@ -74,6 +70,14 @@ export function TasksPage() {
 export function TaskPage() {
   const { id = "" } = useParams();
   const q = useTask(id);
+  // Deciding takes away the form that held focus: the keyboard goes on from the page, which now says the task is closed.
+  const wasOpen = useRef<boolean | null>(null);
+  const status = q.data?.status;
+  useEffect(() => {
+    if (!status) return;
+    if (wasOpen.current && status !== "open") document.getElementById("main")?.focus();
+    wasOpen.current = status === "open";
+  }, [status]);
   if (q.isLoading) return <LoadingBlock className="p-4" />;
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const t = q.data!;
@@ -113,7 +117,42 @@ export function TaskPage() {
       ) : (
         <Acknowledge task={t} onDone={() => q.refetch()} />
       )}
+      <History events={t.history ?? []} />
     </div>
+  );
+}
+
+const DID: Record<TaskEvent["decision"], string> = {
+  approve: "approved it",
+  reject: "rejected it",
+  delegate: "handed it to {to}",
+  done: "did {part}",
+  close: "closed the case",
+  resume: "resumed the run",
+  end: "ended the run refused",
+  acknowledge: "acknowledged it",
+};
+
+/** Who did what on the task and why: what a closed task is read by. */
+function History({ events }: { events: TaskEvent[] }) {
+  if (events.length === 0) return null;
+  return (
+    <section aria-labelledby="task-history" className="mt-6">
+      <h2 id="task-history" className="mb-2 text-base font-semibold">
+        {tr("What was done")}
+      </h2>
+      <ol className="grid gap-2 text-sm">
+        {events.map((e, i) => (
+          <li key={i} className="grid gap-0.5">
+            <span>
+              <span className="font-medium">{isolate(e.by)}</span> {tr(DID[e.decision] ?? e.decision, { to: isolate(e.to ?? ""), part: isolate(e.part) })}
+              <span className="text-xs text-muted-foreground"> · {formatDateTime(e.at)}</span>
+            </span>
+            {e.reason && <span className="text-muted-foreground [overflow-wrap:anywhere]">{isolate(e.reason)}</span>}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -216,17 +255,19 @@ function Decide({ task, onDone }: { task: Task; onDone: () => void }) {
           <XCircle aria-hidden /> {tr("Reject")}
         </Button>
       </div>
-      <section aria-labelledby="delegate-h" className="rounded-md border p-3">
-        <h2 id="delegate-h" className="mb-2 text-sm font-semibold">
-          {tr("Hand it on")}
-        </h2>
-        <Field label={tr("To (their user id)")} hint={tr("Someone holding the role, who has not had it before; never the requester.")}>
-          <Input dir="ltr" value={to} onChange={(e) => setTo(e.target.value.trim())} />
-        </Field>
-        <Button className="mt-2" size="sm" variant="outline" disabled={busy || !to} onClick={() => act(() => delegateTask(task.id, to, reason), tr("Handed on"))}>
-          <Forward aria-hidden /> {tr("Hand it on")}
-        </Button>
-      </section>
+      {(task.delegation ?? 0) > (task.handed_on ?? 0) && (
+        <section aria-labelledby="delegate-h" className="rounded-md border p-3">
+          <h2 id="delegate-h" className="mb-2 text-sm font-semibold">
+            {tr("Hand it on")}
+          </h2>
+          <Field label={tr("To (their email)")} hint={tr("Someone holding the role, who has not had it before; never the requester.")}>
+            <Input type="email" dir="ltr" autoComplete="off" value={to} onChange={(e) => setTo(e.target.value.trim())} />
+          </Field>
+          <Button className="mt-2" size="sm" variant="outline" disabled={busy || !to} onClick={() => act(() => delegateTask(task.id, to, reason), tr("Handed on"))}>
+            <Forward aria-hidden /> {tr("Hand it on")}
+          </Button>
+        </section>
+      )}
     </div>
   );
 }
@@ -270,10 +311,15 @@ function Recover({ task, onDone }: { task: Task; onDone: () => void }) {
       <Field label={tr("What was done about it")} required>
         <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
+      {!task.detail.resumable && (
+        <p id="recover-why-not" className="text-sm text-muted-foreground">
+          {tr("This step has nowhere to resume: it can only end.")}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         <Button
           disabled={busy || !reason.trim() || !task.detail.resumable}
-          title={!task.detail.resumable ? tr("This step has nowhere to resume: it can only end.") : undefined}
+          aria-describedby={!task.detail.resumable ? "recover-why-not" : undefined}
           onClick={() => act(() => recoverTask(task.id, true, reason), tr("Resumed"))}
         >
           <RotateCcw aria-hidden /> {tr("Resume")}

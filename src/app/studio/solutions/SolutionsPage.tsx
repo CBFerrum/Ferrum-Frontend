@@ -34,7 +34,7 @@ export function template(kind: "empty" | "approval"): Source {
           { type: "human_task", id: "review", label: "Approve the request", role: "", material: "trigger", timeout: "P2D", next: "completed", on_reject: "refused", on_timeout: "attention" },
           { type: "end", id: "completed", label: "Completed", outcome: "completed" },
           { type: "end", id: "refused", label: "Refused", outcome: "refused" },
-          { type: "suspend", id: "attention", label: "Needs attention", reason: "Nobody decided in time." },
+          { type: "suspend", id: "attention", label: "Needs attention", reason: "Something did not go as planned: look into it before anything more is done." },
         ],
       },
     ],

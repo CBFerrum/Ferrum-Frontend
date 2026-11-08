@@ -13,7 +13,8 @@ import { errorMessage } from "@/lib/api";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { cancelRun, FINISHED, useRun, useRuns, type RunStatus } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
-import { ErrorState, Field, toast } from "@/ui/kit";
+import { ErrorState, toast } from "@/ui/kit";
+import { Field } from "@/app/studio/solutions/field";
 import { t as tr, isolate } from "@ferrum/client";
 
 export const STATUS_LABEL: Record<RunStatus, string> = {
@@ -38,11 +39,6 @@ export function RunsPage() {
   return (
     <div className="mx-auto max-w-6xl p-4">
       <PageHeader
-        eyebrow={
-          <Link to="/studio/solutions" className="inline-flex items-center gap-1 hover:underline">
-            <ArrowLeft className="size-3" aria-hidden /> {tr("Solutions")}
-          </Link>
-        }
         title={tr("Runs")}
         description={tr("Processes running for your workspace, kept up to date as they move.")}
         actions={
@@ -149,6 +145,7 @@ export function RunPage() {
           </ul>
         )}
       </section>
+      <WhatHappened state={r.state} />
       {r.output !== undefined && r.output !== null && (
         <section aria-labelledby="run-output" className="mb-6">
           <h2 id="run-output" className="mb-2 text-base font-semibold">
@@ -173,5 +170,64 @@ export function RunPage() {
         </section>
       )}
     </div>
+  );
+}
+
+interface RunState {
+  outputs?: Record<string, unknown>;
+  effects?: { activation: string; capability: string; compensated?: boolean; unwanted?: boolean }[];
+}
+
+/** Each step's outcome as the run recorded it, refusals and unknown outcomes first, and the effects it did:
+ *  what an operator reads before recovering anything (BUILDER_UX §10). */
+export function WhatHappened({ state }: { state: unknown }) {
+  const s = (state ?? {}) as RunState;
+  const outputs = Object.entries(s.outputs ?? {});
+  if (outputs.length === 0 && !s.effects?.length) return null;
+  const trouble = (v: unknown) => !!v && typeof v === "object" && ("error" in (v as object) || "unknown" in (v as object));
+  const sorted = [...outputs.filter(([, v]) => trouble(v)), ...outputs.filter(([, v]) => !trouble(v))];
+  return (
+    <section aria-labelledby="run-happened" className="mb-6">
+      <h2 id="run-happened" className="mb-2 text-base font-semibold">
+        {tr("What happened")}
+      </h2>
+      <ul className="grid gap-1 text-sm">
+        {sorted.map(([activation, v]) => {
+          const o = (v ?? {}) as { error?: { code?: string; message?: string } | string; unknown?: string };
+          const message = typeof o.error === "string" ? o.error : o.error ? `${o.error.code ?? ""}: ${o.error.message ?? ""}` : o.unknown ? tr("outcome unknown: {why}", { why: o.unknown }) : null;
+          return (
+            <li key={activation} className="grid gap-1 sm:grid-cols-[14rem_1fr]">
+              <span className="font-medium" dir="ltr">
+                {activation}
+              </span>
+              {message ? (
+                <span className="text-destructive">{isolate(message)}</span>
+              ) : (
+                <span className="truncate text-xs text-muted-foreground" dir="ltr">
+                  {JSON.stringify(v)}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {!!s.effects?.length && (
+        <>
+          <h3 className="mt-3 mb-1 text-sm font-semibold">{tr("What it did")}</h3>
+          <ul className="grid gap-1 text-sm">
+            {s.effects.map((e) => (
+              <li key={e.activation} className="flex flex-wrap items-center gap-2">
+                <span dir="ltr">{e.activation}</span>
+                <span className="text-xs text-muted-foreground" dir="ltr">
+                  {e.capability}
+                </span>
+                {e.compensated && <Badge variant="secondary">{tr("undone")}</Badge>}
+                {e.unwanted && <Badge variant="destructive">{tr("settled after it was no longer wanted")}</Badge>}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
