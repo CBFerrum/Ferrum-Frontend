@@ -314,6 +314,7 @@ function Inspector({
             }}
           />
         </Field>
+        {capEntry && <Contract entry={capEntry} unknownRoute={step.type === "action" ? ((step.on_unknown as string | undefined) ?? null) : undefined} />}
         {inputs.length > 0 && (
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium">{tr("Input")}</legend>
@@ -568,3 +569,46 @@ function FormFields({ value, onChange }: { value: FormFieldValue[]; onChange: (v
     </fieldset>
   );
 }
+
+const EFFECT: Record<string, string> = {
+  query: "Reads, and changes nothing.",
+  pure: "Works something out, and changes nothing.",
+  transactional_action: "Changes records, all at once or not at all.",
+  external_effect: "Reaches outside Ferrum: once it has gone, it cannot be called back.",
+  human_task: "Asks a person.",
+};
+const UNKNOWN: Record<string, string> = {
+  reconcile: "If its outcome is unknown, it is looked up by its receipt before anything else happens.",
+  manual: "If its outcome is unknown, a person settles what happened before the run goes on.",
+};
+
+/** What the chosen capability promises, from the catalog, so the author sees what the step will do before
+ *  running it (FLC-UI-003): its effect, the rights it needs, what done means, retries, an unknown outcome and
+ *  what undoes it. */
+/** `unknownRoute`: an action's route for an unknown outcome, null when it has none; undefined for a read. */
+export function Contract({ entry, unknownRoute }: { entry: CatalogEntry; unknownRoute?: string | null }) {
+  const rights = (entry.permissions ?? []).map((p) => (p === "admin" ? tr("an administrator's") : p.replace(/^(.+):(.+)$/, "$2 $1")));
+  const attempts = entry.limits?.max_attempts;
+  const repeatable = entry.idempotency === "read_only" || entry.idempotency === "native_receipt";
+  const unknown = entry.unknown_outcome && UNKNOWN[entry.unknown_outcome];
+  return (
+    <section aria-label={tr("What it promises")} className="grid gap-1 rounded-md border bg-muted/40 p-2 text-sm">
+      <p>{tr(EFFECT[entry.effect] ?? entry.effect)}</p>
+      {rights.length > 0 && <p>{tr("Runs with the rights of whoever started the run, who needs: {rights}.", { rights: rights.join(", ") })}</p>}
+      {entry.completion && <p>{tr("Done means: {what}.", { what: entry.completion })}</p>}
+      {attempts !== undefined && (
+        <p>
+          {repeatable
+            ? tr("Tried up to {n} times; each try carries the same receipt, so it is never done twice.", { n: attempts })
+            : tr("Tried up to {n} times.", { n: attempts })}
+        </p>
+      )}
+      {unknown && <p>{tr(unknown)}</p>}
+      {entry.compensate_with && <p>{tr("Undone by {action} if a later step fails.", { action: entry.compensate_with })}</p>}
+      {unknown && unknownRoute === null && (
+        <p className="text-amber-700 dark:text-amber-400">{tr("Say where the run goes when its outcome is unknown (If its outcome is unknown): the check refuses it otherwise.")}</p>
+      )}
+    </section>
+  );
+}
+

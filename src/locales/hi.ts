@@ -3040,6 +3040,22 @@ const words: Record<string, string> = {
   "To (their email)": "किसे (उनका ईमेल)",
   "approved it": "इसे स्वीकृत किया",
   "rejected it": "इसे अस्वीकार किया",
+  "Reads, and changes nothing.": "पढ़ता है, और कुछ नहीं बदलता।",
+  "Works something out, and changes nothing.": "कुछ निकालता है, और कुछ नहीं बदलता।",
+  "Changes records, all at once or not at all.": "रिकॉर्ड बदलता है, सब एक साथ या कुछ भी नहीं।",
+  "Reaches outside Ferrum: once it has gone, it cannot be called back.": "Ferrum के बाहर पहुँचता है: एक बार जाने के बाद इसे वापस नहीं बुलाया जा सकता।",
+  "Asks a person.": "किसी व्यक्ति से पूछता है।",
+  "If its outcome is unknown, it is looked up by its receipt before anything else happens.": "यदि इसका परिणाम अज्ञात है, तो कुछ और होने से पहले इसकी रसीद से इसे देखा जाता है।",
+  "If its outcome is unknown, a person settles what happened before the run goes on.": "यदि इसका परिणाम अज्ञात है, तो रन आगे बढ़ने से पहले कोई व्यक्ति तय करता है कि क्या हुआ।",
+  "an administrator's": "एक व्यवस्थापक के",
+  "What it promises": "यह क्या वादा करता है",
+  "Runs with the rights of whoever started the run, who needs: {rights}.": "रन शुरू करने वाले के अधिकारों से चलता है, जिसे चाहिए: {rights}।",
+  "Done means: {what}.": "पूरा होने का अर्थ: {what}।",
+  "Tried up to {n} times; each try carries the same receipt, so it is never done twice.": "{n} बार तक कोशिश की जाती है; हर कोशिश में वही रसीद होती है, इसलिए यह कभी दो बार नहीं होता।",
+  "Tried up to {n} times.": "{n} बार तक कोशिश की जाती है।",
+  "Undone by {action} if a later step fails.": "बाद का कोई चरण विफल होने पर {action} से पूर्ववत किया जाता है।",
+  "Say where the run goes when its outcome is unknown (If its outcome is unknown): the check refuses it otherwise.": "बताएँ कि परिणाम अज्ञात होने पर रन कहाँ जाता है (यदि इसका परिणाम अज्ञात है): अन्यथा जाँच इसे अस्वीकार करती है।",
+  "now": "अब",
 };
 
 export default words;

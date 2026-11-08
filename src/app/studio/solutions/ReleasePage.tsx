@@ -119,7 +119,23 @@ export function ReleasePage() {
                     {c.changes_records && <Badge variant="outline">{tr("changes records")}</Badge>}
                   </TableCell>
                   <TableCell dir="ltr" className="text-xs">
-                    {(c.fields ?? []).join(", ")}
+                    {c.values && Object.keys(c.values).length > 0 ? (
+                      <dl className="grid gap-1">
+                        {Object.entries(c.values).map(([field, [was, now]]) => (
+                          <div key={field} className="grid gap-0.5">
+                            <dt className="font-medium">{field}</dt>
+                            <dd className="[overflow-wrap:anywhere]">
+                              <span className="sr-only">{tr("was")}: </span>
+                              <del className="text-muted-foreground">{shownValue(was)}</del> <span aria-hidden="true">→</span>{" "}
+                              <span className="sr-only">{tr("now")}: </span>
+                              <ins className="no-underline">{shownValue(now)}</ins>
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      (c.fields ?? []).join(", ")
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -219,3 +235,10 @@ export function ReleasePage() {
     </div>
   );
 }
+
+/** A changed setting's value as a reviewer reads it: text as it is, anything else as compact JSON, absence as a dash. */
+function shownValue(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  return typeof v === "string" ? v : JSON.stringify(v);
+}
+

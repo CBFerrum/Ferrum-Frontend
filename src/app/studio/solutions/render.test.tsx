@@ -21,7 +21,19 @@ const me: Me = { tenant: "t", user: { id: "u1", email: "admin@acme.test", full_n
 const catalog = {
   capabilities: [
     { id: "procs.request.read", version: "1.0.0", label: "Read a request", effect: "query", entity: "Request", input: { properties: { id: {} }, required: ["id"] } },
-    { id: "procs.order.create", version: "1.0.0", label: "Create an order", effect: "transactional_action", entity: "Order", input: { properties: { values: {} } } },
+    {
+      id: "procs.order.create",
+      version: "1.0.0",
+      label: "Create an order",
+      effect: "transactional_action",
+      entity: "Order",
+      input: { properties: { values: {} } },
+      completion: "The record exists, committed with this receipt",
+      idempotency: "native_receipt",
+      unknown_outcome: "reconcile",
+      permissions: ["Order:create"],
+      limits: { max_attempts: 3, timeout_ms: 30000 },
+    },
   ],
   events: [{ id: "procs.request.submitted", label: "Request submitted", entity: "Request" }],
 };
@@ -96,6 +108,24 @@ describe("solution screens", () => {
     expect(t).toContain("Never the requester, whatever roles they hold.");
   });
 
+  it("says what a step's capability promises, and what a read does not", () => {
+    const source = parseSource(printSource(template("approval"))).source!;
+    source.processes![0].nodes.push(
+      { type: "query", id: "read_it", label: "Read it", capability: { id: "procs.request.read", version: "1.0.0" }, input: { id: "trigger.id" }, next: "order_it", on_error: "attention" },
+      { type: "action", id: "order_it", label: "Order it", capability: { id: "procs.order.create", version: "1.0.0" }, input: {}, next: "completed", on_error: "attention" },
+    );
+    const action = text(render(<GuidedEditor source={source} onChange={() => {}} selected={{ process: "approval", path: [], step: "order_it" }} onSelect={() => {}} />));
+    expect(action).toContain("Changes records, all at once or not at all.");
+    expect(action).toContain("who needs: create Order.");
+    expect(action).toContain("Done means: The record exists, committed with this receipt.");
+    expect(action).toContain("each try carries the same receipt, so it is never done twice");
+    expect(action).toContain("looked up by its receipt");
+    expect(action).toContain("the check refuses it otherwise");
+    const read = text(render(<GuidedEditor source={source} onChange={() => {}} selected={{ process: "approval", path: [], step: "read_it" }} onSelect={() => {}} />));
+    expect(read).toContain("Reads, and changes nothing.");
+    expect(read).not.toContain("looked up by its receipt");
+  });
+
   it("holds approval back until each new changing capability is consented to", () => {
     const review: ReleaseReview = {
       release: {
@@ -116,12 +146,20 @@ describe("solution screens", () => {
       },
       active: null,
       reviews: [],
-      diff: { changes: [{ area: "capability", id: "procs.order.create", kind: "added", changes_records: true }], privilege_growth: ["procs.order.create"] },
+      diff: {
+        changes: [
+          { area: "capability", id: "procs.order.create", kind: "added", changes_records: true },
+          { area: "step", id: "approval/notify", kind: "changed", fields: ["input"], values: { input: [{ to: "\"ops@acme.test\"" }, { to: "\"finance@acme.test\"" }] } },
+        ],
+        privilege_growth: ["procs.order.create"],
+      },
     };
     const html = render(<ReleasePage />, "/r/r2", "/r/:id", client([[["solutions", "release", "r2"], review]]));
     const t = text(html);
     expect(t).toContain("procs.order.create");
     expect(html).toMatch(/<button[^>]*disabled[^>]*>(?:(?!<\/button>).)*Approve/s);
+    expect(t).toContain("ops@acme.test");
+    expect(t).toContain("finance@acme.test");
   });
 
   it("lists calendars with their revision", () => {
