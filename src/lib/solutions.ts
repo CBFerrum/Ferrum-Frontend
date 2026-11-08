@@ -136,9 +136,22 @@ export interface Task extends TaskRow {
   digest: string;
   form: FormField[];
   approvals: number;
+  /** How many times it may be handed on, and how many it has been. */
+  delegation?: number;
+  handed_on?: number;
   status: string;
   deadline_basis?: { calendar?: string; revision?: number; zone?: string; adjusted?: string } | null;
   detail: { tasks?: CaseTask[]; why?: string; evidence?: unknown; reason?: string; resumable?: boolean };
+  /** Who did what on it, oldest first. */
+  history?: TaskEvent[];
+}
+export interface TaskEvent {
+  decision: "approve" | "reject" | "delegate" | "done" | "close" | "resume" | "end" | "acknowledge";
+  part: string;
+  reason: string;
+  at: string;
+  by: string;
+  to?: string | null;
 }
 export interface CaseTask {
   id: string;

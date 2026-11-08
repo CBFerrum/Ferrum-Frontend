@@ -31,7 +31,7 @@ import {
   type Source,
   type Step,
 } from "@/lib/solutions";
-import { Field } from "@/ui/kit";
+import { Field } from "./field";
 import { t as tr, isolate } from "@ferrum/client";
 
 export interface Selection {
@@ -142,7 +142,7 @@ export function GuidedEditor({
         <p className="text-sm text-muted-foreground">{tr("No process yet. Add one, or write rules and decisions in the source.")}</p>
       ) : (
         <>
-          <fieldset className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <fieldset className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-5">
             <legend className="px-1 text-sm font-medium">{isolate(p.label || p.id)}</legend>
             <Field label={tr("Name")}>
               <Input value={p.label} onChange={(e) => setProcess({ label: e.target.value })} />
@@ -159,6 +159,9 @@ export function GuidedEditor({
             </Field>
             <Field label={tr("Once per")} hint={tr("What makes two events one request: trigger.id starts one run per record.")}>
               <Input dir="ltr" value={p.trigger.business_key} onChange={(e) => setProcess({ trigger: { ...p.trigger, business_key: e.target.value } })} />
+            </Field>
+            <Field label={tr("First step")}>
+              <Select id="guided-entry" label={tr("First step")} value={p.entry} onChange={(v) => setProcess({ entry: v })} options={p.nodes.map((n) => ({ value: n.id, label: `${n.label || n.id} (${n.id})` }))} />
             </Field>
             <Field label={tr("Most steps a run may take")}>
               <Input type="number" min={1} value={p.max_steps} onChange={(e) => setProcess({ max_steps: Number(e.target.value) || 1 })} />
@@ -202,21 +205,23 @@ function ProcessSteps({
     setLabel("");
   };
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(16rem,1fr)_2fr]">
-      <nav aria-label={tr("Steps of {process}", { process: p.label || p.id })}>
+    <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <nav className="min-w-0" aria-label={tr("Steps of {process}", { process: p.label || p.id })}>
         <ol className="grid gap-1">
           {items.map((o) => {
             const isSel = sel?.step.id === o.step.id;
             return (
-              <li key={`${o.path.join("/")}/${o.step.id}`} style={{ paddingInlineStart: `${o.depth * 1.25}rem` }}>
+              <li key={`${o.path.join("/")}/${o.step.id}`} className="min-w-0" style={{ paddingInlineStart: `${o.depth * 1.25}rem` }}>
                 <button
                   type="button"
                   aria-current={isSel ? "true" : undefined}
-                  className={`w-full rounded-md border px-2 py-1.5 text-start text-sm ${isSel ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
+                  className={`w-full min-w-0 overflow-hidden rounded-md border px-2 py-1.5 text-start text-sm ${isSel ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
                   onClick={() => onSelect({ process: p.id, path: o.path, step: o.step.id })}
                 >
-                  <span className="flex items-center gap-2">
-                    <Badge variant="outline">{kindLabel(o.step.type)}</Badge>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Badge variant="outline" className="shrink-0">
+                      {kindLabel(o.step.type)}
+                    </Badge>
                     <span className="min-w-0 flex-1 truncate font-medium">{isolate(o.step.label || o.step.id)}</span>
                     {p.entry === o.step.id && o.depth === 0 && <Badge variant="secondary">{tr("start")}</Badge>}
                   </span>
@@ -241,7 +246,7 @@ function ProcessSteps({
           </Button>
         </div>
       </nav>
-      <section aria-label={tr("Inspector")} className="rounded-md border p-3">
+      <section aria-label={tr("Inspector")} className="min-w-0 rounded-md border p-3">
         {sel ? (
           <Inspector source={source} p={p} path={sel.path} step={sel.step} onChange={onChange} onSelect={onSelect} catalog={catalog} outputType={types?.steps?.[sel.step.id]} />
         ) : (
