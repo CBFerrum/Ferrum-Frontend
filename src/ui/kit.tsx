@@ -128,6 +128,17 @@ export function statusTone(value: unknown): Tone {
 
 // ── form field wrapper ──
 
+/** What assistive technology is told about a field's control beyond its name, as its label shows it: that it is
+ *  required, that it is invalid, and its error or hint. What the control already says is kept. */
+export function fieldAria(props: Record<string, unknown>, id: string | undefined, f: { required?: boolean; error?: string; hint?: ReactNode }): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (f.required && props["aria-required"] === undefined) out["aria-required"] = true;
+  if (f.error && props["aria-invalid"] === undefined) out["aria-invalid"] = true;
+  const said = id && (f.error ? `${id}-error` : f.hint ? `${id}-hint` : undefined);
+  if (said) out["aria-describedby"] = [props["aria-describedby"], said].filter(Boolean).join(" ");
+  return out;
+}
+
 export function Field({
   label,
   htmlFor,
@@ -145,11 +156,12 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
-  // A single control without an id gets one, so the label names it to assistive technology.
+  // A single control without an id gets one, so the label names it to assistive technology, and it is told what
+  // the label shows besides: required, invalid, and its error or hint.
   const auto = useId();
-  const only = !htmlFor && isValidElement<{ id?: string }>(children) && typeof children.type === "string" ? children : null;
-  const id = htmlFor ?? (only ? (only.props.id ?? auto) : undefined);
-  const control = only && !only.props.id ? cloneElement(only as ReactElement<{ id?: string }>, { id }) : children;
+  const only = !htmlFor && isValidElement<Record<string, unknown>>(children) && typeof children.type === "string" ? children : null;
+  const id = htmlFor ?? (only ? ((only.props.id as string | undefined) ?? auto) : undefined);
+  const control = only ? cloneElement(only as ReactElement<Record<string, unknown>>, { id, ...fieldAria(only.props, id, { required, error, hint }) }) : children;
   return (
     <div className={`field ${error ? "field-invalid" : ""} ${className ?? ""}`}>
       <label className="field-label" htmlFor={id}>
