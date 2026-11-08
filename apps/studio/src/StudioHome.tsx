@@ -2,7 +2,7 @@
 // spaces, the latest first — and where to start a new one. Charts and number cards are the
 // dashboards page's tabs; Customize is the platform's (/data/customize/).
 
-import { ChartColumn, FileChartColumn, Hash, LayoutDashboard, PanelsTopLeft, Plus, SlidersHorizontal } from "lucide-react";
+import { Blocks, ChartColumn, FileChartColumn, Hash, LayoutDashboard, ListChecks, PanelsTopLeft, Plus, SlidersHorizontal, Workflow } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -161,6 +161,20 @@ export function StudioHome() {
       <div className="flex flex-wrap gap-2">
         <Count kind="charts" label={t("Charts")} to="/studio/dashboards?tab=charts" icon={<ChartColumn aria-hidden />} />
         <Count kind="cards" label={t("Number cards")} to="/studio/dashboards?tab=cards" icon={<Hash aria-hidden />} />
+        <Link to="/studio/tasks" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+          <ListChecks aria-hidden />
+          <span className="font-medium">{t("Tasks")}</span>
+        </Link>
+        <Link to="/studio/runs" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+          <Workflow aria-hidden />
+          <span className="font-medium">{t("Runs")}</span>
+        </Link>
+        {(me?.user.is_admin || me?.user.roles.includes("Solution Author")) && (
+          <Link to="/studio/solutions" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+            <Blocks aria-hidden />
+            <span className="font-medium">{t("Solutions")}</span>
+          </Link>
+        )}
         {me?.user.is_admin && (
           <a href="/data/customize/" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
             <SlidersHorizontal aria-hidden />
