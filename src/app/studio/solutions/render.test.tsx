@@ -13,7 +13,7 @@ import { parseSource, printSource, type ReleaseReview, type RunDetail, type Task
 import { RunPage, RunsPage } from "../runs/RunsPage";
 import { TaskPage, TasksPage } from "../runs/TasksPage";
 import { CalendarsPage } from "./CalendarsPage";
-import { GuidedEditor } from "./GuidedEditor";
+import { businessDays, GuidedEditor } from "./GuidedEditor";
 import { ReleasePage } from "./ReleasePage";
 import { SolutionsPage, template } from "./SolutionsPage";
 
@@ -255,6 +255,17 @@ describe("run and task screens", () => {
     expect(t).toContain("This is closed: resolved.");
     expect(t).toContain("Ana Admin ended the run refused");
     expect(t).toContain("No order is wanted.");
+  });
+});
+
+describe("a deadline's business days", () => {
+  it("changes only for a whole number in range, so a cleared field or a stray key leaves the deadline be", () => {
+    expect(businessDays("3")).toBe(3);
+    expect(businessDays("")).toBeNull();
+    expect(businessDays("S")).toBeNull();
+    expect(businessDays("0")).toBeNull();
+    expect(businessDays("2.5")).toBeNull();
+    expect(businessDays("261")).toBeNull();
   });
 });
 

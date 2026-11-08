@@ -67,6 +67,10 @@ export function DraftEditor() {
   const [busy, setBusy] = useState<string | null>(null);
   const [restorable, setRestorable] = useState<string | null>(null);
   const loaded = useRef(false);
+  const saveRef = useRef<HTMLButtonElement>(null);
+  const checkRef = useRef<HTMLButtonElement>(null);
+  // A notice's buttons go with the notice: the keyboard goes on from Save when there is something to save, else Check.
+  const toToolbar = () => requestAnimationFrame(() => (saveRef.current && !saveRef.current.disabled ? saveRef.current : checkRef.current)?.focus());
 
   // The server's draft, once: later answers do not overwrite what the person is typing.
   useEffect(() => {
@@ -99,6 +103,9 @@ export function DraftEditor() {
   const editSource = (s: Source) => edit(printSource(s));
 
   const save = async () => {
+    // The button turns off while it saves, and after: the keyboard goes on from Check (or back to Save when
+    // the save is refused), never from the top of the page.
+    const hadFocus = document.activeElement === saveRef.current;
     setBusy("save");
     try {
       const r = await saveDraft(id, version, text);
@@ -107,9 +114,13 @@ export function DraftEditor() {
       setConflict(null);
       writeLocal(id, null);
       toast(tr("Saved"));
+      // When and by whom it was last saved; the text on the page stays what was typed.
+      void q.refetch();
+      if (hadFocus) requestAnimationFrame(() => checkRef.current?.focus());
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) setConflict(errorMessage(e));
       else toast(errorMessage(e), "error");
+      if (hadFocus) requestAnimationFrame(() => saveRef.current?.focus());
     } finally {
       setBusy(null);
     }
@@ -134,9 +145,11 @@ export function DraftEditor() {
       setDirty(false);
       setConflict(null);
       writeLocal(id, null);
+      toToolbar();
     }
   };
   const check = async () => {
+    if (busy) return;
     setBusy("check");
     setPanel("diagnostics");
     try {
@@ -177,6 +190,8 @@ export function DraftEditor() {
     if (p && item) {
       setSelected({ process: p.id, path: item.path, step: at.step });
       setTab("guided");
+      // The keyboard goes to the step's settings, where the fault is mended.
+      requestAnimationFrame(() => document.getElementById("guided-inspector")?.focus());
     } else setTab("source");
   };
 
@@ -203,10 +218,11 @@ export function DraftEditor() {
         }
         actions={
           <>
-            <Button onClick={save} disabled={!dirty || busy !== null}>
+            <Button ref={saveRef} onClick={save} disabled={!dirty || busy !== null}>
               <Save aria-hidden /> {tr("Save")}
             </Button>
-            <Button variant="outline" onClick={check} disabled={busy !== null}>
+            {/* Kept enabled while it runs: a disabled button would throw keyboard focus back to the page. */}
+            <Button ref={checkRef} variant="outline" onClick={check} aria-busy={busy === "check"}>
               <Check aria-hidden /> {tr("Check")}
             </Button>
             <Button
@@ -231,10 +247,10 @@ export function DraftEditor() {
           tone="info"
           action={
             <span className="flex gap-2">
-              <Button size="sm" onClick={() => (edit(restorable), setRestorable(null))}>
+              <Button size="sm" onClick={() => (edit(restorable), setRestorable(null), toToolbar())}>
                 {tr("Restore")}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => (writeLocal(id, null), setRestorable(null))}>
+              <Button size="sm" variant="ghost" onClick={() => (writeLocal(id, null), setRestorable(null), toToolbar())}>
                 {tr("Discard")}
               </Button>
             </span>
