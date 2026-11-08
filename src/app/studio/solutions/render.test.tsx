@@ -259,6 +259,18 @@ describe("run and task screens", () => {
     expect(spent).not.toContain("Hand it on");
   });
 
+  it("lists a task's evidence and offers to attach more only while it is open", () => {
+    const evidence = [{ id: "f1", file_name: "quote.pdf", content_type: "application/pdf", size: 52000, sha256: "ab", at: "2026-11-09T10:00:00Z", by: "Reviewer" }];
+    const open = text(render(<TaskPage />, "/t/t7", "/t/:id", client([[["tasks", "t7"], { ...task, id: "t7", evidence }]])));
+    expect(open).toContain("quote.pdf");
+    expect(open).toContain("Attach a file");
+    const closed = text(render(<TaskPage />, "/t/t8", "/t/:id", client([[["tasks", "t8"], { ...task, id: "t8", status: "approved", evidence }]])));
+    expect(closed).toContain("quote.pdf");
+    expect(closed).not.toContain("Attach a file");
+    const none = text(render(<TaskPage />, "/t/t9", "/t/:id", client([[["tasks", "t9"], { ...task, id: "t9" }]])));
+    expect(none).toContain("No files yet");
+  });
+
   it("shows what looking up a lost answer found, kept on the item", () => {
     const lookup = {
       by: "u1",
