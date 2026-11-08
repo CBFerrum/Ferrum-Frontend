@@ -45,6 +45,8 @@ export interface Change {
   kind: "added" | "removed" | "changed";
   fields?: string[];
   changes_records?: boolean;
+  /** Each differing setting as it was and as it is (`null` where absent). */
+  values?: Record<string, [unknown, unknown]>;
 }
 export interface Locked {
   id: string;
@@ -176,6 +178,14 @@ export interface CatalogEntry {
   effect: string;
   entity?: string | null;
   input?: { properties?: Record<string, unknown>; required?: string[] };
+  /** What the capability promises (crates/logic/src/capability.rs): what done means, whether a retry can
+   *  do it twice, what happens when its outcome is unknown, what undoes it, and the rights it runs with. */
+  completion?: string;
+  idempotency?: string;
+  unknown_outcome?: string;
+  compensate_with?: string | null;
+  permissions?: string[];
+  limits?: { max_attempts?: number; timeout_ms?: number };
 }
 export interface CatalogEvent {
   id: string;

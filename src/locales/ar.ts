@@ -3040,6 +3040,22 @@ const words: Record<string, string> = {
   "To (their email)": "إلى (بريده الإلكتروني)",
   "approved it": "وافق عليها",
   "rejected it": "رفضها",
+  "Reads, and changes nothing.": "يقرأ، ولا يغيّر شيئًا.",
+  "Works something out, and changes nothing.": "يحسب شيئًا، ولا يغيّر شيئًا.",
+  "Changes records, all at once or not at all.": "يغيّر السجلات، كلها معًا أو لا شيء.",
+  "Reaches outside Ferrum: once it has gone, it cannot be called back.": "يصل إلى خارج Ferrum: بعد أن يخرج لا يمكن استرجاعه.",
+  "Asks a person.": "يسأل شخصًا.",
+  "If its outcome is unknown, it is looked up by its receipt before anything else happens.": "إذا كانت نتيجته غير معروفة، يُبحث عنها بإيصاله قبل أن يحدث أي شيء آخر.",
+  "If its outcome is unknown, a person settles what happened before the run goes on.": "إذا كانت نتيجته غير معروفة، يحسم شخصٌ ما حدث قبل أن يتابع التشغيل.",
+  "an administrator's": "صلاحيات مسؤول",
+  "What it promises": "ما الذي يَعِد به",
+  "Runs with the rights of whoever started the run, who needs: {rights}.": "يعمل بصلاحيات من بدأ التشغيل، والذي يحتاج إلى: {rights}.",
+  "Done means: {what}.": "الإنجاز يعني: {what}.",
+  "Tried up to {n} times; each try carries the same receipt, so it is never done twice.": "يُحاوَل حتى {n} مرات؛ كل محاولة تحمل الإيصال نفسه، فلا يُنفَّذ مرتين أبدًا.",
+  "Tried up to {n} times.": "يُحاوَل حتى {n} مرات.",
+  "Undone by {action} if a later step fails.": "يُتراجَع عنه بواسطة {action} إذا فشلت خطوة لاحقة.",
+  "Say where the run goes when its outcome is unknown (If its outcome is unknown): the check refuses it otherwise.": "حدّد إلى أين يذهب التشغيل عندما تكون نتيجته غير معروفة (إذا كانت نتيجته غير معروفة): وإلا يرفضه الفحص.",
+  "now": "الآن",
 };
 
 export default words;
