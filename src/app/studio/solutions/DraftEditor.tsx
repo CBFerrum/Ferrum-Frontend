@@ -1,4 +1,4 @@
-// A solution's draft (BUILDER_UX §4): one definition in three views, Guided, Outline and Source, with its
+// A solution's draft (BUILDER_UX §4): one definition in three views, Guided, Diagram and Source, with its
 // checks and a simulator. Saving sends the version the editor read: another person's save in between is
 // refused, and this page offers to keep one's own work as a new draft instead of losing either (FLC-UI-006).
 // Unsaved text is kept in this browser too, and offered back when the page opens on the same version.
@@ -29,6 +29,7 @@ import {
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
 import { Alert, confirmDialog, ErrorState, TabPanel, Tabs, toast } from "@/ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
+import { Diagram } from "./Diagram";
 import { GuidedEditor, type Selection } from "./GuidedEditor";
 import { SimulatorPanel } from "./SimulatorPanel";
 
@@ -282,6 +283,7 @@ export function DraftEditor() {
         onChange={setTab}
         tabs={[
           { id: "guided", label: tr("Guided") },
+          { id: "diagram", label: tr("Diagram") },
           { id: "source", label: tr("Source") },
         ]}
       />
@@ -292,6 +294,14 @@ export function DraftEditor() {
           ) : (
             <Alert tone="error">
               {tr("The source is not valid JSON, so the guided view cannot show it: {error}", { error: parsed.error ?? "" })}
+            </Alert>
+          ))}
+        {tab === "diagram" &&
+          (parsed.source ? (
+            <Diagram source={parsed.source} onChange={editSource} selected={selected} onSelect={setSelected} />
+          ) : (
+            <Alert tone="error">
+              {tr("The source is not valid JSON, so the diagram cannot show it: {error}", { error: parsed.error ?? "" })}
             </Alert>
           ))}
         {tab === "source" && (

@@ -3,7 +3,7 @@
 // the server says so and the page offers to look again. A recovery resumes only where its process allows, or
 // ends the run refused; there is no way to call it a success.
 
-import { ArrowLeft, CheckCircle2, Forward, RotateCcw, Square, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Forward, RotateCcw, Search, Square, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { acknowledgeTask, caseTaskDone, closeCase, decideTask, delegateTask, recoverTask, useTask, useTasks, type FormField, type Task, type TaskEvent, type TaskKind } from "@/lib/solutions";
+import { acknowledgeTask, caseTaskDone, closeCase, decideTask, delegateTask, lookUpTask, recoverTask, useTask, useTasks, type FormField, type Lookup, type Task, type TaskEvent, type TaskKind } from "@/lib/solutions";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
 import { Alert, ErrorState, toast } from "@/ui/kit";
 import { Field } from "@/app/studio/solutions/field";
@@ -308,6 +308,7 @@ function Recover({ task, onDone }: { task: Task; onDone: () => void }) {
     <div className="grid gap-4">
       <Alert tone="warning">{isolate(task.detail.reason ?? task.label)}</Alert>
       <p className="text-sm text-muted-foreground">{tr("Settle what happened first. A recovery says what was done, and resumes the run where its process allows or ends it refused: nothing marks it a success.")}</p>
+      <LookUp task={task} onDone={onDone} />
       <Field label={tr("What was done about it")} required>
         <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
@@ -329,6 +330,40 @@ function Recover({ task, onDone }: { task: Task; onDone: () => void }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+// When a step's answer was lost after it may have run, its effect is looked up by its receipt, which every capability
+// writes in the effect's own transaction. What was found is kept on the item, so it reads the same after a refresh
+// or on another replica.
+function LookUp({ task, onDone }: { task: Task; onDone: () => void }) {
+  const { busy, act } = useAct(onDone);
+  const found: Lookup | undefined = task.detail.lookup;
+  return (
+    <section className="grid gap-2 rounded-md border p-3" aria-label={tr("Was it done?")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">{tr("Was it done?")}</span>
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => act(() => lookUpTask(task.id), tr("Looked up"))}>
+          <Search aria-hidden /> {found ? tr("Look it up again") : tr("Look it up")}
+        </Button>
+      </div>
+      {found ? (
+        <ul className="grid gap-2" aria-live="polite">
+          {found.effects.map((e) => (
+            <li key={e.activation} className="text-sm">
+              <Badge variant={e.on_record ? "outline" : "secondary"}>{e.on_record ? tr("On record") : tr("Not on record")}</Badge>{" "}
+              <span className="font-medium">{isolate(e.activation)}</span>
+              {e.capability ? <span className="text-muted-foreground"> · {isolate(e.capability)}</span> : null}
+              {e.at ? <span className="text-muted-foreground"> · {formatDateTime(e.at)}</span> : null}
+              <p className="text-muted-foreground">{tr(e.meaning)}</p>
+            </li>
+          ))}
+          <li className="text-xs text-muted-foreground">{tr("Looked up {when}", { when: formatDateTime(found.at) })}</li>
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">{tr("If a step's outcome came back unknown, this says whether it was done, by its receipt.")}</p>
+      )}
+    </section>
   );
 }
 

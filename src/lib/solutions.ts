@@ -156,7 +156,7 @@ export interface Task extends TaskRow {
   handed_on?: number;
   status: string;
   deadline_basis?: { calendar?: string; revision?: number; zone?: string; adjusted?: string } | null;
-  detail: { tasks?: CaseTask[]; why?: string; evidence?: unknown; reason?: string; resumable?: boolean };
+  detail: { tasks?: CaseTask[]; why?: string; evidence?: unknown; reason?: string; resumable?: boolean; lookup?: Lookup };
   /** Who did what on it, oldest first. */
   history?: TaskEvent[];
 }
@@ -361,6 +361,20 @@ export const delegateTask = (id: string, to: string, reason: string) => api.post
 export const caseTaskDone = (id: string, task: string, values: Record<string, unknown>) => api.post(`${BASE}/tasks/${id}/done`, { task, values });
 export const closeCase = (id: string) => api.post(`${BASE}/tasks/${id}/close`);
 export const recoverTask = (id: string, resume: boolean, reason: string) => api.post(`${BASE}/tasks/${id}/recover`, { resume, reason });
+/** For each step whose outcome came back unknown: whether its effect is on record, by its receipt. Kept on the item. */
+export interface LookedUp {
+  activation: string;
+  on_record: boolean;
+  capability?: string;
+  at?: string;
+  meaning: string;
+}
+export interface Lookup {
+  by: string;
+  at: string;
+  effects: LookedUp[];
+}
+export const lookUpTask = (id: string) => api.post<Lookup>(`${BASE}/tasks/${id}/look-up`, {});
 export const acknowledgeTask = (id: string, reason: string) => api.post(`${BASE}/tasks/${id}/acknowledge`, { reason });
 
 export function useCalendars() {

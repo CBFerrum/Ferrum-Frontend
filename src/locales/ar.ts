@@ -3120,6 +3120,19 @@ const words: Record<string, string> = {
   "How often steps were tried": "كم مرة جُرّبت الخطوات",
   "tried {n} times": "جُرّب {n} مرات",
   "last: done": "الأخيرة: تمّت",
+  "Was it done?": "هل تمّت؟",
+  "Look it up": "تحقّق منها",
+  "Look it up again": "تحقّق منها مجددًا",
+  "Looked up": "تمّ التحقق",
+  "On record": "مُسجَّلة",
+  "Not on record": "غير مُسجَّلة",
+  "Looked up {when}": "تمّ التحقق {when}",
+  "If a step's outcome came back unknown, this says whether it was done, by its receipt.": "إذا عادت نتيجة خطوة مجهولة، يقول هذا من إيصالها ما إذا كانت قد تمّت.",
+  "It was done: its receipt is here. Resuming repeats the step under its key, which the receipt answers; nothing is done twice.": "لقد تمّت: إيصالها هنا. الاستئناف يكرر الخطوة بمفتاحها فيجيب عنها الإيصال؛ لا شيء يُفعل مرتين.",
+  "It was not done here: no receipt, and a receipt is written with the effect itself. Resuming does it once.": "لم تتمّ هنا: لا إيصال، والإيصال يُكتب مع الأثر نفسه. الاستئناف يفعلها مرة واحدة.",
+  "Diagram": "مخطط",
+  "Goes on to {targets}": "تمضي إلى {targets}",
+  "The source is not valid JSON, so the diagram cannot show it: {error}": "المصدر ليس JSON صالحًا، لذا لا يستطيع المخطط عرضه: {error}",
 };
 
 export default words;

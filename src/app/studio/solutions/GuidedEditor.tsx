@@ -257,7 +257,8 @@ function ProcessSteps({
   );
 }
 
-function Inspector({
+/** A step's settings, the same for the guided and the diagram view: each change is made to the one parsed source. */
+export function Inspector({
   source,
   p,
   path,
