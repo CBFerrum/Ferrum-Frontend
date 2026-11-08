@@ -176,8 +176,8 @@ export const newViewId = () => newKey().replace(/-/g, "").slice(0, 12);
 /** Why `name` cannot name a view (empty, too long, taken), or null. */
 export function viewNameError(name: string, views: Record<string, SavedView>, exceptId?: string): string | null {
   const n = name.trim();
-  if (!n) return "Enter a name.";
-  if (n.length > 60) return "Use at most 60 characters.";
+  if (!n) return t("Enter a name.");
+  if (n.length > 60) return t("Use at most 60 characters.");
   const taken = Object.values(views).some((v) => v.id !== exceptId && v.name.toLowerCase() === n.toLowerCase());
   return taken ? t("You already have a view named “{n}”.", { n }) : null;
 }

@@ -1,6 +1,7 @@
 // Generic document form: layout from `form` sections (in tabs, shown on conditions), widgets per field type, conditional rules,
 // live `_calc` totals, optimistic concurrency, lifecycle, custom actions, workflow, print, audit.
 
+import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
@@ -374,12 +375,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       op === "submit"
         ? {
             title: tr("Submit this {label}?", { label: meta.label }),
-            message: "Submitted documents can no longer be edited. To change one later, cancel it and amend it.",
+            message: tr("Submitted documents can no longer be edited. To change one later, cancel it and amend it."),
             confirmLabel: tr("Submit"),
           }
         : {
             title: tr("Cancel this {label}?", { label: meta.label }),
-            message: "Cancelling reverses its postings and cannot be undone. You can amend it into a new draft afterwards.",
+            message: tr("Cancelling reverses its postings and cannot be undone. You can amend it into a new draft afterwards."),
             confirmLabel: tr("Cancel document"),
             danger: true,
           },
@@ -645,7 +646,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       );
     }
     return (
-      <FieldWrap key={f.name} label={f.label} htmlFor={fid} required={st.required} error={err} hint={f.description} className={WIDE.has(f.type) ? "span-all" : ""}>
+      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={WIDE.has(f.type) ? "span-all" : ""}>
         {control}
       </FieldWrap>
     );
@@ -657,7 +658,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         if (tabId(s.tab) !== tab) return null;
         const hasError = items.some(({ f }) => topErrors.has(f.name) || errors.some((e) => e.row?.[0] === f.name));
         return (
-          <FormSection key={s.key} label={s.label} collapsible={s.collapsible} forceOpen={hasError}>
+          <FormSection key={s.key} label={isolate(s.label)} collapsible={s.collapsible} forceOpen={hasError}>
             <div className="form-grid" style={{ "--cols": Math.min(Math.max(s.columns, 1), 4) } as CSSProperties}>
               {items.map(({ f, st }) => renderField(f, st, items.length === 1 && f.label === s.label))}
             </div>
@@ -882,9 +883,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         </Alert>
       )}
       {!isNew && docstatus === 1 && meta.submittable && (
-        <Alert tone="info">{tr("This document is submitted and can no longer be edited.")}{canCancel ? tr(" Cancel it to make changes through an amendment.") : ""}</Alert>
+        <Alert tone="info">{(canCancel ? tr("This document is submitted and can no longer be edited. Cancel it to make changes through an amendment.") : tr("This document is submitted and can no longer be edited."))}</Alert>
       )}
-      {!isNew && docstatus === 2 && <Alert tone="warning">{tr("This document is cancelled.")}{canAmend ? tr(" Amend it to create a corrected draft.") : ""}</Alert>}
+      {!isNew && docstatus === 2 && <Alert tone="warning">{(canAmend ? tr("This document is cancelled. Amend it to create a corrected draft.") : tr("This document is cancelled."))}</Alert>}
       {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">{tr("You cannot edit documents in the “{wfState}” state.", { wfState: wfState ?? "" })}</Alert>}
 
       {tabs.length > 1 ? (
@@ -977,12 +978,12 @@ function AuditPanel({ meta, id }: { meta: EntityMeta; id: string }) {
     <div className="stack">
       {chain_valid ? (
         <Alert tone="success">
-          <strong>{tr("Audit chain verified.")}</strong> {tr("{length} event", { length: events.length })}{events.length === 1 ? "" : "s"}{tr(", none altered.")}
+          {placed(tr("{p1} {length} event{p2}, none altered."), { p1: <strong>{tr("Audit chain verified.")}</strong>, length: events.length, p2: events.length === 1 ? "" : "s" })}
         </Alert>
       ) : (
         <Alert tone="error">
           <strong>{tr("Audit chain broken")}</strong>
-          {broken_at != null ? tr(" at event {broken_at}", { broken_at }) : ""}{tr(": the stored history does not match its hash chain.")}
+          {(broken_at != null ? tr("at event {broken_at}: the stored history does not match its hash chain.", { broken_at }) : tr(": the stored history does not match its hash chain."))}
         </Alert>
       )}
       {!events.length ? (

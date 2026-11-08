@@ -71,8 +71,8 @@ export function ShellHome() {
       ) : info.data.apps.length ? (
         <nav aria-label={t("Apps")} className="shell-apps">
           {info.data.apps.map((a) => (
-            <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={a.description ?? undefined}>
-              <AppIcon name={a.icon} color={tileColour(a)} title={a.title} tile size={30} />
+            <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={isolate(a.description ?? undefined)}>
+              <AppIcon name={a.icon} color={tileColour(a)} title={isolate(a.title)} tile size={30} />
               <span className="shell-app-title">{isolate(a.title)}</span>
               {a.classic && <span className="faint shell-app-note">{t("classic")}</span>}
             </a>

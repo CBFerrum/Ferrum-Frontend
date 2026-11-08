@@ -47,7 +47,7 @@ interface FieldPickerProps {
   className?: string;
 }
 
-export function FieldPicker({ fields, value, onChange, label, placeholder = "Choose a field", invalid, describedBy, none, add, disabled, className }: FieldPickerProps) {
+export function FieldPicker({ fields, value, onChange, label, placeholder = t("Choose a field"), invalid, describedBy, none, add, disabled, className }: FieldPickerProps) {
   const [open, setOpen] = useState(false);
   const groups = useMemo(() => grouped(fields), [fields]);
   const selected = value ? fields.find((f) => f.path === value) : undefined;
@@ -77,7 +77,7 @@ export function FieldPicker({ fields, value, onChange, label, placeholder = "Cho
       >
         <span className="flex min-w-0 items-center gap-1.5">
           {selected && <TypeIcon type={selected.type} />}
-          <span className="truncate" title={selected?.label ?? value}>
+          <span className="truncate" title={isolate(selected?.label ?? value)}>
             {isolate(shownText)}
           </span>
         </span>

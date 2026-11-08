@@ -210,7 +210,7 @@ export function AcceptsEditor({
                     <SelectContent>
                       {params.map((p) => (
                         <SelectItem key={p.name} value={p.name}>
-                          {p.label ?? p.name}
+                          {isolate(p.label ?? p.name)}
                         </SelectItem>
                       ))}
                     </SelectContent>

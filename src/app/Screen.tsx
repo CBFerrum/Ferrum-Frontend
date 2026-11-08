@@ -63,7 +63,7 @@ export function ScreenFrame({ c, slot, record, fill }: { c: Contribution; slot: 
     <iframe
       ref={frame}
       className={fill ? "screen-frame fill" : "screen-frame"}
-      title={c.title ?? c.id}
+      title={isolate(c.title ?? c.id)}
       src={screenUrl(tenant, c)}
       sandbox="allow-scripts allow-downloads"
       referrerPolicy="no-referrer"
@@ -112,7 +112,7 @@ export function ScreenWidgets() {
   return (
     <div className="screen-widgets">
       {widgets.map((w) => (
-        <section key={`${w.app}/${w.id}`} className="card" style={{ gridColumn: `span ${w.size?.[0] ?? 4}` }} aria-label={w.title}>
+        <section key={`${w.app}/${w.id}`} className="card" style={{ gridColumn: `span ${w.size?.[0] ?? 4}` }} aria-label={isolate(w.title)}>
           <div className="card-head">
             <h2>{isolate(w.title ?? "")}</h2>
           </div>

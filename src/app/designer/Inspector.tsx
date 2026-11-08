@@ -1,6 +1,7 @@
 // The section inspector: label, columns, collapsible, tab and the `visible_if` condition of the selected
 // section, with a hint while the condition is typed and the server's message when a save rejected it.
 
+import { placed } from "../../lib/placed";
 import { CircleAlert, CircleCheck, Info, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -179,7 +180,7 @@ export function SectionInspector({
             </p>
           ) : (
             <p className="text-muted-foreground">
-              {tr("A condition on")} <code className="font-mono">{tr("doc")}</code> {tr("(this record), such as")} <code className="font-mono">{tr("doc.is_return")}</code>{tr(". Empty: always shown.")}
+              {placed(tr("A condition on {p1} (this record), such as {p2}. Empty: always shown."), { p1: <code className="font-mono">doc</code>, p2: <code className="font-mono">doc.is_return</code> })}
             </p>
           )}
         </div>

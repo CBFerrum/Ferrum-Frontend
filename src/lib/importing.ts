@@ -93,7 +93,7 @@ export function buildRecords(rows: string[][], mapping: (string | null)[], field
       if ("problem" in cell) wrong.push({ row, field: f.label, message: cell.problem });
       else if (cell.value !== null) doc[f.name] = cell.value;
     });
-    for (const f of required) if (doc[f.name] === undefined && !wrong.some((p) => p.field === f.label)) wrong.push({ row, field: f.label, message: "is required" });
+    for (const f of required) if (doc[f.name] === undefined && !wrong.some((p) => p.field === f.label)) wrong.push({ row, field: f.label, message: t("is required") });
     if (wrong.length) built.problems.push(...wrong);
     else built.records.push({ row, doc });
   });

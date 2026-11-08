@@ -3,6 +3,7 @@
 // shared link or an agent-written record can hold anything; column order and settings as the
 // server applies them; filter operators per field type; CSV; undo history.
 
+import { t as tr } from "@ferrum/client";
 import {
   AGG_LABEL,
   BUCKET_LABEL,
@@ -416,10 +417,10 @@ export function opsFor(type: string): FilterOp[] {
   return ["like", "not like", "=", "!=", "in", "not in", "is"];
 }
 
-const DATE_OPS: Partial<Record<FilterOp, string>> = { ">": "after", ">=": "on or after", "<": "before", "<=": "on or before", "=": "on", "!=": "not on" };
+const DATE_OPS: Partial<Record<FilterOp, string>> = { ">": "after", get ">="() { return tr("on or after"); }, "<": "before", get "<="() { return tr("on or before"); }, "=": "on", get "!="() { return tr("not on"); } };
 const OPS: Record<FilterOp, string> = {
-  "=": "is", "!=": "is not", ">": "greater than", ">=": "at least", "<": "less than", "<=": "at most",
-  in: "is any of", "not in": "is none of", like: "contains", "not like": "does not contain", between: "between", is: "is",
+  "=": "is", get "!="() { return tr("is not"); }, get ">"() { return tr("greater than"); }, get ">="() { return tr("at least"); }, get "<"() { return tr("less than"); }, get "<="() { return tr("at most"); },
+  get in() { return tr("is any of"); }, get "not in"() { return tr("is none of"); }, like: "contains", get "not like"() { return tr("does not contain"); }, between: "between", is: "is",
 };
 
 export const opLabel = (op: FilterOp, type: string) => ((type === "date" || type === "datetime") && DATE_OPS[op]) || OPS[op];
@@ -443,7 +444,7 @@ export function filterIssues(filters: SpecFilter[], at = "filters"): Issue[] {
   return filters.flatMap(([path, op, value], i): Issue[] => {
     if (!path || op === "is") return [];
     const missing = op === "in" || op === "not in" ? !Array.isArray(value) || !value.length : op === "between" ? !Array.isArray(value) || value.length !== 2 || value.some(blank) : blank(value);
-    return missing ? [{ path: `${at}[${i}]`, message: op === "in" || op === "not in" ? "Add at least one value" : "Enter a value" }] : [];
+    return missing ? [{ path: `${at}[${i}]`, message: op === "in" || op === "not in" ? tr("Add at least one value") : tr("Enter a value") }] : [];
   });
 }
 

@@ -1,6 +1,7 @@
 // App shell: auth guard, sidebar built from metadata modules, top bar (search, notifications,
 // user menu), keyboard shortcuts (`/` search, Ctrl/Cmd+K command palette).
 
+import { placed } from "../lib/placed";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
 import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
@@ -438,7 +439,7 @@ function useNavTargets(): NavTarget[] {
     const out: NavTarget[] = [{ label: tr("Home"), hint: tr("Page"), to: "/" }];
     for (const e of meta.entities) {
       if (!can(e.permissions, "read") || e.module === STUDIO) continue;
-      const hint = (e.module && modLabel.get(e.module)) || "Entity";
+      const hint = (e.module && modLabel.get(e.module)) || tr("Entity");
       out.push({ label: e.label_plural, hint, to: `/e/${e.name}` });
       if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: tr("New {label}", { label: e.label }), hint, to: `/e/${e.name}/new` });
     }
@@ -572,8 +573,7 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
       {mode === "palette" && q.trim() && !items.length && <p className="option-empty">{tr("No matches.")}</p>}
       {mode === "palette" && (
         <p className="field-hint" style={{ marginTop: 8 }}>
-          <span className="kbd">↑</span> <span className="kbd">↓</span> {tr("to move,")} <span className="kbd">{tr("Enter")}</span> {tr("to open,")}{isolate(" ")}
-          <span className="kbd">{tr("Esc")}</span> {tr("to close")}
+          {placed(tr("{p1} {p2} to move, {p3} to open, {p4} to close"), { p1: <span className="kbd">↑</span>, p2: <span className="kbd">↓</span>, p3: <span className="kbd">{tr("Enter")}</span>, p4: <span className="kbd">{tr("Esc")}</span> })}
         </p>
       )}
     </div>
@@ -624,7 +624,7 @@ function Notifications() {
       <button
         type="button"
         className="icon-btn"
-        aria-label={tr("Notifications{value}", { value: unread.length ? `, ${unread.length} unread` : "" })}
+        aria-label={(unread.length ? tr("Notifications, {length} unread", { length: unread.length }) : tr("Notifications"))}
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
@@ -708,7 +708,7 @@ function UserMenu() {
 
   return (
     <>
-      <Menu ariaLabel="Account menu" icon="user" buttonClass="icon-btn">
+      <Menu ariaLabel={tr("Account menu")} icon="user" buttonClass="icon-btn">
         {(close) => (
           <>
             <div className="menu-head">
@@ -837,7 +837,7 @@ export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (next !== confirm) {
-      setErrors({ confirm: "Passwords do not match" });
+      setErrors({ confirm: tr("Passwords do not match") });
       return;
     }
     setBusy(true);

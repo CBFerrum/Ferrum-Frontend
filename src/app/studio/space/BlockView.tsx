@@ -133,14 +133,14 @@ export function BlockView({ widget: w, pending }: { widget: ResolvedWidget; pend
       return <LinksCard w={w} />;
     case "chart":
       return w.error ? (
-        <BlockError title={w.chart.label} error={w.error} />
+        <BlockError title={isolate(w.chart.label)} error={w.error} />
       ) : (
-        <BlockCard title={w.chart.label} description={w.chart.description}>
+        <BlockCard title={isolate(w.chart.label)} description={isolate(w.chart.description)}>
           <ChartView chart={w.chart} data={w.data} />
         </BlockCard>
       );
     case "card":
-      return w.error ? <BlockError title={w.card.label} error={w.error} /> : <NumberCard w={w} />;
+      return w.error ? <BlockError title={isolate(w.card.label)} error={w.error} /> : <NumberCard w={w} />;
     case "list":
       return w.error ? <BlockError title={w.label || humanize(w.entity)} error={w.error} /> : <QuickList w={w} />;
     case "markdown":
@@ -250,7 +250,7 @@ function linkTarget(l: LinkItem): Target | null {
 
 function LinksCard({ w }: { w: Extract<ResolvedWidget, { type: "links" }> }) {
   return (
-    <BlockCard title={w.label}>
+    <BlockCard title={isolate(w.label)}>
       <ul className="-mx-2 grid gap-0.5">
         {w.items.map((l, i) => {
           const target = linkTarget(l);
@@ -278,7 +278,7 @@ function NumberCard({ w }: { w: Extract<ResolvedWidget, { type: "card"; error?: 
   const value = formatCardValue(w.value, card);
   const change = formatChange(w, card);
   const accent = isSafeColor(card.color) ? card.color : undefined;
-  const vs = w.meta?.compare?.kind === "previous_year" ? "vs last year" : "vs previous period";
+  const vs = w.meta?.compare?.kind === "previous_year" ? t("vs last year") : t("vs previous period");
   const Trend = w.direction === "up" ? TrendingUp : w.direction === "down" ? TrendingDown : Minus;
   const tone = w.direction === "up" ? "text-success" : w.direction === "down" ? "text-destructive" : "text-muted-foreground";
   const target = w.drill_down?.entity ? { to: listHref(w.drill_down.entity, w.drill_down.filters) } : null;

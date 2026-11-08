@@ -226,7 +226,7 @@ export function BulkBar({
                 { op: "submit" },
                 {
                   title: tr("Submit {what}?", { what }),
-                  message: "Submitted documents can no longer be edited; to change one later, cancel and amend it. Records that cannot be submitted are listed afterwards.",
+                  message: tr("Submitted documents can no longer be edited; to change one later, cancel and amend it. Records that cannot be submitted are listed afterwards."),
                   confirmLabel: tr("Submit"),
                 },
               )
@@ -244,7 +244,7 @@ export function BulkBar({
                 { op: "cancel" },
                 {
                   title: tr("Cancel {what}?", { what }),
-                  message: "Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards.",
+                  message: tr("Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards."),
                   confirmLabel: tr("Cancel them"),
                   danger: true,
                 },
@@ -263,7 +263,7 @@ export function BulkBar({
                 { op: "workflow", action },
                 {
                   title: `${action}: ${what}?`,
-                  message: `“${action}” is applied to each selected record whose state allows it; the others are listed afterwards.`,
+                  message: tr("“{action}” is applied to each selected record whose state allows it; the others are listed afterwards.", { action }),
                   confirmLabel: action,
                 },
               )
@@ -287,7 +287,7 @@ export function BulkBar({
                 { op: "delete" },
                 {
                   title: tr("Delete {what}?", { what }),
-                  message: "They are deleted permanently. Records that cannot be deleted (submitted documents, or ones you may not delete) are skipped and listed afterwards.",
+                  message: tr("They are deleted permanently. Records that cannot be deleted (submitted documents, or ones you may not delete) are skipped and listed afterwards."),
                   confirmLabel: tr("Delete"),
                   danger: true,
                 },
@@ -546,7 +546,7 @@ function TagsForm({ entity, onCancel, onApply }: { entity: string; onCancel: () 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const list = all();
-    if (!list.length) return setError("Enter at least one tag.");
+    if (!list.length) return setError(tr("Enter at least one tag."));
     onApply({ op: mode, tags: list });
   };
   return (

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ar from "../locales/ar";
 import hi from "../locales/hi";
 import { formatDate, formatDecimal } from "./format";
-import { addCatalog, addCatalogs, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t, wordsReady } from "./i18n";
+import { addCatalog, addCatalogs, addNames, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t, wordsReady } from "./i18n";
 
 afterEach(() => applyLocale(null, undefined));
 
@@ -100,7 +100,7 @@ describe("the catalogs", () => {
     readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
       d.name === "node_modules" || d.name === "dist" ? [] : d.isDirectory() ? files(join(dir, d.name)) : /\.tsx?$/.test(d.name) && !/\.test\./.test(d.name) ? [join(dir, d.name)] : [],
     );
-  const asked = new Set(["src", "apps", "packages"].flatMap(files).flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\bt\("((?:[^"\\]|\\.)+)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)));
+  const asked = new Set(["src", "apps", "packages"].flatMap(files).flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\b(?:t|tr)\("((?:[^"\\]|\\.)+)"/g)].map((m) => JSON.parse(`"${m[1]}"`) as string)));
 
   it("have every word the interface asks for", () => {
     expect(asked.size).toBeGreaterThan(40);
@@ -126,5 +126,47 @@ describe("a workspace's own words", () => {
     applyLocale({ language: "ar", words: { "New event": "حدث جديد للمساحة" } }, undefined);
     addCatalog("ar", { "New event": "حدث جديد", "All day": "طوال اليوم" });
     expect([t("New event"), t("All day")]).toEqual(["حدث جديد للمساحة", "طوال اليوم"]);
+  });
+});
+
+describe("the names of models and manifests", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("are fetched from where the bootstrap says, and a page waits for them", async () => {
+    const fetched: string[] = [];
+    vi.stubGlobal("fetch", (url: string) => {
+      fetched.push(url);
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ "Sales Invoice": "فاتورة مبيعات" }) });
+    });
+    applyLocale({ language: "ar", names: "/api/shell/names/ar" }, undefined);
+    await wordsReady();
+    expect(fetched).toEqual(["/api/shell/names/ar"]);
+    expect(isolate("Sales Invoice")).toBe("فاتورة مبيعات");
+    // Nothing is fetched for English, nor twice.
+    applyLocale({ language: "en", names: "/api/shell/names/en" }, undefined);
+    applyLocale({ language: "ar", names: "/api/shell/names/ar" }, undefined);
+    await wordsReady();
+    expect(fetched).toEqual(["/api/shell/names/ar"]);
+  });
+
+  it("show what a page shows as it is in the page's language, and leave the rest as it is", () => {
+    applyLocale({ language: "ar" }, undefined);
+    addNames("ar", { Lead: "عميل محتمل", Open: "مفتوح" });
+    expect([isolate("Lead"), isolate("Open"), isolate("Asha Rao")]).toEqual(["عميل محتمل", "مفتوح", "\u2068Asha Rao\u2069"]);
+  });
+
+  it("fill a sentence's places, under the catalogs' own words", () => {
+    applyLocale({ language: "ar", words: { "New {entity}": "{entity} جديد" } }, undefined);
+    addNames("ar", { Lead: "عميل محتمل", Save: "اسم لا يُستعمل" });
+    expect(t("New {entity}", { entity: "Lead" })).toBe("عميل محتمل جديد");
+    expect(t("Save")).not.toBe("اسم لا يُستعمل");
+    // A name no catalog has is a word t() knows too.
+    expect(t("Lead")).toBe("عميل محتمل");
+  });
+
+  it("are none in English", () => {
+    addNames("ar", { Lead: "عميل محتمل" });
+    applyLocale({ language: "en" }, undefined);
+    expect([isolate("Lead"), t("New {entity}", { entity: "Lead" })]).toEqual(["Lead", "New Lead"]);
   });
 });

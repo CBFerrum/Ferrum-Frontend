@@ -16,7 +16,7 @@ function incompleteFilters(filters: SpecFilter[]): Issue[] {
   const out: Issue[] = [];
   filters.forEach(([path, op, v], i) => {
     const empty = v === "" || v === null || v === undefined || (Array.isArray(v) && (!v.length || v.some((x) => x === "")));
-    if (path && op !== "is" && empty) out.push({ path: `spec.filters[${i}]`, message: "Enter a value, or remove the condition" });
+    if (path && op !== "is" && empty) out.push({ path: `spec.filters[${i}]`, message: t("Enter a value, or remove the condition") });
   });
   return out;
 }
@@ -68,12 +68,12 @@ export function blankChart(sp: URLSearchParams = new URLSearchParams()): ChartRe
 
 /** What keeps a chart from being previewed (and saved), checked before asking the server. */
 export function chartIssuesLocal({ rec, query }: ChartDraft, catalog: FieldCatalog | undefined, requiredParams: string[]): Issue[] {
-  if (rec.source === "report") return rec.report ? [] : [{ path: "report", message: "Choose a saved report" }];
+  if (rec.source === "report") return rec.report ? [] : [{ path: "report", message: t("Choose a saved report") }];
   if (rec.source === "builtin") {
-    if (!rec.builtin_report) return [{ path: "builtin_report", message: "Choose a report" }];
+    if (!rec.builtin_report) return [{ path: "builtin_report", message: t("Choose a report") }];
     return requiredParams.filter((p) => !rec.builtin_params?.[p]?.trim()).map((p) => ({ path: "builtin_params", message: t("Enter {p}: the report needs it", { p: p.replace(/_/g, " ") }) }));
   }
-  if (!query.entity) return [{ path: "spec.entity", message: "Choose what to report on" }];
+  if (!query.entity) return [{ path: "spec.entity", message: t("Choose what to report on") }];
   return [...specIssues(buildSpec(query), catalog).map((i) => ({ ...i, path: `spec.${i.path}` })), ...incompleteFilters(query.filters)];
 }
 
@@ -112,7 +112,7 @@ export function cardRecord({ rec, query }: CardDraft): CardRecord {
 export const blankCard = (sp: URLSearchParams = new URLSearchParams()): CardRecord => ({ label: "", sharing: "private", format: "int", spec: buildSpec(emptyDraft(sp.get("entity") ?? "", "group_by")) });
 
 export function cardIssuesLocal({ query }: CardDraft, catalog: FieldCatalog | undefined): Issue[] {
-  if (!query.entity) return [{ path: "spec.entity", message: "Choose what to count" }];
+  if (!query.entity) return [{ path: "spec.entity", message: t("Choose what to count") }];
   return [...specIssues(cardSpec(query), catalog).map((i) => ({ ...i, path: `spec.${i.path}` })), ...incompleteFilters(query.filters)];
 }
 

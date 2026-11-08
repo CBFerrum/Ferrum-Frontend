@@ -115,7 +115,7 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
                     className="icon-btn"
                     aria-label={tr("Mark {user_name}'s assignment done", { user_name: String(a.user_name) })}
                     title={tr("Done")}
-                    onClick={() => void run(() => api.post(`/api/assignments/${a.id}/close`, { status: "Done" }), "Marked done")}
+                    onClick={() => void run(() => api.post(`/api/assignments/${a.id}/close`, { status: "Done" }), tr("Marked done"))}
                   >
                     <Icon name="check" size={14} />
                   </button>
@@ -143,7 +143,7 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
           variant="ghost"
           icon="bell"
           aria-pressed={!!follow.data?.following}
-          onClick={() => void run(() => api.put(docPath(entity, id, "follow"), { following: !follow.data?.following }), follow.data?.following ? "Unfollowed" : "Following: you will be notified of changes")}
+          onClick={() => void run(() => api.put(docPath(entity, id, "follow"), { following: !follow.data?.following }), follow.data?.following ? tr("Unfollowed") : tr("Following: you will be notified of changes"))}
         >
           {follow.data?.following ? tr("Following") : tr("Follow")}
         </Button>
@@ -281,7 +281,7 @@ export function Composer({ people, onPost }: { people: Person[]; onPost: (body: 
         ref={ref}
         className="textarea"
         rows={3}
-        placeholder="Add a comment… use @ to mention someone"
+        placeholder={tr("Add a comment… use @ to mention someone")}
         value={text}
         maxLength={20000}
         onChange={(e) => onInput(e.target.value)}

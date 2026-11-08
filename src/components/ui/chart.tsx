@@ -1,3 +1,4 @@
+import { isolate } from "@ferrum/client";
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import * as RechartsPrimitive from "recharts"
@@ -246,7 +247,7 @@ function ChartTooltipContent({
                       <div className="grid gap-1.5">
                         {nestLabel ? tooltipLabel : null}
                         <span className="text-muted-foreground">
-                          {itemConfig?.label ?? item.name}
+                          {typeof (itemConfig?.label ?? item.name) === "string" ? isolate(String(itemConfig?.label ?? item.name)) : (itemConfig?.label ?? item.name)}
                         </span>
                       </div>
                       {item.value != null && (

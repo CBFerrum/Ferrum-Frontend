@@ -1,6 +1,7 @@
 // Apps: what this workspace has installed, the store, and uploads (docs/plan/apps.md).
 // Installing always goes through a plan (dependencies, permissions) and an explicit consent.
 
+import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -104,13 +105,13 @@ export function LicenceNeeded({ need, onGiven }: { need: LicenceNeed; onGiven: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (need.live) {
-    return <p className="muted">{tr("{app}'s licence is live{value}.", { app: need.app, value: need.period_end ? ` until ${formatDate(need.period_end.slice(0, 10))}` : "" })}</p>;
+    return <p className="muted">{(need.period_end ? tr("{app}'s licence is live until {value1}.", { app: need.app, value1: formatDate(need.period_end.slice(0, 10)) }) : tr("{app}'s licence is live.", { app: need.app }))}</p>;
   }
   const give = async (e: FormEvent) => {
     e.preventDefault();
     const licence = value.trim();
     if (!LICENCE.test(licence)) {
-      setError("A licence is the id shown on Your purchases in the store, such as 0f2c6a1e-…");
+      setError(tr("A licence is the id shown on Your purchases in the store, such as 0f2c6a1e-…"));
       return;
     }
     setBusy(true);
@@ -147,8 +148,8 @@ const RUNTIME_TONE = { native: "purple", wasm: "green", meta: "neutral", service
 
 /** Words for a permission section key: `entities` → "Entities". */
 export function sectionLabel(key: string): string {
-  if (key === "native") return "Built into the server";
-  if (key === "services") return "Runs outside Ferrum, as an account of its own, at";
+  if (key === "native") return tr("Built into the server");
+  if (key === "services") return tr("Runs outside Ferrum, as an account of its own, at");
   const s = key.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -156,7 +157,7 @@ export function sectionLabel(key: string): string {
 /** Lines describing one permission section, whatever its JSON shape. */
 export function permissionLines(value: unknown, key?: string): string[] {
   if (value == null || value === false) return [];
-  if (value === true) return [key === "native" ? "It runs in the server itself, not in a sandbox" : "Yes"];
+  if (value === true) return [key === "native" ? tr("It runs in the server itself, not in a sandbox") : tr("Yes")];
   if (Array.isArray(value)) return value.flatMap((v) => (typeof v === "object" && v ? [describeObject(v as Record<string, unknown>)] : [String(v)]));
   if (typeof value === "object") return Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : typeof v === "object" ? describeObject(v as Record<string, unknown>) : String(v)}`);
   return [String(value)];
@@ -255,7 +256,7 @@ export function AppsPage() {
     );
   }
   const tabs = [
-    { id: "installed", label: tr("Installed{value}", { value: q.data ? ` (${q.data.installed.length})` : "" }) },
+    { id: "installed", label: (q.data ? tr("Installed ({length})", { length: q.data.installed.length }) : tr("Installed")) },
     { id: "store", label: tr("Store") },
     ...(q.data && q.data.uploads !== "off" ? [{ id: "upload", label: tr("Upload") }] : []),
   ];
@@ -293,7 +294,7 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
     queryKey: ["apps", "licences"],
     queryFn: ({ signal }) => api.get<{ licences: (LicenceNeed & { app: string })[] }>("/api/admin/apps/licences", undefined, signal),
   });
-  const lapsed = new Map((licences.data?.licences ?? []).filter((l) => !l.live).map((l) => [l.app, l.last_error ?? "Its store says the licence has lapsed: renew it there."]));
+  const lapsed = new Map((licences.data?.licences ?? []).filter((l) => !l.live).map((l) => [l.app, l.last_error ?? tr("Its store says the licence has lapsed: renew it there.")]));
   const [busy, setBusy] = useState<string | null>(null);
   const settings = new Set((useContributions("ui.settings").data ?? []).map((c) => c.app));
   const refresh = () =>
@@ -487,7 +488,7 @@ function Upload({ data, onUploaded }: { data: AppsResponse; onUploaded: (id: str
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) return setError("App bundles are limited to 50 MB.");
+    if (file.size > 50 * 1024 * 1024) return setError(tr("App bundles are limited to 50 MB."));
     setBusy(true);
     setError(null);
     try {
@@ -504,7 +505,7 @@ function Upload({ data, onUploaded }: { data: AppsResponse; onUploaded: (id: str
   return (
     <form className="card stack" style={{ padding: 16, maxWidth: 640 }} onSubmit={submit}>
       <p>
-        {tr("Upload an app bundle (")}<span className="mono">{tr(".fapp")}</span>{tr(") built with")} <span className="mono">{tr("ferrum-app pack")}</span>.{isolate(" ")}
+        {placed(tr("Upload an app bundle ({p1}) built with {p2}."), { p1: <span className="mono">.fapp</span>, p2: <span className="mono">ferrum-app pack</span> })}{isolate(" ")}
         {data.uploads === "private"
           ? tr("Uploaded apps stay private to this workspace and run sandboxed; apps that bring their own tables must come from the store.")
           : tr("Uploaded apps become available on this server; you review their permissions before installing.")}

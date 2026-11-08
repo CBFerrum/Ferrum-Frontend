@@ -147,7 +147,7 @@ export function ChartWidget({
     table ? (
       <ResultTable data={data} onRow={onPoint} className="h-full" />
     ) : (
-      <ChartView type={chart.chart_type} data={data} x={chart.x} y={chart.y} colors={chart.colors} title={chart.label} onPoint={onPoint} className={big ? "min-h-[50vh]" : undefined} />
+      <ChartView type={chart.chart_type} data={data} x={chart.x} y={chart.y} colors={chart.colors} title={isolate(chart.label)} onPoint={onPoint} className={big ? "min-h-[50vh]" : undefined} />
     );
   const menu = (
     <>
@@ -180,7 +180,7 @@ export function ChartWidget({
   );
   return (
     <>
-      <WidgetFrame title={chart.label} label={tr("{label}, {value} chart", { label: chart.label, value: CHART_TYPE_LABEL[chart.chart_type as ChartType]?.toLowerCase() ?? "" })} menu={menu} handle={handle}>
+      <WidgetFrame title={isolate(chart.label)} label={tr("{label}, {value} chart", { label: chart.label, value: CHART_TYPE_LABEL[chart.chart_type as ChartType]?.toLowerCase() ?? "" })} menu={menu} handle={handle}>
         {view()}
       </WidgetFrame>
       <Dialog open={expanded} onOpenChange={setExpanded}>
@@ -345,7 +345,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
   if (widget.type === "chart") {
     if (widget.error) {
       return (
-        <WidgetFrame title={widget.chart.label} label={widget.chart.label} handle={handle} menu={menu}>
+        <WidgetFrame title={isolate(widget.chart.label)} label={isolate(widget.chart.label)} handle={handle} menu={menu}>
           <WidgetErrorBody error={widget.error} />
         </WidgetFrame>
       );
@@ -355,7 +355,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
   if (widget.type === "card") {
     if (widget.error) {
       return (
-        <WidgetFrame title={widget.card.label} label={widget.card.label} handle={handle} menu={menu}>
+        <WidgetFrame title={isolate(widget.card.label)} label={isolate(widget.card.label)} handle={handle} menu={menu}>
           <WidgetErrorBody error={widget.error} />
         </WidgetFrame>
       );
@@ -406,7 +406,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
     }
     case "links":
       return (
-        <WidgetFrame title={widget.label} label={widget.label} handle={handle} menu={menu} bodyClassName="overflow-auto">
+        <WidgetFrame title={isolate(widget.label)} label={isolate(widget.label)} handle={handle} menu={menu} bodyClassName="overflow-auto">
           <ul className="space-y-1 text-sm">
             {widget.items.map((l, i) => {
               const href = l.entity ? `/e/${l.entity}` : l.report ? `/studio/reports/${l.report}` : l.dashboard ? `/studio/dashboards/${l.dashboard}` : l.builtin ? `/r/${l.builtin}` : l.url;

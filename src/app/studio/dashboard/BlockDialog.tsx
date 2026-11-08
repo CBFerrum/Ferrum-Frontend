@@ -22,7 +22,7 @@ import { Markdown } from "./Widget";
 import { t as tr, isolate } from "@ferrum/client";
 
 export type OwnBlock = HeadingBlock | MarkdownBlock | ShortcutBlock | ListBlock;
-export const OWN_TITLE: Record<OwnBlock["type"], string> = { get heading() { return tr("Heading"); }, markdown: "Text", shortcut: "Shortcut", list: "Record list" };
+export const OWN_TITLE: Record<OwnBlock["type"], string> = { get heading() { return tr("Heading"); }, get markdown() { return tr("Text"); }, get shortcut() { return tr("Shortcut"); }, get list() { return tr("Record list"); } };
 
 export const blankBlock = (type: OwnBlock["type"]): OwnBlock =>
   type === "heading" ? { type, text: "", level: 2 } : type === "markdown" ? { type, content: "" } : type === "shortcut" ? { type, label: "", entity: "", show_count: true } : { type, entity: "", limit: 5 };
@@ -34,21 +34,21 @@ const targetOf = (b: ShortcutBlock): Target => (b.dashboard != null ? "dashboard
 function blockIssues(b: OwnBlock): string[] {
   switch (b.type) {
     case "heading":
-      return b.text.trim() ? [] : ["Write the heading"];
+      return b.text.trim() ? [] : [tr("Write the heading")];
     case "markdown":
-      return b.content.trim() ? [] : ["Write the text"];
+      return b.content.trim() ? [] : [tr("Write the text")];
     case "shortcut": {
-      const out = b.label.trim() ? [] : ["Give the shortcut a label"];
+      const out = b.label.trim() ? [] : [tr("Give the shortcut a label")];
       const t = targetOf(b);
-      if (t === "entity" && !b.entity) out.push("Choose the records it opens");
-      if (t === "dashboard" && !b.dashboard) out.push("Choose the dashboard it opens");
-      if (t === "report" && !b.report) out.push("Choose the report it opens");
-      if (t === "url" && !/^(\/(?!\/)|https?:\/\/)\S+$/.test(b.url ?? "")) out.push("Enter an app path (/app/…) or an http(s) address");
-      if (b.color && !isSafeColor(b.color)) out.push("Choose a valid colour");
+      if (t === "entity" && !b.entity) out.push(tr("Choose the records it opens"));
+      if (t === "dashboard" && !b.dashboard) out.push(tr("Choose the dashboard it opens"));
+      if (t === "report" && !b.report) out.push(tr("Choose the report it opens"));
+      if (t === "url" && !/^(\/(?!\/)|https?:\/\/)\S+$/.test(b.url ?? "")) out.push(tr("Enter an app path (/app/…) or an http(s) address"));
+      if (b.color && !isSafeColor(b.color)) out.push(tr("Choose a valid colour"));
       return out;
     }
     case "list":
-      return b.entity ? [] : ["Choose the records to list"];
+      return b.entity ? [] : [tr("Choose the records to list")];
   }
 }
 
