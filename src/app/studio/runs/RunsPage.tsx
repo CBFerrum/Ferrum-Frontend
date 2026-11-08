@@ -154,7 +154,7 @@ export function RunPage() {
           </ul>
         )}
       </section>
-      <WhatHappened state={r.state} />
+      <WhatHappened state={r.state} attempts={r.attempts} />
       {r.output !== undefined && r.output !== null && (
         <section aria-labelledby="run-output" className="mb-6">
           <h2 id="run-output" className="mb-2 text-base font-semibold">
@@ -191,10 +191,12 @@ interface RunState {
 
 /** Each step's outcome as the run recorded it, refusals and unknown outcomes first, and the effects it did:
  *  what an operator reads before recovering anything (BUILDER_UX §10). */
-export function WhatHappened({ state }: { state: unknown }) {
+export function WhatHappened({ state, attempts }: { state: unknown; attempts?: RunDetail["attempts"] }) {
   const s = (state ?? {}) as RunState;
   const outputs = Object.entries(s.outputs ?? {});
-  if (outputs.length === 0 && !s.effects?.length) return null;
+  // Steps tried more than once, or whose last try did not finish: what an operator looks at first.
+  const tries = Object.entries(attempts ?? {}).filter(([, a]) => a.attempts > 1 || a.last !== "done");
+  if (outputs.length === 0 && !s.effects?.length && tries.length === 0) return null;
   const trouble = (v: unknown) => !!v && typeof v === "object" && ("error" in (v as object) || "unknown" in (v as object));
   const sorted = [...outputs.filter(([, v]) => trouble(v)), ...outputs.filter(([, v]) => !trouble(v))];
   return (
@@ -222,6 +224,23 @@ export function WhatHappened({ state }: { state: unknown }) {
           );
         })}
       </ul>
+      {tries.length > 0 && (
+        <>
+          <h3 className="mt-3 mb-1 text-sm font-semibold">{tr("How often steps were tried")}</h3>
+          <ul className="grid gap-1 text-sm">
+            {tries.map(([activation, a]) => (
+              <li key={activation} className="grid gap-1 sm:grid-cols-[14rem_1fr]">
+                <span className="font-medium" dir="ltr">
+                  {activation}
+                </span>
+                <span>
+                  {tr("tried {n} times", { n: a.attempts })} · <span className="[overflow-wrap:anywhere]">{a.last === "done" ? tr("last: done") : isolate(a.last)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {!!s.effects?.length && (
         <>
           <h3 className="mt-3 mb-1 text-sm font-semibold">{tr("What it did")}</h3>
