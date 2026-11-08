@@ -53,6 +53,7 @@
     "yjs": "13.6.33"
   },
   "devDependencies": {
+    "@guidepup/virtual-screen-reader": "0.33.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/jsdom": "^21.1.7",
     "@types/node": "22.20.5",
