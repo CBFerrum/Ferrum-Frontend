@@ -1,19 +1,23 @@
 // Runs (BUILDER_UX §10): each process instance the person may see (an administrator all, anyone else those
 // they started), kept up to date through the server's cursor, which never skips a change committed late. A
-// run's page shows its state, what it waits on and how it ended, and lets whoever started it ask it to stop.
+// run's page shows its state, what it waits on and how it ended, and lets whoever started it ask it to stop. An
+// administrator can move a waiting run onto the release that runs now for its solution, by a mapping another
+// administrator approves; the page keeps the record of each move planned, approved, made or refused.
 
-import { ArrowLeft, Ban } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Ban, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, relativeTime } from "@/lib/format";
-import { cancelRun, FINISHED, useRun, useRuns, type RunStatus } from "@/lib/solutions";
+import { approveMove, cancelRun, FINISHED, planMove, useRun, useRuns, useSolutions, type ReleaseRow, type RunDetail, type RunStatus } from "@/lib/solutions";
+import { useMe } from "@/lib/meta";
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
-import { ErrorState, toast } from "@/ui/kit";
+import { Alert, ErrorState, toast } from "@/ui/kit";
 import { Field } from "@/app/studio/solutions/field";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -90,11 +94,15 @@ export function RunsPage() {
 export function RunPage() {
   const { id = "" } = useParams();
   const q = useRun(id);
+  const me = useMe();
+  const isAdmin = !!me.data?.user.is_admin;
+  const solutions = useSolutions(isAdmin);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   if (q.isLoading) return <LoadingBlock className="p-4" />;
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const r = q.data!;
+  const active = solutions.data?.releases.find((x) => x.solution === r.solution && x.active);
   const stop = async () => {
     setBusy(true);
     try {
@@ -122,6 +130,7 @@ export function RunPage() {
             {statusBadge(r.status)}
             <span className="text-xs">{tr("started {when}", { when: formatDateTime(r.accepted_at) })}</span>
             {r.finished_at && <span className="text-xs">{tr("finished {when}", { when: formatDateTime(r.finished_at) })}</span>}
+            {r.release?.version && <span className="text-xs">{tr("under {version}", { version: r.release.version })}</span>}
           </span>
         }
       />
@@ -156,6 +165,7 @@ export function RunPage() {
           </pre>
         </section>
       )}
+      <MovePanel run={r} active={active} meId={me.data?.user.id} isAdmin={isAdmin} onDone={() => q.refetch()} />
       {!FINISHED.includes(r.status) && r.status !== "cancelling" && (
         <section aria-labelledby="run-stop" className="rounded-md border p-3">
           <h2 id="run-stop" className="mb-2 text-base font-semibold">
@@ -174,6 +184,7 @@ export function RunPage() {
 }
 
 interface RunState {
+  waiting?: Record<string, unknown>;
   outputs?: Record<string, unknown>;
   effects?: { activation: string; capability: string; compensated?: boolean; unwanted?: boolean }[];
 }
@@ -227,6 +238,115 @@ export function WhatHappened({ state }: { state: unknown }) {
             ))}
           </ul>
         </>
+      )}
+    </section>
+  );
+}
+
+/** Moving a waiting run onto the release that runs now (administrators): a mapping of each step it waits at,
+ *  checked and planned by one administrator, approved by another; and the record of every move. */
+export function MovePanel({ run, active, meId, isAdmin, onDone }: { run: RunDetail; active?: ReleaseRow; meId?: string; isAdmin: boolean; onDone: () => unknown }) {
+  const waiting = Object.keys(((run.state ?? {}) as RunState).waiting ?? {});
+  const [map, setMap] = useState<Record<string, string>>({});
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
+  const moves = run.moves ?? [];
+  const open = !FINISHED.includes(run.status) && run.status !== "cancelling";
+  if (!isAdmin || (!moves.length && !open)) return null;
+  // The newest plan nobody has approved yet, and whose it is.
+  const settled = new Set(moves.filter((m) => m.action !== "plan_migration").map((m) => m.diff.digest ?? m.diff.to));
+  const pending = [...moves].reverse().find((m) => m.action === "plan_migration" && !settled.has(m.diff.digest));
+  const elsewhere = !!active && !!run.release && active.id !== run.release.id;
+  const go = async (f: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    setRefused(null);
+    try {
+      await f();
+      toast(done);
+      await onDone();
+    } catch (e) {
+      setRefused(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const said: Record<string, string> = {
+    plan_migration: "Planned a move",
+    approve_migration: "Approved the move",
+    migrated: "Moved",
+    migration_refused: "The move was refused",
+  };
+  return (
+    <section aria-labelledby="run-move" className="mb-6 rounded-md border p-3">
+      <h2 id="run-move" className="mb-2 text-base font-semibold">
+        {tr("Move it to another release")}
+      </h2>
+      {open && pending ? (
+        <div className="grid gap-2">
+          <p className="text-sm">{tr("A move onto the release that runs now is planned. What moves:")}</p>
+          <ul className="list-disc ps-5 text-sm">
+            {(pending.diff.moved ?? []).map((m, i) => (
+              <li key={i} dir="ltr">
+                {m}
+              </li>
+            ))}
+          </ul>
+          {pending.by === meId ? (
+            <p className="text-sm text-muted-foreground">{tr("You planned it: another administrator approves it.")}</p>
+          ) : (
+            <>
+              <Field label={tr("Why it may move")}>
+                <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+              </Field>
+              <div>
+                <Button disabled={busy} onClick={() => go(() => approveMove(run.id, pending.diff.digest ?? "", reason), tr("Approved: the run moves when its runtime takes it up"))}>
+                  <CheckCircle2 aria-hidden /> {tr("Approve the move")}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : open && elsewhere && waiting.length > 0 ? (
+        <div className="grid gap-2">
+          <p className="text-sm">
+            {tr("It runs under {from}; {to} runs now. Say which step of {to} each step it waits at becomes; a step becomes one that waits the same way.", {
+              from: run.release?.version ?? "",
+              to: active!.version,
+            })}
+          </p>
+          {waiting.map((step) => (
+            <Field key={step} label={tr("{step} becomes", { step })}>
+              <Input dir="ltr" value={map[step] ?? step} onChange={(e) => setMap({ ...map, [step]: e.target.value.trim() })} />
+            </Field>
+          ))}
+          <div>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => go(() => planMove(run.id, active!.id, Object.fromEntries(Object.entries(map).filter(([k, v]) => v && v !== k))), tr("Planned: another administrator approves it"))}
+            >
+              <ArrowRightLeft aria-hidden /> {tr("Check and plan the move")}
+            </Button>
+          </div>
+        </div>
+      ) : open ? (
+        <p className="text-sm text-muted-foreground">{tr("It runs under the release that runs now: there is nothing to move it to.")}</p>
+      ) : null}
+      {refused && (
+        <div className="mt-2">
+          <Alert tone="warning">{refused}</Alert>
+        </div>
+      )}
+      {moves.length > 0 && (
+        <ul className="mt-3 grid gap-1 text-sm">
+          {moves.map((m, i) => (
+            <li key={i}>
+              {tr(said[m.action] ?? m.action)} · {formatDateTime(m.at)}
+              {m.action === "migration_refused" && m.diff.why && <span className="text-muted-foreground"> · {isolate(m.diff.why.join("; "))}</span>}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

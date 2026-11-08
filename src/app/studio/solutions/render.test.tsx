@@ -9,13 +9,13 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import { violations } from "../../../test/axe";
 import type { Me } from "@/lib/meta";
-import { parseSource, printSource, type ReleaseReview, type RunDetail, type Task } from "@/lib/solutions";
-import { RunPage, RunsPage } from "../runs/RunsPage";
+import { parseSource, printSource, type ReleaseReview, type ReleaseRow, type RunDetail, type Shadow, type Task } from "@/lib/solutions";
+import { MovePanel, RunPage, RunsPage } from "../runs/RunsPage";
 import { TaskPage, TasksPage } from "../runs/TasksPage";
 import { CalendarsPage } from "./CalendarsPage";
 import { businessDays, GuidedEditor } from "./GuidedEditor";
-import { ReleasePage } from "./ReleasePage";
-import { SolutionsPage, template } from "./SolutionsPage";
+import { ActivationNote, ReleasePage, ShadowResult } from "./ReleasePage";
+import { PackArrived, SolutionsPage, template } from "./SolutionsPage";
 
 const me: Me = { tenant: "t", user: { id: "u1", email: "admin@acme.test", full_name: "Admin", is_admin: true, roles: [] }, default_company: null, scopes: {}, fiscal_year_start_month: 4, packages: [] };
 const catalog = {
@@ -255,6 +255,100 @@ describe("run and task screens", () => {
     expect(t).toContain("This is closed: resolved.");
     expect(t).toContain("Ana Admin ended the run refused");
     expect(t).toContain("No order is wanted.");
+  });
+});
+
+describe("migration and operations screens", () => {
+  const side = (outcome: string, decide: string, effects: number) => ({
+    outcome,
+    decisions: { decide },
+    steps: ["snapshot", "review", "order"],
+    effects: Array.from({ length: effects }, () => ({ step: "order", capability: "procs.order.create" })),
+    not_modelled: [] as string[],
+  });
+  it("says what an activation replaced, that runs keep their release, and that nothing done is undone", () => {
+    const t = text(
+      render(
+        <ActivationNote
+          activated={{ generation: 3, replaced: { release: "r2", version: "1.1.0" }, handed_over: { automation: "a1", name: "Tell about changes" }, open_elsewhere: 2, kept: "" }}
+          version="1.0.0"
+        />,
+      ),
+    );
+    expect(t).toContain("New runs start under 1.0.0 (generation 3).");
+    expect(t).toContain("It replaced 1.1.0.");
+    expect(t).toContain("The automation Tell about changes is off now");
+    expect(t).toContain("The 2 runs still open under other releases go on under theirs.");
+    expect(t).toContain("Nothing a run did is undone");
+  });
+  it("lists a shadow comparison's differing cases and what differs, the same ones out of the way", () => {
+    const shadow: Shadow = {
+      against: { kind: "release", release: "r1", version: "1.0.0" },
+      candidate: { solution: "acme.requests", version: "1.2.0", artifact_digest: "sha256:c" },
+      compared: 2,
+      differing: 1,
+      cases: [
+        {
+          run: "01a1ba01-0000-7000-8000-00000000abcd",
+          at: "2026-11-08T10:00:00Z",
+          same: false,
+          differences: ["decisions", "effects"],
+          now: side("completed", "review", 1),
+          candidate: { ...side("completed", "proceed", 1), not_modelled: ["order"] },
+        },
+        { run: "01a1ba01-0000-7000-8000-00000000eeee", at: "2026-11-08T09:00:00Z", same: true, differences: [], now: side("refused", "review", 0), candidate: side("refused", "review", 0) },
+      ],
+      note: "",
+    };
+    const html = render(<ShadowResult shadow={shadow} />);
+    const t = text(html);
+    expect(t).toContain("Against 1.0.0, which runs now. 2 cases compared; 1 differ.");
+    expect(t).toContain("what it decides, what it changes");
+    expect(t).toContain("1 steps with no answer on record");
+    expect(t).toContain("Nothing was run, changed or kept");
+    expect(html).toContain("/studio/runs/01a1ba01-0000-7000-8000-00000000abcd");
+    expect(html).not.toContain("00000000eeee");
+  });
+  it("says what must be mapped when a pack arrives, and that it is only a draft", () => {
+    const t = text(
+      render(
+        <PackArrived
+          taken={{
+            draft: { id: "d9", solution: "acme.requests", label: "Requests", version: 1 },
+            check: { ok: false, diagnostics: [] },
+            to_map: ["the calendar office, which this workspace does not have"],
+            note: "",
+          }}
+        />,
+      ),
+    );
+    expect(t).toContain("Requests arrived as a draft. Nothing of it runs until it is checked here");
+    expect(t).toContain("the calendar office, which this workspace does not have");
+  });
+  it("plans a move with a field per waiting step, and leaves its approval to another administrator", () => {
+    const run: RunDetail = {
+      id: "run-1",
+      solution: "acme.requests",
+      process: "approve_request",
+      status: "running",
+      accepted_at: "2026-11-08T08:00:00Z",
+      updated_at: "2026-11-08T08:00:00Z",
+      release: { id: "r1", version: "1.0.0" },
+      state: { waiting: { review: {} } },
+      moves: [],
+      tasks: [],
+    };
+    const active: ReleaseRow = { id: "r3", solution: "acme.requests", version: "1.3.0", artifact_digest: "sha256:x", created_at: "2026-11-08T07:00:00Z", active: true, reviews: [] };
+    const plan = render(<MovePanel run={run} active={active} meId="u1" isAdmin onDone={() => undefined} />);
+    expect(text(plan)).toContain("It runs under 1.0.0; 1.3.0 runs now.");
+    expect(text(plan)).toContain("review becomes");
+    expect(text(plan)).toContain("Check and plan the move");
+    const planned: RunDetail = { ...run, moves: [{ action: "plan_migration", at: "2026-11-08T09:00:00Z", by: "u2", diff: { digest: "sha256:d", moved: ["review moves to approve"] } }] };
+    expect(text(render(<MovePanel run={planned} active={active} meId="u1" isAdmin onDone={() => undefined} />))).toContain("Approve the move");
+    expect(text(render(<MovePanel run={planned} active={active} meId="u2" isAdmin onDone={() => undefined} />))).toContain("You planned it: another administrator approves it.");
+    expect(text(render(<MovePanel run={run} active={active} meId="u9" isAdmin={false} onDone={() => undefined} />))).not.toContain("Move it to another release");
+    const refused: RunDetail = { ...planned, moves: [...(planned.moves ?? []), { action: "migration_refused", at: "2026-11-08T09:05:00Z", diff: { digest: "sha256:d", why: ["review was approved meanwhile"] } }] };
+    expect(text(render(<MovePanel run={refused} active={active} meId="u1" isAdmin onDone={() => undefined} />))).toContain("The move was refused");
   });
 });
 
