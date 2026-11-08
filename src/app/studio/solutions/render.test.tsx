@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { violations } from "../../../test/axe";
 import type { Me } from "@/lib/meta";
 import { parseSource, printSource, type ReleaseReview, type ReleaseRow, type RunDetail, type Shadow, type Task } from "@/lib/solutions";
-import { MovePanel, RunPage, RunsPage } from "../runs/RunsPage";
+import { MovePanel, RunPage, RunsPage, WhatHappened } from "../runs/RunsPage";
 import { TaskPage, TasksPage } from "../runs/TasksPage";
 import { CalendarsPage } from "./CalendarsPage";
 import { businessDays, GuidedEditor } from "./GuidedEditor";
@@ -324,6 +324,19 @@ describe("migration and operations screens", () => {
     );
     expect(t).toContain("Requests arrived as a draft. Nothing of it runs until it is checked here");
     expect(t).toContain("the calendar office, which this workspace does not have");
+  });
+  it("says how often a step was tried and how its last try went", () => {
+    const t = text(
+      render(
+        <WhatHappened
+          state={{ outputs: { order: { id: "O-1" } } }}
+          attempts={{ order: { attempts: 3, last: "done" }, notify: { attempts: 2, last: "waits: procs.order.create is out of service here" } }}
+        />,
+      ),
+    );
+    expect(t).toContain("How often steps were tried");
+    expect(t).toContain("tried 3 times · last: done");
+    expect(t).toContain("tried 2 times · waits: procs.order.create is out of service here");
   });
   it("plans a move with a field per waiting step, and leaves its approval to another administrator", () => {
     const run: RunDetail = {

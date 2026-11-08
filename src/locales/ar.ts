@@ -3117,6 +3117,9 @@ const words: Record<string, string> = {
   "Planned: another administrator approves it": "خُطّط له: يوافق عليه مسؤول آخر",
   "Check and plan the move": "تحقق من النقل وخطّط له",
   "It runs under the release that runs now: there is nothing to move it to.": "يعمل تحت الإصدار الذي يعمل الآن: لا يوجد ما يُنقل إليه.",
+  "How often steps were tried": "كم مرة جُرّبت الخطوات",
+  "tried {n} times": "جُرّب {n} مرات",
+  "last: done": "الأخيرة: تمّت",
 };
 
 export default words;
