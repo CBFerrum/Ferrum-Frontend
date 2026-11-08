@@ -1,5 +1,5 @@
 // Studio's own interface at /studio/ (docs/plan/apps-ui.md §13): reports, charts, number cards,
-// dashboards and spaces, in the records frame with Studio's module in the sidebar. Studio's pages
+// dashboards and spaces, customer solutions with their runs and tasks, in the records frame with Studio's module in the sidebar. Studio's pages
 // link to `/studio/…` themselves, so the router sits at the site's root and holds them there;
 // what is not Studio's goes where it lives: a record or a list to its app (`/open`), a named
 // report and Customize to the platform's records (`/data/`).
@@ -73,6 +73,15 @@ const studioRoutes: RouteObject[] = [
   { path: "studio/spaces/new", lazy: spaceEditor },
   { path: "studio/spaces/:id", lazy: () => import("@/app/studio/SpaceView").then((m) => ({ Component: m.SpaceView })) },
   { path: "studio/spaces/:id/edit", lazy: spaceEditor },
+  // Customer solutions, their runs and people's tasks (Ferrum's docs/logic/studio.md).
+  { path: "studio/solutions", lazy: () => import("@/app/studio/solutions/SolutionsPage").then((m) => ({ Component: m.SolutionsPage })) },
+  { path: "studio/solutions/drafts/:id", lazy: () => import("@/app/studio/solutions/DraftEditor").then((m) => ({ Component: m.DraftEditor })) },
+  { path: "studio/solutions/releases/:id", lazy: () => import("@/app/studio/solutions/ReleasePage").then((m) => ({ Component: m.ReleasePage })) },
+  { path: "studio/calendars", lazy: () => import("@/app/studio/solutions/CalendarsPage").then((m) => ({ Component: m.CalendarsPage })) },
+  { path: "studio/runs", lazy: () => import("@/app/studio/runs/RunsPage").then((m) => ({ Component: m.RunsPage })) },
+  { path: "studio/runs/:id", lazy: () => import("@/app/studio/runs/RunsPage").then((m) => ({ Component: m.RunPage })) },
+  { path: "studio/tasks", lazy: () => import("@/app/studio/runs/TasksPage").then((m) => ({ Component: m.TasksPage })) },
+  { path: "studio/tasks/:id", lazy: () => import("@/app/studio/runs/TasksPage").then((m) => ({ Component: m.TaskPage })) },
 ];
 
 const router = createBrowserRouter([
