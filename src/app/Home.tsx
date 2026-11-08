@@ -41,7 +41,7 @@ export function Home() {
     .filter((m) => ownModule(m, meta))
     .sort((a, b) => a.order - b.order)
     .map((m) => {
-      const links = moduleLinks(m, readable, reportLabel, meet);
+      const links = moduleLinks(m, readable, reportLabel, meet, me);
       // Studio records open in their builders, not in the generic form the recent lists link to.
       const entities = m.name === STUDIO ? [] : m.items.flatMap((i) => readable.get(i) ?? []);
       const documents = entities.filter((e) => e.kind === "document");
