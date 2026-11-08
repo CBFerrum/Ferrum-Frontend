@@ -67,7 +67,7 @@ export function FilterEditor({ filters, fields, onChange, issues = [], at = "fil
         </ul>
       )}
       <div>
-        <FieldPicker add="Add filter" label={t("Add filter")} fields={fields} onChange={add} disabled={disabled || !fields.length} />
+        <FieldPicker add={t("Add filter")} label={t(t("Add filter"))} fields={fields} onChange={add} disabled={disabled || !fields.length} />
       </div>
     </div>
   );

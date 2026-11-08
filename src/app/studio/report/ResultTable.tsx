@@ -455,7 +455,7 @@ function ColumnsMenu({ columns, editor }: { columns: ResultColumn[]; editor: Col
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            <Columns3 /> {t("Columns")}{editor.hidden.length ? t(" ({length} hidden)", { length: editor.hidden.length }) : ""}
+            <Columns3 /> {(editor.hidden.length ? t("Columns ({length} hidden)", { length: editor.hidden.length }) : t("Columns"))}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-h-80">

@@ -188,8 +188,8 @@ function FieldsTable({ meta, onEdit }: { meta: EntityMeta; onEdit: (f: Field) =>
         [f.required, "required", "amber"],
         [f.hidden, "hidden", "neutral"],
         [f.read_only || f.computed, "read-only", "neutral"],
-        [f.in_list, "in list", "blue"],
-        [f.in_filter, "in filter", "blue"],
+        [f.in_list, tr("in list"), "blue"],
+        [f.in_filter, tr("in filter"), "blue"],
         [f.name.startsWith("x_"), "custom", "purple"],
         [f.locked, "locked", "red"],
         [f.visible_if, "conditional", "green"],
@@ -298,10 +298,10 @@ function AddFieldCard({ meta }: { meta: EntityMeta }) {
   const set = <K extends keyof typeof empty>(k: K, v: (typeof empty)[K]) => setF((s) => ({ ...s, [k]: v }));
 
   const submit = async () => {
-    if (!/^x_[a-z][a-z0-9_]*$/.test(f.name)) return setError("The name must start with x_ followed by lower-case letters, digits or underscores.");
-    if (f.type === "link" && !f.to) return setError("Choose the entity this link points to.");
+    if (!/^x_[a-z][a-z0-9_]*$/.test(f.name)) return setError(tr("The name must start with x_ followed by lower-case letters, digits or underscores."));
+    if (f.type === "link" && !f.to) return setError(tr("Choose the entity this link points to."));
     const options = f.options.split("\n").map((s) => s.trim()).filter(Boolean);
-    if (f.type === "select" && !options.length) return setError("Give at least one option.");
+    if (f.type === "select" && !options.length) return setError(tr("Give at least one option."));
     const field: Record<string, unknown> = { name: f.name, label: f.label.trim() || undefined, type: f.type };
     if (f.type === "select") field.options = options;
     if (f.type === "link") field.to = f.to;
@@ -321,7 +321,7 @@ function AddFieldCard({ meta }: { meta: EntityMeta }) {
   };
 
   return (
-    <FormCard title={tr("Add a custom field")} onSubmit={submit} busy={busy} submitLabel="Add field" error={error}>
+    <FormCard title={tr("Add a custom field")} onSubmit={submit} busy={busy} submitLabel={tr("Add field")} error={error}>
       <div className="form-grid">
         <FieldWrap label={tr("Name")} htmlFor="af-name" required hint={tr("Must start with x_")}>
           <input id="af-name" className="input mono" value={f.name} onChange={(e) => set("name", e.target.value.toLowerCase())} required pattern="x_[a-z][a-z0-9_]*" />
@@ -405,7 +405,7 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
     }
   };
   return (
-    <FormCard title={tr("Add a validation rule")} onSubmit={submit} busy={busy} submitLabel="Add rule" error={error}>
+    <FormCard title={tr("Add a validation rule")} onSubmit={submit} busy={busy} submitLabel={tr("Add rule")} error={error}>
       {meta.rules.length > 0 && (
         <div>
           <p className="field-label">{tr("Existing rules")}</p>
@@ -580,7 +580,7 @@ export function describeOp(op: Record<string, unknown>): string {
       return (op.after ? tr("Add field {name} ({type}) after {after}", { name: f?.name ?? "?", type: f?.type ?? "?", after: String(op.after) }) : tr("Add field {name} ({type})", { name: f?.name ?? "?", type: f?.type ?? "?" }));
     }
     case "set_property":
-      return `Set ${String(op.field)}.${String(op.property)} = ${JSON.stringify(op.value)}`;
+      return tr("Set {field}.{property} = {value}", { field: String(op.field), property: String(op.property), value: JSON.stringify(op.value) });
     case "add_rule":
       return tr("Add rule {value}", { value: name(op.rule) });
     case "add_options":
@@ -592,7 +592,7 @@ export function describeOp(op: Record<string, unknown>): string {
     case "set_workflow":
       return tr("Set workflow {value}", { value: name(op.workflow) });
     case "set_print_template":
-      return "Replace print template";
+      return tr("Replace print template");
     default:
       return JSON.stringify(op);
   }
@@ -656,7 +656,7 @@ function ChangesCard({ entity }: { entity: string }) {
                   <td>
                     <label className="check-field cell-check" style={{ minHeight: 0 }}>
                       <input type="checkbox" checked={c.is_active} disabled={pending === c.id} onChange={() => void toggle(c)} />
-                      <span className="sr-only">{c.is_active ? tr("Turn off") : tr("Turn on")} {tr("customization {seq}", { seq: c.seq })}</span>
+                      <span className="sr-only">{(c.is_active ? tr("Turn off customization {seq}", { seq: c.seq }) : tr("Turn on customization {seq}", { seq: c.seq }))}</span>
                     </label>
                   </td>
                 </tr>

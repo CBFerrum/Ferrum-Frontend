@@ -1,6 +1,7 @@
 // Saved charts and number-card trends inside a space. Series come from `toChart`: numbers only to
 // plot, exact formatted strings for tooltips, legends and the screen-reader table.
 
+import { placed } from "../../../lib/placed";
 import { useMemo, type ReactNode } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip } from "@/components/ui/chart";
@@ -45,7 +46,7 @@ export function ChartView({ chart, data, height = 240 }: { chart: ChartInput; da
   const type = chart.chart_type;
   return (
     <figure className="m-0">
-      <div role="img" aria-label={t("{value} chart: {label}. The data follows as a table.", { value: TYPE_LABEL[type] ?? "Chart", label: chart.label })}>
+      <div role="img" aria-label={t("{value} chart: {label}. The data follows as a table.", { value: TYPE_LABEL[type] ?? t("Chart"), label: chart.label })}>
         {body(type, model, chart.colors, height, animate)}
       </div>
       {model.truncated && <figcaption className="mt-2 text-xs text-muted-foreground">{t("Showing the {length} largest series.", { length: model.series.length })}</figcaption>}
@@ -169,7 +170,7 @@ function Shares({ list, total }: ReturnType<typeof parts>) {
           <span className="w-14 shrink-0 text-end text-muted-foreground tabular-nums">{isolate(share.format(p.value / total))}</span>
         </li>
       ))}
-      {list.length > 12 && <li className="text-xs text-muted-foreground">{t("and")} {list.length - 12} {t("more")}</li>}
+      {list.length > 12 && <li className="text-xs text-muted-foreground">{placed(t("and {p1} more"), { p1: list.length - 12 })}</li>}
     </ul>
   );
 }
@@ -280,7 +281,7 @@ function HeatmapView({ model }: { model: ChartModel }) {
         {cells.map((c) => (
           <span
             key={c.day}
-            title={c.title}
+            title={isolate(c.title)}
             className="size-3 rounded-[2px]"
             style={{ background: c.level ? `color-mix(in oklab, ${s.color} ${c.level}%, var(--muted))` : "var(--muted)" }}
           />
@@ -311,7 +312,7 @@ function DataTable({ model, caption }: { model: ChartModel; caption: string }) {
       <caption>{isolate(caption)}</caption>
       <thead>
         <tr>
-          <th scope="col">{model.x?.label ?? ""}</th>
+          <th scope="col">{isolate(model.x?.label ?? "")}</th>
           {model.series.map((s) => (
             <th key={s.key} scope="col">
               {isolate(s.label)}

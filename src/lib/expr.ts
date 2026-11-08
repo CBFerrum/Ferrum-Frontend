@@ -8,6 +8,7 @@
 // server reads empty numbers and checks so (EffEntity::cel_view), so `doc.paid < doc.total` holds
 // on a fresh record on the page as it does there.
 
+import { t as tr } from "@ferrum/client";
 import { compareDecimal, isDecimalString, todayIso } from "./format";
 
 /** Number literal kept as source text so comparisons with decimal strings stay exact. */
@@ -69,13 +70,13 @@ function tokenize(src: string): Tok[] {
         } else s += src[j];
         j++;
       }
-      if (j >= src.length) throw new SyntaxError("unterminated string");
+      if (j >= src.length) throw new SyntaxError(tr("unterminated string"));
       out.push({ t: "str", v: s });
       i = j + 1;
       continue;
     }
     const sym = SYMBOLS.find((s) => src.startsWith(s, i));
-    if (!sym) throw new SyntaxError(`unexpected character '${c}'`);
+    if (!sym) throw new SyntaxError(tr("unexpected character '{c}'", { c }));
     out.push({ t: "sym", v: sym });
     i += sym.length;
   }
@@ -88,7 +89,7 @@ function parse(src: string): Node {
   const isSym = (v: string) => toks[p]?.t === "sym" && toks[p].v === v;
   const eat = (v: string) => (isSym(v) ? (p++, true) : false);
   const expect = (v: string) => {
-    if (!eat(v)) throw new SyntaxError(`expected '${v}'`);
+    if (!eat(v)) throw new SyntaxError(tr("expected '{v}'", { v }));
   };
 
   const or = (): Node => {
@@ -120,7 +121,7 @@ function parse(src: string): Node {
     for (;;) {
       if (eat(".")) {
         const t = toks[p++];
-        if (t?.t !== "id") throw new SyntaxError("expected a field name");
+        if (t?.t !== "id") throw new SyntaxError(tr("expected a field name"));
         n = { k: "get", obj: n, key: { k: "lit", v: t.v } };
       } else if (eat("[")) {
         const key = or();
@@ -131,7 +132,7 @@ function parse(src: string): Node {
   };
   const primary = (): Node => {
     const t = toks[p++];
-    if (!t) throw new SyntaxError("unexpected end of expression");
+    if (!t) throw new SyntaxError(tr("unexpected end of expression"));
     if (t.t === "num") return { k: "lit", v: new Num(t.v) };
     if (t.t === "str") return { k: "lit", v: t.v };
     if (t.t === "id") {
@@ -153,11 +154,11 @@ function parse(src: string): Node {
       }
       return { k: "list", items };
     }
-    throw new SyntaxError(`unexpected '${t.v}'`);
+    throw new SyntaxError(tr("unexpected '{v}'", { v: t.v }));
   };
 
   const node = or();
-  if (p < toks.length) throw new SyntaxError(`unexpected '${toks[p].v}'`);
+  if (p < toks.length) throw new SyntaxError(tr("unexpected '{v}'", { v: toks[p].v }));
   return node;
 }
 
@@ -230,7 +231,7 @@ function evalNode(n: Node, s: Scope): unknown {
         case "now":
           return new Date().toISOString();
       }
-      throw new EvalError(`unknown name '${n.name}'`);
+      throw new EvalError(tr("unknown name '{name}'", { name: n.name }));
     case "get": {
       const obj = evalNode(n.obj, s);
       const keyVal = evalNode(n.key, s);

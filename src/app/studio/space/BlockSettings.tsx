@@ -74,7 +74,7 @@ export function BlockSettings({ block, ...p }: FormProps<SpaceBlock>) {
           <Row id={`${p.id}-card`} label={tr("Number card")} errors={issuesAt(p.issues, "card")} hint={tr("Any number card you can open; viewers see it with their own permissions.")}>
             <RecordPicker kind="cards" id={`${p.id}-card`} value={block.card} onChange={(card) => p.onChange({ ...block, card })} errors={issuesAt(p.issues, "card")} />
           </Row>
-          <BuilderLinks open={block.card ? PATHS.card(block.card) : undefined} create={PATHS.card("new")} what="number card" />
+          <BuilderLinks open={block.card ? PATHS.card(block.card) : undefined} create={PATHS.card("new")} what={tr("number card")} />
         </FieldGroup>
       );
     case "list":
@@ -356,7 +356,7 @@ function EntityPicker(p: { id: string; value: string; onChange: (v: string) => v
       .map((e) => ({ value: e.name, label: e.label, group: (e.module && label.get(e.module)) || "Other" }))
       .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
   }, [sources.data, modules]);
-  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a list")} emptyText="No list matches." />;
+  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a list")} emptyText={tr("No list matches.")} />;
 }
 
 const RECORD_TEXT: Record<StudioKind, { placeholder: string; empty: string }> = {
@@ -385,7 +385,7 @@ function BuiltinPicker(p: { id: string; value: string; onChange: (v: string) => 
     const label = new Map(modules?.map((m) => [m.name, m.label]));
     return (sources.data?.builtin ?? []).map((r) => ({ value: r.name, label: r.label, group: (r.module && label.get(r.module)) || "Other" }));
   }, [sources.data, modules]);
-  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a report")} emptyText="No report matches." />;
+  return <Combo {...p} options={options} loading={sources.isLoading} error={sources.error} placeholder={tr("Choose a report")} emptyText={tr("No report matches.")} />;
 }
 
 /** The control for a shortcut's or link's target of a kind. */
@@ -410,26 +410,27 @@ function TargetRow({ kind, id, value, onChange, errors }: { kind: LinkTarget; id
   );
 }
 
-const SWATCHES: [string, string][] = [
-  ["#2f5bea", "Blue"],
-  ["#0f8f80", "Teal"],
-  ["#b7791f", "Amber"],
-  ["#7c4ddb", "Purple"],
-  ["#d23f45", "Red"],
-  ["#2f8a42", "Green"],
-  ["#d55a06", "Orange"],
-  ["#5b6b80", "Slate"],
+/** The accent swatches, each with its name in the page's language. */
+const swatches = (): [string, string][] => [
+  ["#2f5bea", tr("Blue")],
+  ["#0f8f80", tr("Teal")],
+  ["#b7791f", tr("Amber")],
+  ["#7c4ddb", tr("Purple")],
+  ["#d23f45", tr("Red")],
+  ["#2f8a42", tr("Green")],
+  ["#d55a06", tr("Orange")],
+  ["#5b6b80", tr("Slate")],
 ];
 
 function ColorPicker({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
-  const custom = !!value && !SWATCHES.some(([c]) => c === value);
+  const custom = !!value && !swatches().some(([c]) => c === value);
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <ToggleGroup id={id} type="single" spacing={1} value={value || "none"} onValueChange={(v) => v && onChange(v === "none" ? "" : v)} aria-labelledby={`${id}-label`} className="flex-wrap">
         <ToggleGroupItem value="none" aria-label={tr("No accent")} title={tr("No accent")} className="size-8 p-0 pointer-coarse:size-11">
           <Ban className="size-4 text-muted-foreground" />
         </ToggleGroupItem>
-        {SWATCHES.map(([c, name]) => (
+        {swatches().map(([c, name]) => (
           <ToggleGroupItem key={c} value={c} aria-label={name} title={name} className="size-8 p-0 data-[state=on]:ring-2 data-[state=on]:ring-ring pointer-coarse:size-11">
             <span className="size-4 rounded-full" style={{ background: c }} />
           </ToggleGroupItem>
@@ -616,7 +617,7 @@ function MultiChoice({ id, options, value, onChange }: { id: string; options: st
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button id={id} type="button" variant="outline" aria-label={tr("Values: {value}", { value: value.join(", ") || "none chosen" })} className={cn("w-full justify-between font-normal", TAP)}>
+        <Button id={id} type="button" variant="outline" aria-label={tr("Values: {value}", { value: value.join(", ") || tr("none chosen") })} className={cn("w-full justify-between font-normal", TAP)}>
           <span className={cn("truncate", !value.length && "text-muted-foreground")}>{value.length ? value.join(", ") : tr("Choose")}</span>
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" aria-hidden="true" />
         </Button>
@@ -909,9 +910,9 @@ function HeadingForm({ block: b, onChange, issues, id }: FormProps<Of<"heading">
           aria-labelledby={`${id}-level-label`}
         >
           {[
-            ["1", "Large"],
+            ["1", tr("Large")],
             ["2", "Medium"],
-            ["3", "Small"],
+            ["3", tr("Small")],
           ].map(([v, label]) => (
             <ToggleGroupItem key={v} value={v} className={TAP}>
               {isolate(label)}
@@ -954,7 +955,7 @@ function OnboardingForm({ block: b, onChange, issues, id }: FormProps<Of<"onboar
                 <EntityPicker
                   id={`${sid}-entity`}
                   value={s.entity ?? ""}
-                  noneLabel="No list"
+                  noneLabel={tr("No list")}
                   onChange={(entity) => setStep({ ...s, entity, filters: entity === s.entity ? s.filters : [], label: s.label.trim() || (entity ? tr("Add your first {value}", { value: labels(entity).toLowerCase() }) : "") })}
                 />
               </Row>

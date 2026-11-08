@@ -14,11 +14,11 @@ export interface Range {
 
 export const FILTER_TYPE_LABEL: Record<FilterType, string> = {
   link: "Record",
-  select: "Choice",
-  data: "Text",
-  check: "Yes / no",
-  date: "Date",
-  date_range: "Date range",
+  get select() { return t("Choice"); },
+  get data() { return t("Text"); },
+  get check() { return t("Yes / no"); },
+  get date() { return t("Date"); },
+  get date_range() { return t("Date range"); },
 };
 
 /** `{from, to}` from any value (blank ends dropped); null when neither end is set. */
@@ -89,15 +89,15 @@ export function filterName(label: string, taken: readonly string[]): string {
 /** What the server would refuse in a dashboard's filter definitions (paths `filters[n].…`). */
 export function filterDefIssues(defs: readonly FilterDef[]): Issue[] {
   const out: Issue[] = [];
-  if (defs.length > 20) out.push({ path: "filters", message: "A dashboard has at most 20 filters" });
+  if (defs.length > 20) out.push({ path: "filters", message: t("A dashboard has at most 20 filters") });
   const seen = new Set<string>();
   defs.forEach((d, n) => {
     const at = `filters[${n}]`;
-    if (!IDENT.test(d.name)) out.push({ path: `${at}.name`, message: "Use a lower-case name such as company or period" });
+    if (!IDENT.test(d.name)) out.push({ path: `${at}.name`, message: t("Use a lower-case name such as company or period") });
     else if (seen.has(d.name)) out.push({ path: `${at}.name`, message: t("“{name}” is used twice", { name: d.name }) });
     seen.add(d.name);
-    if (d.type === "link" && !d.to) out.push({ path: `${at}.to`, message: "Choose what it links to" });
-    if (d.type === "select" && !d.options?.length) out.push({ path: `${at}.options`, message: "List the choices" });
+    if (d.type === "link" && !d.to) out.push({ path: `${at}.to`, message: t("Choose what it links to") });
+    if (d.type === "select" && !d.options?.length) out.push({ path: `${at}.options`, message: t("List the choices") });
   });
   return out;
 }

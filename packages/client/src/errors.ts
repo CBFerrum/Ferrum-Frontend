@@ -1,6 +1,7 @@
 // The platform's errors (docs/api.md): one ApiError class for every interface and package, so a
 // message and its field errors read the same wherever a request was made.
 
+import { t } from "@ferrum/client";
 export interface FieldError {
   field: string;
   message: string;
@@ -22,18 +23,18 @@ export class ApiError extends Error {
 }
 
 const FALLBACK: Record<number, [string, string]> = {
-  0: ["network", "Cannot reach the server. Check your connection and try again."],
-  400: ["invalid", "The request was not valid."],
-  401: ["unauthorized", "Your session has ended. Please sign in again."],
-  403: ["forbidden", "You do not have permission to do that."],
-  404: ["not_found", "Not found."],
-  409: ["conflict", "This record was changed by someone else. Reload and try again."],
-  413: ["too_large", "The upload is too large."],
-  422: ["invalid", "Please check your input."],
-  429: ["too_many_requests", "Too many requests. Please wait a moment and try again."],
-  502: ["unavailable", "The server cannot be reached right now (it may be restarting). Please try again shortly."],
-  503: ["unavailable", "The server is temporarily unavailable. Please try again shortly."],
-  504: ["unavailable", "The server took too long to answer. Please try again shortly."],
+  get 0(): [string, string] { return ["network", t("Cannot reach the server. Check your connection and try again.")]; },
+  get 400(): [string, string] { return ["invalid", t("The request was not valid.")]; },
+  get 401(): [string, string] { return ["unauthorized", t("Your session has ended. Please sign in again.")]; },
+  get 403(): [string, string] { return ["forbidden", t("You do not have permission to do that.")]; },
+  get 404(): [string, string] { return ["not_found", t("Not found.")]; },
+  get 409(): [string, string] { return ["conflict", t("This record was changed by someone else. Reload and try again.")]; },
+  get 413(): [string, string] { return ["too_large", t("The upload is too large.")]; },
+  get 422(): [string, string] { return ["invalid", t("Please check your input.")]; },
+  get 429(): [string, string] { return ["too_many_requests", t("Too many requests. Please wait a moment and try again.")]; },
+  get 502(): [string, string] { return ["unavailable", t("The server cannot be reached right now (it may be restarting). Please try again shortly.")]; },
+  get 503(): [string, string] { return ["unavailable", t("The server is temporarily unavailable. Please try again shortly.")]; },
+  get 504(): [string, string] { return ["unavailable", t("The server took too long to answer. Please try again shortly.")]; },
 };
 
 function isFieldError(v: unknown): v is FieldError {

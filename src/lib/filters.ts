@@ -4,6 +4,7 @@
 // `@today`, `@last_30`, so a saved "due this week" still means this week next month, and `@empty`
 // or `@set`, for any field. Numbers take `>=10`, `<=10`, `>10`, `<10` and `10..20`.
 
+import { t } from "@ferrum/client";
 import { isDecimalString } from "./format";
 
 export interface FilterField {
@@ -54,25 +55,25 @@ export function filterable<F extends FilterField & { label?: string; in_filter?:
 export const EMPTY = "@empty";
 export const SET = "@set";
 
-/** The named periods, in the order a person looks for them. */
-export const PERIODS: [string, string][] = [
-  ["@today", "Today"],
-  ["@yesterday", "Yesterday"],
-  ["@tomorrow", "Tomorrow"],
-  ["@this_week", "This week"],
-  ["@last_week", "Last week"],
-  ["@next_7", "Next 7 days"],
-  ["@last_7", "Last 7 days"],
-  ["@last_30", "Last 30 days"],
-  ["@next_30", "Next 30 days"],
-  ["@this_month", "This month"],
-  ["@last_month", "Last month"],
-  ["@this_year", "This year"],
-  ["@overdue", "Before today"],
+/** The named periods, in the order a person looks for them, each with its name in the page's language. */
+export const periods = (): [string, string][] => [
+  ["@today", t("Today")],
+  ["@yesterday", t("Yesterday")],
+  ["@tomorrow", t("Tomorrow")],
+  ["@this_week", t("This week")],
+  ["@last_week", t("Last week")],
+  ["@next_7", t("Next 7 days")],
+  ["@last_7", t("Last 7 days")],
+  ["@last_30", t("Last 30 days")],
+  ["@next_30", t("Next 30 days")],
+  ["@this_month", t("This month")],
+  ["@last_month", t("Last month")],
+  ["@this_year", t("This year")],
+  ["@overdue", t("Before today")],
 ];
 
 /** A value that stands for something other than itself. */
-export const isWord = (raw: string | undefined) => !!raw && (raw === EMPTY || raw === SET || PERIODS.some(([k]) => k === raw));
+export const isWord = (raw: string | undefined) => !!raw && (raw === EMPTY || raw === SET || periods().some(([k]) => k === raw));
 
 const dayText = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const shifted = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);

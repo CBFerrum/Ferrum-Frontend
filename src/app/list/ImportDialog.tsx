@@ -2,6 +2,7 @@
 // anything is saved, then watch it go. Rows go in small batches, each row on its own: one bad row
 // never stops the rest, and whatever failed comes back as a file to fix and bring in again.
 
+import { placed } from "../../lib/placed";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useMemo, useState } from "react";
 import { api, docPath, errorMessage, saveBlob } from "../../lib/api";
@@ -66,7 +67,7 @@ function ProblemList({ problems, total }: { problems: Problem[]; total: number }
           ))}
         </tbody>
       </table>
-      {total > MAX_SHOWN && <p className="muted">{t("And")} {total - MAX_SHOWN} {t("more.")}</p>}
+      {total > MAX_SHOWN && <p className="muted">{placed(t("And {p1} more."), { p1: total - MAX_SHOWN })}</p>}
     </div>
   );
 }
@@ -91,12 +92,12 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
     if (!file) return;
     setError(null);
     if (/\.xlsx?$/i.test(file.name)) {
-      setError("Save the spreadsheet as CSV first: File, Save As, CSV.");
+      setError(t("Save the spreadsheet as CSV first: File, Save As, CSV."));
       return;
     }
     const parsed = parseCsv(await file.text());
     if (parsed.length < 2) {
-      setError("That file has no rows under its header.");
+      setError(t("That file has no rows under its header."));
       return;
     }
     setFileName(file.name);
@@ -146,7 +147,7 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
     for (const p of built?.problems ?? []) reasons.set(p.row, [reasons.get(p.row), `${p.field}: ${p.message}`].filter(Boolean).join("; "));
     for (const f of failed) reasons.set(f.row, f.why);
     const lines = [...reasons.keys()].sort((a, b) => a - b).map((row) => [...(rows[row - 1] ?? []), reasons.get(row) ?? ""]);
-    saveBlob(new Blob([toCsv([[...header, "Why it did not import"], ...lines])], { type: "text/csv" }), `${meta.name}-to-fix.csv`);
+    saveBlob(new Blob([toCsv([[...header, t("Why it did not import")], ...lines])], { type: "text/csv" }), `${meta.name}-to-fix.csv`);
   };
 
   const missing = missingRequired(fields, mapping);
@@ -156,14 +157,14 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
       <>
         <Button onClick={() => setStep("file")}>{t("Back")}</Button>
         <Button variant="primary" disabled={missing.length > 0 || !mapping.some(Boolean)} onClick={() => void check()}>
-          {t("Check {value}", { value: body.length.toLocaleString() })} {body.length === 1 ? t("row") : t("rows")}
+          {body.length === 1 ? t("Check 1 row") : t("Check {n} rows", { n: body.length.toLocaleString() })}
         </Button>
       </>
     ) : step === "review" ? (
       <>
         <Button onClick={() => setStep("map")}>{t("Back")}</Button>
         <Button variant="primary" disabled={!built?.records.length} onClick={() => void send()}>
-          {t("Import {value}", { value: built?.records.length.toLocaleString() ?? "" })} {built?.records.length === 1 ? t("row") : t("rows")}
+          {built?.records.length === 1 ? t("Import 1 row") : t("Import {n} rows", { n: built?.records.length.toLocaleString() ?? "" })}
         </Button>
       </>
     ) : step === "done" ? (
@@ -193,7 +194,7 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
       {step === "map" && (
         <div className="stack">
           <p className="muted">
-            {isolate(fileName)}: {isolate(body.length.toLocaleString())} {body.length === 1 ? t("row") : t("rows")}{t(". Say which field each column fills.")}
+            {body.length === 1 ? t("{file}: 1 row. Say which field each column fills.", { file: fileName }) : t("{file}: {n} rows. Say which field each column fills.", { file: fileName, n: body.length.toLocaleString() })}
           </p>
           {missing.length > 0 && <Alert tone="warning">{t("Every {value} needs {value2}: choose a column for it.", { value: meta.label.toLowerCase(), value2: missing.map((f) => f.label).join(", ") })}</Alert>}
           <table className="table import-map">
@@ -212,7 +213,7 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
                   <td>
                     <select
                       className="select"
-                      aria-label={t("Field for {value}", { value: h || `column ${i + 1}` })}
+                      aria-label={h ? t("Field for {value}", { value: h }) : t("Field for column {n}", { n: i + 1 })}
                       value={mapping[i] ?? ""}
                       onChange={(e) => setMapping((m) => m.map((v, j) => (j === i ? e.target.value || null : v === e.target.value ? null : v)))}
                     >
@@ -236,13 +237,13 @@ export function ImportDialog({ meta, onClose }: { meta: EntityMeta; onClose: () 
         <div className="stack">
           {built.records.length > 0 && (
             <Alert tone="success">
-              {isolate(built.records.length.toLocaleString())} {built.records.length === 1 ? t("row is") : t("rows are")} {t("ready.")}
+              {built.records.length === 1 ? t("1 row is ready.") : t("{n} rows are ready.", { n: built.records.length.toLocaleString() })}
             </Alert>
           )}
           {built.problems.length > 0 ? (
             <>
               <Alert tone="warning">
-                {isolate(problemRows.toLocaleString())} {problemRows === 1 ? t("row needs") : t("rows need")} {t("fixing and will be left out. You can download them afterwards.")}
+                {isolate(problemRows.toLocaleString())} {(problemRows === 1 ? t("row needs fixing and will be left out. You can download them afterwards.") : t("rows need fixing and will be left out. You can download them afterwards."))}
               </Alert>
               <ProblemList problems={built.problems} total={built.problems.length} />
             </>

@@ -129,7 +129,7 @@ export function checkLayout(layout: LayoutSection[], meta: Pick<Meta, "fields">)
   const seen = new Set<string>();
   const out: LayoutProblem[] = [];
   for (const s of layout) {
-    if (!Number.isInteger(s.columns) || s.columns < 1 || s.columns > 4) out.push({ section: s.key, message: "A section has 1 to 4 columns." });
+    if (!Number.isInteger(s.columns) || s.columns < 1 || s.columns > 4) out.push({ section: s.key, message: t("A section has 1 to 4 columns.") });
     for (const f of s.fields) {
       if (!known.has(f)) out.push({ section: s.key, message: t("The field {f} no longer exists.", { f }) });
       else if (seen.has(f)) out.push({ section: s.key, message: t("{f} is placed twice.", { f }) });

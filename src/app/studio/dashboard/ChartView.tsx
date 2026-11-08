@@ -211,7 +211,7 @@ function SliceLegend({ slices, onPick }: { slices: Slice[]; onPick?: (s: Slice) 
         const inner = (
           <>
             <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
-            <span className="min-w-0 flex-1 truncate text-start" title={s.label}>
+            <span className="min-w-0 flex-1 truncate text-start" title={isolate(s.label)}>
               {isolate(s.label)}
             </span>
             <span className="font-mono text-xs tabular-nums">{isolate(s.text)}</span>
@@ -233,6 +233,16 @@ function SliceLegend({ slices, onPick }: { slices: Slice[]; onPick?: (s: Slice) 
     </ul>
   );
 }
+
+/** A time bucket's name in a sentence ("per day"). */
+const BUCKET: Record<string, string> = {
+  get hour() { return tr("hour"); },
+  get day() { return tr("day"); },
+  get week() { return tr("week"); },
+  get month() { return tr("month"); },
+  get quarter() { return tr("quarter"); },
+  get year() { return tr("year"); },
+};
 
 const sliceSummary = (title: string, slices: Slice[]) => `${title}: ${slices.map((s) => `${s.label} ${s.text} (${formatShare(s.share)})`).join("; ")}.`;
 
@@ -329,7 +339,7 @@ function FunnelChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOp
         );
         return (
           <li key={s.key} className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-2 text-sm @md:grid-cols-[minmax(0,10rem)_1fr_auto]">
-            <span className="truncate" title={s.label}>
+            <span className="truncate" title={isolate(s.label)}>
               {isolate(s.label)}
             </span>
             {p ? (
@@ -369,7 +379,7 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
   const size = 12;
   const step = size + 3;
   const cellLabel = (date: string, text: string) => `${h.dim?.bucket ? formatBucket(date, h.dim.bucket, o.fyStartMonth) : formatCell(h.dim!, date)}: ${text}`;
-  const total = tr("{title}: {value} per {value2}, highest {text}.", { title, value: columnLabel(h.column, o), value2: h.dim.bucket ?? "day", text: h.cells.reduce((a, c) => (c.value > a.value ? c : a), h.cells[0]).text });
+  const total = tr("{title}: {value} per {value2}, highest {text}.", { title, value: columnLabel(h.column, o), value2: BUCKET[h.dim.bucket ?? "day"] ?? h.dim.bucket, text: h.cells.reduce((a, c) => (c.value > a.value ? c : a), h.cells[0]).text });
   if (!h.calendar) {
     const cells = h.weeks[0] ?? [];
     return (

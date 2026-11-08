@@ -60,7 +60,7 @@ function DrillBody({ target }: { target: DrillTarget }) {
         <SheetDescription aria-live="polite">
           {m ? `${m.label_plural}` : t("Records")}
           {rows.data ? t(" · {value} record{value2}", { value: total ?? shown, value2: (total ?? shown) === 1 ? "" : "s" }) : ""}
-          {target.points?.length ? t(" · {value} only", { value: target.points.length === 1 ? "this point" : "this point's values" }) : ""}
+          {target.points?.length ? t(" · {value} only", { value: target.points.length === 1 ? t("this point") : t("this point's values") }) : ""}
         </SheetDescription>
       </SheetHeader>
       <div className="min-h-0 flex-1 overflow-auto p-4">

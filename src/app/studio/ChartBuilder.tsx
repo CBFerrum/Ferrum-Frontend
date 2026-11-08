@@ -180,7 +180,7 @@ function ChartEditor({
   const preview = useChartPreview(req);
   const previewIssues = fieldIssues(preview.error).map(asRecordIssue);
   // What is still missing shows in the preview at once, and next to its setting after a save attempt.
-  const missingLabel = rec.label.trim() ? [] : [{ path: "label", message: "Give the chart a title" }];
+  const missingLabel = rec.label.trim() ? [] : [{ path: "label", message: tr("Give the chart a title") }];
   const issues = [...b.serverIssues, ...previewIssues, ...(showIssues ? [...local, ...missingLabel] : [])];
   const columns: ResultColumn[] | undefined = preview.data?.data.columns;
   const typeIssues = chartIssues(rec.chart_type, columns, rec.x_field, rec.y_fields ?? [], rec.colors ?? []);
@@ -197,7 +197,7 @@ function ChartEditor({
     await b.save();
   };
   const cancel = async () => {
-    if (b.dirty && !b.standard && !(await confirm({ title: tr("Discard your changes?"), message: "The chart keeps its last saved settings.", confirmLabel: tr("Discard"), danger: true }))) return;
+    if (b.dirty && !b.standard && !(await confirm({ title: tr("Discard your changes?"), message: tr("The chart keeps its last saved settings."), confirmLabel: tr("Discard"), danger: true }))) return;
     allowLeave();
     onClose();
   };
@@ -214,7 +214,7 @@ function ChartEditor({
   };
   const del = async () => {
     if (!b.base.id) return;
-    const ok = await confirm({ title: tr("Delete “{label}”?", { label: b.base.label }), message: "The chart is removed for everyone. Dashboards that show it must drop it first.", confirmLabel: tr("Delete"), danger: true });
+    const ok = await confirm({ title: tr("Delete “{label}”?", { label: b.base.label }), message: tr("The chart is removed for everyone. Dashboards that show it must drop it first."), confirmLabel: tr("Delete"), danger: true });
     if (!ok) return;
     try {
       await remove.mutateAsync({ id: b.base.id, version: b.base.version });
@@ -231,8 +231,8 @@ function ChartEditor({
       {...b}
       onSave={() => void doSave()}
       onCancel={() => void cancel()}
-      cancelLabel={embedded ? "Cancel" : b.dirty ? "Cancel" : "Back"}
-      saveLabel={embedded && !b.base.id ? "Save and add" : "Save"}
+      cancelLabel={embedded ? tr("Cancel") : b.dirty ? tr("Cancel") : tr("Back")}
+      saveLabel={embedded && !b.base.id ? tr("Save and add") : tr("Save")}
       extra={
         b.base.id && (
           <DropdownMenu>
@@ -286,7 +286,7 @@ function ChartEditor({
                 loading={reports.isLoading}
                 label={tr("Saved report")}
                 placeholder={tr("Choose a report…")}
-                fallbackLabel="A report you cannot open"
+                fallbackLabel={tr("A report you cannot open")}
                 options={(reports.data ?? []).map((r) => ({ value: r.id, label: r.label, hint: r.kind.replace("_", " "), group: r.base_entity ? plural(r.base_entity) : undefined }))}
                 onChange={(report) => setRec({ report, x_field: null, y_fields: null })}
               />
@@ -552,7 +552,7 @@ function AxesSettings({ type, columns, x, y, onX, onY, issues }: { type: ChartTy
         </div>
       )}
       <fieldset className="grid gap-1.5">
-        <legend className="mb-1 text-xs text-muted-foreground">{single ? tr("Value") : tr("Values")} {tr("(none ticked:")} {single ? tr("the first") : tr("all of them")})</legend>
+        <legend className="mb-1 text-xs text-muted-foreground">{single ? tr("Value (none ticked: the first)") : tr("Values (none ticked: all of them)")}</legend>
         {values.map((c) => (
           <Label key={c.name} className="flex items-center gap-2 text-sm font-normal">
             <Checkbox checked={y.includes(c.name)} onCheckedChange={(on) => toggle(c.name, on === true)} />

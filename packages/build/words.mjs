@@ -53,3 +53,32 @@ export function catalogIssues(src) {
   return out;
 }
 
+/**
+ * What is wrong with the app's names (`src/locales/names/<language>.json`: the names its model and
+ * manifest give pages, English → the language's): a file that is not an object of text, a name
+ * with no words, or one whose `{places}` are not the English's.
+ */
+export function namesIssues(src) {
+  const dir = join(src, "locales", "names");
+  if (!existsSync(dir)) return [];
+  const out = [];
+  for (const name of readdirSync(dir).sort()) {
+    if (!name.endsWith(".json")) continue;
+    let names;
+    try {
+      names = JSON.parse(readFileSync(join(dir, name), "utf8"));
+    } catch (e) {
+      out.push(`locales/names/${name}: not JSON (${e.message})`);
+      continue;
+    }
+    if (!names || typeof names !== "object" || Array.isArray(names)) {
+      out.push(`locales/names/${name}: not an object of names`);
+      continue;
+    }
+    for (const [english, words] of Object.entries(names)) {
+      if (typeof words !== "string" || !words.trim()) out.push(`locales/names/${name}: "${english}" has no words`);
+      else if (places(words) !== places(english)) out.push(`locales/names/${name}: "${english}" keeps other places than {${places(english)}}`);
+    }
+  }
+  return out;
+}
