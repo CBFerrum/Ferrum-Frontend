@@ -3155,6 +3155,11 @@ const words: Record<string, string> = {
   "A job tried again still runs with the rights its requester has now.": "المهمة المعاد تشغيلها تعمل بالصلاحيات التي يملكها طالبها الآن.",
   "No failed jobs": "لا مهام فاشلة",
   "Job": "المهمة",
+  "Find an operation": "ابحث عن عملية",
+  "Someone quoting an operation from an error: everything it set off, and how each stands.": "لمن يذكر عملية من رسالة خطأ: كل ما أطلقته، وحال كل منها.",
+  "Operation": "العملية",
+  "Effect": "الأثر",
+  "Nothing in this workspace carries that operation.": "لا شيء في مساحة العمل هذه يحمل هذه العملية.",
 };
 
 export default words;

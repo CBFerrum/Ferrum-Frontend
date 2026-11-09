@@ -3155,6 +3155,11 @@ const words: Record<string, string> = {
   "A job tried again still runs with the rights its requester has now.": "दोबारा चलाया गया काम अब भी अनुरोध करने वाले के मौजूदा अधिकारों से चलता है।",
   "No failed jobs": "कोई विफल काम नहीं",
   "Job": "काम",
+  "Find an operation": "कोई ऑपरेशन खोजें",
+  "Someone quoting an operation from an error: everything it set off, and how each stands.": "किसी त्रुटि से ऑपरेशन बताने वाले के लिए: उसने जो कुछ शुरू किया, और हर एक की स्थिति।",
+  "Operation": "ऑपरेशन",
+  "Effect": "प्रभाव",
+  "Nothing in this workspace carries that operation.": "इस कार्यक्षेत्र में कुछ भी इस ऑपरेशन को नहीं रखता।",
 };
 
 export default words;
