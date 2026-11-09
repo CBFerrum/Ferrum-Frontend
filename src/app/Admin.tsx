@@ -1,4 +1,5 @@
-// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, domains, personal data, workspace settings.
+// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, domains, personal data, workspace settings,
+// and what needs a person: events, webhook deliveries and jobs that gave up.
 
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,7 @@ const TABS = [
   { id: "privacy", get label() { return tr("Personal data"); } },
   { id: "workspace", get label() { return tr("Workspace"); } },
   { id: "words", get label() { return tr("Interface words"); } },
+  { id: "exceptions", get label() { return tr("Needs a person"); } },
 ];
 
 export function AdminPage() {
@@ -77,6 +79,7 @@ export function AdminPage() {
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
         {tab === "words" && <InterfaceWords />}
+        {tab === "exceptions" && <Exceptions />}
       </TabPanel>
     </div>
   );
@@ -338,6 +341,201 @@ async function attempt(fn: () => Promise<unknown>, success?: string): Promise<bo
     toast(errorMessage(e), "error");
     return false;
   }
+}
+
+// ── what needs a person ──
+
+interface DeadEvent {
+  id: number;
+  topic: string;
+  entity: string | null;
+  attempts: number;
+  last_error: string | null;
+  created_at: string;
+}
+
+interface DeadDelivery {
+  id: string;
+  webhook_name: string;
+  topic: string;
+  attempts: number;
+  response_code: number | null;
+  last_error: string | null;
+  updated_at: string;
+}
+
+interface FailedJob {
+  id: string;
+  kind: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  finished_at: string | null;
+}
+
+/** The operator's exception queue: what the workspace's event handlers, webhooks and jobs gave up on and why,
+ *  never what they carried, each to try again once what stopped it is put right. */
+function Exceptions() {
+  const qc = useQueryClient();
+  const key = ["admin", "exceptions"];
+  const events = useQuery({ queryKey: [...key, "events"], queryFn: ({ signal }) => api.get<{ events: DeadEvent[] }>("/api/admin/events/dead", { limit: 100 }, signal) });
+  const deliveries = useQuery({
+    queryKey: [...key, "deliveries"],
+    queryFn: ({ signal }) => api.get<{ deliveries: DeadDelivery[] }>("/api/admin/webhook-deliveries/dead", { limit: 100 }, signal),
+  });
+  const jobs = useQuery({ queryKey: [...key, "jobs"], queryFn: ({ signal }) => api.get<{ jobs: FailedJob[] }>("/api/jobs", { limit: 200 }, signal) });
+  const [busy, setBusy] = useState<string | null>(null);
+  const again = async (id: string, url: string) => {
+    setBusy(id);
+    if (await attempt(() => api.post(url, {}), tr("Queued again"))) await qc.invalidateQueries({ queryKey: key });
+    setBusy(null);
+  };
+  const why = (text: string | null) => <td style={{ overflowWrap: "anywhere" }}>{text ? isolate(text) : "—"}</td>;
+  const tryAgain = (id: string, url: string, label: string, what: string) => (
+    <td>
+      <Button size="sm" loading={busy === id} onClick={() => void again(id, url)} aria-label={`${label}: ${what}`}>
+        {label}
+      </Button>
+    </td>
+  );
+  return (
+    <div className="stack">
+      <section className="card">
+        <div className="card-head">
+          <h2>{tr("Events handlers gave up on")}</h2>
+        </div>
+        <div className="card-body">
+          <p className="muted">{tr("Put right what stopped each one, then replay it. Handlers that dealt with it already are not repeated.")}</p>
+        </div>
+        <Loaded q={events}>
+          {(data) =>
+            !data.events.length ? (
+              <EmptyState title={tr("No events waiting")} icon="check" />
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{tr("Event")}</th>
+                      <th scope="col">{tr("Record")}</th>
+                      <th scope="col" className="num">
+                        {tr("Attempts")}
+                      </th>
+                      <th scope="col">{tr("Why")}</th>
+                      <th scope="col">{tr("Since")}</th>
+                      <th scope="col">
+                        <span className="sr-only">{tr("Actions")}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.events.map((e) => (
+                      <tr key={e.id}>
+                        <td className="mono">{isolate(e.topic)}</td>
+                        <td>{e.entity ? isolate(e.entity) : "—"}</td>
+                        <td className="num">{e.attempts}</td>
+                        {why(e.last_error)}
+                        <td className="nowrap">{isolate(relativeTime(e.created_at))}</td>
+                        {tryAgain(`event-${e.id}`, `/api/admin/events/${e.id}/replay`, tr("Replay"), e.topic)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </Loaded>
+      </section>
+      <section className="card">
+        <div className="card-head">
+          <h2>{tr("Webhook deliveries that gave up")}</h2>
+        </div>
+        <Loaded q={deliveries}>
+          {(data) =>
+            !data.deliveries.length ? (
+              <EmptyState title={tr("No deliveries waiting")} icon="check" />
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{tr("Webhook")}</th>
+                      <th scope="col">{tr("Event")}</th>
+                      <th scope="col" className="num">
+                        {tr("Attempts")}
+                      </th>
+                      <th scope="col">{tr("Why")}</th>
+                      <th scope="col">{tr("Last tried")}</th>
+                      <th scope="col">
+                        <span className="sr-only">{tr("Actions")}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.deliveries.map((d) => (
+                      <tr key={d.id}>
+                        <td>{isolate(d.webhook_name)}</td>
+                        <td className="mono">{isolate(d.topic)}</td>
+                        <td className="num">{d.attempts}</td>
+                        {why(d.response_code ? `HTTP ${d.response_code}${d.last_error ? `: ${d.last_error}` : ""}` : d.last_error)}
+                        <td className="nowrap">{isolate(relativeTime(d.updated_at))}</td>
+                        {tryAgain(`delivery-${d.id}`, `/api/admin/webhook-deliveries/${d.id}/replay`, tr("Replay"), d.topic)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          }
+        </Loaded>
+      </section>
+      <section className="card">
+        <div className="card-head">
+          <h2>{tr("Jobs that failed")}</h2>
+        </div>
+        <div className="card-body">
+          <p className="muted">{tr("A job tried again still runs with the rights its requester has now.")}</p>
+        </div>
+        <Loaded q={jobs}>
+          {(data) => {
+            const failed = data.jobs.filter((j) => j.status === "failed");
+            return !failed.length ? (
+              <EmptyState title={tr("No failed jobs")} icon="check" />
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{tr("Job")}</th>
+                      <th scope="col" className="num">
+                        {tr("Attempts")}
+                      </th>
+                      <th scope="col">{tr("Why")}</th>
+                      <th scope="col">{tr("Ended")}</th>
+                      <th scope="col">
+                        <span className="sr-only">{tr("Actions")}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failed.map((j) => (
+                      <tr key={j.id}>
+                        <td className="mono">{isolate(j.kind)}</td>
+                        <td className="num">{j.attempts}</td>
+                        {why(j.last_error)}
+                        <td className="nowrap">{j.finished_at ? isolate(relativeTime(j.finished_at)) : "—"}</td>
+                        {tryAgain(`job-${j.id}`, `/api/jobs/${j.id}/retry`, tr("Try again"), j.kind)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }}
+        </Loaded>
+      </section>
+    </div>
+  );
 }
 
 // ── workspace settings ──
