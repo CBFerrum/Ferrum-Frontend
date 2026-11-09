@@ -443,5 +443,5 @@ describe("accessibility", () => {
     const found: string[] = [];
     for (const html of drawn) found.push(...(await violations(html)));
     expect(found).toEqual([]);
-  });
+  }, 30_000); // axe over every screen drawn: about five seconds alone, more on a busy machine
 });
