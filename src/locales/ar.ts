@@ -3160,6 +3160,20 @@ const words: Record<string, string> = {
   "Operation": "العملية",
   "Effect": "الأثر",
   "Nothing in this workspace carries that operation.": "لا شيء في مساحة العمل هذه يحمل هذه العملية.",
+  // Customizations an update parted ways with (FEO-056).
+  "Changed by an update": "غيّره تحديث",
+  "An update changed what these customizations replace. Keep yours and it stands; switch it off and the update's does.": "غيّر تحديثٌ ما تحلّ محلّه هذه التخصيصات. احتفظ بتخصيصك فيبقى، أو أوقفه فيسري ما في التحديث.",
+  "It replaced": "ما حلّ محلّه",
+  "The update says": "ما يقوله التحديث",
+  "Suspended: the update requires it": "معلّق: التحديث يجعله إلزاميًا",
+  "Removed by the update": "أزاله التحديث",
+  "Keep mine: {change}": "احتفظ بتخصيصي: {change}",
+  "Keep mine": "احتفظ بتخصيصي",
+  "Switch off: {change}": "أوقف: {change}",
+  "Switch off": "أوقف",
+  "Kept: compared from now on with what the update says": "تم الاحتفاظ به: يُقارن من الآن بما يقوله التحديث",
+  "Switched off: the update's stands": "أُوقف: يسري ما في التحديث",
+  "{n} characters": "{n} حرفًا",
 };
 
 export default words;
