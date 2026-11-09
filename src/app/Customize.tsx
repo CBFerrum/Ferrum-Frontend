@@ -24,6 +24,20 @@ interface Warning {
   entity?: string;
   message?: string;
 }
+/** A customization an update parted ways with (GET /api/customize/conflicts). */
+interface Conflict {
+  id: string;
+  entity: string;
+  note?: string | null;
+  op: Record<string, unknown>;
+  /** What the customization replaced when it was made, or last kept. */
+  was: unknown;
+  /** What the packages say now; null too when what it names is gone. */
+  now: unknown;
+  gone: boolean;
+  /** Not applied until someone keeps it: the update made required what it made optional. */
+  suspended: boolean;
+}
 
 const FIELD_TYPES: FieldType[] = [
   "data", "text", "markdown", "code", "int", "decimal", "currency", "percent", "date", "datetime",
@@ -94,6 +108,7 @@ export function CustomizePage() {
         </div>
       </div>
       <Warnings />
+      <UpdateConflicts />
       {entity ? <CustomizeEntity key={entity} entity={entity} /> : <EmptyState title={tr("Choose an entity to customize")} icon="edit" />}
     </div>
   );
@@ -112,6 +127,104 @@ function Warnings() {
         ))}
       </ul>
     </Alert>
+  );
+}
+
+/** What a customization replaced, or what an update says in its place, in a few words. */
+export function shownValue(v: unknown): string {
+  if (v === null || v === undefined || v === "") return tr("Not set");
+  if (typeof v === "string") return v.length > 80 ? tr("{n} characters", { n: v.length }) : v;
+  if (typeof v !== "object") return String(v);
+  const states = (v as { states?: unknown }).states;
+  if (Array.isArray(states)) return states.map((s) => String((s as { name?: unknown }).name ?? "?")).join(", ");
+  const text = JSON.stringify(v);
+  return text.length > 80 ? `${text.slice(0, 79)}…` : text;
+}
+
+/** Customizations an update parted ways with: each kept (theirs stands, compared from now on with
+ * what the update says) or switched off (the update's stands). Until then a field the update made
+ * required stays required. */
+function UpdateConflicts() {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["customize", "conflicts"],
+    queryFn: ({ signal }) => api.get<{ conflicts: Conflict[] }>("/api/customize/conflicts", undefined, signal),
+  });
+  const [pending, setPending] = useState<string | null>(null);
+  const index = useMetaIndex().data;
+  const conflicts = q.data?.conflicts ?? [];
+  if (!conflicts.length) return null;
+  const label = (entity: string) => index?.entities.find((e) => e.name === entity)?.label ?? entity;
+  const decide = async (c: Conflict, keep: boolean) => {
+    setPending(c.id);
+    try {
+      if (keep) await api.post(`/api/customize/${c.id}/keep`, {});
+      else await api.put(`/api/customize/${c.id}/active`, { active: false });
+      toast(keep ? tr("Kept: compared from now on with what the update says") : tr("Switched off: the update's stands"));
+      await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
+    } catch (e) {
+      toast(errorMessage(e), "error");
+    } finally {
+      setPending(null);
+    }
+  };
+  return (
+    <section className="card" aria-labelledby="cz-parted">
+      <div className="card-head">
+        <h2 id="cz-parted">{tr("Changed by an update")}</h2>
+      </div>
+      <div className="card-body">
+        <p className="muted">
+          {tr("An update changed what these customizations replace. Keep yours and it stands; switch it off and the update's does.")}
+        </p>
+      </div>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">{tr("Entity")}</th>
+              <th scope="col">{tr("Change")}</th>
+              <th scope="col">{tr("It replaced")}</th>
+              <th scope="col">{tr("The update says")}</th>
+              <th scope="col">
+                <span className="sr-only">{tr("Decide")}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {conflicts.map((c) => {
+              const change = describeOp(c.op);
+              return (
+                <tr key={c.id}>
+                  <td>{isolate(label(c.entity))}</td>
+                  <td className="mono">
+                    {isolate(change)}
+                    {c.suspended && (
+                      <>
+                        {" "}
+                        <Badge tone="amber">{tr("Suspended: the update requires it")}</Badge>
+                      </>
+                    )}
+                  </td>
+                  <td>{isolate(shownValue(c.was))}</td>
+                  <td>{c.gone ? tr("Removed by the update") : isolate(shownValue(c.now))}</td>
+                  <td className="nowrap">
+                    {!c.gone && (
+                      <Button size="sm" disabled={pending === c.id} onClick={() => void decide(c, true)} aria-label={tr("Keep mine: {change}", { change })}>
+                        {tr("Keep mine")}
+                      </Button>
+                    )}{" "}
+                    <Button size="sm" disabled={pending === c.id} onClick={() => void decide(c, false)} aria-label={tr("Switch off: {change}", { change })}>
+                      {tr("Switch off")}
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

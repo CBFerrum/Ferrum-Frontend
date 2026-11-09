@@ -3160,6 +3160,20 @@ const words: Record<string, string> = {
   "Operation": "ऑपरेशन",
   "Effect": "प्रभाव",
   "Nothing in this workspace carries that operation.": "इस कार्यक्षेत्र में कुछ भी इस ऑपरेशन को नहीं रखता।",
+  // Customizations an update parted ways with (FEO-056).
+  "Changed by an update": "अपडेट से बदला गया",
+  "An update changed what these customizations replace. Keep yours and it stands; switch it off and the update's does.": "एक अपडेट ने वह बदल दिया जिसकी जगह ये अनुकूलन लेते हैं। अपना रखें तो वह बना रहेगा; उसे बंद करें तो अपडेट वाला लागू होगा।",
+  "It replaced": "इसने जिसकी जगह ली",
+  "The update says": "अपडेट के अनुसार",
+  "Suspended: the update requires it": "निलंबित: अपडेट इसे आवश्यक बनाता है",
+  "Removed by the update": "अपडेट ने हटा दिया",
+  "Keep mine: {change}": "मेरा रखें: {change}",
+  "Keep mine": "मेरा रखें",
+  "Switch off: {change}": "बंद करें: {change}",
+  "Switch off": "बंद करें",
+  "Kept: compared from now on with what the update says": "रखा गया: अब से अपडेट के अनुसार तुलना होगी",
+  "Switched off: the update's stands": "बंद किया गया: अपडेट वाला लागू है",
+  "{n} characters": "{n} अक्षर",
 };
 
 export default words;
