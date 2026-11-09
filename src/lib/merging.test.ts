@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultPicks, differing, mergedValues } from "./merging";
+import { defaultPicks, differing, mergeRequest, mergedValues } from "./merging";
 import type { Doc, Field } from "./meta";
 
 const f = (name: string, more: Partial<Field> = {}) => ({ name, label: name, type: "data", can_read: true, can_write: true, ...more }) as Field;
@@ -30,5 +30,12 @@ describe("merging two records", () => {
     const d = differing(fields, a, b);
     expect(mergedValues(d, b, { name: "keep", email: "other", city: "keep" })).toEqual({ email: "x@y" });
     expect(mergedValues(d, b, { name: "keep", email: "keep", city: "other" })).toEqual({ city: null });
+  });
+
+  it("sends the chosen values with the merge, against the version they were chosen on (FEO-006)", () => {
+    const d = differing(fields, a, b);
+    const keep = { ...a, version: 4 } as Doc;
+    expect(mergeRequest(d, keep, b, { name: "keep", email: "other", city: "keep" }, " Same company ")).toEqual({ duplicate: "b", reason: "Same company", values: { email: "x@y" }, version: 4 });
+    expect(mergeRequest(d, keep, b, { name: "keep", email: "keep", city: "keep" }, "Same")).toEqual({ duplicate: "b", reason: "Same" });
   });
 });

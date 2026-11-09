@@ -55,7 +55,10 @@ export interface RequestOptions {
   query?: Record<string, QueryValue>;
   /** Document version for optimistic concurrency (`If-Match: "v<version>"`). */
   ifMatch?: number;
+  /** Makes a create, an update or an action safe to send again (done once, the same answer each time). */
   idempotencyKey?: string;
+  /** What the request does, for one whose body is rebuilt on each try: the key is bound to this. */
+  idempotencyDigest?: string;
   signal?: AbortSignal;
   /** Do not treat a 401 as an expired session (login, password checks). */
   noAuthRedirect?: boolean;
@@ -91,13 +94,14 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   if (token) headers.authorization = `Bearer ${token}`;
   if (o.ifMatch !== undefined) headers["if-match"] = `"v${o.ifMatch}"`;
   if (o.idempotencyKey) headers["idempotency-key"] = o.idempotencyKey;
+  if (o.idempotencyKey && o.idempotencyDigest) headers["idempotency-digest"] = o.idempotencyDigest;
   let body: BodyInit | undefined;
   if (o.body instanceof FormData || o.body instanceof Blob) body = o.body;
   else if (o.body !== undefined) {
     headers["content-type"] = "application/json";
     body = JSON.stringify(o.body);
   }
-  // Safe to repeat: reads, and creates that carry an idempotency key.
+  // Safe to repeat: reads, and writes that carry an idempotency key.
   const retryable = method === "GET" || !!o.idempotencyKey;
   const url = path + queryString(o.query);
   for (let attempt = 0; ; attempt++) {
