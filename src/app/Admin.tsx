@@ -373,6 +373,71 @@ interface FailedJob {
   finished_at: string | null;
 }
 
+interface Operation {
+  operation: string;
+  events: { id: number; topic: string; state: string; attempts: number; last_error: string | null }[];
+  jobs: { id: string; kind: string; status: string; attempts: number; last_error: string | null }[];
+  runs: { id: string; solution: string; process: string; status: string }[];
+  effects: { capability: string; status: string }[];
+  deliveries: { id: string; webhook_name: string; topic: string; status: string; attempts: number; last_error: string | null }[];
+}
+
+/** Everything one operation set off, found by the id a person was shown with an error. */
+function FindOperation() {
+  const [id, setId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [found, setFound] = useState<Operation | null>(null);
+  const find = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!id.trim()) return;
+    setBusy(true);
+    try {
+      setFound(await api.get<Operation>(`/api/admin/operations/${encodeURIComponent(id.trim())}`));
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const lines = found
+    ? [
+        ...found.events.map((e) => `${tr("Event")} ${e.topic}: ${e.state}${e.last_error ? ` (${e.last_error})` : ""}`),
+        ...found.jobs.map((j) => `${tr("Job")} ${j.kind}: ${j.status}${j.last_error ? ` (${j.last_error})` : ""}`),
+        ...found.runs.map((r) => `${tr("Process")} ${r.solution} ${r.process}: ${r.status}`),
+        ...found.effects.map((f) => `${tr("Effect")} ${f.capability}: ${f.status}`),
+        ...found.deliveries.map((d) => `${tr("Webhook")} ${d.webhook_name} ${d.topic}: ${d.status}${d.last_error ? ` (${d.last_error})` : ""}`),
+      ]
+    : [];
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{tr("Find an operation")}</h2>
+      </div>
+      <div className="card-body stack">
+        <p className="muted">{tr("Someone quoting an operation from an error: everything it set off, and how each stands.")}</p>
+        <form className="row" onSubmit={find} aria-label={tr("Find an operation")}>
+          <input className="input" aria-label={tr("Operation")} value={id} onChange={(e) => setId(e.target.value)} placeholder="0190f…" />
+          <Button type="submit" loading={busy}>
+            {tr("Find")}
+          </Button>
+        </form>
+        {found &&
+          (lines.length ? (
+            <ul className="stack" style={{ gap: 4 }}>
+              {lines.map((l, i) => (
+                <li key={i} className="mono" style={{ overflowWrap: "anywhere" }}>
+                  {isolate(l)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">{tr("Nothing in this workspace carries that operation.")}</p>
+          ))}
+      </div>
+    </section>
+  );
+}
+
 /** The operator's exception queue: what the workspace's event handlers, webhooks and jobs gave up on and why,
  *  never what they carried, each to try again once what stopped it is put right. */
 function Exceptions() {
@@ -400,6 +465,7 @@ function Exceptions() {
   );
   return (
     <div className="stack">
+      <FindOperation />
       <section className="card">
         <div className="card-head">
           <h2>{tr("Events handlers gave up on")}</h2>
