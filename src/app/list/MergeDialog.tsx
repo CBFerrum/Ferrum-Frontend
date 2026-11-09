@@ -1,11 +1,11 @@
 // Merging two records that turned out to be one. Pick which record stays and, where they differ,
-// which value does; the server then moves every link onto the record that stays, whole or not at
-// all. A merge cannot be undone, so it asks why, and the reason goes in the record's history.
+// which value does; the server then writes those values and moves every link onto the record that
+// stays, in one transaction, whole or not at all. A merge cannot be undone, so it asks why, and the reason goes in the record's history.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { api, docPath, errorMessage } from "../../lib/api";
-import { defaultPicks, differing, mergedValues, type Pick } from "../../lib/merging";
+import { defaultPicks, differing, mergeRequest, type Pick } from "../../lib/merging";
 import { recordTitle, type Doc, type EntityMeta, type Field } from "../../lib/meta";
 import { Alert, Button, Dialog, ErrorState, Field as FieldWrap, Spinner, toast } from "../../ui/kit";
 import { CellValue, LinkInput } from "../widgets";
@@ -46,9 +46,7 @@ function Compare({ meta, a, b, onClose, onDone }: { meta: EntityMeta; a: Doc; b:
     setBusy(true);
     setProblem(null);
     try {
-      const values = mergedValues(fields, other, picks);
-      if (Object.keys(values).length) await api.patch(docPath(meta.name, keepId), values, { ifMatch: keep.version });
-      const done = await api.post<{ links_moved: number }>(docPath(meta.name, keepId, "merge"), { duplicate: String(other.id), reason: reason.trim() });
+      const done = await api.post<{ links_moved: number }>(docPath(meta.name, keepId, "merge"), mergeRequest(fields, keep, other, picks, reason));
       toast((done.links_moved === 1 ? t("Merged. {links_moved} link moved to {meta}.", { links_moved: done.links_moved, meta: recordTitle(meta, keep) }) : t("Merged. {links_moved} links moved to {meta}.", { links_moved: done.links_moved, meta: recordTitle(meta, keep) })));
       void qc.invalidateQueries({ queryKey: ["list", meta.name] });
       void qc.invalidateQueries({ queryKey: ["view", meta.name] });

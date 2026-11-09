@@ -361,8 +361,12 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** Document version for optimistic concurrency (`If-Match: "v<version>"`). */
   ifMatch?: number;
-  /** Makes a create safe to repeat. */
+  /** Makes a create, an update or an action safe to send again: the server does it once and gives
+   * the same answer to every try with this key. */
   idempotencyKey?: string;
+  /** What the request does, said by the client, for one whose body is rebuilt on each try (an offline
+   * change made again on the record as it stands): the server binds the key to this instead of the body. */
+  idempotencyDigest?: string;
 }
 
 export function queryString(query?: Record<string, QueryValue>): string {
@@ -383,7 +387,7 @@ const sleep = (ms: number, signal?: AbortSignal) =>
   });
 
 /**
- * A request to the API with the browser's session (the cookie). Retries reads (and creates with
+ * A request to the API with the browser's session (the cookie). Retries reads (and writes with
  * an idempotency key) on connection errors and on 429, 502–504 (with `Retry-After`); waits while
  * the app is being upgraded (503 `app_upgrading`); asks the shell to sign in again on 401; tells
  * the shell on 409 `ui_outdated`.
@@ -395,6 +399,7 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
   if (b?.app) headers["x-ferrum-ui"] = `${b.app.id}@${b.app.version}`;
   if (init.ifMatch !== undefined) headers["if-match"] = `"v${init.ifMatch}"`;
   if (init.idempotencyKey) headers["idempotency-key"] = init.idempotencyKey;
+  if (init.idempotencyKey && init.idempotencyDigest) headers["idempotency-digest"] = init.idempotencyDigest;
   let body: BodyInit | undefined;
   if (init.body instanceof FormData || init.body instanceof Blob || init.body instanceof URLSearchParams) body = init.body;
   else if (init.body !== undefined) {

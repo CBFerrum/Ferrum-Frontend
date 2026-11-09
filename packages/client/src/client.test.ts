@@ -59,6 +59,32 @@ describe("@ferrum/client", () => {
     expect((seen[0].headers as Record<string, string>)["x-ferrum-ui"]).toBe("app@1.0.0");
   });
 
+  it("sends a write again with its key and digest when the answer was lost (FEO-003)", async () => {
+    vi.useFakeTimers();
+    const seen: Record<string, string>[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      seen.push(init.headers as Record<string, string>);
+      return seen.length === 1
+        ? new Response(JSON.stringify({ error: "retry" }), { status: 503, headers: { "content-type": "application/json" } })
+        : new Response(JSON.stringify({ id: "wo-1" }), { status: 200, headers: { "content-type": "application/json", "idempotent-replayed": "true" } });
+    });
+    const p = request<{ id: string }>("/api/v1/WorkOrder/wo-1", { method: "PATCH", body: { parts: [] }, idempotencyKey: "wo-1.save.1", idempotencyDigest: "add Filter x1" });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await p).toEqual({ id: "wo-1" });
+    expect(seen.map((h) => [h["idempotency-key"], h["idempotency-digest"]])).toEqual([["wo-1.save.1", "add Filter x1"], ["wo-1.save.1", "add Filter x1"]]);
+    vi.useRealTimers();
+  });
+
+  it("does not send a write again without a key", async () => {
+    let n = 0;
+    vi.stubGlobal("fetch", async () => {
+      n++;
+      return new Response(JSON.stringify({ error: "retry" }), { status: 503, headers: { "content-type": "application/json" } });
+    });
+    await request("/api/v1/WorkOrder/wo-1", { method: "PATCH", body: {}, idempotencyDigest: "ignored without a key" }).catch(() => undefined);
+    expect(n).toBe(1);
+  });
+
   it("waits while the app is upgraded, then goes on", async () => {
     vi.useFakeTimers();
     let n = 0;
