@@ -19,7 +19,15 @@ export function defaultPicks(fields: Field[], keep: Doc): Record<string, Pick> {
   return Object.fromEntries(fields.map((f) => [f.name, blank(keep[f.name]) ? "other" : "keep"]));
 }
 
-/** What to write on the record that stays before it absorbs the other. */
+/** What to write on the record that stays as it absorbs the other. */
 export function mergedValues(fields: Field[], other: Doc, picks: Record<string, Pick>): Record<string, unknown> {
   return Object.fromEntries(fields.filter((f) => picks[f.name] === "other").map((f) => [f.name, other[f.name] ?? null]));
+}
+
+/** The one request a merge is: the values taken from the other record go with it, with the version of
+ * the record that stays they were chosen against, so the server writes them in the merge's own
+ * transaction. A merge that fails leaves none of them; one chosen against an older version merges nothing. */
+export function mergeRequest(fields: Field[], keep: Doc, other: Doc, picks: Record<string, Pick>, reason: string) {
+  const values = mergedValues(fields, other, picks);
+  return { duplicate: String(other.id), reason: reason.trim(), ...(Object.keys(values).length ? { values, version: keep.version } : {}) };
 }
