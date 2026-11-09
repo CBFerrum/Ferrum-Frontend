@@ -3139,6 +3139,22 @@ const words: Record<string, string> = {
   "No files yet. What is attached here is for this task alone.": "अभी कोई फ़ाइल नहीं। यहाँ जो जोड़ा जाता है वह केवल इसी कार्य के लिए है।",
   "Attach a file": "फ़ाइल जोड़ें",
   "Attached": "जोड़ा गया",
+  "Needs a person": "किसी व्यक्ति की ज़रूरत",
+  "Queued again": "फिर से कतार में",
+  "Events handlers gave up on": "घटनाएँ जिन्हें हैंडलर ने छोड़ दिया",
+  "Put right what stopped each one, then replay it. Handlers that dealt with it already are not repeated.": "जिस कारण से हर एक रुका उसे ठीक करें, फिर उसे दोबारा चलाएँ। जो हैंडलर उसे पहले संभाल चुके हैं वे दोहराए नहीं जाते।",
+  "No events waiting": "कोई घटना प्रतीक्षा में नहीं",
+  "Attempts": "प्रयास",
+  "Since": "कब से",
+  "Replay": "दोबारा चलाएँ",
+  "Webhook deliveries that gave up": "वेबहुक डिलीवरी जो रुक गईं",
+  "No deliveries waiting": "कोई डिलीवरी प्रतीक्षा में नहीं",
+  "Webhook": "वेबहुक",
+  "Last tried": "पिछला प्रयास",
+  "Jobs that failed": "विफल हुए काम",
+  "A job tried again still runs with the rights its requester has now.": "दोबारा चलाया गया काम अब भी अनुरोध करने वाले के मौजूदा अधिकारों से चलता है।",
+  "No failed jobs": "कोई विफल काम नहीं",
+  "Job": "काम",
 };
 
 export default words;

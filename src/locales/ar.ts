@@ -3139,6 +3139,22 @@ const words: Record<string, string> = {
   "No files yet. What is attached here is for this task alone.": "لا ملفات بعد. ما يُرفق هنا لهذه المهمة وحدها.",
   "Attach a file": "أرفق ملفًا",
   "Attached": "أُرفق",
+  "Needs a person": "يحتاج إلى شخص",
+  "Queued again": "أُعيد إلى قائمة الانتظار",
+  "Events handlers gave up on": "أحداث توقفت معالجاتها عنها",
+  "Put right what stopped each one, then replay it. Handlers that dealt with it already are not repeated.": "أصلح ما أوقف كل واحد منها، ثم أعد تشغيله. لا تتكرر المعالجات التي تعاملت معه من قبل.",
+  "No events waiting": "لا أحداث في الانتظار",
+  "Attempts": "المحاولات",
+  "Since": "منذ",
+  "Replay": "إعادة التشغيل",
+  "Webhook deliveries that gave up": "تسليمات خطافات الويب التي توقفت",
+  "No deliveries waiting": "لا تسليمات في الانتظار",
+  "Webhook": "خطاف الويب",
+  "Last tried": "آخر محاولة",
+  "Jobs that failed": "مهام فشلت",
+  "A job tried again still runs with the rights its requester has now.": "المهمة المعاد تشغيلها تعمل بالصلاحيات التي يملكها طالبها الآن.",
+  "No failed jobs": "لا مهام فاشلة",
+  "Job": "المهمة",
 };
 
 export default words;
