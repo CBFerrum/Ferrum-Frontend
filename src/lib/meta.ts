@@ -42,6 +42,8 @@ export interface Field {
   read_only_if?: string;
   fetch_from?: string;
   description?: string;
+  /** The service target that keeps this field (its due moment or its state): the platform writes it, as a total. */
+  kept_by_target?: string;
   /** How a form edits it where its type alone does not say: `studio_query` for a JSON field holding a Studio query. */
   widget?: string;
   link_filters?: Record<string, unknown>;
@@ -142,6 +144,8 @@ export interface EntityMeta {
   rules: { name: string; check: string; message: string; on: string }[];
   actions: ActionDef[];
   workflow?: Workflow | null;
+  /** Service targets: "this must happen within so much working time". */
+  targets?: { name: string; label: string; calendar?: string; start_when?: string; within: string; pause_when?: string; met_when: string; due_field: string; state_field: string }[];
   fields: Field[];
   children: Record<string, ChildTable>;
   permissions: Perms;
@@ -356,6 +360,7 @@ export function fieldState(f: Field, scope: RuleScope, locked = false): FieldSta
     !!f.read_only ||
     !!f.computed ||
     !!f.rollup ||
+    !!f.kept_by_target ||
     f.can_write !== true ||
     (!!f.read_only_if && evaluate(f.read_only_if, scope) === true);
   return { visible, required, disabled };
@@ -373,7 +378,7 @@ export function inWorkflowState(f: Field, st: FieldState, state?: { editable?: s
 
 /** Whether a field's value is maintained by the server (it never needs to be sent). */
 export function isServerManaged(f: Field): boolean {
-  return !!f.read_only || !!f.computed || !!f.rollup || f.can_write !== true;
+  return !!f.read_only || !!f.computed || !!f.rollup || !!f.kept_by_target || f.can_write !== true;
 }
 
 export function userScope(me: Me | undefined): Record<string, unknown> | null {

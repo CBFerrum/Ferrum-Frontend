@@ -16,7 +16,7 @@ import { useEntityMeta, useMe, useMetaIndex, type ActionDef, type EntityMeta, ty
 import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { ActionCard, AddActions } from "./AutomationEditor";
 import { BatchRefused, useApplyBatch } from "./author/apply";
-import { checkStateOf, checkText, CheckInput, type CheckState, type CheckWords } from "./author/CheckBuilder";
+import { WhenInput, type CheckWords } from "./author/CheckBuilder";
 import { FormCard } from "./author/FormCard";
 import { grow, optionsOf, Pick, Tools, wrap } from "./author/controls";
 import { RoleSelect } from "./author/RoleSelect";
@@ -143,12 +143,6 @@ function Buttons({ meta }: { meta: EntityMeta }) {
       )}
     </div>
   );
-}
-
-/** A condition as rows or an expression; what it comes to is handed up as text. */
-function WhenInput({ value, onChange, fields, words }: { value: string; onChange: (v: string) => void; fields: MetaField[]; words: CheckWords }) {
-  const [state, setState] = useState<CheckState>(() => checkStateOf(value, fields));
-  return <CheckInput fields={fields} state={state} words={words} onChange={(s) => { setState(s); onChange(checkText(s, fields)); }} />;
 }
 
 function Refusals({ rows, fields, onChange, error, flagged }: { rows: DraftRefusal[]; fields: MetaField[]; onChange: (r: DraftRefusal[]) => void; error?: string; flagged: Set<string | undefined> }) {
