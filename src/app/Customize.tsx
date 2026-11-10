@@ -12,6 +12,7 @@ import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 import { useApply } from "./author/apply";
+import { CheckInput, checkText, startCheck } from "./author/CheckBuilder";
 import { FormCard } from "./author/FormCard";
 
 interface Customization {
@@ -508,18 +509,22 @@ function AddFieldCard({ meta }: { meta: EntityMeta }) {
 
 function AddRuleCard({ meta }: { meta: EntityMeta }) {
   const apply = useApply(meta.name);
-  const empty = { name: "", check: "", message: "", on: "save", note: "" };
+  const empty = { name: "", message: "", on: "save", note: "" };
   const [r, setR] = useState(empty);
+  const [check, setCheck] = useState(startCheck);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof empty, v: string) => setR((s) => ({ ...s, [k]: v }));
   const submit = async () => {
+    const expr = checkText(check, meta.fields);
+    if (!expr) return setError(tr("Finish the check before adding the rule."));
     setBusy(true);
     setError(null);
     try {
-      await apply({ op: "add_rule", rule: { name: r.name.trim(), check: r.check.trim(), message: r.message.trim(), on: r.on } }, r.note);
+      await apply({ op: "add_rule", rule: { name: r.name.trim(), check: expr, message: r.message.trim(), on: r.on } }, r.note);
       toast(tr("Rule {name} added", { name: r.name }));
       setR(empty);
+      setCheck(startCheck());
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -543,19 +548,10 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
       <FieldWrap label={tr("Name")} htmlFor="ar-name" required>
         <input id="ar-name" className="input mono" value={r.name} onChange={(e) => set("name", e.target.value)} required placeholder={tr("e.g. reference_required")} />
       </FieldWrap>
-      <FieldWrap label={tr("Check (CEL, must be true)")} htmlFor="ar-check" required hint={tr("Variables: doc, old, user, today, now")}>
-        <textarea
-          id="ar-check"
-          className="textarea mono"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={r.check}
-          onChange={(e) => set("check", e.target.value)}
-          required
-          placeholder={tr("e.g. doc.status != 'Closed' || doc.remarks != ''")}
-        />
-      </FieldWrap>
+      <CheckInput fields={meta.fields} state={check} onChange={setCheck} />
+      <p className="field-hint">
+        {tr("Need to look at other records?")} <Link to="/studio/solutions">{tr("Use a rule in Studio")}</Link>
+      </p>
       <FieldWrap label={tr("Message")} htmlFor="ar-message" required>
         <input id="ar-message" className="input" value={r.message} onChange={(e) => set("message", e.target.value)} required />
       </FieldWrap>

@@ -1,15 +1,15 @@
 import { useId, useRef } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 
-/** A condition in the server's expression language: the entity's fields as chips that insert `doc.name`
- *  where the cursor is, and the server's own words under it when it refused the condition. The browser
+/** A condition in the server's expression language: the entity's fields as chips that insert `doc.name` (or
+ *  the chip's own `insert` text, as `aggregates.unpaid`) where the cursor is, and the server's own words under it when it refused the condition. The browser
  *  does not read the expression: the server is the judge. */
-export function ExprInput({ label, value, onChange, fields, error, hint }: { label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string }[]; error?: string | null; hint?: string }) {
-  const id = useId();
+export function ExprInput({ label, value, onChange, fields, error, hint, id: given }: { label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string; insert?: string }[]; error?: string | null; hint?: string; id?: string }) {
+  const auto = useId();
+  const id = given ?? auto;
   const area = useRef<HTMLTextAreaElement>(null);
-  const insert = (name: string) => {
+  const insert = (text: string) => {
     const el = area.current;
-    const text = `doc.${name}`;
     const from = el?.selectionStart ?? value.length;
     const to = el?.selectionEnd ?? value.length;
     onChange(value.slice(0, from) + text + value.slice(to));
@@ -29,7 +29,7 @@ export function ExprInput({ label, value, onChange, fields, error, hint }: { lab
       {fields.length > 0 && (
         <div role="group" aria-label={tr("Insert a field")} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
           {fields.map((f) => (
-            <button key={f.name} type="button" className="chip" title={f.label ? isolate(f.label) : undefined} aria-label={tr("Insert {field}", { field: f.name })} onClick={() => insert(f.name)}>
+            <button key={f.name} type="button" className="chip" title={f.label ? isolate(f.label) : undefined} aria-label={tr("Insert {field}", { field: f.name })} onClick={() => insert(f.insert ?? `doc.${f.name}`)}>
               {isolate(f.name)}
             </button>
           ))}
