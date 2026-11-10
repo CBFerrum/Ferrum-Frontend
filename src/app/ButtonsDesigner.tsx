@@ -290,6 +290,11 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
       closing.current = true;
       onClose();
     } catch (e) {
+      if (e instanceof BatchRefused && e.unchanged) {
+        toast(tr("Nothing changed"));
+        closing.current = true;
+        return onClose();
+      }
       const message = e instanceof BatchRefused ? e.message : errorMessage(e);
       const at = pointAt(message, d);
       setRefusal({ message, at });
@@ -336,7 +341,7 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
       </div>
       <RoleSelect legend={tr("Who may press it (none ticked: whoever may edit the record; administrators always may)")} value={d.roles} onChange={(roles) => set({ ...d, roles })} />
       <div className="stack">
-        <WhenInput value={d.condition} fields={fields} words={CONDITION_WORDS()} onChange={(condition) => set({ ...d, condition })} />
+        <WhenInput optional value={d.condition} fields={fields} words={CONDITION_WORDS()} onChange={(condition) => set({ ...d, condition })} />
         {refusal?.at.condition && <p className="field-error">{tr("The server refused the condition; see the message above.")}</p>}
         <p className="faint">{tr("Leave it empty to show the button on every record.")}</p>
       </div>
