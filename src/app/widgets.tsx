@@ -20,6 +20,7 @@ import {
 import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { t } from "../lib/i18n";
+import { stateTone, stateWords } from "../lib/targetDraft";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
 import {
@@ -70,6 +71,11 @@ export function FieldControl(p: ControlProps) {
     "aria-describedby": p.describedBy,
     "aria-label": p.compact ? p.label : undefined,
   };
+  // The state a service target keeps: a badge with its word (never colour alone), not a box to type in.
+  if (f.kept_by_target && (f.type === "select" || f.type === "data")) {
+    const v = text(value);
+    return <output id={p.id} aria-describedby={p.describedBy}>{v && <Badge tone={stateTone(v)}>{isolate(stateWords()[v] ?? v)}</Badge>}</output>;
+  }
   switch (f.type) {
     case "check":
       return <input type="checkbox" {...common} checked={value === true} onChange={(e) => onChange(e.target.checked)} />;
@@ -607,6 +613,7 @@ export function CellValue({
     const label = DOCSTATUS_LABEL[value] ?? String(value);
     return <Badge tone={statusTone(label)}>{isolate(label)}</Badge>;
   }
+  if (field.kept_by_target && field.type !== "datetime") return <Badge tone={stateTone(String(value))}>{isolate(stateWords()[String(value)] ?? String(value))}</Badge>;
   if (field.name === "status" || field.name === "workflow_state") return <Badge tone={statusTone(value)}>{isolate(String(value))}</Badge>;
   switch (field.type) {
     case "link":

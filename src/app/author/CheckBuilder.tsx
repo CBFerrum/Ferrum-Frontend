@@ -127,3 +127,9 @@ export function CheckInput({ fields, state, onChange, words }: { fields: MetaFie
     </div>
   );
 }
+
+/** A condition as rows or an expression; what it comes to is handed up as text. */
+export function WhenInput({ value, onChange, fields, words }: { value: string; onChange: (v: string) => void; fields: MetaField[]; words: CheckWords }) {
+  const [state, setState] = useState<CheckState>(() => checkStateOf(value, fields));
+  return <CheckInput fields={fields} state={state} words={words} onChange={(s) => { setState(s); onChange(checkText(s, fields)); }} />;
+}
