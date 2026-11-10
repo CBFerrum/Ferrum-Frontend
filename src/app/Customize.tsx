@@ -2,14 +2,18 @@
 // validation rules, toggle customizations, and export/import the change set.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, errorMessage, saveBlob } from "../lib/api";
 import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
+import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
+import { useApply } from "./author/apply";
+import { CheckInput, checkText, startCheck } from "./author/CheckBuilder";
+import { FormCard } from "./author/FormCard";
 
 interface Customization {
   id: string;
@@ -55,14 +59,6 @@ const useCustomizations = () =>
     queryFn: ({ signal }) => api.get<{ customizations: Customization[]; warnings: (Warning | string)[] }>("/api/customize", undefined, signal),
   });
 
-function useApply(entity: string) {
-  const qc = useQueryClient();
-  return async (op: Record<string, unknown>, note?: string) => {
-    await api.post("/api/customize", { entity, op, note: note?.trim() || undefined });
-    await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
-  };
-}
-
 export function CustomizePage() {
   const { entity } = useParams();
   const me = useMe();
@@ -104,13 +100,54 @@ export function CustomizePage() {
               {tr("Design form")}
             </Link>
           )}
+          {entity && (
+            <Link className="btn" to={workflowDesignerLink(entity)}>
+              {tr("Design workflow")}
+            </Link>
+          )}
           <ChangeSet />
         </div>
       </div>
       <Warnings />
       <UpdateConflicts />
+      <YourEntities />
       {entity ? <CustomizeEntity key={entity} entity={entity} /> : <EmptyState title={tr("Choose an entity to customize")} icon="edit" />}
     </div>
+  );
+}
+
+/** The workspace's own entities, with a way to make another and to change each. */
+function YourEntities() {
+  const index = useMetaIndex().data;
+  const mine = (index?.entities ?? []).filter((e) => e.custom && e.kind !== "child").sort((a, b) => a.label.localeCompare(b.label));
+  return (
+    <section className="card" aria-labelledby="cz-mine">
+      <div className="card-head">
+        <h2 id="cz-mine">{tr("Your entities")}</h2>
+        <span className="spacer" />
+        <Link className="btn btn-sm" to="/customize/new">
+          {tr("New entity")}
+        </Link>
+      </div>
+      <div className="card-body">
+        {!mine.length ? (
+          <p className="muted">{tr("You have not made any entities yet. An entity is a kind of record of your own, with the fields, lines and totals you choose.")}</p>
+        ) : (
+          <ul className="stack">
+            {mine.map((e) => (
+              <li key={e.name} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <strong>{isolate(e.label)}</strong>
+                <Badge>{e.kind === "document" ? tr("Document") : tr("List")}</Badge>
+                <span className="spacer" />
+                <Link className="btn btn-sm" to={`/customize/${encodeURIComponent(e.name)}/design`} aria-label={tr("Design {entity}", { entity: isolate(e.label) })}>
+                  {tr("Design")}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -374,33 +411,6 @@ function FieldsTable({ meta, onEdit }: { meta: EntityMeta; onEdit: (f: Field) =>
   );
 }
 
-function FormCard({ title, onSubmit, busy, submitLabel, children, error }: { title: string; onSubmit: () => Promise<void>; busy: boolean; submitLabel: string; children: ReactNode; error?: string | null }) {
-  const id = title.toLowerCase().replace(/\W+/g, "-");
-  return (
-    <form
-      className="card"
-      aria-labelledby={id}
-      onSubmit={(e: FormEvent) => {
-        e.preventDefault();
-        void onSubmit();
-      }}
-    >
-      <div className="card-head">
-        <h2 id={id}>{isolate(title)}</h2>
-      </div>
-      <div className="card-body stack">
-        {error && <Alert tone="error">{isolate(error)}</Alert>}
-        {children}
-        <div>
-          <Button type="submit" variant="primary" loading={busy}>
-            {isolate(submitLabel)}
-          </Button>
-        </div>
-      </div>
-    </form>
-  );
-}
-
 function AddFieldCard({ meta }: { meta: EntityMeta }) {
   const apply = useApply(meta.name);
   const index = useMetaIndex().data;
@@ -499,18 +509,22 @@ function AddFieldCard({ meta }: { meta: EntityMeta }) {
 
 function AddRuleCard({ meta }: { meta: EntityMeta }) {
   const apply = useApply(meta.name);
-  const empty = { name: "", check: "", message: "", on: "save", note: "" };
+  const empty = { name: "", message: "", on: "save", note: "" };
   const [r, setR] = useState(empty);
+  const [check, setCheck] = useState(startCheck);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof empty, v: string) => setR((s) => ({ ...s, [k]: v }));
   const submit = async () => {
+    const expr = checkText(check, meta.fields);
+    if (!expr) return setError(tr("Finish the check before adding the rule."));
     setBusy(true);
     setError(null);
     try {
-      await apply({ op: "add_rule", rule: { name: r.name.trim(), check: r.check.trim(), message: r.message.trim(), on: r.on } }, r.note);
+      await apply({ op: "add_rule", rule: { name: r.name.trim(), check: expr, message: r.message.trim(), on: r.on } }, r.note);
       toast(tr("Rule {name} added", { name: r.name }));
       setR(empty);
+      setCheck(startCheck());
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -534,19 +548,10 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
       <FieldWrap label={tr("Name")} htmlFor="ar-name" required>
         <input id="ar-name" className="input mono" value={r.name} onChange={(e) => set("name", e.target.value)} required placeholder={tr("e.g. reference_required")} />
       </FieldWrap>
-      <FieldWrap label={tr("Check (CEL, must be true)")} htmlFor="ar-check" required hint={tr("Variables: doc, old, user, today, now")}>
-        <textarea
-          id="ar-check"
-          className="textarea mono"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={r.check}
-          onChange={(e) => set("check", e.target.value)}
-          required
-          placeholder={tr("e.g. doc.status != 'Closed' || doc.remarks != ''")}
-        />
-      </FieldWrap>
+      <CheckInput fields={meta.fields} state={check} onChange={setCheck} />
+      <p className="field-hint">
+        {tr("Need to look at other records?")} <Link to="/studio/solutions">{tr("Use a rule in Studio")}</Link>
+      </p>
       <FieldWrap label={tr("Message")} htmlFor="ar-message" required>
         <input id="ar-message" className="input" value={r.message} onChange={(e) => set("message", e.target.value)} required />
       </FieldWrap>
@@ -702,6 +707,8 @@ export function describeOp(op: Record<string, unknown>): string {
       return tr("Set entity {value}", { value: String(op.property) });
     case "define_entity":
       return tr("Define entity {value}", { value: name(op.entity) });
+    case "redefine_entity":
+      return tr("Change the design of entity {value}", { value: name(op.entity) });
     case "set_workflow":
       return tr("Set workflow {value}", { value: name(op.workflow) });
     case "set_print_template":

@@ -85,6 +85,13 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
   });
 
+/** What the server's refusal said, whole (ApiError keeps only the parts every screen uses). */
+const bodies = new WeakMap<object, unknown>();
+export const errorBody = (e: unknown): Record<string, unknown> | null => {
+  const b = typeof e === "object" && e ? bodies.get(e) : null;
+  return b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : null;
+};
+
 const RETRY_STATUS = new Set([429, 502, 503, 504]);
 
 async function send(path: string, o: RequestOptions = {}): Promise<Response> {
@@ -126,6 +133,7 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
     }
     const data: unknown = await res.json().catch(() => null);
     const err = parseApiError(unreachable ? 502 : res.status, data);
+    bodies.set(err, data);
     if (res.status === 401 && !o.noAuthRedirect) {
       setSession(null);
       onUnauthorized();
