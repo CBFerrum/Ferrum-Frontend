@@ -64,6 +64,27 @@ export interface Problem {
   action?: string;
 }
 
+/** What a refused save says, sorted by where to show it: by the 0-based index of the action, by the control a
+ *  field names, or (`other`) nowhere in particular. */
+export interface Refusal {
+  actions: Map<number, string>;
+  named: Partial<Record<"name" | "entity" | "schedule" | "condition", string>>;
+  other: string[];
+}
+const NAMED = ["name", "entity", "schedule", "condition"] as const;
+export function mapRefusal(fields: { field: string; message: string; row?: [string, number] }[]): Refusal {
+  const out: Refusal = { actions: new Map(), named: {}, other: [] };
+  const join = (a: string | undefined, b: string) => (a ? `${a} ${b}` : b);
+  for (const f of fields) {
+    const n = f.row?.[0] === "actions" && f.field === "actions" ? f.row[1] : -1;
+    const named = NAMED.find((k) => k === f.field);
+    if (n >= 0) out.actions.set(n, join(out.actions.get(n), f.message));
+    else if (named) out.named[named] = join(out.named[named], f.message);
+    else out.other.push(f.message);
+  }
+  return out;
+}
+
 let counter = 0;
 export const newKey = () => `a${++counter}`;
 export { move } from "./workflowDraft";
