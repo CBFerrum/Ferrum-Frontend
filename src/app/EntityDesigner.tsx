@@ -5,7 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
-import { api, errorMessage } from "../lib/api";
+import { api, ApiError, errorMessage } from "../lib/api";
 import {
   addField, buildBatch, checkDraft, FIELD_TYPES, fromDef, hasMaxLength, isDecimal, isNumeric, KEPT_TYPES, markSaved, moveField, nextNumber, numberingTemplate, patchField,
   removeField, savedDefs, setEntityLabel, setFieldLabel, signature, startDraft, startField, startLines, startTotal,
@@ -61,26 +61,41 @@ function Loader({ entity }: { entity?: string }) {
   const index = useMetaIndex();
   const customizations = useQuery({ queryKey: ["customize"], queryFn: ({ signal }) => api.get<{ customizations: Customization[] }>("/api/customize", undefined, signal) });
   const list = customizations.data?.customizations;
+  // The definition as it is now, after every active change (a rule, button or field another screen added since the
+  // last redefinition is in it). An older server has no such route: 404 or 405, and the newest definition row is used.
+  const custom = !!entity && !!index.data?.entities.find((e) => e.name === entity)?.custom;
+  const current = useQuery({
+    queryKey: ["customize-definition", entity ?? ""],
+    enabled: custom,
+    retry: false,
+    refetchOnMount: "always",
+    queryFn: ({ signal }) => api.get<{ entity: Raw; lines?: Record<string, Raw> }>(`/api/customize/definition/${encodeURIComponent(entity ?? "")}`, undefined, signal),
+  });
+  const missing = current.error instanceof ApiError && (current.error.status === 404 || current.error.status === 405);
+  // Only the first answer starts the draft: a cached one from before a save is stale, and later ones must not replace what is being edited.
+  const settled = useRef(false);
+  if (index.data && (!custom || !current.isFetching)) settled.current = true;
   const loaded = useMemo(() => {
     if (!index.data || !list) return null;
     const taken = [...new Set([...index.data.entities.map((e) => e.name), ...list.map((c) => ((c.op.entity as Raw | undefined)?.name as string | undefined) ?? "")].filter(Boolean))];
     if (!entity) return { status: "ok" as const, start: startDraft(taken) };
     const summary = index.data.entities.find((e) => e.name === entity);
     if (!summary) return { status: "missing" as const };
-    const def = summary.custom ? definitionOf(list, entity) : null;
+    const now = summary.custom && current.data?.entity ? current.data : null;
+    const def = summary.custom ? (now?.entity ?? definitionOf(list, entity)) : null;
     if (!def) return { status: "unreadable" as const, custom: !!summary.custom, label: summary.label };
     const children: Record<string, Raw> = {};
     for (const f of (def.fields as Raw[] | undefined) ?? []) {
       const of = f.type === "table" ? String(f.of ?? "") : "";
-      const child = of ? definitionOf(list, of) : null;
+      const child = of ? (now?.lines?.[of] ?? definitionOf(list, of)) : null;
       if (child) children[of] = child;
     }
     return { status: "ok" as const, start: fromDef(def, children, taken) };
-  }, [index.data, list, entity]);
+  }, [index.data, list, entity, current.data]);
 
-  const error = index.error ?? customizations.error;
-  if (error) return <ErrorState error={error} onRetry={() => void Promise.all([index.refetch(), customizations.refetch()])} title={tr("Could not load the entity")} />;
-  if (!loaded) return <PageLoading />;
+  const error = index.error ?? customizations.error ?? (missing ? null : current.error);
+  if (error) return <ErrorState error={error} onRetry={() => void Promise.all([index.refetch(), customizations.refetch(), current.refetch()])} title={tr("Could not load the entity")} />;
+  if (!loaded || !settled.current) return <PageLoading />;
   if (loaded.status === "missing") return <NotFound title={tr("There is no such entity")}>{tr("Nothing called {entity} is installed in this workspace.", { entity: isolate(entity ?? "") })}</NotFound>;
   if (loaded.status === "unreadable") {
     return loaded.custom ? (

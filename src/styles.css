@@ -415,10 +415,12 @@ main:focus {
   padding: 0 9px;
   font-size: 13px;
 }
-.btn:hover:not(:disabled) {
+.btn:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-2);
 }
-.btn:disabled {
+/* aria-disabled: a button that says why it cannot be pressed stays reachable by keyboard. */
+.btn:disabled,
+.btn[aria-disabled="true"] {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1190,6 +1192,10 @@ input[type="color"] {
 .menu-item:focus-visible {
   background: var(--surface-2);
   outline: none;
+}
+.menu-item[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .menu-item-danger {
   color: var(--danger);

@@ -104,9 +104,9 @@ export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: 
   );
 }
 
-const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), notify: tr("Notify"), email: tr("Send mail"), raw: tr("Other action") });
+export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), raw: tr("Other action") });
 
-function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity }: {
+export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity }: {
   error?: string; entity: string;
   a: DraftAction; index: number; count: number; entities: { value: string; label: string }[]; chips: MetaField[]; fields: MetaField[];
   onChange: (patch: Partial<DraftAction>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; flagged: boolean;
@@ -114,6 +114,8 @@ function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove
   const roles = useRoleNames();
   const users = useQuery({ queryKey: ["admin", "users"], queryFn: ({ signal }) => api.get<{ users: { id: string; email: string; full_name: string }[] }>("/api/admin/users", undefined, signal), enabled: a.kind === "notify" && a.to === "user" });
   const target = useEntityMeta(a.kind === "create_document" && a.entity ? a.entity : undefined);
+  const linkTo = a.kind === "update_linked" ? fields.find((f) => f.name === a.link)?.to : undefined;
+  const linked = useEntityMeta(linkTo || undefined);
   const title = tr("Action {n}: {name}", { n: index + 1, name: ACTION_NAMES()[a.kind] });
   const patch = onChange as (p: Record<string, unknown>) => void;
   const [pv, setPv] = useState<PreviewState | null>(null);
@@ -168,6 +170,19 @@ function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove
               <ErrorState error={target.error} onRetry={() => target.refetch()} title={tr("Could not load {entity}", { entity: isolate(a.entity) })} />
             ) : (
               <Rows rows={a.rows} fields={(target.data?.fields ?? []).filter((f) => f.can_write !== false && !f.read_only && f.type !== "table")} what={tr("field")} onChange={(rows) => patch({ rows })} />
+            )}
+          </>
+        )}
+        {a.kind === "update_linked" && (
+          <>
+            <p className="faint">{tr("Fills in fields of the record that one of this record's link fields names. Values are expressions over doc (this record) and linked (the record being changed, as it was).")}</p>
+            <Field htmlFor={`link-${a.key}`} label={tr("Link field")}>
+              <Pick label={tr("Link field")} id={`link-${a.key}`} value={a.link} onChange={(v) => patch({ link: v, rows: [] })} options={optionsOf(fields.filter((f) => f.type === "link"), a.link)} />
+            </Field>
+            {a.link && linkTo && linked.error ? (
+              <ErrorState error={linked.error} onRetry={() => linked.refetch()} title={tr("Could not load {entity}", { entity: isolate(linkTo) })} />
+            ) : (
+              a.link && <Rows rows={a.rows} fields={(linked.data?.fields ?? []).filter((f) => f.can_write !== false && !f.read_only && f.type !== "table")} what={tr("field")} onChange={(rows) => patch({ rows })} />
             )}
           </>
         )}
@@ -428,6 +443,25 @@ function TriggerCard({ trigger, onChange, fields, submittable, sentence, error }
   );
 }
 
+/** The buttons that add an action card; `max` is how many the list may hold. */
+export function AddActions({ count, max, onAdd }: { count: number; max: number; onAdd: (a: DraftAction) => void }) {
+  const row = () => [{ key: newKey(), field: "", expr: "" }];
+  const kinds: [string, () => DraftAction][] = [
+    [tr("Set fields"), () => ({ key: newKey(), kind: "set_fields", rows: row() })],
+    [tr("Create a record"), () => ({ key: newKey(), kind: "create_document", entity: "", rows: row() })],
+    [tr("Change the record a link names"), () => ({ key: newKey(), kind: "update_linked", link: "", rows: [] })],
+    [tr("Notify"), () => ({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })],
+    [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
+  ];
+  return (
+    <div role="group" aria-label={tr("Add an action")} className="row" style={{ flexWrap: "wrap" }}>
+      {kinds.map(([label, make]) => (
+        <Button key={label} size="sm" icon="plus" disabled={count >= max} onClick={() => onAdd(make())}>{label}</Button>
+      ))}
+    </div>
+  );
+}
+
 /** The form (or the JSON) of one automation, and its save. */
 export function AutomationEditor({ initial, onClose, onDone }: { initial: Partial<Automation>; onClose: () => void; onDone: () => void }) {
   const index = useMetaIndex();
@@ -601,12 +635,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
                 onRemove={() => set({ ...draft, actions: draft.actions.filter((x) => x.key !== a.key) })}
               />
             ))}
-            <div role="group" aria-label={tr("Add an action")} className="row" style={{ flexWrap: "wrap" }}>
-              <Button size="sm" icon="plus" disabled={draft.actions.length >= MAX_ACTIONS} onClick={() => add({ key: newKey(), kind: "set_fields", rows: [{ key: newKey(), field: "", expr: "" }] })}>{tr("Set fields")}</Button>
-              <Button size="sm" icon="plus" disabled={draft.actions.length >= MAX_ACTIONS} onClick={() => add({ key: newKey(), kind: "create_document", entity: "", rows: [{ key: newKey(), field: "", expr: "" }] })}>{tr("Create a record")}</Button>
-              <Button size="sm" icon="plus" disabled={draft.actions.length >= MAX_ACTIONS} onClick={() => add({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })}>{tr("Notify")}</Button>
-              <Button size="sm" icon="plus" disabled={draft.actions.length >= MAX_ACTIONS} onClick={() => add({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })}>{tr("Send mail")}</Button>
-            </div>
+            <AddActions count={draft.actions.length} max={MAX_ACTIONS} onAdd={add} />
           </section>
         </>
       )}
