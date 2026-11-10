@@ -368,12 +368,13 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
             entity={meta.name}
             owner={d.name}
             inButton
+            lines={meta.children}
             onChange={(p) => patchEffect(a.key, p)}
             onMove={(by) => set({ ...d, effects: move(d.effects, i, by) })}
             onRemove={() => set({ ...d, effects: d.effects.filter((x) => x.key !== a.key) })}
           />
         ))}
-        <AddActions count={d.effects.length} max={MAX_EFFECTS} onAdd={(a) => set({ ...d, effects: [...d.effects, a] })} />
+        <AddActions hasTable={fields.some((f) => f.type === "table")} count={d.effects.length} max={MAX_EFFECTS} onAdd={(a) => set({ ...d, effects: [...d.effects, a] })} />
       </section>
       <div>
         <Button onClick={async () => { if (!dirty || (await confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this button will be lost."), confirmLabel: tr("Leave"), danger: true }))) onClose(); }}>{tr("Cancel")}</Button>

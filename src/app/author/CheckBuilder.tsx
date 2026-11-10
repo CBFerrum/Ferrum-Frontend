@@ -3,7 +3,7 @@ import { t as tr, isolate } from "@ferrum/client";
 import { buildCheck, checkable, checkProblems, newCheck, newCheckRow, openAs, opName, opsForType, parseCheck, type CheckDraft, type CheckRow } from "../../lib/checkBuilder";
 import type { Field as MetaField } from "../../lib/meta";
 import { Button } from "../../ui/kit";
-import { ExprInput } from "./ExprInput";
+import { ExprInput, linkChips } from "./ExprInput";
 import { grow, optionsOf, Pick, wrap } from "./controls";
 
 /** What the builder holds: rows, or (in "advanced") the expression as typed. */
@@ -76,7 +76,7 @@ export function CheckInput({ fields, state, onChange, words, optional }: { field
       </label>
       {notice && <p className="field-hint" role="status">{notice}</p>}
       {state.advanced ? (
-        <ExprInput label={w.advancedLabel} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} hint={w.hint} />
+        <ExprInput label={w.advancedLabel} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} links={linkChips(fields)} hint={w.hint} />
       ) : (
         <div className="stack" role="group" aria-labelledby={`${id}-head`}>
           <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8 }}>

@@ -46,6 +46,10 @@ export type DraftAction =
   | { key: string; kind: "create_document"; entity: string; rows: Row[] }
   /** Writes the record that link field `link` of the triggering record names (a button's or an automation's). */
   | { key: string; kind: "update_linked"; link: string; rows: Row[] }
+  /** One more line at the end of table field `table`. `extra`: properties the editor has no control for, kept. */
+  | { key: string; kind: "append_line"; table: string; rows: Row[]; extra: Record<string, unknown> }
+  /** Changes the one line of `table` for which `where` holds (`row` is the line). */
+  | { key: string; kind: "set_line"; table: string; where: string; rows: Row[]; extra: Record<string, unknown> }
   | { key: string; kind: "notify"; to: NotifyTo; target: string; title: string; body: string }
   | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string }
   /** A step of another app through the capability catalog; `once` gives it its own `key` expression. `extra`: what the editor has no control for. */
@@ -173,6 +177,14 @@ export function fromAction(a: unknown): DraftAction {
       const rows = onlyKeys(a, ["type", "link", "values"]) && isStr(a.link) ? rowsOf(a.values) : null;
       return rows ? { key: newKey(), kind: "update_linked", link: a.link as string, rows } : raw;
     }
+    case "append_line":
+    case "set_line": {
+      const set = a.type === "set_line";
+      const rows = isStr(a.table) && (!set || isStr(a.where)) ? rowsOf(a.values) : null;
+      if (!rows) return raw;
+      const extra = Object.fromEntries(Object.entries(a).filter(([k]) => !["type", "table", "where", "values"].includes(k)));
+      return set ? { key: newKey(), kind: "set_line", table: a.table as string, where: a.where as string, rows, extra } : { key: newKey(), kind: "append_line", table: a.table as string, rows, extra };
+    }
     case "notify": {
       if (!onlyKeys(a, ["type", "to", "title", "body"]) || !isStr(a.to) || !isStr(a.title) || !(a.body === undefined || isStr(a.body))) return raw;
       const m = /^(role|user|field):(.*)$/.exec(a.to);
@@ -227,6 +239,10 @@ export function actionJson(a: DraftAction): unknown {
       return { type: "create_document", entity: a.entity, values: values(a.rows) };
     case "update_linked":
       return { type: "update_linked", link: a.link, values: values(a.rows) };
+    case "append_line":
+      return { ...a.extra, type: "append_line", table: a.table, values: values(a.rows) };
+    case "set_line":
+      return { ...a.extra, type: "set_line", table: a.table, where: a.where, values: values(a.rows) };
     case "notify":
       return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, title: a.title, ...(a.body.trim() ? { body: a.body } : {}) };
     case "invoke":
@@ -329,6 +345,11 @@ export function checkActions(actions: DraftAction[], max: number, catalog?: Capa
         if (f && seen.has(f)) at(tr("“{field}” appears twice.", { field: f }));
         seen.add(f);
       }
+    } else if (a.kind === "append_line" || a.kind === "set_line") {
+      if (!a.table) at(tr("choose the table field that holds the lines."));
+      if (a.kind === "set_line" && !a.where.trim()) at(tr("say which line to change."));
+      if (!a.rows.length) at(tr("add at least one line field to fill in."));
+      if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
     } else if (a.kind === "notify") {
       if (a.to !== "owner" && !a.target.trim()) at(a.to === "role" ? tr("choose the role to tell.") : a.to === "user" ? tr("choose the person to tell.") : tr("choose the field that holds the person to tell."));
       if (!a.title.trim()) at(tr("write the notification's title."));

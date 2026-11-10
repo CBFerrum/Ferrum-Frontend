@@ -3979,6 +3979,18 @@ const words: Record<string, string> = {
   "write the key that makes it happen once.": "वह कुंजी लिखें जिससे यह एक ही बार हो।",
   "Nothing changed": "कुछ नहीं बदला",
   "Time counts only while the calendar is open: a day here is 24 open hours, not a working day.": "समय तभी गिना जाता है जब कैलेंडर खुला हो: यहाँ एक दिन 24 खुले घंटे है, एक कार्य दिवस नहीं।",
+  "Add a line": "एक पंक्ति जोड़ें",
+  "Change one line": "एक पंक्ति बदलें",
+  "Which line": "कौन-सी पंक्ति",
+  "line field": "पंक्ति का फ़ील्ड",
+  "Adds one line at the end of a table of this record. Values are expressions: put literal text in quotes, like 'Approved'.": "इस रिकॉर्ड की किसी तालिका के अंत में एक पंक्ति जोड़ता है। मान व्यंजक हैं: शाब्दिक पाठ को उद्धरण चिह्नों में लिखें, जैसे 'Approved'।",
+  "Changes one line of a table of this record. Exactly one line must match: with none, or with more than one, the step is refused when it runs.": "इस रिकॉर्ड की किसी तालिका की एक पंक्ति बदलता है। ठीक एक पंक्ति मेल खानी चाहिए: कोई न मिले या एक से अधिक मिलें तो चलने पर यह चरण अस्वीकार कर दिया जाता है।",
+  "An expression over doc and row, the line: for example row.item == params.item": "doc और row (यानी पंक्ति) पर एक व्यंजक: उदाहरण के लिए row.item == params.item",
+  "The fields of the lines are not known to this server: type their names.": "यह सर्वर पंक्तियों के फ़ील्ड नहीं जानता: उनके नाम टाइप करें।",
+  "Also: links, the records the link fields name": "साथ ही: links, यानी लिंक फ़ील्ड जिन रिकॉर्ड के नाम देते हैं",
+  "choose the table field that holds the lines.": "वह तालिका फ़ील्ड चुनें जिसमें पंक्तियाँ हैं।",
+  "say which line to change.": "बताएँ कि कौन-सी पंक्ति बदलनी है।",
+  "add at least one line field to fill in.": "भरने के लिए कम से कम एक पंक्ति फ़ील्ड जोड़ें।",
 };
 
 export default words;

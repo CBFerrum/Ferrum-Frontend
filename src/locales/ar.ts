@@ -3979,6 +3979,18 @@ const words: Record<string, string> = {
   "write the key that makes it happen once.": "اكتب المفتاح الذي يجعلها تحدث مرة واحدة.",
   "Nothing changed": "لم يتغير شيء",
   "Time counts only while the calendar is open: a day here is 24 open hours, not a working day.": "يُحتسب الوقت فقط أثناء فتح التقويم: اليوم هنا 24 ساعة مفتوحة، وليس يوم عمل.",
+  "Add a line": "أضف سطرًا",
+  "Change one line": "غيّر سطرًا واحدًا",
+  "Which line": "أي سطر",
+  "line field": "حقل السطر",
+  "Adds one line at the end of a table of this record. Values are expressions: put literal text in quotes, like 'Approved'.": "يضيف سطرًا واحدًا في نهاية أحد جداول هذا السجل. القيم تعبيرات: ضع النص الحرفي بين علامتي اقتباس، مثل 'Approved'.",
+  "Changes one line of a table of this record. Exactly one line must match: with none, or with more than one, the step is refused when it runs.": "يغيّر سطرًا واحدًا من أحد جداول هذا السجل. يجب أن يطابق سطر واحد بالضبط: إن لم يطابق أي سطر أو طابق أكثر من واحد يُرفض الإجراء عند تشغيله.",
+  "An expression over doc and row, the line: for example row.item == params.item": "تعبير على doc وrow، أي السطر: مثلًا row.item == params.item",
+  "The fields of the lines are not known to this server: type their names.": "لا يعرف هذا الخادم حقول الأسطر: اكتب أسماءها.",
+  "Also: links, the records the link fields name": "وأيضًا: links، السجلات التي تسميها حقول الربط",
+  "choose the table field that holds the lines.": "اختر حقل الجدول الذي يحتوي على الأسطر.",
+  "say which line to change.": "حدّد أي سطر يجب تغييره.",
+  "add at least one line field to fill in.": "أضف حقل سطر واحدًا على الأقل لتعبئته.",
 };
 
 export default words;
