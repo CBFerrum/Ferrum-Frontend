@@ -459,7 +459,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         (a) =>
           !a.hidden &&
           (!a.docstatus.length || a.docstatus.includes(docstatus)) &&
-          (a.permission in perms ? allowed(a.permission as PermKey) : true) &&
+          (perms.actions?.includes(a.name) || (a.permission in perms ? allowed(a.permission as PermKey) : true)) &&
           (!a.condition || evaluate(a.condition, { doc, user }) !== false),
       );
 
