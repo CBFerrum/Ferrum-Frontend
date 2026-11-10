@@ -49,7 +49,7 @@ const saveWords = (): CheckWords => ({ one: tr("The save goes through when this 
 
 /** A check as rows (field, comparison, value) joined by "all of" or "any of", with the expression they come to shown;
  *  "Advanced" is the expression itself. */
-export function CheckInput({ fields, state, onChange, words }: { fields: MetaField[]; state: CheckState; onChange: (s: CheckState) => void; words?: CheckWords }) {
+export function CheckInput({ fields, state, onChange, words, optional }: { fields: MetaField[]; state: CheckState; onChange: (s: CheckState) => void; words?: CheckWords; /** Leaving it empty is an answer: no rows is not a fault. */ optional?: boolean }) {
   const w = { ...saveWords(), ...words };
   const id = useId();
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export function CheckInput({ fields, state, onChange, words }: { fields: MetaFie
   const setRows = (rows: CheckRow[]) => onChange({ ...state, draft: { ...draft, rows } });
   const edit = (key: string, patch: Partial<CheckRow>) => setRows(draft.rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const expr = buildCheck(draft, fields);
-  const problems = checkProblems(draft, fields);
+  const problems = optional && !draft.rows.length ? [] : checkProblems(draft, fields);
   const toggle = (advanced: boolean) => {
     setNotice(null);
     if (advanced) return onChange({ ...state, advanced, text: expr || state.text });
@@ -126,4 +126,10 @@ export function CheckInput({ fields, state, onChange, words }: { fields: MetaFie
       )}
     </div>
   );
+}
+
+/** A condition as rows or an expression; what it comes to is handed up as text. */
+export function WhenInput({ value, onChange, fields, words, optional }: { value: string; onChange: (v: string) => void; fields: MetaField[]; words: CheckWords; optional?: boolean }) {
+  const [state, setState] = useState<CheckState>(() => checkStateOf(value, fields));
+  return <CheckInput fields={fields} state={state} words={words} optional={optional} onChange={(s) => { setState(s); onChange(checkText(s, fields)); }} />;
 }

@@ -16,10 +16,11 @@ import { useEntityMeta, useMe, useMetaIndex, type ActionDef, type EntityMeta, ty
 import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { ActionCard, AddActions } from "./AutomationEditor";
 import { BatchRefused, useApplyBatch } from "./author/apply";
-import { checkStateOf, checkText, CheckInput, type CheckState, type CheckWords } from "./author/CheckBuilder";
+import { WhenInput, type CheckWords } from "./author/CheckBuilder";
 import { FormCard } from "./author/FormCard";
 import { grow, optionsOf, Pick, Tools, wrap } from "./author/controls";
 import { RoleSelect } from "./author/RoleSelect";
+import { useCapabilities } from "./author/InvokeCard";
 
 export function ButtonsDesignerPage() {
   const { entity = "" } = useParams();
@@ -145,12 +146,6 @@ function Buttons({ meta }: { meta: EntityMeta }) {
   );
 }
 
-/** A condition as rows or an expression; what it comes to is handed up as text. */
-function WhenInput({ value, onChange, fields, words }: { value: string; onChange: (v: string) => void; fields: MetaField[]; words: CheckWords }) {
-  const [state, setState] = useState<CheckState>(() => checkStateOf(value, fields));
-  return <CheckInput fields={fields} state={state} words={words} onChange={(s) => { setState(s); onChange(checkText(s, fields)); }} />;
-}
-
 function Refusals({ rows, fields, onChange, error, flagged }: { rows: DraftRefusal[]; fields: MetaField[]; onChange: (r: DraftRefusal[]) => void; error?: string; flagged: Set<string | undefined> }) {
   const edit = (key: string, patch: Partial<DraftRefusal>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   return (
@@ -254,6 +249,7 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
   const [base] = useState(() => JSON.stringify(toButton(start)));
   const [problems, setProblems] = useState<ButtonProblem[]>([]);
   const [refusal, setRefusal] = useState<{ message: string; at: Pointed } | null>(null);
+  const caps = useCapabilities(d.effects.some((a) => a.kind === "invoke"));
   const [busy, setBusy] = useState(false);
   const closing = useRef(false);
   const dirty = JSON.stringify(toButton(d)) !== base;
@@ -281,7 +277,7 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
   const patchEffect = (key: string, patch: Partial<DraftAction>) => set({ ...d, effects: d.effects.map((a) => (a.key === key ? ({ ...a, ...patch } as DraftAction) : a)) });
 
   const save = async () => {
-    const found = checkButton(d, taken, packaged);
+    const found = checkButton(d, taken, packaged, caps.data?.capabilities);
     setProblems(found);
     setRefusal(null);
     if (found.length) return;
@@ -294,6 +290,11 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
       closing.current = true;
       onClose();
     } catch (e) {
+      if (e instanceof BatchRefused && e.unchanged) {
+        toast(tr("Nothing changed"));
+        closing.current = true;
+        return onClose();
+      }
       const message = e instanceof BatchRefused ? e.message : errorMessage(e);
       const at = pointAt(message, d);
       setRefusal({ message, at });
@@ -340,7 +341,7 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
       </div>
       <RoleSelect legend={tr("Who may press it (none ticked: whoever may edit the record; administrators always may)")} value={d.roles} onChange={(roles) => set({ ...d, roles })} />
       <div className="stack">
-        <WhenInput value={d.condition} fields={fields} words={CONDITION_WORDS()} onChange={(condition) => set({ ...d, condition })} />
+        <WhenInput optional value={d.condition} fields={fields} words={CONDITION_WORDS()} onChange={(condition) => set({ ...d, condition })} />
         {refusal?.at.condition && <p className="field-error">{tr("The server refused the condition; see the message above.")}</p>}
         <p className="faint">{tr("Leave it empty to show the button on every record.")}</p>
       </div>
@@ -365,6 +366,8 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
             flagged={flagged.has(a.key)}
             error={refusal?.at.effect === a.key ? refusal.message : undefined}
             entity={meta.name}
+            owner={d.name}
+            inButton
             onChange={(p) => patchEffect(a.key, p)}
             onMove={(by) => set({ ...d, effects: move(d.effects, i, by) })}
             onRemove={() => set({ ...d, effects: d.effects.filter((x) => x.key !== a.key) })}

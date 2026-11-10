@@ -9,6 +9,7 @@ import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
 import { buttonsLink } from "../lib/buttonDraft";
+import { targetsLink } from "../lib/targetDraft";
 import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
@@ -111,6 +112,11 @@ export function CustomizePage() {
           {entity && (
             <Link className="btn" to={buttonsLink(entity)}>
               {tr("Buttons")}
+            </Link>
+          )}
+          {entity && !["child", "ledger"].includes(index?.entities.find((e) => e.name === entity)?.kind ?? "") && (
+            <Link className="btn" to={targetsLink(entity)}>
+              {tr("Targets")}
             </Link>
           )}
           <Link className="btn" to="/customize/menus">
@@ -732,6 +738,12 @@ export function describeOp(op: Record<string, unknown>): string {
     }
     case "remove_action":
       return tr("Remove button {name}", { name: String(op.name) });
+    case "add_target": {
+      const a = op.target as { name?: string; label?: string } | undefined;
+      return tr("Target: {label}", { label: a?.label || a?.name || "?" });
+    }
+    case "remove_target":
+      return tr("Remove target {name}", { name: String(op.name) });
     case "define_module": {
       const m = op.module as { name?: string; label?: string } | undefined;
       return tr("Menu: {label}", { label: m?.label || m?.name || "?" });

@@ -207,3 +207,28 @@ describe("the action that changes the record a link names", () => {
     expect(fromAction({ type: "update_linked", link: "x", values: {}, extra: 1 }).kind).toBe("raw");
   });
 });
+
+describe("the step of another app", () => {
+  const cap = { id: "erp.sales_invoice.create", title: "Create a Sales Invoice", inputs: [{ name: "values", type: "object", required: true }, { name: "submit", type: "boolean", required: false }] };
+  it("goes back unchanged, with what the editor has no control for", () => {
+    const a = { type: "invoke", capability: cap.id, input: { values: "{'customer': doc.customer}", submit: "true" }, key: "'fee:' + doc.id", note: "kept" };
+    const draft = fromAction(a);
+    expect(draft.kind).toBe("invoke");
+    expect(actionJson(draft)).toEqual(a);
+    const bare = { type: "invoke", capability: "erp.x.read" };
+    expect(actionJson(fromAction(bare))).toEqual(bare);
+  });
+  it("keeps an input that is not an expression as it was", () => {
+    expect(fromAction({ type: "invoke", capability: "x", input: { a: 1 } }).kind).toBe("raw");
+  });
+  it("is checked: a step chosen, required inputs given, no input it does not have, a key when once", () => {
+    const d = (over: object) => ({ ...fromAction({ type: "invoke", capability: cap.id, input: { values: "{}" } }), ...over }) as never;
+    expect(checkActions([d({})], 20, [cap])).toEqual([]);
+    expect(checkActions([d({ capability: "" })], 20, [cap]).length).toBe(1);
+    expect(checkActions([d({ capability: "erp.other" })], 20, [cap]).length).toBe(1);
+    expect(checkActions([d({ rows: [] })], 20, [cap]).length).toBe(1);
+    expect(checkActions([d({ rows: [{ key: "k", field: "values", expr: "{}" }, { key: "j", field: "nope", expr: "1" }] })], 20, [cap]).length).toBe(1);
+    expect(checkActions([d({ once: true, onceKey: " " })], 20, [cap]).length).toBe(1);
+    expect(checkActions([d({ rows: [] })], 20)).toEqual([]);
+  });
+});
