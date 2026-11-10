@@ -3186,6 +3186,9 @@ const words: Record<string, string> = {
   "Portal people hold only such roles; each rule reaches only their own records, never deleting, cancelling, exporting or importing them.": "لا يحمل أشخاص البوابة إلا مثل هذه الأدوار؛ وكل قاعدة لا تصل إلا إلى سجلاتهم، دون حذفها أو إلغائها أو تصديرها أو استيرادها.",
   "Nothing is shared with you here yet": "لم يُشارَك معك شيء هنا بعد",
   "Your records": "سجلاتك",
+  "Insert a field": "إدراج حقل",
+  "Insert {field}": "إدراج {field}",
+  "Could not load the roles": "تعذّر تحميل الأدوار",
 };
 
 export default words;
