@@ -3,13 +3,14 @@
 
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useState, type FormEvent, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDate, formatDateTime, relativeTime } from "../lib/format";
 import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
+import type { Automation } from "../lib/automationDraft";
 import { Connections } from "./Connections";
 import { InterfaceWords } from "./InterfaceWords";
 import { LinkInput, LinkTitle } from "./widgets";
@@ -2898,26 +2899,9 @@ function SsoProviderDialog({
   );
 }
 
-// ── automations ──
+// ── automations (the editor loads when one is opened) ──
 
-interface Automation {
-  id: string;
-  name: string;
-  entity: string;
-  event: string;
-  condition?: string | null;
-  actions: unknown;
-  is_active: boolean;
-  updated_at?: string;
-}
-
-const EVENTS = ["created", "updated", "submitted", "cancelled", "deleted"];
-const TEMPLATES: Record<string, unknown> = {
-  "Set fields": { type: "set_fields", values: { remarks: "'Updated by automation'" } },
-  "Create document": { type: "create_document", entity: "Project", values: { project_name: "'Follow-up for ' + doc.number" } },
-  Notify: { type: "notify", to: "owner", title: "'Document ' + doc.number + ' needs attention'", body: "doc.remarks" },
-  Email: { type: "email", to: "doc.email", subject: "'Update on ' + doc.number", body: "'Hello, your document has changed.'" },
-};
+const AutomationDialog = lazy(() => import("./AutomationEditor").then((m) => ({ default: m.AutomationDialog })));
 
 function Automations() {
   const qc = useQueryClient();
@@ -2982,138 +2966,12 @@ function Automations() {
           )
         }
       </Loaded>
-      <AutomationDialog value={editing} onClose={() => setEditing(null)} onDone={refresh} />
+      {editing && (
+        <Suspense fallback={null}>
+          <AutomationDialog value={editing} onClose={() => setEditing(null)} onDone={refresh} />
+        </Suspense>
+      )}
     </section>
-  );
-}
-
-function AutomationDialog({ value, onClose, onDone }: { value: Partial<Automation> | null; onClose: () => void; onDone: () => void }) {
-  const index = useMetaIndex().data;
-  const [form, setForm] = useState({ name: "", entity: "", event: "submitted", condition: "", is_active: true, actions: "[]" });
-  const [seen, setSeen] = useState<Partial<Automation> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  if (value !== seen) {
-    setSeen(value);
-    setError(null);
-    if (value)
-      setForm({
-        name: value.name ?? "",
-        entity: value.entity ?? "",
-        event: value.event ?? "submitted",
-        condition: value.condition ?? "",
-        is_active: value.is_active ?? true,
-        actions: JSON.stringify(value.actions ?? [], null, 2),
-      });
-  }
-
-  const addTemplate = (name: string) => {
-    try {
-      const list = JSON.parse(form.actions || "[]") as unknown;
-      const next = [...(Array.isArray(list) ? list : []), TEMPLATES[name]];
-      setForm({ ...form, actions: JSON.stringify(next, null, 2) });
-      setError(null);
-    } catch {
-      setError(tr("Fix the actions JSON before adding a template."));
-    }
-  };
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    let actions: unknown;
-    try {
-      actions = JSON.parse(form.actions);
-    } catch {
-      return setError(tr("Actions must be valid JSON (an array of action objects)."));
-    }
-    if (!Array.isArray(actions)) return setError(tr("Actions must be a JSON array."));
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post("/api/admin/automations", { ...(value?.id ? { id: value.id } : {}), ...form, condition: form.condition.trim() || null, actions });
-      toast(value?.id ? tr("Automation saved") : tr("Automation created"));
-      onDone();
-      onClose();
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Dialog open={!!value} onClose={onClose} title={value?.id ? tr("Edit {name}", { name: String(value.name) }) : tr("New automation")} wide>
-      <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{isolate(error)}</Alert>}
-        <div className="form-grid" style={{ ["--cols" as string]: 3 }}>
-          <FieldWrap label={tr("Name")} htmlFor="au-name" required>
-            <input id="au-name" className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          </FieldWrap>
-          <FieldWrap label={tr("Entity")} htmlFor="au-entity" required>
-            <select id="au-entity" className="select" value={form.entity} onChange={(e) => setForm({ ...form, entity: e.target.value })} required>
-              <option value="">{tr("Choose…")}</option>
-              {[...(index?.entities ?? [])]
-                .sort((a, b) => a.label.localeCompare(b.label))
-                .map((x) => (
-                  <option key={x.name} value={x.name}>
-                    {isolate(x.label)}
-                  </option>
-                ))}
-            </select>
-          </FieldWrap>
-          <FieldWrap label={tr("Event")} htmlFor="au-event" required>
-            <select id="au-event" className="select" value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })}>
-              {EVENTS.map((x) => (
-                <option key={x} value={x}>
-                  {isolate(x)}
-                </option>
-              ))}
-            </select>
-          </FieldWrap>
-        </div>
-        <FieldWrap label={tr("Condition (CEL, optional)")} htmlFor="au-cond" hint="Runs only when true, e.g. doc.grand_total > 100000.0">
-          <input
-            id="au-cond"
-            className="input mono"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={form.condition}
-            onChange={(e) => setForm({ ...form, condition: e.target.value })}
-          />
-        </FieldWrap>
-        <FieldWrap label={tr("Actions (JSON)")} htmlFor="au-actions" hint="Values are CEL expressions: quote literal text, e.g. &quot;'Approved'&quot;.">
-          <textarea
-            id="au-actions"
-            className="textarea mono"
-            rows={10}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={form.actions}
-            onChange={(e) => setForm({ ...form, actions: e.target.value })}
-          />
-        </FieldWrap>
-        <div className="row">
-          <span className="muted">{tr("Insert template:")}</span>
-          {Object.keys(TEMPLATES).map((t) => (
-            <Button key={t} size="sm" icon="plus" onClick={() => addTemplate(t)}>
-              {isolate(t)}
-            </Button>
-          ))}
-        </div>
-        <label className="check-field">
-          <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
-          {tr("Active")}
-        </label>
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>{tr("Cancel")}</Button>
-          <Button type="submit" variant="primary" loading={busy}>
-            {tr("Save automation")}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
   );
 }
 
