@@ -4,7 +4,7 @@
 // Unsaved text is kept in this browser too, and offered back when the page opens on the same version.
 
 import { ArrowLeft, Check, CircleAlert, FlaskConical, Save, ShieldCheck, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,14 @@ import {
 import { LoadingBlock, PageHeader } from "@/app/studio/dashboard/ui";
 import { Alert, confirmDialog, ErrorState, TabPanel, Tabs, toast } from "@/ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
+import { rulePart } from "@/lib/rulesDraft";
 import { Diagram } from "./Diagram";
 import { GuidedEditor, type Selection } from "./GuidedEditor";
 import { SimulatorPanel } from "./SimulatorPanel";
+import type { RuleSelection } from "./RulesEditor";
+
+// The rules editor is heavy and used on one tab: its code loads when the tab opens.
+const RulesEditor = lazy(() => import("./RulesEditor").then((m) => ({ default: m.RulesEditor })));
 
 const LOCAL = (id: string) => `ferrum.solution-draft.${id}`;
 
@@ -65,6 +70,7 @@ export function DraftEditor() {
   const [tab, setTab] = useState("guided");
   const [panel, setPanel] = useState<"diagnostics" | "simulate">("diagnostics");
   const [selected, setSelected] = useState<Selection | null>(null);
+  const [ruleSel, setRuleSel] = useState<RuleSelection | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [restorable, setRestorable] = useState<string | null>(null);
   const loaded = useRef(false);
@@ -185,6 +191,12 @@ export function DraftEditor() {
   };
   const goTo = (d: Diagnostic) => {
     if (!parsed.source) return setTab("source");
+    // A fault in a rule opens it, on the part the pointer names.
+    const inRule = rulePart(d.pointer);
+    if (inRule) {
+      setRuleSel(inRule);
+      return setTab("rules");
+    }
     const at = stepAt(parsed.source, d);
     const p = at && parsed.source.processes?.[at.process];
     const item = p && outline(p).find((o) => o.step.id === at.step);
@@ -280,10 +292,11 @@ export function DraftEditor() {
       <Tabs
         id="draft"
         value={tab}
-        onChange={setTab}
+        onChange={(v) => (setRuleSel((r) => (r?.part ? { ...r, part: "" } : r)), setTab(v))}
         tabs={[
           { id: "guided", label: tr("Guided") },
           { id: "diagram", label: tr("Diagram") },
+          { id: "rules", label: tr("Rules") },
           { id: "source", label: tr("Source") },
         ]}
       />
@@ -302,6 +315,16 @@ export function DraftEditor() {
           ) : (
             <Alert tone="error">
               {tr("The source is not valid JSON, so the diagram cannot show it: {error}", { error: parsed.error ?? "" })}
+            </Alert>
+          ))}
+        {tab === "rules" &&
+          (parsed.source ? (
+            <Suspense fallback={<LoadingBlock />}>
+              <RulesEditor source={parsed.source} onChange={editSource} selected={ruleSel} onSelect={setRuleSel} diagnostics={checked?.diagnostics ?? []} onSource={() => setTab("source")} />
+            </Suspense>
+          ) : (
+            <Alert tone="error">
+              {tr("The source is not valid JSON, so the rules editor cannot show it: {error}", { error: parsed.error ?? "" })}
             </Alert>
           ))}
         {tab === "source" && (

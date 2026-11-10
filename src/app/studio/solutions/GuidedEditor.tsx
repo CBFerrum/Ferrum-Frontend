@@ -59,7 +59,7 @@ export const KIND_LABEL: Record<string, string> = {
 
 const kindLabel = (k: string) => tr(KIND_LABEL[k] ?? k);
 
-function Select({ id, value, onChange, options, label, allowEmpty }: { id: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; label: string; allowEmpty?: string }) {
+export function Select({ id, value, onChange, options, label, allowEmpty }: { id: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; label: string; allowEmpty?: string }) {
   return (
     <select id={id} aria-label={label} className="h-9 w-full rounded-md border bg-transparent px-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)}>
       {allowEmpty !== undefined && <option value="">{allowEmpty}</option>}
