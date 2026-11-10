@@ -105,7 +105,7 @@ export interface Workflow {
   initial_state: string;
   /** `editable`: the only fields a person may change in the state; `required`: what it needs. */
   states: { name: string; docstatus: number; edit_roles: string[]; editable?: string[]; required?: string[] }[];
-  transitions: { action: string; from: string; to: string; roles: string[]; condition?: string | null; not_creator?: boolean; not_creator_of?: string[] }[];
+  transitions: { action: string; from: string; to: string; roles: string[]; may_take?: boolean; condition?: string | null; not_creator?: boolean; not_creator_of?: string[] }[];
 }
 
 export interface ChildTable {
