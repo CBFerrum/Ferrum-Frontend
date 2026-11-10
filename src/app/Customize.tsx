@@ -2,7 +2,7 @@
 // validation rules, toggle customizations, and export/import the change set.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api, errorMessage, saveBlob } from "../lib/api";
 import { formatDateTime, todayIso } from "../lib/format";
@@ -10,6 +10,8 @@ import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type F
 import { formDesignerLink } from "../lib/formLayout";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
+import { useApply } from "./author/apply";
+import { FormCard } from "./author/FormCard";
 
 interface Customization {
   id: string;
@@ -54,14 +56,6 @@ const useCustomizations = () =>
     queryKey: ["customize"],
     queryFn: ({ signal }) => api.get<{ customizations: Customization[]; warnings: (Warning | string)[] }>("/api/customize", undefined, signal),
   });
-
-function useApply(entity: string) {
-  const qc = useQueryClient();
-  return async (op: Record<string, unknown>, note?: string) => {
-    await api.post("/api/customize", { entity, op, note: note?.trim() || undefined });
-    await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
-  };
-}
 
 export function CustomizePage() {
   const { entity } = useParams();
@@ -371,33 +365,6 @@ function FieldsTable({ meta, onEdit }: { meta: EntityMeta; onEdit: (f: Field) =>
         </div>
       )}
     </section>
-  );
-}
-
-function FormCard({ title, onSubmit, busy, submitLabel, children, error }: { title: string; onSubmit: () => Promise<void>; busy: boolean; submitLabel: string; children: ReactNode; error?: string | null }) {
-  const id = title.toLowerCase().replace(/\W+/g, "-");
-  return (
-    <form
-      className="card"
-      aria-labelledby={id}
-      onSubmit={(e: FormEvent) => {
-        e.preventDefault();
-        void onSubmit();
-      }}
-    >
-      <div className="card-head">
-        <h2 id={id}>{isolate(title)}</h2>
-      </div>
-      <div className="card-body stack">
-        {error && <Alert tone="error">{isolate(error)}</Alert>}
-        {children}
-        <div>
-          <Button type="submit" variant="primary" loading={busy}>
-            {isolate(submitLabel)}
-          </Button>
-        </div>
-      </div>
-    </form>
   );
 }
 

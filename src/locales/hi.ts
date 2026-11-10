@@ -3186,6 +3186,9 @@ const words: Record<string, string> = {
   "Portal people hold only such roles; each rule reaches only their own records, never deleting, cancelling, exporting or importing them.": "पोर्टल के लोग केवल ऐसी भूमिकाएँ रखते हैं; हर नियम केवल उनके अपने रिकॉर्ड तक पहुँचता है, उन्हें कभी हटाए, रद्द किए, निर्यात या आयात किए बिना।",
   "Nothing is shared with you here yet": "यहाँ अभी आपके साथ कुछ साझा नहीं किया गया है",
   "Your records": "आपके रिकॉर्ड",
+  "Insert a field": "फ़ील्ड जोड़ें",
+  "Insert {field}": "{field} जोड़ें",
+  "Could not load the roles": "भूमिकाएँ लोड नहीं हो सकीं",
 };
 
 export default words;
