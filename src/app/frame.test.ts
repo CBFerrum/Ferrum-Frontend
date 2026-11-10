@@ -28,3 +28,17 @@ describe("the records frame's sidebar", () => {
     expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(true);
   });
 });
+
+describe("a workspace's own menu's page", () => {
+  it("shows the modules it names and nothing else, whatever their packages", () => {
+    setFrameMode("app", ["tenant"], { pages: true, modules: ["x_grc"] });
+    expect(ownModule({ ...mod("x_grc", ["XRisk"], "tenant") }, meta)).toBe(true);
+    expect(ownModule(mod("x_other", ["XRisk"], "tenant"), meta)).toBe(false);
+    expect(ownModule(mod("crm", ["Lead"], "crm"), meta)).toBe(false);
+    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
+    setFrameMode("app", ["tenant"], { pages: true });
+    expect(ownModule(mod("x_other", ["XRisk"], "tenant"), meta)).toBe(true);
+    setFrameMode("classic");
+  });
+});
+

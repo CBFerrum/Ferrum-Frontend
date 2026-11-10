@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, docPath, errorMessage, newKey } from "../lib/api";
 import { builtInWords, interfaceWords, LANGUAGES, t } from "../lib/i18n";
-import { useMetaIndex, type Doc, type EntityMeta, type ListResponse } from "../lib/meta";
+import { useMetaIndex, type Doc, type EntityMeta, type ListResponse, type Module } from "../lib/meta";
 import { Button, EmptyState, Spinner, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -41,6 +41,11 @@ export function ownNames(m: Pick<EntityMeta, "package" | "custom" | "label" | "l
   for (const x of m.workflow?.transitions ?? []) out.push(x.action);
   for (const s of m.form ?? []) out.push(s.label ?? "");
   return out.filter(Boolean);
+}
+
+/** The labels and descriptions of the workspace's own menus (modules of the package `tenant`). */
+export function ownMenuNames(modules: Pick<Module, "package" | "label" | "description">[]): string[] {
+  return modules.filter((m) => m.package === "tenant").flatMap((m) => [m.label, m.description ?? ""]).filter(Boolean);
 }
 
 /** The workspace's words in `language`, by their English, every page of them. */
@@ -97,11 +102,11 @@ export function InterfaceWords() {
   const builtIn = useMemo(() => catalog.data ?? {}, [catalog.data]);
   const words = useMemo(() => {
     const listed = new Set([...(asked.data ?? []), ...(apps.data?.apps ?? []).flatMap((a) => a.words)]);
-    const mine = [...new Set(names.data ?? [])].filter((w) => !listed.has(w)).sort((a, b) => a.localeCompare(b));
+    const mine = [...new Set([...(names.data ?? []), ...ownMenuNames(index.data?.modules ?? [])])].filter((w) => !listed.has(w)).sort((a, b) => a.localeCompare(b));
     const all = of === OWN ? mine : of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : (asked.data ?? []);
     const q = find.trim().toLowerCase();
     return q ? all.filter((w) => w.toLowerCase().includes(q) || (builtIn[w] ?? "").toLowerCase().includes(q)) : all;
-  }, [find, builtIn, of, apps.data, asked.data, names.data]);
+  }, [find, builtIn, of, apps.data, asked.data, names.data, index.data]);
   const written = (w: string) => draft[w] ?? (typeof own.data?.get(w)?.words === "string" ? String(own.data.get(w)?.words) : "");
   const pending = Object.keys(draft).filter((w) => change(own.data?.get(w), draft[w]) !== null);
 

@@ -139,11 +139,17 @@ const own = (words: Record<string, string>, key: string): string | undefined => 
  *  (a field the workspace called "Status" reads as the interface's "Status" does). */
 const named = (text: string): string | undefined => own(workspace, text) ?? own(names, text) ?? own(catalog, text);
 
+/** Every word by its English in lower case: a name a sentence was given in lower case ("No {value} yet" with
+ *  "risk registers") is still found. The workspace's over the apps' names over the interface's. */
+let lowered: Record<string, string> = {};
+
 /** The interface's catalog, an app's own over it, and the workspace's words over both. */
 function merge(): void {
   const base = baseLanguage(language);
   catalog = { ...(CATALOGS[base] ?? {}), ...(extra.get(base) ?? {}), ...workspace };
   names = base === "en" ? {} : (NAMES[base] ?? {});
+  lowered = {};
+  for (const words of [catalog, names, workspace]) for (const [english, word] of Object.entries(words)) lowered[english.toLowerCase()] = word;
 }
 
 /** Names of models and manifests in a language (what /api/shell/names sends; tests). */
@@ -171,7 +177,7 @@ export function t(english: string, vars?: Record<string, string | number>): stri
     ? text.replace(/\{(\w+)\}/g, (whole, key: string) => {
         if (!(key in vars)) return whole;
         const v = vars[key];
-        return typeof v === "string" ? (named(v) ?? v) : String(v);
+        return typeof v === "string" ? (named(v) ?? own(lowered, v.toLowerCase()) ?? v) : String(v);
       })
     : text;
   // English left in a page that reads right to left keeps its own order (a sentence's full stop

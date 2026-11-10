@@ -52,7 +52,7 @@ export interface Bootstrap {
     title: string;
     compact: boolean;
     /** The shell's records of an app without an interface of its own (`/data/{app}/`). */
-    scope?: { app: string; title: string; packages: string[] } | null;
+    scope?: { app: string; title: string; packages: string[]; /** A workspace's own menu: the modules alone the page shows. */ modules?: string[] } | null;
   } | null;
   /** `bound`: the host belongs to one workspace (registered, or the server's one), so what the
    *  browser keeps for its origin is that workspace's; false on a shared host (shape A′). */
