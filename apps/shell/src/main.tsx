@@ -78,6 +78,7 @@ const pages: Record<string, RouteObject[]> = {
     // Customize, for every workspace on the shell, with ERP or without.
     { path: "customize/new", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
     { path: "customize/:entity/design", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
+    { path: "customize/menus", lazy: () => import("@/app/Menus").then((m) => ({ Component: m.MenusPage })) },
     { path: "customize/packs", lazy: () => import("@/app/Packs").then((m) => ({ Component: m.PacksPage })) },
     { path: "customize/:entity?", lazy: () => import("@/app/Customize").then((m) => ({ Component: m.CustomizePage })) },
     { path: "customize/:entity/form", lazy: () => import("@/app/FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
@@ -107,7 +108,7 @@ function Records() {
 
 const entry = bootstrap()?.app?.entry ?? "";
 const scope = entry === "data" ? bootstrap()?.app?.scope : null;
-if (scope) setFrameMode("app", scope.packages, { pages: true });
+if (scope) setFrameMode("app", scope.packages, { pages: true, modules: scope.modules });
 // The accounts host (shapes B and C): its own page, without the bar, for every address there.
 const router = entry === "accounts"
   ? createBrowserRouter([{ path: "*", lazy: () => import("./Accounts").then((m) => ({ Component: m.AccountsPage })), errorElement: <RouteError /> }])

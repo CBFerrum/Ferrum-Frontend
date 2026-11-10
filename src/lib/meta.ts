@@ -168,8 +168,13 @@ export interface Module {
   icon?: string | null;
   order: number;
   items: string[];
-  /** The package that defines it. */
+  /** The package that defines it (`tenant`: a workspace's own menu). */
   package?: string;
+  /** A workspace's own menu: what its tile says, its colour, the entities offered in "+", the assistant's notes. */
+  description?: string;
+  color?: string;
+  create?: string[];
+  assistant?: { instructions: string; suggestions?: string[] };
 }
 
 export interface MetaIndex {
