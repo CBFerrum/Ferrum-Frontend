@@ -28,6 +28,9 @@ describe("a configured button as a draft", () => {
     const odd = { ...doc, group: "More", docstatus: [0], effects: [{ type: "webhook", url: "x" }, ...doc.effects], params: [{ name: "q", label: "Q", type: "data", mask: true }], refuse_if: [{ when: "true", message: "no", code: 7 }] };
     expect(toButton(fromButton(odd))).toEqual(odd);
   });
+  it("leaves out may_run, which the description adds for whoever asked and the server refuses back", () => {
+    expect(toButton(fromButton({ ...doc, may_run: true, docstatus: [], permission: "write" }))).toEqual({ ...doc, docstatus: [], permission: "write" });
+  });
   it("tells a configured button from a package's", () => {
     expect(isConfigured({ effects: [] })).toBe(true);
     expect(isConfigured({})).toBe(false);

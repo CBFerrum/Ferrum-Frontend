@@ -10,10 +10,11 @@ describe("which buttons a record shows", () => {
     const list = [act({ name: "h", hidden: true }), act({ name: "s", docstatus: [1] }), act({ name: "c", condition: "doc.status == 'Open'" }), act({ name: "ok", condition: "doc.status == 'Draft'" })];
     expect(actionButtons(list, ctx()).map((b) => b.action.name)).toEqual(["ok"]);
   });
-  it("trusts may_run when the server sends it, and the old test when it does not", () => {
+  it("needs both: the server's may_run (roles) and the caller's rights on this record", () => {
     const list = [act({ name: "no", may_run: false }), act({ name: "yes", may_run: true }), act({ name: "old" })];
-    expect(actionButtons(list, ctx(false)).map((b) => b.action.name)).toEqual(["yes"]);
     expect(actionButtons(list, ctx(true)).map((b) => b.action.name)).toEqual(["yes", "old"]);
+    // Someone else's record, to a person who may change only their own: nothing, whatever may_run says.
+    expect(actionButtons(list, ctx(false))).toEqual([]);
   });
   it("disables a button the first refusal that holds names, with its message", () => {
     const a = act({ refuse_if: [{ when: "doc.status == 'Open'", message: "closed" }, { when: "doc.owner == user.email", message: "not your own" }, { when: "true", message: "never" }] });

@@ -91,7 +91,8 @@ export function fromButton(a: Raw): ButtonDraft {
       };
     }),
     effects: (Array.isArray(a.effects) ? a.effects : []).map(fromEffect),
-    extra: rest(a, KNOWN),
+    // `may_run` is the server's answer to whoever asked, not part of the definition: sent back, it is refused.
+    extra: rest(a, [...KNOWN, "may_run"]),
   };
 }
 
