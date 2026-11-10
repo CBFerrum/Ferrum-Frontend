@@ -13,7 +13,7 @@ import { checkTarget, eligible, fromTarget, madeNames, readWithin, removeBatch, 
 import { Alert, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { BatchRefused, useApplyBatch } from "./author/apply";
 import { WhenInput, type CheckWords } from "./author/CheckBuilder";
-import { ExprInput } from "./author/ExprInput";
+import { ExprInput, linkChips } from "./author/ExprInput";
 import { FormCard } from "./author/FormCard";
 import { grow, optionsOf, Pick, wrap } from "./author/controls";
 
@@ -299,7 +299,7 @@ function TargetForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: 
           </div>
         )}
         {d.how === "advanced" && (
-          <ExprInput label={tr("How long (an ISO 8601 duration such as 'PT4H', or seconds)")} value={d.within} onChange={(within) => set({ ...d, within })} fields={fields.filter((f) => f.type !== "table")} hint={tr("Variables: doc, user, today, now. Empty gives the record no target. Example: doc.priority == 'High' ? 'PT1H' : 'PT4H'")} />
+          <ExprInput label={tr("How long (an ISO 8601 duration such as 'PT4H', or seconds)")} value={d.within} onChange={(within) => set({ ...d, within })} fields={fields.filter((f) => f.type !== "table")} links={linkChips(fields)} hint={tr("Variables: doc, user, today, now. Empty gives the record no target. Example: doc.priority == 'High' ? 'PT1H' : 'PT4H'")} />
         )}
       </fieldset>
 

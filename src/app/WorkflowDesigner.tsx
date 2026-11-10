@@ -14,7 +14,7 @@ import {
 import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 import { useApply } from "./author/apply";
-import { ExprInput } from "./author/ExprInput";
+import { ExprInput, linkChips } from "./author/ExprInput";
 import { CheckGroup, RoleSelect } from "./author/RoleSelect";
 
 export function WorkflowDesignerPage() {
@@ -333,7 +333,7 @@ function TransitionsTable({ meta, draft, problems, serverError, onChange }: { me
                         <summary>{tr("Who may do {name}, and when", { name: isolate(what) })}</summary>
                         <div className="stack">
                           <RoleSelect legend={tr("Roles that may do this")} value={t.roles} onChange={(v) => edit(t.key, { roles: v })} />
-                          <ExprInput label={tr("Only when (a condition, optional)")} value={t.condition} onChange={(v) => edit(t.key, { condition: v })} fields={fieldChips} error={conditionError} hint={tr("For example doc.total < 1000. The server checks it when you save.")} />
+                          <ExprInput label={tr("Only when (a condition, optional)")} value={t.condition} onChange={(v) => edit(t.key, { condition: v })} fields={fieldChips} links={linkChips(meta.fields)} error={conditionError} hint={tr("For example doc.total < 1000. The server checks it when you save.")} />
                           <label className="check-field">
                             <input type="checkbox" checked={t.not_creator} onChange={(e) => edit(t.key, { not_creator: e.target.checked })} />
                             {tr("Not by whoever created the record")}
