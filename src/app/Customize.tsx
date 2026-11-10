@@ -109,8 +109,44 @@ export function CustomizePage() {
       </div>
       <Warnings />
       <UpdateConflicts />
+      <YourEntities />
       {entity ? <CustomizeEntity key={entity} entity={entity} /> : <EmptyState title={tr("Choose an entity to customize")} icon="edit" />}
     </div>
+  );
+}
+
+/** The workspace's own entities, with a way to make another and to change each. */
+function YourEntities() {
+  const index = useMetaIndex().data;
+  const mine = (index?.entities ?? []).filter((e) => e.custom && e.kind !== "child").sort((a, b) => a.label.localeCompare(b.label));
+  return (
+    <section className="card" aria-labelledby="cz-mine">
+      <div className="card-head">
+        <h2 id="cz-mine">{tr("Your entities")}</h2>
+        <span className="spacer" />
+        <Link className="btn btn-sm" to="/customize/new">
+          {tr("New entity")}
+        </Link>
+      </div>
+      <div className="card-body">
+        {!mine.length ? (
+          <p className="muted">{tr("You have not made any entities yet. An entity is a kind of record of your own, with the fields, lines and totals you choose.")}</p>
+        ) : (
+          <ul className="stack">
+            {mine.map((e) => (
+              <li key={e.name} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <strong>{isolate(e.label)}</strong>
+                <Badge>{e.kind === "document" ? tr("Document") : tr("List")}</Badge>
+                <span className="spacer" />
+                <Link className="btn btn-sm" to={`/customize/${encodeURIComponent(e.name)}/design`} aria-label={tr("Design {entity}", { entity: isolate(e.label) })}>
+                  {tr("Design")}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
