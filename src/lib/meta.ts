@@ -148,6 +148,8 @@ export interface EntityMeta {
   workflow?: Workflow | null;
   /** Service targets: "this must happen within so much working time". */
   targets?: { name: string; label: string; calendar?: string; start_when?: string; within: string; pause_when?: string; met_when: string; due_field: string; state_field: string }[];
+  /** Lists published to anyone without signing in (administrators only). */
+  published_lists?: { name: string; label: string; fields: string[]; csv?: boolean }[];
   fields: Field[];
   children: Record<string, ChildTable>;
   permissions: Perms;
