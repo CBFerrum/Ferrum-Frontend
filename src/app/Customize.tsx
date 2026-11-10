@@ -9,6 +9,7 @@ import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
 import { buttonsLink } from "../lib/buttonDraft";
+import { listsLink } from "../lib/publishedListDraft";
 import { targetsLink } from "../lib/targetDraft";
 import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
@@ -117,6 +118,11 @@ export function CustomizePage() {
           {entity && !["child", "ledger"].includes(index?.entities.find((e) => e.name === entity)?.kind ?? "") && (
             <Link className="btn" to={targetsLink(entity)}>
               {tr("Targets")}
+            </Link>
+          )}
+          {entity && ["master", "document"].includes(index?.entities.find((e) => e.name === entity)?.kind ?? "") && (
+            <Link className="btn" to={listsLink(entity)}>
+              {tr("Public lists")}
             </Link>
           )}
           <Link className="btn" to="/customize/menus">
@@ -744,6 +750,12 @@ export function describeOp(op: Record<string, unknown>): string {
     }
     case "remove_target":
       return tr("Remove target {name}", { name: String(op.name) });
+    case "publish_list": {
+      const l = op.list as { name?: string; label?: string } | undefined;
+      return tr("Published list: {label}", { label: l?.label || l?.name || "?" });
+    }
+    case "unpublish_list":
+      return tr("Take down list {name}", { name: String(op.name) });
     case "define_module": {
       const m = op.module as { name?: string; label?: string } | undefined;
       return tr("Menu: {label}", { label: m?.label || m?.name || "?" });
