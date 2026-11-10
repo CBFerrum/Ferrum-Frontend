@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addField, buildBatch, checkDraft, entityName, fieldName, fromDef, linesName, markSaved, moveField, nextNumber, parseNumbering, patchField, removeField,
+  addField, buildBatch, checkDraft, entityDefs, entityName, fieldName, fromDef, linesName, markSaved, moveField, nextNumber, parseNumbering, patchField, removeField,
   savedDefs, setEntityLabel, setFieldLabel, signature, startDraft, startField, startLines, startTotal, type Draft, type Raw,
 } from "./entityDraft";
 
@@ -318,4 +318,33 @@ describe("numbering", () => {
 it("a new lines table starts with a field that already has a name", () => {
   const table = startLines("Items");
   expect(table.lines?.fields[0].name).toBe("description");
+});
+
+describe("a definition as it is now, with what other screens added", () => {
+  const now: Raw = {
+    name: "XTask", label: "Task", kind: "document", submittable: true,
+    fields: [
+      { name: "title", label: "Title", type: "data", required: true, default_expr: "'New'", hidden: false },
+      { name: "state", label: "State", type: "select", options: ["Open", "Done"], read_only: true },
+    ],
+    rules: [{ name: "needs_title", check: "doc.title != ''", message: "A task needs a title", on: "save" }],
+    actions: [
+      { name: "finish", label: "Finish", confirm: "Finish it?", roles: ["Manager"], refuse_if: [{ when: "doc.state == 'Done'", message: "already done" }], effects: [{ type: "set_fields", values: { state: "'Done'" } }, { type: "update_linked", link: "project", values: { open: "false" } }] },
+    ],
+  };
+  it("keeps the rules, the buttons with their effects and the field properties it does not show", () => {
+    const d = fromDef(now, {}, ["XTask"]);
+    const [def] = entityDefs(d);
+    expect(def.def.rules).toEqual(now.rules);
+    expect(def.def.actions).toEqual(now.actions);
+    expect((def.def.fields as Raw[])[0]).toMatchObject({ default_expr: "'New'", hidden: false });
+    expect((def.def.fields as Raw[])[1]).toMatchObject({ read_only: true });
+    // Loading it is no change, and a change to a label still sends them back.
+    expect(buildBatch(d, savedDefs(d)).ops).toEqual([]);
+    const edited = { ...d, entity: { ...d.entity, label: "Job" } };
+    const ops = buildBatch(edited, savedDefs(d)).ops;
+    expect(ops).toHaveLength(1);
+    expect((ops[0].op.entity as Raw).actions).toEqual(now.actions);
+    expect((ops[0].op.entity as Raw).rules).toEqual(now.rules);
+  });
 });

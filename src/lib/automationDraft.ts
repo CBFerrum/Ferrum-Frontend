@@ -44,6 +44,8 @@ export type NotifyTo = "owner" | "role" | "user" | "field";
 export type DraftAction =
   | { key: string; kind: "set_fields"; rows: Row[] }
   | { key: string; kind: "create_document"; entity: string; rows: Row[] }
+  /** Writes the record that link field `link` of the triggering record names (a button's or an automation's). */
+  | { key: string; kind: "update_linked"; link: string; rows: Row[] }
   | { key: string; kind: "notify"; to: NotifyTo; target: string; title: string; body: string }
   | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string }
   | { key: string; kind: "raw"; json: unknown };
@@ -144,7 +146,7 @@ function fromSchedule(event: string, s: unknown): Trigger {
 const rowsOf = (v: unknown): Row[] | null =>
   isObj(v) && Object.values(v).every(isStr) ? Object.entries(v).map(([field, expr]) => ({ key: newKey(), field, expr: expr as string })) : null;
 
-function fromAction(a: unknown): DraftAction {
+export function fromAction(a: unknown): DraftAction {
   const raw: DraftAction = { key: newKey(), kind: "raw", json: a };
   if (!isObj(a)) return raw;
   switch (a.type) {
@@ -155,6 +157,10 @@ function fromAction(a: unknown): DraftAction {
     case "create_document": {
       const rows = onlyKeys(a, ["type", "entity", "values"]) && isStr(a.entity) ? rowsOf(a.values) : null;
       return rows ? { key: newKey(), kind: "create_document", entity: a.entity as string, rows } : raw;
+    }
+    case "update_linked": {
+      const rows = onlyKeys(a, ["type", "link", "values"]) && isStr(a.link) ? rowsOf(a.values) : null;
+      return rows ? { key: newKey(), kind: "update_linked", link: a.link as string, rows } : raw;
     }
     case "notify": {
       if (!onlyKeys(a, ["type", "to", "title", "body"]) || !isStr(a.to) || !isStr(a.title) || !(a.body === undefined || isStr(a.body))) return raw;
@@ -194,7 +200,7 @@ export function fromAutomation(a: Partial<Automation>): Draft {
 
 const values = (rows: Row[]) => Object.fromEntries(rows.map((r) => [r.field.trim(), r.expr]));
 
-function actionJson(a: DraftAction): unknown {
+export function actionJson(a: DraftAction): unknown {
   switch (a.kind) {
     case "raw":
       return a.json;
@@ -202,6 +208,8 @@ function actionJson(a: DraftAction): unknown {
       return { type: "set_fields", values: values(a.rows) };
     case "create_document":
       return { type: "create_document", entity: a.entity, values: values(a.rows) };
+    case "update_linked":
+      return { type: "update_linked", link: a.link, values: values(a.rows) };
     case "notify":
       return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, title: a.title, ...(a.body.trim() ? { body: a.body } : {}) };
     case "email":
@@ -281,6 +289,37 @@ export interface CheckContext {
 const DATE_TYPES = ["date", "datetime"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/** What is wrong with a list of actions (an automation's, or what a button does), by the action it is about. */
+export function checkActions(actions: DraftAction[], max: number): Problem[] {
+  const out: Problem[] = [];
+  const say = (message: string, action?: string) => out.push({ message, action });
+  if (!actions.length) say(tr("Add at least one action."));
+  if (actions.length > max) say(tr("Use at most {n} actions.", { n: max }));
+  actions.forEach((a, i) => {
+    const at = (message: string) => say(tr("Action {n}: {message}", { n: i + 1, message }), a.key);
+    if (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked") {
+      if (a.kind === "create_document" && !a.entity) at(tr("choose the kind of record to create."));
+      if (a.kind === "update_linked" && !a.link) at(tr("choose the link field that names the record to change."));
+      if (!a.rows.length) at(tr("add at least one field to fill in."));
+      if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
+      const seen = new Set<string>();
+      for (const r of a.rows) {
+        const f = r.field.trim();
+        if (f && seen.has(f)) at(tr("“{field}” appears twice.", { field: f }));
+        seen.add(f);
+      }
+    } else if (a.kind === "notify") {
+      if (a.to !== "owner" && !a.target.trim()) at(a.to === "role" ? tr("choose the role to tell.") : a.to === "user" ? tr("choose the person to tell.") : tr("choose the field that holds the person to tell."));
+      if (!a.title.trim()) at(tr("write the notification's title."));
+    } else if (a.kind === "email") {
+      if (!a.to.trim()) at(tr("say who the mail goes to."));
+      if (!a.subject.trim()) at(tr("write the subject."));
+      if (a.formatted ? !a.template.trim() : !a.body.trim()) at(a.formatted ? tr("write the formatted message.") : tr("write the message."));
+    }
+  });
+  return out;
+}
+
 /** What is wrong with a draft, in words a person who is not a developer follows. */
 export function checkAutomation(d: Draft, c: CheckContext): Problem[] {
   const out: Problem[] = [];
@@ -313,29 +352,7 @@ export function checkAutomation(d: Draft, c: CheckContext): Problem[] {
       else if (type(f.field) === "int" && f.op !== "is" && typeof f.value !== "number") say(tr("Filter row {n} needs a whole number.", { n: i + 1 }));
     });
   }
-  if (!d.actions.length) say(tr("Add at least one action."));
-  if (d.actions.length > MAX_ACTIONS) say(tr("Use at most {n} actions.", { n: MAX_ACTIONS }));
-  d.actions.forEach((a, i) => {
-    const at = (message: string) => say(tr("Action {n}: {message}", { n: i + 1, message }), a.key);
-    if (a.kind === "set_fields" || a.kind === "create_document") {
-      if (a.kind === "create_document" && !a.entity) at(tr("choose the kind of record to create."));
-      if (!a.rows.length) at(tr("add at least one field to fill in."));
-      if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
-      const seen = new Set<string>();
-      for (const r of a.rows) {
-        const f = r.field.trim();
-        if (f && seen.has(f)) at(tr("“{field}” appears twice.", { field: f }));
-        seen.add(f);
-      }
-    } else if (a.kind === "notify") {
-      if (a.to !== "owner" && !a.target.trim()) at(a.to === "role" ? tr("choose the role to tell.") : a.to === "user" ? tr("choose the person to tell.") : tr("choose the field that holds the person to tell."));
-      if (!a.title.trim()) at(tr("write the notification's title."));
-    } else if (a.kind === "email") {
-      if (!a.to.trim()) at(tr("say who the mail goes to."));
-      if (!a.subject.trim()) at(tr("write the subject."));
-      if (a.formatted ? !a.template.trim() : !a.body.trim()) at(a.formatted ? tr("write the formatted message.") : tr("write the message."));
-    }
-  });
+  out.push(...checkActions(d.actions, MAX_ACTIONS));
   return out;
 }
 

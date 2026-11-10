@@ -30,6 +30,8 @@ export interface Scope {
   parent?: Record<string, unknown> | null;
   user?: unknown;
   old?: unknown;
+  /** What a button's dialog asked for (empty while judging whether to offer it). */
+  params?: Record<string, unknown>;
 }
 
 type Tok = { t: "num" | "str" | "id" | "sym"; v: string };
@@ -226,6 +228,8 @@ function evalNode(n: Node, s: Scope): unknown {
           return s.user ?? null;
         case "old":
           return s.old ?? null;
+        case "params":
+          return s.params ?? null;
         case "today":
           return todayIso();
         case "now":
