@@ -7,7 +7,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSPrope
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
-import { actionButtons, type ButtonState } from "../lib/actionButtons";
+import { actionButtons, transitionOffered, type ButtonState } from "../lib/actionButtons";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
@@ -461,7 +461,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       ? wf.transitions.filter(
           (t) =>
             t.from === wfState &&
-            hasRole(t.roles) &&
+            transitionOffered(t, { isAdmin: !!me.user.is_admin, roles: me.user.roles, canWrite: allowed("write") }) &&
             !(t.not_creator && base?.created_by === me.user.id) &&
             (!t.condition || evaluate(t.condition, { doc, user }) !== false),
         )
@@ -927,7 +927,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           />
           <TabPanel id="doc" tab={active}>
             {active === "discussion" ? (
-              <CollabPanel entity={E} id={String(id)} canWrite={can(meta.permissions, "write")} />
+              <CollabPanel entity={E} id={String(id)} canWrite={allowed("write")} />
             ) : active === "related" ? (
               <Related meta={meta} id={String(id)} />
             ) : active === "activity" ? (

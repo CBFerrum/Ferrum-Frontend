@@ -1,7 +1,7 @@
 // Which of a record's actions are buttons, and which of those are pressed in vain: the pure part of FormView's row of buttons.
 
 import { evaluate } from "./expr";
-import type { ActionDef } from "./meta";
+import type { ActionDef, Workflow } from "./meta";
 
 export interface ButtonState {
   action: ActionDef;
@@ -32,4 +32,15 @@ export function actionButtons(actions: ActionDef[], c: ButtonContext): ButtonSta
     out.push({ action: a, refusal: refused ? refused.message : null });
   }
   return out;
+}
+
+type Step = Workflow["transitions"][number];
+
+/** Whether a workflow step is offered to the caller. The server's `may_take` (entity-wide, same function as when the step is
+ *  taken) wins when sent; an older server sends none, so the roles are tested here. Either way a step naming no roles needs
+ *  the right to change THIS record (`canWrite`), which `may_take` cannot know for own-rows rules. Guard and state: the caller's. */
+export function transitionOffered(t: Step, c: { isAdmin: boolean; roles: string[]; canWrite: boolean }): boolean {
+  if (t.may_take === false) return false;
+  if (!t.roles.length) return c.canWrite;
+  return t.may_take === true || c.isAdmin || t.roles.some((r) => c.roles.includes(r));
 }
