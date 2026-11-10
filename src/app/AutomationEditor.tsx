@@ -8,26 +8,30 @@ import { Link } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { filterable } from "../lib/filters";
-import { useEntityMeta, useMetaIndex, type Field as MetaField } from "../lib/meta";
+import { useEntityMeta, useMetaIndex, type EntityMeta, type Field as MetaField } from "../lib/meta";
 import {
   checkAutomation, EVENTS, fromAutomation, MAX_ACTIONS, mapRefusal, move, newKey, readBack, toAutomation, weekday, type Refusal,
   type Automation, type Draft, type DraftAction, type NotifyTo, type Problem, type Row, type Trigger,
 } from "../lib/automationDraft";
 import { Alert, Button, Dialog, ErrorState, Field, toast } from "../ui/kit";
-import { ExprInput } from "./author/ExprInput";
+import { ExprInput, linkChips } from "./author/ExprInput";
 import { FilterRows, grow, optionsOf, Pick, Tools, wrap } from "./author/controls";
 import { useRoleNames } from "./author/RoleSelect";
 import { InvokeCard, useCapabilities } from "./author/InvokeCard";
 
 /** Rows of field → expression. */
-function Rows({ rows, fields, onChange, what }: { rows: Row[]; fields: MetaField[]; onChange: (r: Row[]) => void; what: string }) {
+function Rows({ rows, fields, onChange, what, typed }: { /** Names are typed: the fields are not known. */ typed?: boolean; rows: Row[]; fields: MetaField[]; onChange: (r: Row[]) => void; what: string }) {
   const edit = (key: string, patch: Partial<Row>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   return (
     <div className="stack">
       {rows.map((r, i) => (
         <div key={r.key} className="row" style={wrap}>
           <div style={grow}>
-            <Pick label={tr("Field of {what} {n}", { what, n: i + 1 })} value={r.field} onChange={(v) => edit(r.key, { field: v })} options={optionsOf(fields, r.field)} />
+            {typed ? (
+              <input className="input mono" aria-label={tr("Field of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.field} onChange={(e) => edit(r.key, { field: e.target.value })} />
+            ) : (
+              <Pick label={tr("Field of {what} {n}", { what, n: i + 1 })} value={r.field} onChange={(v) => edit(r.key, { field: v })} options={optionsOf(fields, r.field)} />
+            )}
           </div>
           <input className="input mono" style={{ ...grow, flexBasis: 240 }} aria-label={tr("Value of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.expr} onChange={(e) => edit(r.key, { expr: e.target.value })} />
           <Button size="sm" icon="trash" aria-label={tr("Remove {what} {n}", { what, n: i + 1 })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))} />
@@ -105,9 +109,11 @@ export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: 
   );
 }
 
-export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), raw: tr("Other action") });
+export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), append_line: tr("Add a line"), set_line: tr("Change one line"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), raw: tr("Other action") });
 
-export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false }: {
+export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false, lines }: {
+  /** The record's table fields with their line entities (`children` of its description); absent on an older server. */
+  lines?: EntityMeta["children"];
   error?: string; entity: string; owner?: string; inButton?: boolean;
   a: DraftAction; index: number; count: number; entities: { value: string; label: string }[]; chips: MetaField[]; fields: MetaField[];
   onChange: (patch: Partial<DraftAction>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; flagged: boolean;
@@ -185,6 +191,19 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             ) : (
               a.link && <Rows rows={a.rows} fields={(linked.data?.fields ?? []).filter((f) => f.can_write !== false && !f.read_only && f.type !== "table")} what={tr("field")} onChange={(rows) => patch({ rows })} />
             )}
+          </>
+        )}
+        {(a.kind === "append_line" || a.kind === "set_line") && (
+          <>
+            <p className="faint">{a.kind === "append_line" ? tr("Adds one line at the end of a table of this record. Values are expressions: put literal text in quotes, like 'Approved'.") : tr("Changes one line of a table of this record. Exactly one line must match: with none, or with more than one, the step is refused when it runs.")}</p>
+            <Field htmlFor={`tbl-${a.key}`} label={tr("Table")}>
+              <Pick label={tr("Table")} id={`tbl-${a.key}`} value={a.table} onChange={(v) => patch({ table: v, rows: [] })} options={optionsOf(fields.filter((f) => f.type === "table"), a.table)} />
+            </Field>
+            {a.kind === "set_line" && (
+              <ExprInput label={tr("Which line")} value={a.where} onChange={(v) => patch({ where: v })} fields={chips} links={linkChips(fields)} hint={tr("An expression over doc and row, the line: for example row.item == params.item")} />
+            )}
+            {a.table && !lines?.[a.table] && <p className="faint">{tr("The fields of the lines are not known to this server: type their names.")}</p>}
+            {a.table && <Rows rows={a.rows} typed={!lines?.[a.table]} fields={(lines?.[a.table]?.fields ?? []).filter((f) => f.can_write !== false && !f.read_only && f.type !== "table")} what={tr("line field")} onChange={(rows) => patch({ rows })} />}
           </>
         )}
         {a.kind === "notify" && (
@@ -268,7 +287,7 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             {a.formatted ? (
               <TemplateInput value={a.template} onChange={(v) => edited({ template: v })} fields={chips} error={pvError ?? undefined} />
             ) : (
-              <ExprInput label={tr("Message")} value={a.body} onChange={(v) => edited({ body: v })} fields={chips} error={pvError} hint={tr("An expression that gives the text: put literal text in quotes.")} />
+              <ExprInput label={tr("Message")} value={a.body} onChange={(v) => edited({ body: v })} fields={chips} links={linkChips(fields)} error={pvError} hint={tr("An expression that gives the text: put literal text in quotes.")} />
             )}
             <div>
               <Button size="sm" disabled={!entity} onClick={() => void preview()}>{tr("Preview")}</Button>
@@ -276,8 +295,8 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
           </>
         )}
-        {index > 0 && (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked") && <p className="faint">{tr("Values can also use results[n]: what the earlier steps made, n counting from 0.")}</p>}
-        {a.kind === "invoke" && <InvokeCard a={a} index={index} owner={owner} inButton={inButton} chips={chips} onChange={patch} />}
+        {index > 0 && (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked" || a.kind === "append_line" || a.kind === "set_line") && <p className="faint">{tr("Values can also use results[n]: what the earlier steps made, n counting from 0.")}</p>}
+        {a.kind === "invoke" && <InvokeCard a={a} index={index} owner={owner} inButton={inButton} chips={chips} links={linkChips(fields)} onChange={patch} />}
         {a.kind === "raw" && (
           <>
             <p className="faint">{tr("The editor has no form for this action. It is kept exactly as it is; change it under Edit as JSON.")}</p>
@@ -447,12 +466,16 @@ function TriggerCard({ trigger, onChange, fields, submittable, sentence, error }
 }
 
 /** The buttons that add an action card; `max` is how many the list may hold. */
-export function AddActions({ count, max, onAdd }: { count: number; max: number; onAdd: (a: DraftAction) => void }) {
+export function AddActions({ count, max, onAdd, hasTable }: { hasTable: boolean; count: number; max: number; onAdd: (a: DraftAction) => void }) {
   const row = () => [{ key: newKey(), field: "", expr: "" }];
   const kinds: [string, () => DraftAction][] = [
     [tr("Set fields"), () => ({ key: newKey(), kind: "set_fields", rows: row() })],
     [tr("Create a record"), () => ({ key: newKey(), kind: "create_document", entity: "", rows: row() })],
     [tr("Change the record a link names"), () => ({ key: newKey(), kind: "update_linked", link: "", rows: [] })],
+    ...(hasTable ? ([
+      [tr("Add a line"), () => ({ key: newKey(), kind: "append_line", table: "", rows: row(), extra: {} })],
+      [tr("Change one line"), () => ({ key: newKey(), kind: "set_line", table: "", where: "", rows: row(), extra: {} })],
+    ] as [string, () => DraftAction][]) : []),
     [tr("Notify"), () => ({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })],
     [tr("Do a step of another app"), () => ({ key: newKey(), kind: "invoke", capability: "", rows: [], once: false, onceKey: "", extra: {} })],
     [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
@@ -617,6 +640,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
             value={draft.condition}
             onChange={(v) => set({ ...draft, condition: v })}
             fields={chips}
+            links={linkChips(fields)}
             error={conditionError}
             hint={tr("For example doc.grand_total > 100000.0. The server checks it when you save.")}
           />
@@ -636,12 +660,13 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
                 error={refusal?.actions.get(i)}
                 entity={draft.entity}
                 owner={draft.name}
+                lines={meta.data?.children}
                 onChange={(p) => patchAction(a.key, p)}
                 onMove={(by) => set({ ...draft, actions: move(draft.actions, i, by) })}
                 onRemove={() => set({ ...draft, actions: draft.actions.filter((x) => x.key !== a.key) })}
               />
             ))}
-            <AddActions count={draft.actions.length} max={MAX_ACTIONS} onAdd={add} />
+            <AddActions hasTable={fields.some((f) => f.type === "table")} count={draft.actions.length} max={MAX_ACTIONS} onAdd={add} />
           </section>
         </>
       )}

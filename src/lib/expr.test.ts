@@ -111,3 +111,13 @@ describe("evaluateValue", () => {
     expect(evaluateValue("now()", { doc: {} })).toBeUndefined();
   });
 });
+
+describe("names the browser cannot read", () => {
+  it("is undecided for links and row, so the server decides", () => {
+    const scope = { doc: { type: "t1" } };
+    expect(evaluate("links.type.name == 'Gold'", scope)).toBeUndefined();
+    expect(evaluate("!(links.type.name == 'Gold')", scope)).toBeUndefined();
+    expect(evaluate("row.item == params.item", scope)).toBeUndefined();
+    expect(evaluate("doc.type == 't1' && links.type.ok", scope)).toBeUndefined();
+  });
+});
