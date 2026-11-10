@@ -4,12 +4,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { Link } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { filterable } from "../lib/filters";
 import { useEntityMeta, useMetaIndex, type Field as MetaField } from "../lib/meta";
 import {
-  checkAutomation, EVENTS, fromAutomation, MAX_ACTIONS, move, newKey, readBack, toAutomation, weekday,
+  checkAutomation, EVENTS, fromAutomation, MAX_ACTIONS, mapRefusal, move, newKey, readBack, toAutomation, weekday, type Refusal,
   type Automation, type Draft, type DraftAction, type NotifyTo, type Problem, type Row, type Trigger,
 } from "../lib/automationDraft";
 import { Alert, Button, Dialog, ErrorState, Field, toast } from "../ui/kit";
@@ -39,7 +40,7 @@ function Rows({ rows, fields, onChange, what }: { rows: Row[]; fields: MetaField
 }
 
 /** The mail's formatted message, with the record's fields as chips that insert `{{ doc.field }}`. */
-function TemplateInput({ value, onChange, fields }: { value: string; onChange: (v: string) => void; fields: MetaField[] }) {
+function TemplateInput({ value, onChange, fields, error }: { value: string; onChange: (v: string) => void; fields: MetaField[]; error?: string }) {
   const area = useRef<HTMLTextAreaElement>(null);
   const insert = (name: string) => {
     const el = area.current;
@@ -54,7 +55,7 @@ function TemplateInput({ value, onChange, fields }: { value: string; onChange: (
   };
   return (
     <div className="stack">
-      <Field label={tr("Formatted message (HTML)")} hint={tr("Write the message as HTML. Values from the record are escaped, so text a person typed is shown as text and never as markup; your own markup stays as you wrote it.")}>
+      <Field label={tr("Formatted message (HTML)")} error={error} hint={tr("Write the message as HTML. Values from the record are escaped, so text a person typed is shown as text and never as markup; your own markup stays as you wrote it.")}>
         <textarea ref={area} className="textarea mono" rows={10} spellCheck={false} autoCapitalize="none" value={value} onChange={(e) => onChange(e.target.value)} />
       </Field>
       {fields.length > 0 && (
@@ -70,9 +71,43 @@ function TemplateInput({ value, onChange, fields }: { value: string; onChange: (
   );
 }
 
+/** What POST /api/admin/automations/preview answers. */
+export interface MailPreview { html: string; record_id: string | null }
+export type PreviewState = { phase: "loading" } | { phase: "error"; error: unknown } | { phase: "done"; data: MailPreview };
+
+/** The mail as it would look, drawn in a frame that runs nothing (no scripts, no same-origin), and the record it was drawn from. */
+export function PreviewResult({ entity, data }: { entity: string; data: MailPreview }) {
+  return (
+    <div className="stack">
+      <iframe sandbox="" srcDoc={data.html} title={tr("The mail as it would look")} style={{ width: "100%", height: 360, border: "1px solid var(--border)", background: "#fff" }} />
+      <p className="faint">
+        {data.record_id ? (
+          <>
+            {tr("Drawn from a record of {entity}:", { entity: isolate(entity) })} <Link to={`/e/${encodeURIComponent(entity)}/${data.record_id}`}>{tr("Open the record")}</Link>
+          </>
+        ) : (
+          tr("{entity} has no records yet, so the mail is drawn from an empty record.", { entity: isolate(entity) })
+        )}
+      </p>
+      <p className="faint">{tr("Nothing was sent.")}</p>
+    </div>
+  );
+}
+
+export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: PreviewState | null; entity: string; onClose: () => void; onRetry: () => void }) {
+  return (
+    <Dialog open={!!state} onClose={onClose} title={tr("Preview of the mail")} wide>
+      {state?.phase === "loading" && <p className="faint" role="status">{tr("Loading…")}</p>}
+      {state?.phase === "error" && <ErrorState error={state.error} onRetry={onRetry} title={tr("The preview could not run")} />}
+      {state?.phase === "done" && <PreviewResult entity={entity} data={state.data} />}
+    </Dialog>
+  );
+}
+
 const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), notify: tr("Notify"), email: tr("Send mail"), raw: tr("Other action") });
 
-function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged }: {
+function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity }: {
+  error?: string; entity: string;
   a: DraftAction; index: number; count: number; entities: { value: string; label: string }[]; chips: MetaField[]; fields: MetaField[];
   onChange: (patch: Partial<DraftAction>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; flagged: boolean;
 }) {
@@ -81,14 +116,43 @@ function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove
   const target = useEntityMeta(a.kind === "create_document" && a.entity ? a.entity : undefined);
   const title = tr("Action {n}: {name}", { n: index + 1, name: ACTION_NAMES()[a.kind] });
   const patch = onChange as (p: Record<string, unknown>) => void;
+  const [pv, setPv] = useState<PreviewState | null>(null);
+  const [pvError, setPvError] = useState<string | null>(null);
+  const run = useRef(0);
+  const preview = async () => {
+    if (a.kind !== "email") return;
+    const me = ++run.current;
+    setPv({ phase: "loading" });
+    setPvError(null);
+    try {
+      const data = await api.post<MailPreview>("/api/admin/automations/preview", { entity, ...(a.formatted ? { template: a.template } : a.body ? { body: a.body } : {}) });
+      if (me === run.current) setPv({ phase: "done", data });
+    } catch (err) {
+      if (me !== run.current) return;
+      const f = err instanceof ApiError ? err.fields.find((x) => x.field === "template" || x.field === "body") : undefined;
+      if (f) {
+        setPv(null);
+        setPvError(f.message);
+      } else setPv({ phase: "error", error: err });
+    }
+  };
+  const closePreview = () => {
+    run.current++;
+    setPv(null);
+  };
+  const edited = (p: Partial<DraftAction>) => {
+    setPvError(null);
+    onChange(p);
+  };
   return (
-    <section className="card" aria-label={title} style={flagged ? { borderColor: "var(--danger)" } : undefined}>
+    <section className="card" id={`au-action-${a.key}`} tabIndex={-1} aria-label={title} style={flagged || error ? { borderColor: "var(--danger)" } : undefined}>
       <div className="card-head">
         <h4 className="card-title">{title}</h4>
         <span className="spacer" />
         <Tools index={index} count={count} what={title} onMove={onMove} onRemove={onRemove} />
       </div>
       <div className="card-body stack">
+        {error && <p className="field-error" role="alert">{isolate(error)}</p>}
         {a.kind === "set_fields" && (
           <>
             <p className="faint">{tr("Fills in fields of the record that triggered this. Values are expressions: put literal text in quotes, like 'Approved'.")}</p>
@@ -186,10 +250,14 @@ function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove
               </label>
             </fieldset>
             {a.formatted ? (
-              <TemplateInput value={a.template} onChange={(v) => patch({ template: v })} fields={chips} />
+              <TemplateInput value={a.template} onChange={(v) => edited({ template: v })} fields={chips} error={pvError ?? undefined} />
             ) : (
-              <ExprInput label={tr("Message")} value={a.body} onChange={(v) => patch({ body: v })} fields={chips} hint={tr("An expression that gives the text: put literal text in quotes.")} />
+              <ExprInput label={tr("Message")} value={a.body} onChange={(v) => edited({ body: v })} fields={chips} error={pvError} hint={tr("An expression that gives the text: put literal text in quotes.")} />
             )}
+            <div>
+              <Button size="sm" disabled={!entity} onClick={() => void preview()}>{tr("Preview")}</Button>
+            </div>
+            <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
           </>
         )}
         {a.kind === "raw" && (
@@ -205,7 +273,7 @@ function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove
 
 const eventName = (e: string) => ({ created: tr("created"), updated: tr("updated"), submitted: tr("submitted"), cancelled: tr("cancelled"), deleted: tr("deleted") })[e] ?? e;
 
-function TriggerCard({ trigger, onChange, fields, submittable, sentence }: { trigger: Trigger; onChange: (t: Trigger) => void; fields: MetaField[]; submittable: boolean; sentence: string | null }) {
+function TriggerCard({ trigger, onChange, fields, submittable, sentence, error }: { error?: string; trigger: Trigger; onChange: (t: Trigger) => void; fields: MetaField[]; submittable: boolean; sentence: string | null }) {
   const scheduled = trigger.kind === "relative" || trigger.kind === "every" || (trigger.kind === "raw" && trigger.event === "scheduled");
   const dates = fields.filter((f) => f.type === "date" || f.type === "datetime");
   const filterFields = filterable(fields);
@@ -354,6 +422,7 @@ function TriggerCard({ trigger, onChange, fields, submittable, sentence }: { tri
             {sentence && <p role="status"><strong>{tr("Runs:")}</strong> {isolate(sentence)}</p>}
           </>
         )}
+        {error && <p className="field-error" role="alert">{isolate(error)}</p>}
       </div>
     </section>
   );
@@ -368,7 +437,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [conditionError, setConditionError] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [busy, setBusy] = useState(false);
   const meta = useEntityMeta(draft.entity || undefined);
   const fields = meta.data?.fields ?? [];
@@ -380,6 +449,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
   const set = (d: Draft) => {
     setDraft(d);
     setProblems([]);
+    setRefusal(null);
   };
   const patchAction = (key: string, patch: Partial<DraftAction>) => set({ ...draft, actions: draft.actions.map((a) => (a.key === key ? ({ ...a, ...patch } as DraftAction) : a)) });
   const add = (a: DraftAction) => set({ ...draft, actions: [...draft.actions, a] });
@@ -415,7 +485,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
     const found = checkAutomation(d, d === draft ? ctx : { ...ctx, fields: d.entity === draft.entity ? fields : [] });
     setProblems(found);
     setServerError(null);
-    setConditionError(null);
+    setRefusal(null);
     if (found.length) return;
     setBusy(true);
     try {
@@ -424,8 +494,19 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
       onDone();
       onClose();
     } catch (err) {
-      setServerError(errorMessage(err));
-      if (err instanceof ApiError) setConditionError(err.fields.find((f) => f.field === "condition")?.message ?? null);
+      // In the form, what names an action or a control is shown there; the rest stays in the alert. The JSON view has no cards.
+      const r = err instanceof ApiError && view === "form" ? mapRefusal(err.fields) : null;
+      setRefusal(r);
+      setServerError(r && r.other.length ? r.other.join(" ") : errorMessage(err));
+      const first = r ? [...r.actions.keys()].sort((x, y) => x - y).find((i) => d.actions[i]) : undefined;
+      if (first !== undefined) {
+        const id = `au-action-${d.actions[first].key}`;
+        requestAnimationFrame(() => {
+          const el = document.getElementById(id);
+          el?.scrollIntoView?.({ block: "center" });
+          el?.focus();
+        });
+      }
     } finally {
       setBusy(false);
     }
@@ -433,6 +514,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
 
   const sentence = readBack(draft.trigger, ctx);
   const flagged = new Set(problems.map((p) => p.action));
+  const conditionError = refusal?.named.condition ?? null;
   return (
     <form
       className="stack"
@@ -474,12 +556,12 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
           {index.error && <ErrorState error={index.error} onRetry={() => index.refetch()} title={tr("Could not load the record types")} />}
           <div className="row" style={wrap}>
             <div style={{ ...grow, flexBasis: 220 }}>
-              <Field label={tr("Name")} required>
+              <Field label={tr("Name")} required error={refusal?.named.name}>
                 <input className="input" value={draft.name} onChange={(e) => set({ ...draft, name: e.target.value })} />
               </Field>
             </div>
             <div style={grow}>
-              <Field htmlFor="au-entity" label={tr("Entity")} required>
+              <Field htmlFor="au-entity" label={tr("Entity")} required error={refusal?.named.entity}>
                 <Pick label={tr("Entity")} id="au-entity" value={draft.entity} options={entities} onChange={(v) => set({ ...draft, entity: v })} />
               </Field>
             </div>
@@ -490,7 +572,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
           </div>
           {meta.error && <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={tr("Could not load {entity}", { entity: isolate(draft.entity) })} />}
           {draft.entity && meta.isLoading && <p className="faint">{tr("Loading…")}</p>}
-          <TriggerCard trigger={draft.trigger} onChange={(trigger) => set({ ...draft, trigger })} fields={fields} submittable={submittable} sentence={sentence} />
+          <TriggerCard trigger={draft.trigger} onChange={(trigger) => set({ ...draft, trigger })} fields={fields} submittable={submittable} sentence={sentence} error={refusal?.named.schedule} />
           <ExprInput
             label={tr("Only when (a condition, optional)")}
             value={draft.condition}
@@ -512,6 +594,8 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
                 chips={chips}
                 fields={fields}
                 flagged={flagged.has(a.key)}
+                error={refusal?.actions.get(i)}
+                entity={draft.entity}
                 onChange={(p) => patchAction(a.key, p)}
                 onMove={(by) => set({ ...draft, actions: move(draft.actions, i, by) })}
                 onRemove={() => set({ ...draft, actions: draft.actions.filter((x) => x.key !== a.key) })}

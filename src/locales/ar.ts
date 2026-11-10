@@ -3667,6 +3667,12 @@ const words: Record<string, string> = {
   "condition {c} of count or total {n} needs a whole number.": "يحتاج الشرط {c} من العدد أو المجموع {n} إلى عدد صحيح.",
   "The rules of {entity} count or add up {count} different sets of records in one save: at most {max}.": "تعدّ قواعد {entity} أو تجمع {count} من مجموعات السجلات المختلفة في حفظ واحد: الحد الأقصى {max}.",
   "The rules of {entity} read {count} different linked records in one save: at most {max}.": "تقرأ قواعد {entity} {count} من السجلات المرتبطة المختلفة في حفظ واحد: الحد الأقصى {max}.",
+  "The mail as it would look": "الرسالة كما ستبدو",
+  "Drawn from a record of {entity}:": "مرسومة من سجل في {entity}:",
+  "Open the record": "افتح السجل",
+  "{entity} has no records yet, so the mail is drawn from an empty record.": "لا توجد سجلات في {entity} بعد، لذا رُسمت الرسالة من سجل فارغ.",
+  "Nothing was sent.": "لم يُرسل شيء.",
+  "Preview of the mail": "معاينة الرسالة",
 };
 
 export default words;

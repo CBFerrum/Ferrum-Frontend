@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAutomation, fromAutomation, makeOffset, parseOffset, readBack, toAutomation, type Automation, type CheckContext, type Draft, type Trigger } from "./automationDraft";
+import { checkAutomation, mapRefusal, fromAutomation, makeOffset, parseOffset, readBack, toAutomation, type Automation, type CheckContext, type Draft, type Trigger } from "./automationDraft";
 
 const fields = [
   { name: "end_date", label: "End date", type: "date" },
@@ -174,5 +174,22 @@ describe("reading a schedule back", () => {
 
   it("says nothing for a record event", () => {
     expect(read(samples["notify owner"])).toBeNull();
+  });
+});
+
+describe("mapping a refused save", () => {
+  it("puts an action's message on its index, a named field on its control, and the rest nowhere in particular", () => {
+    const r = mapRefusal([
+      { field: "actions", message: "expression 'doc.title +': bad", row: ["actions", 1] },
+      { field: "actions", message: "second", row: ["actions", 1] },
+      { field: "condition", message: "bad condition" },
+      { field: "schedule", message: "bad schedule" },
+      { field: "actions", message: "too many" },
+      { field: "event", message: "unknown event" },
+    ]);
+    expect(r.actions.get(1)).toBe("expression 'doc.title +': bad second");
+    expect(r.actions.size).toBe(1);
+    expect(r.named).toEqual({ condition: "bad condition", schedule: "bad schedule" });
+    expect(r.other).toEqual(["too many", "unknown event"]);
   });
 });

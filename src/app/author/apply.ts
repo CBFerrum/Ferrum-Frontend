@@ -51,14 +51,14 @@ export class BatchRefused extends Error {
 }
 
 /** POST /api/customize/batch: all the operations in order in one transaction, or none; `dryRun` only checks.
- *  A refusal is `{error, index}` (the contract with the server; adjust here if it words it differently). */
+ *  A refusal is a 4xx `{error: <code>, index: <0-based operation>, message: <the words to show>}`. */
 export async function postBatch(ops: { entity: string; op: Op; note?: string }[], dryRun: boolean): Promise<void> {
   try {
     await api.post("/api/customize/batch", { ops, ...(dryRun ? { dry_run: true } : {}) });
   } catch (e) {
     const body = errorBody(e);
     const index = typeof body?.index === "number" ? body.index : null;
-    throw new BatchRefused(typeof body?.error === "string" && body.error ? body.error : errorMessage(e), index);
+    throw new BatchRefused(typeof body?.message === "string" && body.message ? body.message : errorMessage(e), index);
   }
 }
 

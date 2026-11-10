@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import { violations } from "../test/axe";
 import type { EntityMeta } from "../lib/meta";
 import type { Automation } from "../lib/automationDraft";
-import { AutomationEditor } from "./AutomationEditor";
+import { MemoryRouter } from "react-router";
+import { AutomationEditor, MailPreviewDialog, type PreviewState } from "./AutomationEditor";
 
 const field = (name: string, type: string, extra = {}) => ({ name, label: name.replace(/^./, (c) => c.toUpperCase()).replace("_", " "), type, can_read: true, can_write: true, ...extra });
 const meta = {
@@ -88,5 +89,37 @@ describe("the automation editor", () => {
 
   it("breaks none of axe's rules that hold without layout", async () => {
     for (const a of [event, scheduled, relative]) expect(await violations(page(a))).toEqual([]);
+  });
+});
+
+describe("the mail preview dialog", () => {
+  const sample = '<h1>Hi Asha</h1><p>Your contract ends soon.</p><script>alert(1)</script>';
+  const draw = (state: PreviewState | null) => renderToString(<MemoryRouter><MailPreviewDialog state={state} entity="Contract" onClose={() => {}} onRetry={() => {}} /></MemoryRouter>);
+
+  it("shows the HTML in a frame that runs nothing, names the record, and passes axe", async () => {
+    const html = draw({ phase: "done", data: { html: sample, record_id: "0b0e7a52-0000-4000-8000-000000000001" } });
+    expect(html).toContain('sandbox=""');
+    expect(html).toContain("srcDoc=");
+    expect(html).not.toContain("allow-scripts");
+    expect(html).toContain('href="/e/Contract/0b0e7a52-0000-4000-8000-000000000001"');
+    expect(text(html)).toContain("Preview of the mail");
+    expect(await violations(html)).toEqual([]);
+  });
+
+  it("says when the entity has no records, and shows loading and error states", async () => {
+    const none = draw({ phase: "done", data: { html: "<p>x</p>", record_id: null } });
+    expect(text(none)).toContain("Contract has no records yet");
+    expect(none).not.toContain("Open the record");
+    const loading = draw({ phase: "loading" });
+    expect(text(loading)).toContain("Loading");
+    const bad = draw({ phase: "error", error: new Error("down") });
+    expect(text(bad)).toContain("The preview could not run");
+    expect(await violations(none)).toEqual([]);
+    expect(await violations(loading)).toEqual([]);
+    expect(await violations(bad)).toEqual([]);
+  });
+
+  it("puts a Preview button on the Send mail card", () => {
+    expect(text(page(event))).toContain("Preview");
   });
 });

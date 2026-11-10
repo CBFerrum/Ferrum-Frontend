@@ -3667,6 +3667,12 @@ const words: Record<string, string> = {
   "condition {c} of count or total {n} needs a whole number.": "गिनती या कुल योग {n} की शर्त {c} में पूर्ण संख्या चाहिए।",
   "The rules of {entity} count or add up {count} different sets of records in one save: at most {max}.": "{entity} के नियम एक सहेजने में {count} अलग रिकॉर्ड समूह गिनते या जोड़ते हैं: अधिकतम {max}।",
   "The rules of {entity} read {count} different linked records in one save: at most {max}.": "{entity} के नियम एक सहेजने में {count} अलग जुड़े रिकॉर्ड पढ़ते हैं: अधिकतम {max}।",
+  "The mail as it would look": "मेल जैसा दिखेगा",
+  "Drawn from a record of {entity}:": "{entity} के एक रिकॉर्ड से बना:",
+  "Open the record": "रिकॉर्ड खोलें",
+  "{entity} has no records yet, so the mail is drawn from an empty record.": "{entity} में अभी कोई रिकॉर्ड नहीं है, इसलिए मेल एक खाली रिकॉर्ड से बनाया गया है।",
+  "Nothing was sent.": "कुछ भेजा नहीं गया।",
+  "Preview of the mail": "मेल का पूर्वावलोकन",
 };
 
 export default words;
