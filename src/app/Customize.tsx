@@ -8,6 +8,7 @@ import { api, errorMessage, saveBlob } from "../lib/api";
 import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
+import { buttonsLink } from "../lib/buttonDraft";
 import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
@@ -23,6 +24,8 @@ interface Customization {
   is_active: boolean;
   note?: string | null;
   created_at: string;
+  /** The id of the later change that replaced this one: it no longer applies (an older server sends none). */
+  superseded_by?: string | null;
 }
 interface Warning {
   entity?: string;
@@ -103,6 +106,11 @@ export function CustomizePage() {
           {entity && (
             <Link className="btn" to={workflowDesignerLink(entity)}>
               {tr("Design workflow")}
+            </Link>
+          )}
+          {entity && (
+            <Link className="btn" to={buttonsLink(entity)}>
+              {tr("Buttons")}
             </Link>
           )}
           <Link className="btn" to="/customize/packs">
@@ -715,6 +723,12 @@ export function describeOp(op: Record<string, unknown>): string {
       return tr("Change the design of entity {value}", { value: name(op.entity) });
     case "set_workflow":
       return tr("Set workflow {value}", { value: name(op.workflow) });
+    case "add_action": {
+      const a = op.action as { name?: string; label?: string } | undefined;
+      return tr("Button: {label}", { label: a?.label || a?.name || "?" });
+    }
+    case "remove_action":
+      return tr("Remove button {name}", { name: String(op.name) });
     case "set_print_template":
       return tr("Replace print template");
     default:
@@ -770,11 +784,21 @@ function ChangesCard({ entity }: { entity: string }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((c) => (
-                <tr key={c.id}>
+              {rows.map((c) => {
+                const later = c.superseded_by ? (q.data?.customizations ?? []).find((x) => x.id === c.superseded_by) : undefined;
+                return (
+                <tr key={c.id} className={c.superseded_by ? "faint" : undefined}>
                   <td className="faint">{c.seq}</td>
                   {all && <td>{isolate(c.entity)}</td>}
-                  <td className="mono">{isolate(describeOp(c.op))}</td>
+                  <td className="mono">
+                    {isolate(describeOp(c.op))}
+                    {c.superseded_by && (
+                      <>
+                        {" "}
+                        <Badge>{later ? tr("Replaced by change {seq}", { seq: later.seq }) : tr("Replaced by a later change")}</Badge>
+                      </>
+                    )}
+                  </td>
                   <td>{isolate(c.note ?? "")}</td>
                   <td className="nowrap">{isolate(formatDateTime(c.created_at))}</td>
                   <td>
@@ -784,7 +808,8 @@ function ChangesCard({ entity }: { entity: string }) {
                     </label>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

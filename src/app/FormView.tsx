@@ -3,10 +3,11 @@
 
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
+import { actionButtons, type ButtonState } from "../lib/actionButtons";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
@@ -41,6 +42,27 @@ import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
 import { bootstrap, t as tr, isolate } from "@ferrum/client";
+
+/** A record's action as a button. One that would be refused says why: it stays focusable (aria-disabled, not disabled) and the reason is read out and shown as a tooltip. */
+function ActionButton({ state, loading, disabled, onRun }: { state: ButtonState; loading: boolean; disabled: boolean; onRun: () => void }) {
+  const id = useId();
+  const { action, refusal } = state;
+  return (
+    <>
+      <Button
+        onClick={refusal ? undefined : onRun}
+        loading={loading}
+        disabled={disabled}
+        aria-disabled={refusal ? true : undefined}
+        aria-describedby={refusal ? id : undefined}
+        title={refusal ?? undefined}
+      >
+        {isolate(action.label)}
+      </Button>
+      {refusal && <span id={id} className="sr-only">{isolate(refusal)}</span>}
+    </>
+  );
+}
 
 /** What a finished action says: its own message when it gives one ("3 deferred lines recognised
  * through 31 Oct"), else that it is done. */
@@ -458,13 +480,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
 
   const actions = isNew
     ? []
-    : meta.actions.filter(
-        (a) =>
-          !a.hidden &&
-          (!a.docstatus.length || a.docstatus.includes(docstatus)) &&
-          (perms.actions?.includes(a.name) || (a.permission in perms ? allowed(a.permission as PermKey) : true)) &&
-          (!a.condition || evaluate(a.condition, { doc, user }) !== false),
-      );
+    : actionButtons(meta.actions, {
+        doc,
+        user,
+        docstatus,
+        permitted: (a) => !!perms.actions?.includes(a.name) || (a.permission in perms ? allowed(a.permission as PermKey) : true),
+      });
 
   const [asking, setAsking] = useState<ActionDef | null>(null);
   /** An action's result: a record it made opens, a file it made downloads, otherwise the record reloads. */
@@ -743,26 +764,25 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             </Button>
           ))}
           {actions
-            .filter((a) => !a.group)
-            .map((a) => (
-              <Button key={a.name} onClick={() => void runAction(a)} loading={busy === `action:${a.name}`} disabled={busyAny}>
-                {isolate(a.label)}
-              </Button>
+            .filter((b) => !b.action.group)
+            .map((b) => (
+              <ActionButton key={b.action.name} state={b} loading={busy === `action:${b.action.name}`} disabled={busyAny} onRun={() => void runAction(b.action)} />
             ))}
-          {[...new Set(actions.map((a) => a.group).filter((g): g is string => !!g))].map((group) => (
+          {[...new Set(actions.map((b) => b.action.group).filter((g): g is string => !!g))].map((group) => (
             <Menu key={group} label={group}>
               {(close) =>
                 actions
-                  .filter((a) => a.group === group)
-                  .map((a) => (
+                  .filter((b) => b.action.group === group)
+                  .map((b) => (
                     <MenuItem
-                      key={a.name}
+                      key={b.action.name}
+                      refusal={b.refusal}
                       onSelect={() => {
                         close();
-                        if (!busyAny) void runAction(a);
+                        if (!busyAny) void runAction(b.action);
                       }}
                     >
-                      {isolate(a.label)}
+                      {isolate(b.action.label)}
                     </MenuItem>
                   ))
               }

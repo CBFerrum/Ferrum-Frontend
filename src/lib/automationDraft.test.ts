@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkAutomation, mapRefusal, fromAutomation, makeOffset, parseOffset, readBack, toAutomation, type Automation, type CheckContext, type Draft, type Trigger } from "./automationDraft";
+import { actionJson, checkActions, checkAutomation, fromAction, mapRefusal, fromAutomation, makeOffset, parseOffset, readBack, toAutomation, type Automation, type CheckContext, type Draft, type Trigger } from "./automationDraft";
 
 const fields = [
   { name: "end_date", label: "End date", type: "date" },
@@ -191,5 +191,19 @@ describe("mapping a refused save", () => {
     expect(r.actions.size).toBe(1);
     expect(r.named).toEqual({ condition: "bad condition", schedule: "bad schedule" });
     expect(r.other).toEqual(["too many", "unknown event"]);
+  });
+});
+
+describe("the action that changes the record a link names", () => {
+  it("goes back unchanged, and is checked for a link and fields", () => {
+    const a = { type: "update_linked", link: "risk", values: { treatment: "'Accept'" } };
+    const draft = fromAction(a);
+    expect(draft.kind).toBe("update_linked");
+    expect(actionJson(draft)).toEqual(a);
+    expect(checkActions([draft], 20)).toEqual([]);
+    expect(checkActions([{ ...(draft as { key: string; kind: "update_linked"; rows: never[]; link: string }), link: "", rows: [] }], 20).length).toBe(2);
+  });
+  it("keeps an update_linked with more keys as it was", () => {
+    expect(fromAction({ type: "update_linked", link: "x", values: {}, extra: 1 }).kind).toBe("raw");
   });
 });
