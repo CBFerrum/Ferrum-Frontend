@@ -70,6 +70,17 @@ describe("bulk actions", () => {
     expect(bulkActions(m, me(["Approver"]))).toMatchObject({ submit: false, cancel: false, workflow: ["Approve", "Cancel"] });
     expect(bulkActions(m, me([], true)).workflow).toEqual(["Approve", "Cancel", "Reopen"]);
   });
+  it("bulk workflow: may_take false is left out; a step naming no roles needs the write right", () => {
+    const workflow = { initial_state: "Draft", states: [], transitions: [
+      { action: "Approve", from: "Draft", to: "Approved", roles: ["Approver"], may_take: false },
+      { action: "Reject", from: "Draft", to: "Rejected", roles: ["Approver"], may_take: true },
+      { action: "Submit", from: "Draft", to: "Review", roles: [] },
+    ] };
+    const m = { ...base, workflow } as EntityMeta;
+    expect(bulkActions(m, me(["Approver"])).workflow).toEqual(["Reject", "Submit"]);
+    const ro = { ...m, permissions: { ...base.permissions, write: "none" } } as EntityMeta;
+    expect(bulkActions(ro, me(["Approver"])).workflow).toEqual(["Reject"]);
+  });
   it("offers nothing that writes on a ledger", () => {
     const a = bulkActions({ ...base, kind: "ledger" } as EntityMeta, me([]));
     expect(a.fields).toEqual([]);
