@@ -135,8 +135,9 @@ let workspace: Record<string, string> = {};
 
 /** A word of a list of words: its own entry only, so a record called "constructor" stays text. */
 const own = (words: Record<string, string>, key: string): string | undefined => (Object.hasOwn(words, key) ? words[key] : undefined);
-/** A name in the workspace's own words first, then the apps' names (what a page shows as it is). */
-const named = (text: string): string | undefined => own(workspace, text) ?? own(names, text);
+/** A name in the workspace's own words first, then the apps' names, then the interface's own words
+ *  (a field the workspace called "Status" reads as the interface's "Status" does). */
+const named = (text: string): string | undefined => own(workspace, text) ?? own(names, text) ?? own(catalog, text);
 
 /** The interface's catalog, an app's own over it, and the workspace's words over both. */
 function merge(): void {
