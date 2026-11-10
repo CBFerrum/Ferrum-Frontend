@@ -2229,6 +2229,7 @@ const words: Record<string, string> = {
   "Create a new chart": "नया चार्ट बनाएँ",
   "Create a new number card": "नया संख्या कार्ड बनाएँ",
   "Define entity {value}": "एंटिटी {value} परिभाषित करें",
+  "Change the design of entity {value}": "एंटिटी {value} का डिज़ाइन बदलें",
   "Draft {label}": "मसौदा {label}",
   "Due {value}": "देय {value}",
   "Enter {p}: the report needs it": "{p} दर्ज करें: रिपोर्ट को इसकी ज़रूरत है",

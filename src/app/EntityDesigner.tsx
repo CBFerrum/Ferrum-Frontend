@@ -4,7 +4,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useBlocker, useParams } from "react-router";
+import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { api, errorMessage } from "../lib/api";
 import {
   addField, buildBatch, checkDraft, FIELD_TYPES, fromDef, hasMaxLength, isDecimal, isNumeric, KEPT_TYPES, markSaved, moveField, nextNumber, numberingTemplate, patchField,
@@ -104,7 +104,11 @@ export function Designer({ start }: { start: Draft }) {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [refusal, setRefusal] = useState<{ message: string; index: number | null } | null>(null);
   const [checked, setChecked] = useState(false);
-  const [done, setDone] = useState<{ name: string; label: string; created: boolean } | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Just created: the address is now the entity's own, and the page it opens on says so once.
+  const arrived = (location.state as { created?: boolean } | null)?.created === true && start.entity.saved;
+  const [done, setDone] = useState<{ name: string; label: string; created: boolean } | null>(() => (arrived ? { name: start.entity.name, label: start.entity.label.trim(), created: true } : null));
   const isNew = !draft.entity.saved;
   const dirty = signature(draft) !== base;
   const batch = buildBatch(draft, saved, tr("Entity designer"));
@@ -118,6 +122,12 @@ export function Designer({ start }: { start: Draft }) {
     setDone(null);
   };
   const setEntity = (e: DraftEntity) => set({ ...draft, entity: e });
+
+  // A new entity, once saved, lives at its own address: reloading /customize/new would show an empty form.
+  const cameNew = !start.entity.saved;
+  useEffect(() => {
+    if (cameNew && done?.created && !dirty) void navigate(`/customize/${done.name}/design`, { replace: true, state: { created: true } });
+  }, [cameNew, done, dirty, navigate]);
 
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {

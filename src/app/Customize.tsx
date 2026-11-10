@@ -707,6 +707,8 @@ export function describeOp(op: Record<string, unknown>): string {
       return tr("Set entity {value}", { value: String(op.property) });
     case "define_entity":
       return tr("Define entity {value}", { value: name(op.entity) });
+    case "redefine_entity":
+      return tr("Change the design of entity {value}", { value: name(op.entity) });
     case "set_workflow":
       return tr("Set workflow {value}", { value: name(op.workflow) });
     case "set_print_template":
