@@ -8,6 +8,7 @@ import { api, errorMessage, saveBlob } from "../lib/api";
 import { formatDateTime, todayIso } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
+import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 import { useApply } from "./author/apply";
@@ -96,6 +97,11 @@ export function CustomizePage() {
           {entity && (
             <Link className="btn" to={formDesignerLink(entity)}>
               {tr("Design form")}
+            </Link>
+          )}
+          {entity && (
+            <Link className="btn" to={workflowDesignerLink(entity)}>
+              {tr("Design workflow")}
             </Link>
           )}
           <ChangeSet />
