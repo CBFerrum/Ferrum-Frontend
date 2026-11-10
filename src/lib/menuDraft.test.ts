@@ -11,6 +11,8 @@ describe("a menu as a draft", () => {
   it("goes module to draft to module unchanged, keeping what the screen has no control for", () => {
     expect(toModule(fromModule(module))).toEqual(module);
     expect(toModule(fromModule({ name: "x_a", label: "A", items: [], future: 1 }))).toEqual({ name: "x_a", label: "A", items: [], future: 1 });
+    // What the metadata index adds for the reader is not part of the definition: the server refuses it back.
+    expect(toModule(fromModule({ ...module, package: "tenant" }))).toEqual(module);
   });
   it("sends assistant only with instructions, and leaves empty things out", () => {
     const m = toModule(draft({ instructions: " ", suggestions: ["Q"], icon: "", color: "", description: "", create: [] }));

@@ -61,7 +61,8 @@ export function fromModule(m: Raw): MenuDraft {
     instructions: str(a.instructions),
     suggestions: strings(a.suggestions),
     assistantExtra: rest(a, ["instructions", "suggestions"]),
-    extra: rest(m, KNOWN),
+    // `package` is the server's ("tenant" on a workspace's own menu): sent back, the definition is refused.
+    extra: rest(m, [...KNOWN, "package"]),
   };
 }
 

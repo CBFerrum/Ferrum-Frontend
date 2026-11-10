@@ -131,6 +131,9 @@ describe("a workspace's own words", () => {
     // A name the interface has a word for reads as that word.
     addCatalog("ar", { Status: "الحالة" });
     expect(isolate("Status")).toBe("الحالة");
+    // A sentence given a name in lower case still finds its word.
+    applyLocale({ language: "ar", words: { "Risk Register": "سجل المخاطر", "No {value} yet": "لا {value} بعد" } }, undefined);
+    expect(t("No {value} yet", { value: "risk register" })).toBe("لا سجل المخاطر بعد");
   });
 
   it("stand over the catalog's in the page's language, and give the words it lacks", async () => {
