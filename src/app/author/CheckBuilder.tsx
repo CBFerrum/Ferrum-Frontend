@@ -11,6 +11,8 @@ export interface CheckState { advanced: boolean; draft: CheckDraft; text: string
 export const startCheck = (): CheckState => ({ advanced: false, draft: newCheck(), text: "" });
 /** A state that opens an existing expression as rows when the builder wrote it, else as text. */
 export function checkStateOf(expr: string, fields: MetaField[]): CheckState {
+  // Nothing written yet: the builder with no rows, not a box to type an expression into.
+  if (!expr.trim()) return { advanced: false, draft: { join: "all", rows: [] }, text: "" };
   const open = openAs(expr, fields);
   return open.mode === "builder" ? { advanced: false, draft: open.draft, text: expr } : { advanced: true, draft: newCheck(), text: expr };
 }
