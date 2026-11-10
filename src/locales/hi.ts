@@ -3174,6 +3174,18 @@ const words: Record<string, string> = {
   "Kept: compared from now on with what the update says": "रखा गया: अब से अपडेट के अनुसार तुलना होगी",
   "Switched off: the update's stands": "बंद किया गया: अपडेट वाला लागू है",
   "{n} characters": "{n} अक्षर",
+  "They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold only portal roles: their other roles count for nothing. They are signed out everywhere now.": "वे केवल कार्यक्षेत्र का पोर्टल देखेंगे (उनके टिकट, उनके बिल…), ईमेल से भेजे गए कोड से साइन इन करेंगे, और केवल पोर्टल भूमिकाएँ रखेंगे: उनकी अन्य भूमिकाएँ नहीं गिनी जातीं। वे अब हर जगह से साइन आउट हो गए हैं।",
+  "through": "के ज़रिए",
+  "may run {actions}": "{actions} चला सकते हैं",
+  "Theirs through": "उनका, इसके ज़रिए",
+  "Optional: a path from the record to their email, e.g. patient.email or student.guardians.email": "वैकल्पिक: रिकॉर्ड से उनके ईमेल तक का रास्ता, जैसे patient.email या student.guardians.email",
+  "May run": "चला सकते हैं",
+  "{name} is for the portal": "{name} पोर्टल के लिए है",
+  "{name} is no longer for the portal": "{name} अब पोर्टल के लिए नहीं है",
+  "For the portal": "पोर्टल के लिए",
+  "Portal people hold only such roles; each rule reaches only their own records, never deleting, cancelling, exporting or importing them.": "पोर्टल के लोग केवल ऐसी भूमिकाएँ रखते हैं; हर नियम केवल उनके अपने रिकॉर्ड तक पहुँचता है, उन्हें कभी हटाए, रद्द किए, निर्यात या आयात किए बिना।",
+  "Nothing is shared with you here yet": "यहाँ अभी आपके साथ कुछ साझा नहीं किया गया है",
+  "Your records": "आपके रिकॉर्ड",
 };
 
 export default words;

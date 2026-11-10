@@ -3174,6 +3174,18 @@ const words: Record<string, string> = {
   "Kept: compared from now on with what the update says": "تم الاحتفاظ به: يُقارن من الآن بما يقوله التحديث",
   "Switched off: the update's stands": "أُوقف: يسري ما في التحديث",
   "{n} characters": "{n} حرفًا",
+  "They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold only portal roles: their other roles count for nothing. They are signed out everywhere now.": "لن يروا إلا بوابة مساحة العمل (تذاكرهم، فواتيرهم…)، ويسجّلون الدخول برموز تُرسل بالبريد، ولا يحملون إلا أدوار البوابة: أدوارهم الأخرى لا تُحتسب. وقد سُجّل خروجهم من كل مكان الآن.",
+  "through": "عبر",
+  "may run {actions}": "يمكنه تشغيل {actions}",
+  "Theirs through": "يخصّهم عبر",
+  "Optional: a path from the record to their email, e.g. patient.email or student.guardians.email": "اختياري: مسار من السجل إلى بريدهم الإلكتروني، مثل patient.email أو student.guardians.email",
+  "May run": "يمكنه تشغيل",
+  "{name} is for the portal": "{name} للبوابة",
+  "{name} is no longer for the portal": "لم يعد {name} للبوابة",
+  "For the portal": "للبوابة",
+  "Portal people hold only such roles; each rule reaches only their own records, never deleting, cancelling, exporting or importing them.": "لا يحمل أشخاص البوابة إلا مثل هذه الأدوار؛ وكل قاعدة لا تصل إلا إلى سجلاتهم، دون حذفها أو إلغائها أو تصديرها أو استيرادها.",
+  "Nothing is shared with you here yet": "لم يُشارَك معك شيء هنا بعد",
+  "Your records": "سجلاتك",
 };
 
 export default words;

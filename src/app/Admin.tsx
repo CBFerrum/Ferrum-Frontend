@@ -1063,11 +1063,17 @@ interface Permission {
   /** Only records whose fields hold these values (`where`). */
   match_rule?: Record<string, unknown> | null;
   rule_key?: string;
+  /** Own records reached through this path to the person's email (`patient.email`). */
+  via?: string | null;
+  /** The entity's actions its holders may run on the records it reaches. */
+  actions?: string[];
 }
 interface Role {
   name: string;
   description?: string | null;
   package?: string | null;
+  /** For the portal: portal people hold only such roles, which reach only their own records. */
+  portal?: boolean;
   permissions: Permission[];
 }
 
@@ -1121,6 +1127,8 @@ function Users() {
   const [editRoles, setEditRoles] = useState<User | null>(null);
   const [resetting, setResetting] = useState<User | null>(null);
   const roleNames = (roles.data?.roles ?? []).map((r) => r.name);
+  // Portal people hold only roles marked for the portal.
+  const portalRoleNames = (roles.data?.roles ?? []).filter((r) => r.portal).map((r) => r.name);
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
 
   const toggleActive = async (u: User) => {
@@ -1155,7 +1163,7 @@ function Users() {
     const ok = await confirmDialog({
       title: toPortal ? tr("Make {full_name} a portal person?", { full_name: u.full_name }) : tr("Make {full_name} a member?", { full_name: u.full_name }),
       message: toPortal
-        ? tr("They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold no roles. They are signed out everywhere now.")
+        ? tr("They will see only the workspace's portal (their tickets, their invoices…), sign in with codes sent by email, and hold only portal roles: their other roles count for nothing. They are signed out everywhere now.")
         : tr("They will use the workspace's apps with the roles you give them. They are signed out everywhere now."),
       confirmLabel: toPortal ? tr("Make portal person") : tr("Make member"),
     });
@@ -1254,14 +1262,14 @@ function Users() {
           </div>
         )}
       </Loaded>
-      <NewUserDialog open={creating} roles={roleNames} onClose={() => setCreating(false)} onDone={refresh} />
-      <EditRolesDialog user={editRoles} roles={roleNames} onClose={() => setEditRoles(null)} onDone={refresh} />
+      <NewUserDialog open={creating} roles={roleNames} portalRoles={portalRoleNames} onClose={() => setCreating(false)} onDone={refresh} />
+      <EditRolesDialog user={editRoles} roles={editRoles?.kind === "portal" ? portalRoleNames : roleNames} onClose={() => setEditRoles(null)} onDone={refresh} />
       <ResetPasswordDialog user={resetting} onClose={() => setResetting(null)} />
     </section>
   );
 }
 
-function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles: string[]; onClose: () => void; onDone: () => void }) {
+function NewUserDialog({ open, roles, portalRoles, onClose, onDone }: { open: boolean; roles: string[]; portalRoles: string[]; onClose: () => void; onDone: () => void }) {
   const empty = { email: "", full_name: "", password: "", is_admin: false, roles: [] as string[], kind: "member" };
   const [u, setU] = useState(empty);
   const [busy, setBusy] = useState(false);
@@ -1281,9 +1289,9 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
         ...u,
         email: u.email.trim(),
         full_name: u.full_name.trim(),
-        // Portal people sign in with emailed codes and hold no roles.
+        // Portal people sign in with emailed codes and hold only portal roles.
         password: portal ? undefined : u.password || undefined,
-        roles: portal ? [] : u.roles,
+        roles: portal ? u.roles.filter((r) => portalRoles.includes(r)) : u.roles,
         is_admin: portal ? false : u.is_admin,
       });
       toast(tr("User created"));
@@ -1327,6 +1335,7 @@ function NewUserDialog({ open, roles, onClose, onDone }: { open: boolean; roles:
             <RoleChecks roles={roles} value={u.roles} onChange={(r) => setU({ ...u, roles: r })} />
           </>
         )}
+        {u.kind === "portal" && portalRoles.length > 0 && <RoleChecks roles={portalRoles} value={u.roles} onChange={(r) => setU({ ...u, roles: r })} />}
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button onClick={close}>{tr("Cancel")}</Button>
           <Button type="submit" variant="primary" loading={busy}>
@@ -1535,6 +1544,8 @@ function Roles() {
   const [saving, setSaving] = useState<string | null>(null);
   const [addEntity, setAddEntity] = useState("");
   const [addOwner, setAddOwner] = useState(false);
+  const [addVia, setAddVia] = useState("");
+  const [addActions, setAddActions] = useState<string[]>([]);
   const [addField, setAddField] = useState("");
   const [addValues, setAddValues] = useState("");
   const addMeta = useEntityMeta(addEntity && addEntity !== "*" ? addEntity : undefined).data;
@@ -1563,6 +1574,8 @@ function Roles() {
       read_groups: p.read_groups ?? [],
       write_groups: p.write_groups ?? [],
       where: p.match_rule ?? undefined,
+      via: p.via || undefined,
+      actions: p.actions ?? [],
     };
     const ok = await attempt(() => api.put(`/api/admin/roles/${encodeURIComponent(current)}/permissions`, body));
     if (ok) await qc.invalidateQueries({ queryKey: ["admin", "roles"] });
@@ -1584,10 +1597,12 @@ function Roles() {
         can_cancel: false,
         can_export: false,
         can_import: false,
-        if_owner: addOwner,
+        if_owner: addOwner || !!addVia.trim() || !!role?.portal,
         read_groups: [],
         write_groups: [],
         match_rule: conditionField ? { [conditionField.name]: conditionValues(conditionField.type, conditionField.type === "check" ? addValues || "true" : addValues) } : null,
+        via: addVia.trim() || null,
+        actions: addActions,
       },
       "add",
     );
@@ -1595,6 +1610,8 @@ function Roles() {
       toast(tr("{addEntity} added to {current}", { addEntity, current }));
       setAddEntity("");
       setAddOwner(false);
+      setAddVia("");
+      setAddActions([]);
       setAddField("");
       setAddValues("");
     }
@@ -1636,6 +1653,7 @@ function Roles() {
             </form>
           </div>
           {role?.description && <p className="muted">{isolate(role.description)}</p>}
+          {role && <PortalMark role={role} onChanged={() => void qc.invalidateQueries({ queryKey: ["admin", "roles"] })} />}
           <section className="card" aria-label={tr("Permissions of {current}", { current })}>
             <div className="table-wrap">
               <table className="table matrix">
@@ -1672,7 +1690,7 @@ function Roles() {
                                   type="checkbox"
                                   aria-label={`${a} ${label(p.entity)}`}
                                   checked={p[k]}
-                                  disabled={saving === key}
+                                  disabled={saving === key || (!!role?.portal && PORTAL_REFUSED.has(a) && !p[k])}
                                   onChange={(e) => void put({ ...p, [k]: e.target.checked }, key)}
                                 />
                               </label>
@@ -1681,6 +1699,12 @@ function Roles() {
                         })}
                         <td>
                           {p.if_owner && <Badge tone="amber">{tr("own only")}</Badge>}{isolate(" ")}
+                          {p.via && (
+                            <span className="muted">
+                              {tr("through")} <code>{p.via}</code>{" "}
+                            </span>
+                          )}
+                          {!!p.actions?.length && <span className="muted">{tr("may run {actions}", { actions: p.actions.join(", ") })} </span>}
                           {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
                             <ConditionText entity={p.entity} cond={p.match_rule} />
                           ) : (
@@ -1706,9 +1730,24 @@ function Roles() {
                 </select>
               </FieldWrap>
               <label className="check-field">
-                <input type="checkbox" checked={addOwner} onChange={(e) => setAddOwner(e.target.checked)} />
+                <input type="checkbox" checked={addOwner || !!role?.portal} disabled={!!role?.portal} onChange={(e) => setAddOwner(e.target.checked)} />
                 {tr("Own records only")}
               </label>
+              {addEntity && addEntity !== "*" && (
+                <FieldWrap label={tr("Theirs through")} htmlFor="perm-via" hint={tr("Optional: a path from the record to their email, e.g. patient.email or student.guardians.email")}>
+                  <input id="perm-via" className="input" value={addVia} onChange={(e) => setAddVia(e.target.value)} maxLength={200} spellCheck={false} />
+                </FieldWrap>
+              )}
+              {!!addMeta?.actions?.length && (
+                <fieldset className="row" style={{ border: 0, padding: 0, margin: 0, gap: 12 }}>
+                  <legend className="field-label">{tr("May run")}</legend>
+                  {addMeta.actions.map((a) => (
+                    <label key={a.name} className="check-field">
+                      <input type="checkbox" checked={addActions.includes(a.name)} onChange={(e) => setAddActions(e.target.checked ? [...addActions, a.name] : addActions.filter((x) => x !== a.name))} /> {isolate(a.label)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
               {conditionFields.length > 0 && (
                 <>
                   <FieldWrap label={tr("Only where")} htmlFor="perm-field" hint={tr("Optional: records whose field holds one of the values")}>
@@ -1742,6 +1781,28 @@ function Roles() {
         </div>
       )}
     </Loaded>
+  );
+}
+
+/** What a portal role may not do (the server refuses the same). */
+const PORTAL_REFUSED = new Set(["delete", "cancel", "export", "import"]);
+
+/** Whether a role is for the portal: portal people hold only such roles, and such a role reaches only
+ * its holders' own records, never deleting, cancelling, exporting or importing them. */
+function PortalMark({ role, onChanged }: { role: Role; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async (portal: boolean) => {
+    setBusy(true);
+    const ok = await attempt(() => api.put(`/api/admin/roles/${encodeURIComponent(role.name)}/portal`, { portal }), portal ? tr("{name} is for the portal", { name: role.name }) : tr("{name} is no longer for the portal", { name: role.name }));
+    setBusy(false);
+    if (ok) onChanged();
+  };
+  return (
+    <label className="check-field">
+      <input type="checkbox" checked={!!role.portal} disabled={busy} onChange={(e) => void toggle(e.target.checked)} />
+      {tr("For the portal")}
+      <span className="faint">{tr("Portal people hold only such roles; each rule reaches only their own records, never deleting, cancelling, exporting or importing them.")}</span>
+    </label>
   );
 }
 
