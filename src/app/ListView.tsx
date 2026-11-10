@@ -57,6 +57,7 @@ import { t } from "../lib/i18n";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
+import { useRecordsBase } from "@/lib/recordsBase";
 import { t as tr, isolate } from "@ferrum/client";
 
 const PAGE = 50;
@@ -110,6 +111,7 @@ function ListWithPrefs({ meta }: { meta: EntityMeta }) {
 }
 
 function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string, unknown>> }) {
+  const rec = useRecordsBase();
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const navType = useNavigationType();
@@ -382,8 +384,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
     const pre = new URLSearchParams();
     for (const f of filterFields) if ((f.type === "link" || f.type === "select") && fstate[f.name] && !isWord(fstate[f.name]) && f.can_write) pre.set(f.name, fstate[f.name]);
     const s = pre.toString();
-    return `/e/${E}/new${s ? `?${s}` : ""}`;
-  }, [E, filterFields, fstate]);
+    return `${rec}/${E}/new${s ? `?${s}` : ""}`;
+  }, [E, rec, filterFields, fstate]);
 
   const exportCsv = async () => {
     try {
@@ -641,7 +643,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                           data-peeked={peek === id || undefined}
                           onClick={(e) => {
                             if ((e.target as HTMLElement).closest("a,button,input,label")) return;
-                            if (phone) navigate(`/e/${E}/${r.id}`);
+                            if (phone) navigate(`${rec}/${E}/${r.id}`);
                             else setPeek(peek === id ? null : id);
                           }}
                         >
@@ -655,7 +657,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
                               c.field.type === "currency" && c.field.currency && !c.field.currency.includes(".") ? precisionOf(r[c.field.currency]) : undefined;
                             const cell = <CellValue field={c.field} value={r[c.name]} title={r._titles?.[c.name]} currencyPrecision={precision} />;
                             const title = i === 0 && (
-                              <Link className="cell-title" to={`/e/${E}/${r.id}`}>
+                              <Link className="cell-title" to={`${rec}/${E}/${r.id}`}>
                                 {r[c.name] === null || r[c.name] === undefined || r[c.name] === "" ? recordTitle(meta, r) : cell}
                               </Link>
                             );
