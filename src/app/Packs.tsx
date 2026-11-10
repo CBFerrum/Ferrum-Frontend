@@ -9,7 +9,7 @@ import { formatDateTime } from "../lib/format";
 import { useMe, useMetaIndex } from "../lib/meta";
 import { describePlan, describeResult, packFileName, readPack, travellers, type Pack, type PlanView, type ResultView, type SectionLists } from "../lib/packPlan";
 import { Alert, Badge, Button, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
-import { isolate, t as tr } from "@ferrum/client";
+import { bootstrap, isolate, t as tr } from "@ferrum/client";
 
 export function PacksPage() {
   const me = useMe();
@@ -33,7 +33,7 @@ export function PacksPage() {
       </div>
       <p className="muted">{tr("A pack is this workspace's whole setup in one file: customizations, roles, automations, Studio items, reference records and solutions.")}</p>
       <div className="stack">
-        <TakePack workspace={me.data.tenant} />
+        <TakePack />
         <InstallPack />
         <Installed />
       </div>
@@ -41,10 +41,12 @@ export function PacksPage() {
   );
 }
 
-function TakePack({ workspace }: { workspace: string }) {
+function TakePack() {
   const index = useMetaIndex().data;
-  const [name, setName] = useState("workspace");
-  const [label, setLabel] = useState(workspace);
+  // The workspace's own address and name, as the page was told them.
+  const here = bootstrap()?.workspace;
+  const [name, setName] = useState(here?.slug || "workspace");
+  const [label, setLabel] = useState(here?.name || here?.slug || "");
   const [chosen, setChosen] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
