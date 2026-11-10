@@ -48,7 +48,18 @@ export type DraftAction =
   | { key: string; kind: "update_linked"; link: string; rows: Row[] }
   | { key: string; kind: "notify"; to: NotifyTo; target: string; title: string; body: string }
   | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string }
+  /** A step of another app through the capability catalog; `once` gives it its own `key` expression. `extra`: what the editor has no control for. */
+  | { key: string; kind: "invoke"; capability: string; rows: Row[]; once: boolean; onceKey: string; extra: Record<string, unknown> }
   | { key: string; kind: "raw"; json: unknown };
+
+/** One entry of `GET /api/admin/capabilities`. */
+export interface Capability {
+  id: string;
+  title: string;
+  entity?: string | null;
+  needs_key?: boolean;
+  inputs: { name: string; type?: unknown; required: boolean; description?: string | null }[];
+}
 
 export interface Draft {
   id?: string;
@@ -174,6 +185,12 @@ export function fromAction(a: unknown): DraftAction {
         ? { key: newKey(), kind: "email", to: a.to as string, subject: a.subject as string, purpose: a.purpose as string | undefined, formatted: a.template !== undefined, body: a.body as string, template: (a.template as string) ?? "" }
         : raw;
     }
+    case "invoke": {
+      const rows = a.input === undefined ? [] : rowsOf(a.input);
+      if (!isStr(a.capability) || !rows || !(a.key === undefined || isStr(a.key))) return raw;
+      const extra = Object.fromEntries(Object.entries(a).filter(([k]) => !["type", "capability", "input", "key"].includes(k)));
+      return { key: newKey(), kind: "invoke", capability: a.capability, rows, once: a.key !== undefined, onceKey: (a.key as string) ?? "", extra };
+    }
     default:
       return raw;
   }
@@ -212,6 +229,8 @@ export function actionJson(a: DraftAction): unknown {
       return { type: "update_linked", link: a.link, values: values(a.rows) };
     case "notify":
       return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, title: a.title, ...(a.body.trim() ? { body: a.body } : {}) };
+    case "invoke":
+      return { ...a.extra, type: "invoke", capability: a.capability, ...(a.rows.length ? { input: values(a.rows) } : {}), ...(a.once ? { key: a.onceKey } : {}) };
     case "email":
       // The server always wants a body; a formatted mail with none gets an empty text.
       return { type: "email", to: a.to, subject: a.subject, body: a.formatted && !a.body.trim() ? "''" : a.body, ...(a.formatted ? { template: a.template } : {}), ...(a.purpose ? { purpose: a.purpose } : {}) };
@@ -284,13 +303,15 @@ export const newFilter = (field = ""): FilterRow => ({ key: newKey(), field, op:
 export interface CheckContext {
   submittable: boolean;
   fields: Pick<Field, "name" | "label" | "type">[];
+  /** The capability catalog, once loaded: lets the check say whether a step exists and has what it needs. */
+  capabilities?: Capability[];
 }
 
 const DATE_TYPES = ["date", "datetime"];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** What is wrong with a list of actions (an automation's, or what a button does), by the action it is about. */
-export function checkActions(actions: DraftAction[], max: number): Problem[] {
+export function checkActions(actions: DraftAction[], max: number, catalog?: Capability[]): Problem[] {
   const out: Problem[] = [];
   const say = (message: string, action?: string) => out.push({ message, action });
   if (!actions.length) say(tr("Add at least one action."));
@@ -311,6 +332,15 @@ export function checkActions(actions: DraftAction[], max: number): Problem[] {
     } else if (a.kind === "notify") {
       if (a.to !== "owner" && !a.target.trim()) at(a.to === "role" ? tr("choose the role to tell.") : a.to === "user" ? tr("choose the person to tell.") : tr("choose the field that holds the person to tell."));
       if (!a.title.trim()) at(tr("write the notification's title."));
+    } else if (a.kind === "invoke") {
+      const cap = catalog?.find((c) => c.id === a.capability);
+      if (!a.capability) at(tr("choose the step of another app to run."));
+      else if (catalog && !cap) at(tr("“{id}” is not a step this workspace offers: is its app installed?", { id: a.capability }));
+      else if (cap) {
+        for (const i of cap.inputs) if (i.required && !a.rows.some((r) => r.field === i.name && r.expr.trim())) at(tr("give “{name}” a value.", { name: i.name }));
+        for (const r of a.rows) if (!cap.inputs.some((i) => i.name === r.field)) at(tr("“{name}” is not something {id} takes.", { name: r.field, id: a.capability }));
+      }
+      if (a.once && !a.onceKey.trim()) at(tr("write the key that makes it happen once."));
     } else if (a.kind === "email") {
       if (!a.to.trim()) at(tr("say who the mail goes to."));
       if (!a.subject.trim()) at(tr("write the subject."));
@@ -352,7 +382,7 @@ export function checkAutomation(d: Draft, c: CheckContext): Problem[] {
       else if (type(f.field) === "int" && f.op !== "is" && typeof f.value !== "number") say(tr("Filter row {n} needs a whole number.", { n: i + 1 }));
     });
   }
-  out.push(...checkActions(d.actions, MAX_ACTIONS));
+  out.push(...checkActions(d.actions, MAX_ACTIONS, c.capabilities));
   return out;
 }
 
