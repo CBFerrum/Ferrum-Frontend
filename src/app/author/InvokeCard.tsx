@@ -48,7 +48,7 @@ function Picker({ value, caps, onChange }: { value: string; caps: Capability[]; 
 
 const isBig = (type: unknown) => type === "object" || type === "array";
 
-export function InvokeCard({ a, index, owner, inButton, chips, onChange }: { a: Invoke; index: number; owner: string; inButton: boolean; chips: MetaField[]; onChange: (p: Partial<Invoke>) => void }) {
+export function InvokeCard({ a, index, owner, inButton, chips, links, onChange }: { links?: { name: string; label?: string; insert?: string }[]; a: Invoke; index: number; owner: string; inButton: boolean; chips: MetaField[]; onChange: (p: Partial<Invoke>) => void }) {
   const q = useCapabilities(true);
   const missing = q.error instanceof ApiError && q.error.status === 404;
   if (missing) return <p className="faint">{tr("This server does not offer steps of other apps.")}</p>;
@@ -90,6 +90,7 @@ export function InvokeCard({ a, index, owner, inButton, chips, onChange }: { a: 
               value={exprOf(i.name)}
               onChange={(v) => setRow(i.name, v)}
               fields={isBig(i.type) ? chips : []}
+              links={links}
               rows={isBig(i.type) ? 5 : 2}
               hint={[typeText(i.type), i.description ? isolate(i.description) : "", vars].filter(Boolean).join(" · ")}
             />
@@ -101,7 +102,7 @@ export function InvokeCard({ a, index, owner, inButton, chips, onChange }: { a: 
         {tr("Do it only once per…")}
       </label>
       {a.once ? (
-        <ExprInput label={tr("Key")} value={a.onceKey} onChange={(v) => onChange({ onceKey: v })} fields={[]} hint={tr("Once for good: pressing or running again changes nothing, and the same key with other input is refused. Use a new key for a new request.")} />
+        <ExprInput label={tr("Key")} value={a.onceKey} onChange={(v) => onChange({ onceKey: v })} fields={[]} links={links} hint={tr("Once for good: pressing or running again changes nothing, and the same key with other input is refused. Use a new key for a new request.")} />
       ) : (
         <p className="faint">{tr("Without a key, the step happens once for each record as it is: a double click or a retry changes nothing, but after the record has changed it happens again.")}</p>
       )}

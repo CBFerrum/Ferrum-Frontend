@@ -232,3 +232,21 @@ describe("the step of another app", () => {
     expect(checkActions([d({ rows: [] })], 20)).toEqual([]);
   });
 });
+
+describe("lines", () => {
+  const add = { type: "append_line", table: "items", values: { item: "params.item", qty: "1" } };
+  const change = { type: "set_line", table: "items", where: "row.item == params.item", values: { qty: "row.qty + 1" }, note: "kept" };
+  it("round-trips both actions, keeping what it does not know", () => {
+    expect(actionJson(fromAction(add))).toEqual(add);
+    expect(actionJson(fromAction(change))).toEqual(change);
+    expect(fromAction(add).kind).toBe("append_line");
+    expect(fromAction({ type: "set_line", table: "items", values: {} }).kind).toBe("raw");
+  });
+  it("says what is missing", () => {
+    const say = (a: unknown) => checkActions([fromAction(a)], 5).map((p) => p.message);
+    expect(say(add)).toEqual([]);
+    expect(say(change)).toEqual([]);
+    expect(say({ ...add, table: "", values: {} })).toHaveLength(2);
+    expect(say({ ...change, where: " " })).toHaveLength(1);
+  });
+});

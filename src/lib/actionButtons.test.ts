@@ -25,4 +25,9 @@ describe("which buttons a record shows", () => {
     const a = act({ refuse_if: [{ when: "params.note == 'x'", message: "x" }, { when: "doc.status.startsWith('D')", message: "unsupported" }, { when: "", message: "blank" }] });
     expect(actionButtons([a], ctx())[0].refusal).toBeNull();
   });
+  it("leaves a button shown and enabled when an expression reads links or row: the server decides", () => {
+    const a = act({ condition: "links.type.name == 'Gold'", refuse_if: [{ when: "links.type.documents.exists(row, row.item == 'x')", message: "m" }, { when: "row.item == params.item", message: "m" }] });
+    const [b] = actionButtons([a], ctx());
+    expect(b.refusal).toBeNull();
+  });
 });
