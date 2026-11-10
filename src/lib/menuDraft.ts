@@ -26,6 +26,8 @@ export interface MenuDraft {
   items: string[];
   /** The entity items a "+" entry is offered for. */
   create: string[];
+  /** Outside (portal) people whose role reaches one of its record types get it as their home. */
+  portal: boolean;
   instructions: string;
   suggestions: string[];
   assistantExtra: Raw;
@@ -40,10 +42,10 @@ const rest = (o: Raw, known: string[]): Raw => Object.fromEntries(Object.entries
 export const isReport = (item: string) => item.startsWith("report:");
 
 export const startMenu = (): MenuDraft => ({
-  saved: false, name: "", nameTouched: false, label: "", description: "", icon: "", color: "", items: [], create: [], instructions: "", suggestions: [], assistantExtra: {}, extra: {},
+  saved: false, name: "", nameTouched: false, label: "", description: "", icon: "", color: "", items: [], create: [], portal: false, instructions: "", suggestions: [], assistantExtra: {}, extra: {},
 });
 
-const KNOWN = ["name", "label", "icon", "color", "description", "items", "create", "assistant"];
+const KNOWN = ["name", "label", "icon", "color", "description", "items", "create", "portal", "assistant"];
 
 /** The draft of a module as `GET /api/meta` lists it. */
 export function fromModule(m: Raw): MenuDraft {
@@ -58,6 +60,7 @@ export function fromModule(m: Raw): MenuDraft {
     color: str(m.color),
     items: strings(m.items),
     create: strings(m.create),
+    portal: m.portal === true,
     instructions: str(a.instructions),
     suggestions: strings(a.suggestions),
     assistantExtra: rest(a, ["instructions", "suggestions"]),
@@ -73,6 +76,7 @@ export function toModule(d: MenuDraft): Raw {
   if (d.icon) out.icon = d.icon;
   if (d.color) out.color = d.color;
   if (d.create.length) out.create = [...d.create];
+  if (d.portal) out.portal = true;
   if (d.instructions.trim()) {
     const suggestions = d.suggestions.map((s) => s.trim()).filter(Boolean);
     out.assistant = { ...d.assistantExtra, instructions: d.instructions.trim(), ...(suggestions.length ? { suggestions } : {}) };

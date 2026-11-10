@@ -14,6 +14,12 @@ describe("a menu as a draft", () => {
     // What the metadata index adds for the reader is not part of the definition: the server refuses it back.
     expect(toModule(fromModule({ ...module, package: "tenant" }))).toEqual(module);
   });
+  it("keeps portal, sent only when ticked", () => {
+    expect(fromModule({ ...module, portal: true }).portal).toBe(true);
+    expect(toModule(fromModule({ ...module, portal: true }))).toEqual({ ...module, portal: true });
+    expect(toModule(draft({ portal: false }))).not.toHaveProperty("portal");
+    expect(toModule(draft({ portal: true }))).toHaveProperty("portal", true);
+  });
   it("sends assistant only with instructions, and leaves empty things out", () => {
     const m = toModule(draft({ instructions: " ", suggestions: ["Q"], icon: "", color: "", description: "", create: [] }));
     expect(m).not.toHaveProperty("assistant");

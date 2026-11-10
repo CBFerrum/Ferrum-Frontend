@@ -41,6 +41,7 @@ import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withVal
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
+import { useRecordsBase } from "@/lib/recordsBase";
 import { bootstrap, t as tr, isolate } from "@ferrum/client";
 
 /** A record's action as a button. One that would be refused says why: it stays focusable (aria-disabled, not disabled) and the reason is read out and shown as a tooltip. */
@@ -177,6 +178,7 @@ function tabLabel(label: string, errors: number): ReactNode {
 const WIDE = new Set(["text", "markdown", "code", "json"]);
 
 function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; initial: Doc | null; reload: () => Promise<Doc | undefined> }) {
+  const rec = useRecordsBase();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [sp] = useSearchParams();
@@ -359,7 +361,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         toast(t("{label} created", { label: meta.label }));
         allowNav.current = true;
         void invalidateLists();
-        navigate(`/e/${E}/${created.id}`, { replace: true });
+        navigate(`${rec}/${E}/${created.id}`, { replace: true });
         return created;
       }
       if (!base || !changes || !Object.keys(changes).length) return base;
@@ -430,7 +432,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       const d = await api.post<Doc>(docPath(E, String(id), "amend"));
       toast(tr("Amended: you are now editing the new draft"));
       void invalidateLists();
-      navigate(`/e/${E}/${d.id}`);
+      navigate(`${rec}/${E}/${d.id}`);
     });
   };
 
@@ -448,7 +450,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       toast(tr("{label} deleted", { label: meta.label }));
       allowNav.current = true;
       void invalidateLists();
-      navigate(`/e/${E}`);
+      navigate(`${rec}/${E}`);
     } catch (e) {
       fail(e);
     } finally {
@@ -505,7 +507,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         noCancel: true,
       });
     } else toast(actionToast(a.label, res));
-    if (typeof r.entity === "string" && typeof r.id === "string") navigate(`/e/${r.entity}/${r.id}`);
+    if (typeof r.entity === "string" && typeof r.id === "string") navigate(`${rec}/${r.entity}/${r.id}`);
     else if (!a.read_only) {
       const fresh = await reload();
       if (fresh) load(fresh);
@@ -713,7 +715,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       <div className="page-head">
         <div style={{ minWidth: 0 }}>
           <div className="crumbs">
-            <Link to={`/e/${E}`}>{isolate(meta.label_plural)}</Link>
+            <Link to={`${rec}/${E}`}>{isolate(meta.label_plural)}</Link>
             <Icon name="chevronRight" size={12} />
           </div>
           <h1 className="page-title">
@@ -832,7 +834,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               onClose={() => setMerging(false)}
               onDone={(stays) => {
                 setMerging(false);
-                navigate(`/e/${E}/${stays}`, { replace: true });
+                navigate(`${rec}/${E}/${stays}`, { replace: true });
                 void qc.invalidateQueries({ queryKey: ["doc", E] });
               }}
             />
