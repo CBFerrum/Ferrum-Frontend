@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addField, buildBatch, checkDraft, entityDefs, entityName, fieldName, fromDef, linesName, markSaved, moveField, nextNumber, parseNumbering, patchField, removeField,
+  addField, buildBatch, checkDraft, entityDefs, entityName, fieldName, fromDef, gatherLines, linesName, markSaved, moveField, nextNumber, parseNumbering, patchField, removeField,
   savedDefs, setEntityLabel, setFieldLabel, signature, startDraft, startField, startLines, startTotal, type Draft, type Raw,
 } from "./entityDraft";
 
@@ -346,5 +346,73 @@ describe("a definition as it is now, with what other screens added", () => {
     expect(ops).toHaveLength(1);
     expect((ops[0].op.entity as Raw).actions).toEqual(now.actions);
     expect((ops[0].op.entity as Raw).rules).toEqual(now.rules);
+  });
+});
+
+describe("lines within lines", () => {
+  const evidence: Raw = { name: "XControlTestsEvidence", label: "Control Tests Evidence", kind: "child", fields: [{ name: "title", label: "Title", type: "data", required: true }, { name: "amount", label: "Amount", type: "decimal" }] };
+  const tests: Raw = {
+    name: "XControlTests", label: "Control Tests", kind: "child",
+    fields: [
+      { name: "name", label: "Name", type: "data" },
+      { name: "evidence", label: "Evidence", type: "table", of: "XControlTestsEvidence" },
+      { name: "spent", label: "Spent", type: "decimal", read_only: true, rollup: { table: "evidence", op: "sum", field: "amount" } },
+    ],
+  };
+  const control: Raw = {
+    name: "XControl", label: "Control", kind: "master",
+    fields: [{ name: "code", label: "Code", type: "data" }, { name: "tests", label: "Tests", type: "table", of: "XControlTests" }, { name: "total", label: "Total", type: "decimal", read_only: true, rollup: { table: "tests", op: "sum", field: "spent" } }],
+  };
+  const defs: Record<string, Raw> = { XControlTests: tests, XControlTestsEvidence: evidence };
+  const load = () => fromDef(control, gatherLines(control, (n) => defs[n]), ["XControl", "XControlTests", "XControlTestsEvidence"]);
+
+  it("gathers the lines and their lines, and no third level", () => {
+    expect(Object.keys(gatherLines(control, (n) => defs[n]))).toEqual(["XControlTests", "XControlTestsEvidence"]);
+    const deeper = { ...evidence, fields: [...(evidence.fields as Raw[]), { name: "more", label: "More", type: "table", of: "XMore" }] };
+    expect(Object.keys(gatherLines(control, (n) => ({ ...defs, XControlTestsEvidence: deeper, XMore: { name: "XMore", fields: [] } })[n]))).toEqual(["XControlTests", "XControlTestsEvidence"]);
+  });
+
+  it("round trips a two-level entity, sub-lines first, then lines, then the record", () => {
+    const d = load();
+    const ops = buildBatch(d, {}).ops;
+    expect(ops.map((o) => o.entity)).toEqual(["XControlTestsEvidence", "XControlTests", "XControl"]);
+    expect(ops.map((o) => (o.op as { entity: Raw }).entity)).toEqual([evidence, tests, control]);
+    expect(buildBatch(d, savedDefs(d)).ops).toEqual([]);
+    expect(checkDraft(d)).toEqual([]);
+  });
+
+  it("names and orders the sub-lines of a new entity, and is saved afterwards", () => {
+    let d = setEntityLabel(startDraft([]), "Control");
+    const tests = startLines("Tests");
+    tests.lines = addField(addField(tests.lines!, startField("data", "Name")), startLines("Evidence"));
+    d.entity = addField(d.entity, tests);
+    const batch = buildBatch(d, {});
+    expect(batch.ops.map((o) => o.entity)).toEqual(["XControlTestsEvidence", "XControlTests", "XControl"]);
+    expect(batch.plan.map((p) => [p.lines, p.action])).toEqual([[true, "create"], [true, "create"], [false, "create"]]);
+    expect(((batch.ops[1].op as { entity: { fields: Raw[] } }).entity.fields.find((f) => f.type === "table"))).toMatchObject({ name: "evidence", of: "XControlTestsEvidence" });
+    expect(checkDraft(d)).toEqual([]);
+    d = markSaved(d);
+    expect(buildBatch(d, savedDefs(d)).ops).toEqual([]);
+    expect(d.taken).toEqual(expect.arrayContaining(["XControl", "XControlTests", "XControlTestsEvidence"]));
+  });
+
+  it("redefines only the sub-lines when only they changed", () => {
+    const d = load();
+    const line = d.entity.fields[1].lines!;
+    const inner = line.fields.find((f) => f.type === "table")!;
+    line.fields = line.fields.map((f) => (f === inner ? { ...f, lines: addField(f.lines!, startField("data", "Note")) } : f));
+    expect(buildBatch(d, savedDefs(load())).ops.map((o) => [o.entity, (o.op as { op: string }).op])).toEqual([["XControlTestsEvidence", "redefine_entity"]]);
+  });
+
+  it("does not let sub-lines hold a third level, nor a line total over a missing table", () => {
+    const d = load();
+    const inner = d.entity.fields[1].lines!.fields.find((f) => f.type === "table")!;
+    inner.lines = addField(inner.lines!, startLines("More"));
+    expect(messages(d)).toContain("The lines “Evidence” cannot hold lines of their own.");
+    expect(messages(load())).not.toContain("The lines “Tests” cannot hold lines of their own.");
+    const t = load();
+    const line = t.entity.fields[1].lines!;
+    line.fields = line.fields.filter((f) => f.type !== "table");
+    expect(messages(t)).toContain("The total Spent needs a lines table to add up.");
   });
 });

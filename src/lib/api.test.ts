@@ -59,6 +59,18 @@ describe("parseApiError", () => {
   });
 });
 
+describe("parseApiError paths", () => {
+  it("keeps the path of an error in a line's own lines, and drops a malformed one", () => {
+    const path = [["tests", 0], ["evidence", 1]];
+    const e = parseApiError(422, { error: "validation_failed", fields: [{ field: "title", message: "Title is required", row: ["tests", 0], path }, { field: "a", message: "b", row: ["tests", 0], path: [["tests"]] }] });
+    expect(e.fields).toEqual([
+      { field: "title", message: "Title is required", row: ["tests", 0], path },
+      { field: "a", message: "b", row: ["tests", 0] },
+    ]);
+    expect(errorMessage(e)).toContain("tests row 1 evidence row 2 title: Title is required");
+  });
+});
+
 describe("errorMessage", () => {
   it("summarizes field errors for toasts", () => {
     const e = parseApiError(422, {
