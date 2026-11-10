@@ -2,7 +2,7 @@
 // Customize page, the form and workflow designers, and the editors that come after them.
 
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "../../lib/api";
+import { api, errorBody, errorMessage } from "../../lib/api";
 
 export type Op = Record<string, unknown>;
 
@@ -40,5 +40,33 @@ export function useApplyAll(entity: string) {
     const out = await postInOrder((op) => api.post("/api/customize", { entity, op, note: note?.trim() || undefined }), ops);
     if (out.done) await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
     return out;
+  };
+}
+
+/** Why a batch was refused: the server's words, and which operation (by place) it names, if it says. */
+export class BatchRefused extends Error {
+  constructor(message: string, readonly index: number | null) {
+    super(message);
+  }
+}
+
+/** POST /api/customize/batch: all the operations in order in one transaction, or none; `dryRun` only checks.
+ *  A refusal is `{error, index}` (the contract with the server; adjust here if it words it differently). */
+export async function postBatch(ops: { entity: string; op: Op; note?: string }[], dryRun: boolean): Promise<void> {
+  try {
+    await api.post("/api/customize/batch", { ops, ...(dryRun ? { dry_run: true } : {}) });
+  } catch (e) {
+    const body = errorBody(e);
+    const index = typeof body?.index === "number" ? body.index : null;
+    throw new BatchRefused(typeof body?.error === "string" && body.error ? body.error : errorMessage(e), index);
+  }
+}
+
+/** Posts a batch and refreshes what shows entities. */
+export function useApplyBatch() {
+  const qc = useQueryClient();
+  return async (ops: { entity: string; op: Op; note?: string }[], dryRun = false) => {
+    await postBatch(ops, dryRun);
+    if (!dryRun) await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
   };
 }
