@@ -76,8 +76,11 @@ const pages: Record<string, RouteObject[]> = {
     { path: "e/:entity/:id", lazy: () => import("@/app/FormView").then((m) => ({ Component: m.FormView })) },
     { path: "r/:name", lazy: () => import("@/app/ReportView").then((m) => ({ Component: m.ReportView })) },
     // Customize, for every workspace on the shell, with ERP or without.
+    { path: "customize/new", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
+    { path: "customize/:entity/design", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
     { path: "customize/:entity?", lazy: () => import("@/app/Customize").then((m) => ({ Component: m.CustomizePage })) },
     { path: "customize/:entity/form", lazy: () => import("@/app/FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
+    { path: "customize/:entity/workflow", lazy: () => import("@/app/WorkflowDesigner").then((m) => ({ Component: m.WorkflowDesignerPage })) },
     // The help center, under the core's records (the core adds no names of its own at the top).
     { path: "help", lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpPage })) },
     { path: "help/:entity", lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpArticle })) },

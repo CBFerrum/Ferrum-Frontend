@@ -35,6 +35,8 @@ export interface Field {
   default?: unknown;
   default_expr?: string;
   computed?: string;
+  /** A total the server keeps over the record's own lines; what is typed is ignored. */
+  rollup?: { table: string; op: "sum" | "count"; field?: string };
   visible_if?: string;
   required_if?: string;
   read_only_if?: string;
@@ -340,6 +342,7 @@ export function fieldState(f: Field, scope: RuleScope, locked = false): FieldSta
     locked ||
     !!f.read_only ||
     !!f.computed ||
+    !!f.rollup ||
     f.can_write !== true ||
     (!!f.read_only_if && evaluate(f.read_only_if, scope) === true);
   return { visible, required, disabled };
@@ -357,7 +360,7 @@ export function inWorkflowState(f: Field, st: FieldState, state?: { editable?: s
 
 /** Whether a field's value is maintained by the server (it never needs to be sent). */
 export function isServerManaged(f: Field): boolean {
-  return !!f.read_only || !!f.computed || f.can_write !== true;
+  return !!f.read_only || !!f.computed || !!f.rollup || f.can_write !== true;
 }
 
 export function userScope(me: Me | undefined): Record<string, unknown> | null {
