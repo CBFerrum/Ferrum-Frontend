@@ -31,6 +31,8 @@ import {
 } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
+const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
+
 const TABS = [
   { id: "users", get label() { return tr("Users"); } },
   { id: "roles", get label() { return tr("Roles & permissions"); } },
@@ -44,6 +46,7 @@ const TABS = [
   { id: "domains", get label() { return tr("Domains"); } },
   { id: "privacy", get label() { return tr("Personal data"); } },
   { id: "workspace", get label() { return tr("Workspace"); } },
+  { id: "calendars", get label() { return tr("Calendars"); } },
   { id: "words", get label() { return tr("Interface words"); } },
   { id: "exceptions", get label() { return tr("Needs a person"); } },
 ];
@@ -79,6 +82,11 @@ export function AdminPage() {
         {tab === "domains" && <Domains />}
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
+        {tab === "calendars" && (
+          <Suspense fallback={<PageLoading />}>
+            <Calendars />
+          </Suspense>
+        )}
         {tab === "words" && <InterfaceWords />}
         {tab === "exceptions" && <Exceptions />}
       </TabPanel>
