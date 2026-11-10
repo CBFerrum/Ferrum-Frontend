@@ -116,6 +116,15 @@ describe("the catalogs", () => {
 });
 
 describe("a workspace's own words", () => {
+  it("name a record type through isolate() and a sentence's {place}, over an app's names", () => {
+    addNames("ar", { Membership: "عضوية التطبيق", Lead: "عميل محتمل" });
+    applyLocale({ language: "ar", words: { Membership: "عضوية" } }, undefined);
+    expect([isolate("Membership"), isolate("Lead"), isolate("Other")]).toEqual(["عضوية", "عميل محتمل", "\u2068Other\u2069"]);
+    expect(t("New {entity}", { entity: "Membership" })).toBe("\u2068New عضوية\u2069");
+    applyLocale({ language: "ar", words: {} }, undefined);
+    expect(isolate("Membership")).toBe("عضوية التطبيق");
+  });
+
   it("stand over the catalog's in the page's language, and give the words it lacks", async () => {
     applyLocale({ language: "ar", words: { Save: "احفظه", "Nothing like this in any catalog": "لا شيء مثله" } }, undefined);
     await wordsReady();

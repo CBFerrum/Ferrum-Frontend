@@ -133,6 +133,9 @@ const extra = new Map<string, Record<string, string>>();
 /** The workspace's own words in the page's language (its InterfaceWord records): over every catalog. */
 let workspace: Record<string, string> = {};
 
+/** A name in the workspace's own words first, then the apps' names (what a page shows as it is). */
+const named = (text: string): string | undefined => workspace[text] ?? names[text];
+
 /** The interface's catalog, an app's own over it, and the workspace's words over both. */
 function merge(): void {
   const base = baseLanguage(language);
@@ -165,7 +168,7 @@ export function t(english: string, vars?: Record<string, string | number>): stri
     ? text.replace(/\{(\w+)\}/g, (whole, key: string) => {
         if (!(key in vars)) return whole;
         const v = vars[key];
-        return typeof v === "string" ? (names[v] ?? v) : String(v);
+        return typeof v === "string" ? (named(v) ?? v) : String(v);
       })
     : text;
   // English left in a page that reads right to left keeps its own order (a sentence's full stop
@@ -183,8 +186,8 @@ export function isolate(text: string): string;
 export function isolate<T extends null | undefined>(text: string | T): string | T;
 export function isolate(text: string | null | undefined): string | null | undefined {
   if (!text) return text;
-  const named = names[text];
-  if (named !== undefined) return named;
+  const known = named(text);
+  if (known !== undefined) return known;
   return direction(language) === "rtl" ? `\u2068${text}\u2069` : text;
 }
 

@@ -117,6 +117,7 @@ const words: Record<string, string> = {
   "Find a word": "कोई शब्द खोजें",
   "Save {n} words": "{n} शब्द सहेजें",
   "The workspace's words could not be read": "कार्यक्षेत्र के शब्द पढ़े नहीं जा सके",
+  "This workspace's own names": "इस कार्यक्षेत्र के अपने नाम",
   "Interface words": "इंटरफ़ेस के शब्द",
   "English": "अंग्रेज़ी",
   "The interface's own": "इंटरफ़ेस का अपना",
