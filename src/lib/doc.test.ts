@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc } from "./doc";
+import { calcBody, carryTitles, createBody, diffDoc, errorAtCell, hasInvalidNumbers, mergeCalc } from "./doc";
 import type { EntityMeta, Field } from "./meta";
 
 const rw = (name: string, type: Field["type"], extra: Partial<Field> = {}): Field => ({
@@ -140,5 +140,96 @@ describe("hasInvalidNumbers", () => {
     expect(hasInvalidNumbers(meta, { items: [{ qty: "abc" }] })).toBe(true);
     expect(hasInvalidNumbers(meta, { grand_total: "1e5" })).toBe(true);
     expect(hasInvalidNumbers(meta, { po_no: "abc" })).toBe(false);
+  });
+});
+
+describe("lines within lines", () => {
+  const ctl = {
+    name: "XControl",
+    fields: [rw("code", "data"), rw("total", "decimal", { read_only: true }), rw("tests", "table", { of: "XTest" })],
+    children: {
+      tests: {
+        entity: "XTest",
+        label: "Tests",
+        fields: [rw("name", "data"), rw("spent", "decimal", { read_only: true }), rw("evidence", "table", { of: "XEvidence" })],
+        children: { evidence: { entity: "XEvidence", label: "Evidence", fields: [rw("title", "data"), rw("amount", "decimal")] } },
+      },
+    },
+  } as unknown as EntityMeta;
+  const base = {
+    id: "c1",
+    code: "A-1",
+    tests: [
+      { id: "t1", name: "door", spent: "0.3", evidence: [{ id: "e1", title: "photo", amount: "0.1" }] },
+      { id: "t2", name: "lock", spent: "0", evidence: [] },
+    ],
+  };
+  const withTests = (tests: unknown[]) => ({ ...base, tests });
+
+  it("sends nothing when nothing changed, and nothing for server values", () => {
+    expect(diffDoc(ctl, base, structuredClone(base))).toEqual({});
+    expect(diffDoc(ctl, base, withTests([{ ...base.tests[0], spent: "9" }, base.tests[1]]))).toEqual({});
+  });
+
+  it("a changed line without its sub-lines changing sends no sub-table", () => {
+    const out = diffDoc(ctl, base, withTests([{ ...base.tests[0], name: "gate" }, base.tests[1]]));
+    expect(out).toEqual({ tests: [{ id: "t1", name: "gate" }, { id: "t2", name: "lock" }] });
+  });
+
+  it("adding, changing and removing a sub-line each send that line with its sub-table", () => {
+    const added = diffDoc(ctl, base, withTests([base.tests[0], { ...base.tests[1], evidence: [{ _key: "n", title: "scan", amount: "1" }] }]));
+    expect(added).toEqual({ tests: [{ id: "t1", name: "door" }, { id: "t2", name: "lock", evidence: [{ title: "scan", amount: "1" }] }] });
+    const changed = diffDoc(ctl, base, withTests([{ ...base.tests[0], evidence: [{ id: "e1", title: "photo", amount: "0.2" }] }, base.tests[1]]));
+    expect(changed).toEqual({ tests: [{ id: "t1", name: "door", evidence: [{ id: "e1", title: "photo", amount: "0.2" }] }, { id: "t2", name: "lock" }] });
+    const removed = diffDoc(ctl, base, withTests([{ ...base.tests[0], evidence: [] }, base.tests[1]]));
+    expect(removed).toEqual({ tests: [{ id: "t1", name: "door", evidence: [] }, { id: "t2", name: "lock" }] });
+  });
+
+  it("a new line goes with its sub-lines; createBody sends them whole", () => {
+    const doc = { tests: [{ _key: "k", name: "x", evidence: [{ _key: "k2", title: "t", amount: "1", _titles: {} }] }] };
+    expect(createBody(ctl, doc)).toEqual({ tests: [{ name: "x", evidence: [{ title: "t", amount: "1" }] }] });
+    expect(diffDoc(ctl, { tests: [] }, doc)).toEqual({ tests: [{ name: "x", evidence: [{ title: "t", amount: "1" }] }] });
+  });
+
+  it("calcBody and carryTitles reach the sub-lines", () => {
+    const doc = { tests: [{ _key: "k", _titles: {}, name: "x", evidence: [{ _key: "k2", _titles: { a: "b" }, title: "t" }] }] };
+    expect(calcBody(ctl, doc)).toEqual({ tests: [{ name: "x", evidence: [{ title: "t" }] }] });
+    const prev = { tests: [{ name: "x", evidence: [{ title: "t", _titles: { title: "T" } }] }] };
+    const saved = { tests: [{ id: "t1", name: "x", evidence: [{ id: "e1", title: "t" }] }] };
+    expect(carryTitles(ctl, saved, prev).tests).toEqual([{ id: "t1", name: "x", _titles: {}, evidence: [{ id: "e1", title: "t", _titles: { title: "T" } }] }]);
+  });
+
+  it("mergeCalc takes server totals on a line and on its sub-lines, keeping what was typed", () => {
+    const local = { code: "A-1", tests: [{ name: "door", spent: "0", evidence: [{ title: "photo", amount: "0.1" }] }] };
+    const server = { code: "A-1", total: "0.3", tests: [{ name: "door", spent: "0.3", evidence: [{ title: "photo", amount: "0.5" }] }] };
+    const prev = { tests: [{ name: "door", spent: "0", evidence: [{ title: "photo", amount: "0.4" }] }] };
+    const out = mergeCalc(ctl, local, server, prev);
+    const tests = out.tests as { spent: string; evidence: unknown[] }[];
+    expect(tests[0].spent).toBe("0.3");
+    expect(tests[0].evidence[0]).toBe(local.tests[0].evidence[0]);
+    expect(mergeCalc(ctl, local, { tests: [{ ...local.tests[0] }] }, local)).toBe(local);
+  });
+
+  it("mergeCalc adopts server-made sub-lines under client keys", () => {
+    const local = { tests: [{ name: "d" }] };
+    const out = mergeCalc(ctl, local, { tests: [{ name: "d", evidence: [{ id: "p1", title: "t" }] }] }, local);
+    expect((out.tests as { evidence: unknown[] }[])[0].evidence).toEqual([{ title: "t", _key: "p1" }]);
+  });
+
+  it("hasInvalidNumbers looks in sub-lines", () => {
+    expect(hasInvalidNumbers(ctl, { tests: [{ evidence: [{ amount: "1.5" }] }] })).toBe(false);
+    expect(hasInvalidNumbers(ctl, { tests: [{ evidence: [{ amount: "abc" }] }] })).toBe(true);
+  });
+});
+
+describe("errorAtCell", () => {
+  const line = { field: "name", message: "m", row: ["tests", 0] as [string, number] };
+  const sub = { field: "title", message: "m", row: ["tests", 0] as [string, number], path: [["tests", 0], ["evidence", 1]] as [string, number][] };
+  it("tells a line's cell from a cell in its own lines", () => {
+    expect(errorAtCell(line, "tests", { row: 0, field: "name" })).toBe(true);
+    expect(errorAtCell(sub, "tests", { row: 0, field: "title" })).toBe(false);
+    expect(errorAtCell(sub, "tests", { row: 0, field: "evidence", sub: { row: 1, field: "title" } })).toBe(true);
+    expect(errorAtCell(sub, "tests", { row: 0, field: "evidence", sub: { row: 0, field: "title" } })).toBe(false);
+    expect(errorAtCell(line, "tests", { row: 0, field: "evidence", sub: { row: 1, field: "name" } })).toBe(false);
   });
 });

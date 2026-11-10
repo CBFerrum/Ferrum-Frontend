@@ -3995,6 +3995,14 @@ const words: Record<string, string> = {
   "choose the table field that holds the lines.": "वह तालिका फ़ील्ड चुनें जिसमें पंक्तियाँ हैं।",
   "say which line to change.": "बताएँ कि कौन-सी पंक्ति बदलनी है।",
   "add at least one line field to fill in.": "भरने के लिए कम से कम एक पंक्ति फ़ील्ड जोड़ें।",
+  "Add lines of lines": "पंक्तियों के भीतर पंक्तियाँ जोड़ें",
+  "Each line can hold rows of its own, such as the evidence of a test. They go one level down and no further.": "हर पंक्ति की अपनी पंक्तियाँ हो सकती हैं, जैसे किसी जाँच के प्रमाण। वे एक स्तर नीचे तक जाती हैं, उससे आगे नहीं।",
+  "Lines of lines in {name}": "{name} की पंक्तियों के भीतर पंक्तियाँ",
+  "Lines of lines": "पंक्तियों के भीतर पंक्तियाँ",
+  "{meta}, row {value}, {sub}, row {value2}": "{meta}, पंक्ति {value}, {sub}, पंक्ति {value2}",
+  "table of {value}, each with {inner}": "{value} की तालिका, हर एक में {inner}",
+  "1 row": "1 पंक्ति",
+  "{within}: {label}": "{within}: {label}",
 };
 
 export default words;

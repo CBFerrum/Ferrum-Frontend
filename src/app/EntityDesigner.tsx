@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { api, ApiError, errorMessage } from "../lib/api";
 import {
-  addField, buildBatch, checkDraft, FIELD_TYPES, fromDef, hasMaxLength, isDecimal, isNumeric, KEPT_TYPES, markSaved, moveField, nextNumber, numberingTemplate, patchField,
+  addField, buildBatch, checkDraft, FIELD_TYPES, fromDef, gatherLines, hasMaxLength, isDecimal, isNumeric, KEPT_TYPES, markSaved, moveField, nextNumber, numberingTemplate, patchField,
   removeField, savedDefs, setEntityLabel, setFieldLabel, signature, startDraft, startField, startLines, startTotal,
   type Draft, type DraftEntity, type DraftField, type Problem, type Raw,
 } from "../lib/entityDraft";
@@ -84,12 +84,7 @@ function Loader({ entity }: { entity?: string }) {
     const now = summary.custom && current.data?.entity ? current.data : null;
     const def = summary.custom ? (now?.entity ?? definitionOf(list, entity)) : null;
     if (!def) return { status: "unreadable" as const, custom: !!summary.custom, label: summary.label };
-    const children: Record<string, Raw> = {};
-    for (const f of (def.fields as Raw[] | undefined) ?? []) {
-      const of = f.type === "table" ? String(f.of ?? "") : "";
-      const child = of ? (now?.lines?.[of] ?? definitionOf(list, of)) : null;
-      if (child) children[of] = child;
-    }
+    const children = gatherLines(def, (of) => now?.lines?.[of] ?? definitionOf(list, of));
     return { status: "ok" as const, start: fromDef(def, children, taken) };
   }, [index.data, list, entity, current.data]);
 
@@ -188,7 +183,6 @@ export function Designer({ start }: { start: Draft }) {
 
   const targets = [...(index.data?.entities ?? [])].filter((e) => e.kind !== "child").sort((a, b) => a.label.localeCompare(b.label));
   const mine = (scope: string) => problems.filter((p) => p.scope === scope);
-  const tables = entity.fields.filter((f) => f.type === "table");
   const plain = (f: DraftField) => f.type !== "table" && !f.rollup;
   const inList = refusal && refusal.index !== null && refusal.index >= 0 && refusal.index < batch.ops.length;
 
@@ -229,7 +223,7 @@ export function Designer({ start }: { start: Draft }) {
         ))}
       </Card>
 
-      <LinesCard entity={entity} onChange={setEntity} problems={problems} targets={targets} tables={tables} />
+      <LinesCard entity={entity} onChange={setEntity} problems={problems} targets={targets} />
 
       <Card id="ed-save" title={tr("What will be saved")}>
         {(problems.length > 0 || (refusal && !inList)) && (
@@ -414,7 +408,7 @@ async function confirmRemove(f: DraftField): Promise<boolean> {
   });
 }
 
-function FieldList({ entity, scope, shown, onChange, problems, targets }: { entity: DraftEntity; scope: string; shown: (f: DraftField) => boolean; onChange: (e: DraftEntity) => void; problems: Problem[]; targets: EntitySummary[] }) {
+function FieldList({ entity, scope, shown, onChange, problems, targets, sub }: { entity: DraftEntity; scope: string; shown: (f: DraftField) => boolean; onChange: (e: DraftEntity) => void; problems: Problem[]; targets: EntitySummary[]; sub?: boolean }) {
   const list = entity.fields.filter(shown);
   if (!list.length) return <p className="faint">{tr("No fields yet.")}</p>;
   return (
@@ -422,7 +416,7 @@ function FieldList({ entity, scope, shown, onChange, problems, targets }: { enti
       {list.map((f, i) => (
         <li key={f.key}>
           <FieldRow
-            entity={entity} f={f} scope={scope} first={i === 0} last={i === list.length - 1} lines={entity.kind === "child"}
+            entity={entity} f={f} scope={scope} first={i === 0} last={i === list.length - 1} lines={entity.kind === "child"} sub={sub}
             problems={problems.filter((p) => p.scope === scope && p.field === f.key)} targets={targets}
             onChange={onChange}
             onMove={(by) => onChange(moveField(entity, f.key, by, shown))}
@@ -434,8 +428,8 @@ function FieldList({ entity, scope, shown, onChange, problems, targets }: { enti
   );
 }
 
-function FieldRow({ entity, f, first, last, lines, problems, targets, onChange, onMove, onRemove }: {
-  entity: DraftEntity; f: DraftField; scope: string; first: boolean; last: boolean; lines: boolean; problems: Problem[]; targets: EntitySummary[];
+function FieldRow({ entity, f, first, last, lines, sub, problems, targets, onChange, onMove, onRemove }: {
+  entity: DraftEntity; f: DraftField; scope: string; first: boolean; last: boolean; lines: boolean; sub?: boolean; problems: Problem[]; targets: EntitySummary[];
   onChange: (e: DraftEntity) => void; onMove: (by: -1 | 1) => void; onRemove: () => void;
 }) {
   const patch = (p: Partial<DraftField>) => onChange(patchField(entity, f.key, p));
@@ -468,7 +462,7 @@ function FieldRow({ entity, f, first, last, lines, problems, targets, onChange, 
       <div className="row" style={{ flexWrap: "wrap", columnGap: 16 }}>
         <label className="check-field"><input type="checkbox" checked={f.required} onChange={(ev) => patch({ required: ev.target.checked })} />{tr("Required")}</label>
         <label className="check-field"><input type="checkbox" checked={f.in_list} onChange={(ev) => patch({ in_list: ev.target.checked })} />{tr("Shown in the list")}</label>
-        <label className="check-field"><input type="checkbox" checked={f.in_filter} onChange={(ev) => patch({ in_filter: ev.target.checked })} />{tr("Usable as a filter")}</label>
+        {!sub && <label className="check-field"><input type="checkbox" checked={f.in_filter} onChange={(ev) => patch({ in_filter: ev.target.checked })} />{tr("Usable as a filter")}</label>}
         {!lines && <label className="check-field"><input type="checkbox" checked={f.unique} onChange={(ev) => patch({ unique: ev.target.checked })} />{tr("Each value only once")}</label>}
       </div>
       {problems.filter((p) => !/label\.|name|called|keeps/.test(p.message)).map((p, i) => (
@@ -563,7 +557,9 @@ function totalChoices(tables: DraftField[]) {
   });
 }
 
-function LinesCard({ entity, onChange, problems, targets, tables }: { entity: DraftEntity; onChange: (e: DraftEntity) => void; problems: Problem[]; targets: EntitySummary[]; tables: DraftField[] }) {
+/** The lines tables of a record, and its totals; a line's own lines tables and totals are this card again, one level down (`nested`), and a line of those holds none. */
+function LinesCard({ entity, onChange, problems, targets, scope = "", nested, name }: { entity: DraftEntity; onChange: (e: DraftEntity) => void; problems: Problem[]; targets: EntitySummary[]; scope?: string; nested?: boolean; name?: string }) {
+  const tables = entity.fields.filter((f) => f.type === "table");
   const totals = entity.fields.filter((f) => f.rollup);
   const isTotal = (f: DraftField) => !!f.rollup;
   const choices = totalChoices(tables);
@@ -572,14 +568,20 @@ function LinesCard({ entity, onChange, problems, targets, tables }: { entity: Dr
     const row = t.lines?.fields.find((l) => isNumeric(l.type) && !l.rollup) ?? null;
     onChange(addField(entity, startTotal(t, row)));
   };
-  return (
-    <Card id="ed-lines" title={tr("Lines")} actions={<Button size="sm" icon="plus" onClick={() => onChange(addField(entity, startLines(tr("Lines"))))}>{tr("Add a lines table")}</Button>}>
-      <p className="muted">{tr("Lines are rows inside one record, such as the items of an order. Each lines table has its own fields and its own entity behind it.")}</p>
+  const at = (t: DraftField) => (scope ? `${scope}/${t.key}` : t.key);
+  const add = (
+    <Button size="sm" icon="plus" onClick={() => onChange(addField(entity, startLines(tr("Lines"))))}>
+      {nested ? tr("Add lines of lines") : tr("Add a lines table")}
+    </Button>
+  );
+  const body = (
+    <>
+      <p className="muted">{nested ? tr("Each line can hold rows of its own, such as the evidence of a test. They go one level down and no further.") : tr("Lines are rows inside one record, such as the items of an order. Each lines table has its own fields and its own entity behind it.")}</p>
       {!tables.length && <p className="faint">{tr("No lines tables yet.")}</p>}
       {tables.map((t, i) => (
         <section key={t.key} className="card card-body stack" aria-label={tr("Lines {name}", { name: isolate(t.label.trim() || t.name) })} style={{ margin: 0 }}>
           <div className="form-grid">
-            <Field label={tr("Label of the lines")} required error={problems.find((p) => p.scope === "" && p.field === t.key && /label\./.test(p.message))?.message}>
+            <Field label={tr("Label of the lines")} required error={problems.find((p) => p.scope === scope && p.field === t.key && /label\./.test(p.message))?.message}>
               <input className="input" value={t.label} onChange={(ev) => onChange(setFieldLabel(entity, t.key, ev.target.value))} />
             </Field>
             <Field label={tr("Name")} hint={t.saved ? tr("Fixed: records hold values under it.") : tr("Its entity is named from this entity and this name.")}>
@@ -589,13 +591,14 @@ function LinesCard({ entity, onChange, problems, targets, tables }: { entity: Dr
           <h3 className="field-label">{tr("Fields of the lines")}</h3>
           {t.lines && (
             <>
-              <FieldList entity={t.lines} scope={t.key} shown={() => true} problems={problems} targets={targets} onChange={(lines) => onChange(patchField(entity, t.key, { lines }))} />
+              <FieldList entity={t.lines} scope={at(t)} shown={nested ? () => true : (f) => f.type !== "table" && !f.rollup} sub={nested} problems={problems} targets={targets} onChange={(lines) => onChange(patchField(entity, t.key, { lines }))} />
               <div>
                 <Button size="sm" icon="plus" onClick={() => onChange(patchField(entity, t.key, { lines: addField(t.lines as DraftEntity, startField()) }))}>{tr("Add a field to {name}", { name: isolate(t.label.trim() || t.name) })}</Button>
               </div>
+              {!nested && <LinesCard entity={t.lines} scope={at(t)} nested name={isolate(t.label.trim() || t.name)} onChange={(lines) => onChange(patchField(entity, t.key, { lines }))} problems={problems} targets={targets} />}
             </>
           )}
-          {problems.filter((p) => p.scope === t.key && !p.field).map((p, j) => (
+          {problems.filter((p) => p.scope === at(t) && !p.field).map((p, j) => (
             <p key={j} className="field-error">{p.message}</p>
           ))}
           <RowTools
@@ -612,7 +615,7 @@ function LinesCard({ entity, onChange, problems, targets, tables }: { entity: Dr
         {totals.map((f, i) => {
           const r = f.rollup as NonNullable<DraftField["rollup"]>;
           const value = `${r.op}:${r.table}:${r.field}`;
-          const prob = problems.filter((p) => p.scope === "" && p.field === f.key);
+          const prob = problems.filter((p) => p.scope === scope && p.field === f.key);
           return (
             <li key={f.key} className="card card-body stack" style={{ margin: 0 }}>
               <div className="form-grid">
@@ -646,6 +649,19 @@ function LinesCard({ entity, onChange, problems, targets, tables }: { entity: Dr
       <div>
         <Button size="sm" icon="plus" disabled={!tables.length} onClick={addTotal}>{tr("Add a total")}</Button>
       </div>
+    </>
+  );
+  return nested ? (
+    <section className="stack" aria-label={tr("Lines of lines in {name}", { name: name ?? "" })}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <h3 className="field-label">{tr("Lines of lines")}</h3>
+        {add}
+      </div>
+      {body}
+    </section>
+  ) : (
+    <Card id="ed-lines" title={tr("Lines")} actions={add}>
+      {body}
     </Card>
   );
 }

@@ -760,7 +760,12 @@ function SectionMenu({ s, first, last }: { s: LayoutSection; first: boolean; las
 function typeLabel(f: Field | undefined, meta: EntityMeta): string {
   if (!f) return "";
   if (f.type === "link" && f.to) return tr("link → {to}", { to: f.to });
-  if (f.type === "table") return meta.children[f.name]?.label ? tr("table of {value}", { value: meta.children[f.name].label }) : tr("table of rows");
+  if (f.type === "table") {
+    const c = meta.children[f.name];
+    if (!c?.label) return tr("table of rows");
+    const inner = Object.values(c.children ?? {}).map((s) => s.label).join(", ");
+    return inner ? tr("table of {value}, each with {inner}", { value: c.label, inner }) : tr("table of {value}", { value: c.label });
+  }
   return f.type;
 }
 

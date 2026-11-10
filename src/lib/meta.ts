@@ -112,6 +112,8 @@ export interface ChildTable {
   entity: string;
   label: string;
   fields: Field[];
+  /** The tables of the line's own lines (lines within lines), by table field. */
+  children?: Record<string, ChildTable>;
 }
 
 export interface LinkedFrom {

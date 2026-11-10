@@ -421,8 +421,8 @@ function FieldsTable({ meta, onEdit }: { meta: EntityMeta; onEdit: (f: Field) =>
       {Object.keys(meta.children).length > 0 && (
         <div className="card-body row">
           <span className="muted">{tr("Child tables:")}</span>
-          {Object.entries(meta.children).map(([name, c]) => (
-            <Link key={name} className="chip" to={`/customize/${c.entity}`}>
+          {Object.values(meta.children).flatMap((c) => [c, ...Object.values(c.children ?? {})]).map((c) => (
+            <Link key={c.entity} className="chip" to={`/customize/${c.entity}`}>
               {isolate(c.label)}
             </Link>
           ))}

@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
-import { asRows, calcBody, carryTitles, createBody, diffDoc, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
+import { asRows, calcBody, carryTitles, createBody, diffDoc, errorAtCell, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { actionButtons, transitionOffered, type ButtonState } from "../lib/actionButtons";
 import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
@@ -37,7 +37,7 @@ import {
 import { CollabPanel } from "./Collab";
 import { MergeDialog } from "./list/MergeDialog";
 import { Related } from "./list/Related";
-import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue } from "./widgets";
+import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
@@ -278,11 +278,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     edit((d) => withValue(d, name, value, title));
     setErrors((es) => es.filter((e) => e.row || e.field !== name));
   };
-  const setRows = (table: string, rows: Doc[], cell?: { row: number; field: string }) => {
+  const setRows = (table: string, rows: Doc[], cell?: GridCell) => {
     edit((d) => ({ ...d, [table]: rows }));
-    setErrors((es) =>
-      es.filter((e) => (cell ? !(e.row?.[0] === table && e.row[1] === cell.row && e.field === cell.field) : e.row?.[0] !== table && e.field !== table)),
-    );
+    setErrors((es) => es.filter((e) => (cell ? !errorAtCell(e, table, cell) : e.row?.[0] !== table && e.field !== table)));
   };
 
   // ── persistence ──
@@ -537,7 +535,11 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
 
   // Move focus to the first invalid field once the errors have rendered.
   useEffect(() => {
-    if (focusError) document.querySelector<HTMLElement>('main [aria-invalid="true"]')?.focus();
+    // A line whose own lines are wrong opens its dialog (the grid marks its button `data-reveal`) and lands on the field.
+    if (!focusError) return;
+    const bad = document.querySelector<HTMLElement>('main [aria-invalid="true"]');
+    if (bad) bad.focus();
+    else document.querySelector<HTMLElement>("main [data-reveal]")?.click();
   }, [focusError]);
 
   // ── navigation guards & shortcuts ──
@@ -903,7 +905,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <ul>
               {unplaced.map((e, i) => (
                 <li key={i}>
-                  {e.row
+                  {e.path
+                    ? tr("{meta}, row {value}, {sub}, row {value2}", { meta: fieldLabel(meta, e.row![0]), value: e.row![1] + 1, sub: meta.children[e.row![0]]?.children?.[e.path[1][0]]?.label ?? humanize(e.path[1][0]), value2: e.path[1][1] + 1 })
+                    : e.row
                     ? tr("{meta} row {value}, {value2}", { meta: fieldLabel(meta, e.row[0]), value: e.row[1] + 1, value2: meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field) })
                     : fieldLabel(meta, e.field)}
                   : {isolate(e.message)}
