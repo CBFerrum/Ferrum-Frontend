@@ -91,15 +91,18 @@ export type FrameMode = "classic" | "app";
 let frameMode: FrameMode = "classic";
 /** In app mode, the packages whose modules the sidebar shows (the app's own); null: all. */
 let framePackages: Set<string> | null = null;
+/** A workspace's own menu's page (`/data/{menu}/`): the modules it shows, and nothing else; null: by packages. */
+let frameModules: Set<string> | null = null;
 /** Whether the frame's routes include the records pages beyond lists, forms and reports
  *  (`recordsRoutes`): Customize, Studio's builders and the POS till. Today's web app has them. */
 let frameHasPages = true;
 
 /** Set once, before the first render. An app's interface runs under the shell, which signs the
  *  person in again when the session ends; `pages` when its routes are `recordsRoutes`. */
-export function setFrameMode(mode: FrameMode, packages?: string[], { pages = false }: { pages?: boolean } = {}): void {
+export function setFrameMode(mode: FrameMode, packages?: string[], { pages = false, modules }: { pages?: boolean; modules?: string[] } = {}): void {
   frameMode = mode;
   framePackages = packages ? new Set(packages) : null;
+  frameModules = modules ? new Set(modules) : null;
   frameHasPages = mode === "classic" || pages;
   if (mode === "app") setUnauthorizedHandler(() => shell().session.reauthenticate());
 }
@@ -114,9 +117,10 @@ function appName(): string {
   return bootstrap()?.app?.title ?? "Ferrum";
 }
 
-/** Whether a module is the app's own: one its packages define (from a server that does not say,
+/** Whether a module is the app's own: one of the frame's `modules` when it has them (a workspace's own menu), else one its packages define (from a server that does not say,
  *  one listing entities of its packages or custom ones). */
 export function ownModule(m: Module, meta: MetaIndex): boolean {
+  if (frameModules) return frameModules.has(m.name);
   if (m.name === STUDIO) return showsStudio();
   if (!framePackages) return true;
   if (m.package) return framePackages.has(m.package);
@@ -236,7 +240,7 @@ function Shell() {
           <span className="brand-mark" aria-hidden="true">
             {frameMode === "app" ? appName().slice(0, 2) : tr("Fe")}
           </span>
-          {frameMode === "app" ? appName() : tr("Ferrum")}
+          {frameMode === "app" ? isolate(appName()) : tr("Ferrum")}
         </NavLink>
         <Sidebar />
       </aside>

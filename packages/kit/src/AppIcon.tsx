@@ -90,6 +90,9 @@ const ICONS: Record<string, LucideIcon> = {
   wrench: Wrench,
 };
 
+/** The icon names `AppIcon` draws. */
+export const APP_ICON_NAMES = Object.keys(ICONS);
+
 const hex = (c?: string | null) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : undefined);
 
 /** The glyph in the app's colour (`tile`: white on a tile of that colour, as in the launcher). */
