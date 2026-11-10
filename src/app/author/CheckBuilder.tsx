@@ -41,9 +41,14 @@ function Value({ row, field, n, onChange }: { row: CheckRow; field: MetaField | 
   return <input className="input" style={grow} type={kind} inputMode={type === "int" ? "numeric" : type === "decimal" || type === "currency" || type === "percent" ? "decimal" : undefined} aria-label={label} value={row.value} onChange={(e) => onChange(e.target.value)} />;
 }
 
+/** The words around a check; the builder is written for a rule on saving, a button's condition or refusal says its own. */
+export interface CheckWords { one: string; many: string; advancedLabel: string; hint: string }
+const saveWords = (): CheckWords => ({ one: tr("The save goes through when this holds"), many: tr("The save goes through when"), advancedLabel: tr("Check (must be true)"), hint: tr("Variables: doc, old, user, today, now") });
+
 /** A check as rows (field, comparison, value) joined by "all of" or "any of", with the expression they come to shown;
  *  "Advanced" is the expression itself. */
-export function CheckInput({ fields, state, onChange }: { fields: MetaField[]; state: CheckState; onChange: (s: CheckState) => void }) {
+export function CheckInput({ fields, state, onChange, words }: { fields: MetaField[]; state: CheckState; onChange: (s: CheckState) => void; words?: CheckWords }) {
+  const w = { ...saveWords(), ...words };
   const id = useId();
   const [notice, setNotice] = useState<string | null>(null);
   const usable = checkable(fields);
@@ -69,11 +74,11 @@ export function CheckInput({ fields, state, onChange }: { fields: MetaField[]; s
       </label>
       {notice && <p className="field-hint" role="status">{notice}</p>}
       {state.advanced ? (
-        <ExprInput label={tr("Check (must be true)")} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} hint={tr("Variables: doc, old, user, today, now")} />
+        <ExprInput label={w.advancedLabel} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} hint={w.hint} />
       ) : (
         <div className="stack" role="group" aria-labelledby={`${id}-head`}>
           <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            <span className="field-label" id={`${id}-head`}>{draft.rows.length > 1 ? tr("The save goes through when") : tr("The save goes through when this holds")}</span>
+            <span className="field-label" id={`${id}-head`}>{draft.rows.length > 1 ? w.many : w.one}</span>
             {draft.rows.length > 1 && (
               <select className="select" style={{ width: "auto" }} aria-label={tr("Join the conditions with")} value={draft.join} onChange={(e) => onChange({ ...state, draft: { ...draft, join: e.target.value as "all" | "any" } })}>
                 <option value="all">{tr("all of these hold")}</option>

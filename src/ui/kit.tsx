@@ -551,10 +551,12 @@ export function Menu({
   );
 }
 
-export function MenuItem({ onSelect, children, danger }: { onSelect: () => void; children: ReactNode; danger?: boolean }) {
+/** `refusal`: why it cannot be chosen now. It stays in the menu, reachable by keyboard, says so in words, and does nothing. */
+export function MenuItem({ onSelect, children, danger, refusal }: { onSelect: () => void; children: ReactNode; danger?: boolean; refusal?: string | null }) {
   return (
-    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} onClick={onSelect}>
+    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} aria-disabled={refusal ? true : undefined} title={refusal ?? undefined} onClick={refusal ? undefined : onSelect}>
       {children}
+      {refusal && <span className="sr-only">{`: ${refusal}`}</span>}
     </button>
   );
 }

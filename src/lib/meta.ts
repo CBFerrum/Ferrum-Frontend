@@ -77,6 +77,14 @@ export interface ActionDef {
   group?: string | null;
   /** Called by code, never offered as a button. */
   hidden?: boolean;
+  /** Whether the caller may press it at all (permission, rules and roles); absent from an older server. */
+  may_run?: boolean;
+  /** The roles that may press it (an administrator always may); none: whoever may edit the record. */
+  roles?: string[];
+  /** Refusals judged per record: the first `when` that holds refuses, with its `message`. */
+  refuse_if?: { when: string; message: string }[];
+  /** What a configured button does; sent to administrators only (a button without them is a package's own). */
+  effects?: Record<string, unknown>[];
 }
 
 export interface ActionParam {
