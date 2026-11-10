@@ -116,6 +116,11 @@ describe("the catalogs", () => {
 });
 
 describe("a workspace's own words", () => {
+  it("leave a name that is also a property of every object as text", () => {
+    applyLocale({ language: "en" }, undefined);
+    expect([isolate("constructor"), isolate("toString"), t("valueOf"), t("New {entity}", { entity: "hasOwnProperty" })]).toEqual(["constructor", "toString", "valueOf", "New hasOwnProperty"]);
+  });
+
   it("name a record type through isolate() and a sentence's {place}, over an app's names", () => {
     addNames("ar", { Membership: "عضوية التطبيق", Lead: "عميل محتمل" });
     applyLocale({ language: "ar", words: { Membership: "عضوية" } }, undefined);

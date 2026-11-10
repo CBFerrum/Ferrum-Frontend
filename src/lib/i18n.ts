@@ -133,8 +133,10 @@ const extra = new Map<string, Record<string, string>>();
 /** The workspace's own words in the page's language (its InterfaceWord records): over every catalog. */
 let workspace: Record<string, string> = {};
 
+/** A word of a list of words: its own entry only, so a record called "constructor" stays text. */
+const own = (words: Record<string, string>, key: string): string | undefined => (Object.hasOwn(words, key) ? words[key] : undefined);
 /** A name in the workspace's own words first, then the apps' names (what a page shows as it is). */
-const named = (text: string): string | undefined => workspace[text] ?? names[text];
+const named = (text: string): string | undefined => own(workspace, text) ?? own(names, text);
 
 /** The interface's catalog, an app's own over it, and the workspace's words over both. */
 function merge(): void {
@@ -162,7 +164,7 @@ export function addCatalog(tag: string, words: Record<string, string>): void {
  * filled with the name of a record, field, option or action is filled with its name in the language.
  */
 export function t(english: string, vars?: Record<string, string | number>): string {
-  const known = catalog[english] ?? names[english];
+  const known = own(catalog, english) ?? own(names, english);
   const text = known ?? english;
   const filled = vars
     ? text.replace(/\{(\w+)\}/g, (whole, key: string) => {
