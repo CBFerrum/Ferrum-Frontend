@@ -9,8 +9,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Link, Navigate, RouterProvider, useLocation, useRouteError, type RouteObject } from "react-router";
-import { shell, t, wordsReady } from "@ferrum/client";
+import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider, useLocation, useRouteError, type RouteObject } from "react-router";
+import { bootstrap, routeBase, shell, t, wordsReady } from "@ferrum/client";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
@@ -52,7 +52,12 @@ const toOpen = (path: string) => path.replace(/^\/e\//, "/open/");
 /** `/r/{name}`, `/customize/…`: the platform's records pages. */
 const toData = (path: string) => `/data${path}`;
 
-setFrameMode("app", ["studio"], { pages: true });
+/** Studio's page of the portal (Ferrum docs/builder/decisions.md BD-02), when the platform serves this
+ * release there: the records a person's portal roles reach, in the records' own lists and forms. */
+const RECORDS = "portal/records";
+const onPortal = bootstrap()?.app?.entry === RECORDS;
+
+if (!onPortal) setFrameMode("app", ["studio"], { pages: true });
 
 // Each page loads when first opened: the first script holds only the frame (§12.9).
 const reportBuilder = () => import("@/app/studio/ReportBuilder").then((m) => ({ Component: m.ReportBuilder }));
@@ -84,7 +89,31 @@ const studioRoutes: RouteObject[] = [
   { path: "studio/tasks/:id", lazy: () => import("@/app/studio/runs/TasksPage").then((m) => ({ Component: m.TaskPage })) },
 ];
 
-const router = createBrowserRouter([
+/** A portal page: started, no frame. */
+function Bare() {
+  useEffect(() => shell().ready(), []);
+  return <Outlet />;
+}
+
+const portalRoutes: RouteObject[] = [
+  {
+    path: "/",
+    element: (
+      <main>
+        <Bare />
+      </main>
+    ),
+    errorElement: <RouteError />,
+    children: [
+      { index: true, lazy: () => import("@/app/studio/PortalRecords").then((m) => ({ Component: m.PortalRecords })) },
+      { path: "e/:entity", lazy: () => import("@/app/ListView").then((m) => ({ Component: m.ListView })) },
+      { path: "e/:entity/:id", lazy: () => import("@/app/FormView").then((m) => ({ Component: m.FormView })) },
+      { path: "*", element: <EmptyState title={t("Page not found")} icon="folder" /> },
+    ],
+  },
+];
+
+const studioRouter = () => createBrowserRouter([
   {
     path: "/",
     element: (
@@ -105,6 +134,8 @@ const router = createBrowserRouter([
     ],
   },
 ]);
+
+const router = onPortal ? createBrowserRouter(portalRoutes, { basename: routeBase(RECORDS) }) : studioRouter();
 
 setUnauthorizedHandler(() => shell().session.reauthenticate());
 

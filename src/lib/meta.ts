@@ -50,7 +50,8 @@ export interface Field {
 
 export type Access = "none" | "own" | "all";
 export type PermKey = "read" | "write" | "create" | "delete" | "submit" | "cancel" | "export" | "import";
-export type Perms = Record<PermKey, Access>;
+/** What the person may do with an entity, and the actions rules name for them whatever the actions' own permission asks. */
+export type Perms = Record<PermKey, Access> & { actions?: string[] };
 
 export interface Section {
   label?: string | null;

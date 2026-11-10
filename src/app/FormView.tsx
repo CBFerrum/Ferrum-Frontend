@@ -40,7 +40,7 @@ import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withVal
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
-import { t as tr, isolate } from "@ferrum/client";
+import { bootstrap, t as tr, isolate } from "@ferrum/client";
 
 /** What a finished action says: its own message when it gives one ("3 deferred lines recognised
  * through 31 Oct"), else that it is done. */
@@ -134,6 +134,9 @@ export function prefill(meta: EntityMeta, sp: URLSearchParams, user: unknown): D
 
 /** A section tab's id; the untitled first tab keeps "details". */
 const tabId = (tab: string | null) => (tab === null ? "details" : `tab:${tab}`);
+
+/** Signed in as a portal person or a guest. */
+const outside = ["portal", "guest"].includes(bootstrap()?.person?.kind ?? "");
 
 /** A tab's label with how many errors its fields have. */
 function tabLabel(label: string, errors: number): ReactNode {
@@ -459,7 +462,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         (a) =>
           !a.hidden &&
           (!a.docstatus.length || a.docstatus.includes(docstatus)) &&
-          (a.permission in perms ? allowed(a.permission as PermKey) : true) &&
+          (perms.actions?.includes(a.name) || (a.permission in perms ? allowed(a.permission as PermKey) : true)) &&
           (!a.condition || evaluate(a.condition, { doc, user }) !== false),
       );
 
@@ -565,8 +568,14 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       ? []
       : [
           ...(meta.linked_from?.length ? [{ id: "related", label: t("Related") }] : []),
-          { id: "discussion", label: t("Discussion") },
-          { id: "activity", label: t("Activity") },
+          // A record's comments, files, people and history are the workspace members' business: a
+          // portal person reads the record alone (Ferrum docs/builder/decisions.md BD-02).
+          ...(outside
+            ? []
+            : [
+                { id: "discussion", label: t("Discussion") },
+                { id: "activity", label: t("Activity") },
+              ]),
           ...panels.map((p) => ({ id: `screen:${p.app}/${p.id}`, label: p.title ?? p.id })),
         ]),
   ];
