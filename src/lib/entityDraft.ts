@@ -166,7 +166,7 @@ const blankField = (type = "data"): DraftField => ({
 });
 
 /** A new field of `type`, named after its label once there is one. */
-export const startField = (type = "data", label = ""): DraftField => ({ ...blankField(type), label });
+export const startField = (type = "data", label = ""): DraftField => ({ ...blankField(type), label, name: label ? fieldName(label) : "" });
 
 const blankEntity = (kind: DraftEntity["kind"]): DraftEntity => ({
   saved: false, name: "", nameTouched: false, label: "", label_plural: "", kind, description: "", title: "", numbering: null, numberingRaw: null, fields: [], unique: [], extra: {},

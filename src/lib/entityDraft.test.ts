@@ -314,3 +314,8 @@ describe("numbering", () => {
     expect(parseNumbering("{YYYY}-{seq:3}")).toBeNull();
   });
 });
+
+it("a new lines table starts with a field that already has a name", () => {
+  const table = startLines("Items");
+  expect(table.lines?.fields[0].name).toBe("description");
+});
