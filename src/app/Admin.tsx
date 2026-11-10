@@ -1704,7 +1704,7 @@ function Roles() {
                               {tr("through")} <code>{p.via}</code>{" "}
                             </span>
                           )}
-                          {!!p.actions?.length && <span className="muted">{tr("may run {actions}", { actions: p.actions.join(", ") })} </span>}
+                          {!!p.actions?.length && <ActionNames entity={p.entity} names={p.actions} />}
                           {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
                             <ConditionText entity={p.entity} cond={p.match_rule} />
                           ) : (
@@ -1782,6 +1782,13 @@ function Roles() {
       )}
     </Loaded>
   );
+}
+
+/** The actions a rule names, by their labels. */
+function ActionNames({ entity, names }: { entity: string; names: string[] }) {
+  const actions = useEntityMeta(entity).data?.actions;
+  const labels = names.map((n) => actions?.find((a) => a.name === n)?.label ?? n);
+  return <span className="muted">{tr("may run {actions}", { actions: labels.join(", ") })} </span>;
 }
 
 /** What a portal role may not do (the server refuses the same). */
