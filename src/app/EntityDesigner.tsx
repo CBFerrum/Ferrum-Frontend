@@ -3,7 +3,7 @@
 // customizations (POST /api/customize/batch) that applies all or none. The logic is lib/entityDraft.ts.
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, useRef } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
 import { api, errorMessage } from "../lib/api";
 import {
@@ -125,11 +125,16 @@ export function Designer({ start }: { start: Draft }) {
 
   // A new entity, once saved, lives at its own address: reloading /customize/new would show an empty form.
   const cameNew = !start.entity.saved;
+  // Read when a navigation is judged, so the move after a save is never taken for leaving unsaved work
+  // (the blocker may still hold the render before the save).
+  const leaving = useRef(false);
   useEffect(() => {
-    if (cameNew && done?.created && !dirty) void navigate(`/customize/${done.name}/design`, { replace: true, state: { created: true } });
+    if (!(cameNew && done?.created && !dirty)) return;
+    leaving.current = true;
+    void navigate(`/customize/${done.name}/design`, { replace: true, state: { created: true } });
   }, [cameNew, done, dirty, navigate]);
 
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => !leaving.current && dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
     void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this entity will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) => (ok ? blocker.proceed() : blocker.reset()));
