@@ -2229,6 +2229,7 @@ const words: Record<string, string> = {
   "Create a new chart": "أنشئ مخططًا جديدًا",
   "Create a new number card": "أنشئ بطاقة رقم جديدة",
   "Define entity {value}": "عرّف الكيان {value}",
+  "Change the design of entity {value}": "غيّر تصميم الكيان {value}",
   "Draft {label}": "مسودة {label}",
   "Due {value}": "مستحق {value}",
   "Enter {p}: the report needs it": "أدخل {p}: التقرير يحتاج إليه",
