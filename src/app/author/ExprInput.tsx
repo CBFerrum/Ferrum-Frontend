@@ -4,7 +4,7 @@ import { t as tr, isolate } from "@ferrum/client";
 /** A condition in the server's expression language: the entity's fields as chips that insert `doc.name` (or
  *  the chip's own `insert` text, as `aggregates.unpaid`) where the cursor is, and the server's own words under it when it refused the condition. The browser
  *  does not read the expression: the server is the judge. */
-export function ExprInput({ label, value, onChange, fields, error, hint, id: given }: { label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string; insert?: string }[]; error?: string | null; hint?: string; id?: string }) {
+export function ExprInput({ label, value, onChange, fields, error, hint, id: given, rows = 2 }: { label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string; insert?: string }[]; error?: string | null; hint?: string; id?: string; rows?: number }) {
   const auto = useId();
   const id = given ?? auto;
   const area = useRef<HTMLTextAreaElement>(null);
@@ -25,7 +25,7 @@ export function ExprInput({ label, value, onChange, fields, error, hint, id: giv
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <textarea ref={area} id={id} className="textarea mono" rows={2} spellCheck={false} value={value} aria-invalid={error ? true : undefined} aria-describedby={described} onChange={(e) => onChange(e.target.value)} />
+      <textarea ref={area} id={id} className="textarea mono" rows={rows} spellCheck={false} value={value} aria-invalid={error ? true : undefined} aria-describedby={described} onChange={(e) => onChange(e.target.value)} />
       {fields.length > 0 && (
         <div role="group" aria-label={tr("Insert a field")} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
           {fields.map((f) => (

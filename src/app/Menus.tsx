@@ -190,6 +190,11 @@ function MenuForm({ start, taken, onClose, onSaved }: { start: MenuDraft; taken:
       closing.current = true;
       onSaved(d.name.trim());
     } catch (e) {
+      if (e instanceof BatchRefused && e.unchanged) {
+        toast(tr("Nothing changed"));
+        closing.current = true;
+        return onSaved(d.name.trim());
+      }
       setRefusal(e instanceof BatchRefused ? e.message : errorMessage(e));
     } finally {
       setBusy(false);

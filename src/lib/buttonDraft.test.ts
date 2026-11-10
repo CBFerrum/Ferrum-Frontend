@@ -96,3 +96,13 @@ describe("where the server's words point", () => {
     expect(pointAt("something else", d)).toEqual({});
   });
 });
+
+describe("a button that does a step of another app", () => {
+  it("goes back as it came and is checked against the catalog", () => {
+    const effect = { type: "invoke", capability: "erp.sales_invoice.create", input: { values: "{}" }, key: "'x:' + doc.id" };
+    const d = fromButton({ name: "x_fee", label: "Fee", effects: [effect] });
+    expect((toButton(d).effects as unknown[])[0]).toEqual(effect);
+    expect(checkButton(d, [], true, [{ id: "erp.sales_invoice.create", title: "Create", inputs: [{ name: "values", required: true }] }])).toEqual([]);
+    expect(checkButton(d, [], true, []).length).toBe(1);
+  });
+});

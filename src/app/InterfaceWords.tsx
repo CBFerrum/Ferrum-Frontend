@@ -32,11 +32,12 @@ export const OWN_ENTITIES_CAP = 60;
  * fields, choices, buttons, workflow and form sections. A packaged entity gives nothing: the
  * description does not say which of its fields the workspace added.
  */
-export function ownNames(m: Pick<EntityMeta, "package" | "custom" | "label" | "label_plural" | "fields" | "actions" | "workflow" | "form">): string[] {
+export function ownNames(m: Pick<EntityMeta, "package" | "custom" | "label" | "label_plural" | "fields" | "actions" | "workflow" | "form"> & { targets?: { label: string }[] }): string[] {
   if (m.package !== "tenant" && !m.custom) return [];
   const out = [m.label, m.label_plural];
   for (const f of m.fields ?? []) out.push(f.label, ...(f.options ?? []));
   for (const a of m.actions ?? []) out.push(a.label, a.confirm ?? "", ...(a.params ?? []).flatMap((p) => [p.label, ...(p.options ?? [])]));
+  for (const x of m.targets ?? []) out.push(x.label);
   for (const s of m.workflow?.states ?? []) out.push(s.name);
   for (const x of m.workflow?.transitions ?? []) out.push(x.action);
   for (const s of m.form ?? []) out.push(s.label ?? "");
