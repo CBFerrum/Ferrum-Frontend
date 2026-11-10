@@ -135,7 +135,7 @@ export function CollabPanel({ entity, id, canWrite }: { entity: string; id: stri
 
         <section aria-label={tr("Attachments")}>
           <h3 className="field-label">{tr("Attachments")}</h3>
-          <Attachments entity={entity} id={id} files={files.data?.attachments ?? []} onChanged={refresh} />
+          <Attachments entity={entity} id={id} files={files.data?.attachments ?? []} onChanged={refresh} canWrite={canWrite} />
         </section>
 
         <Button
@@ -351,7 +351,7 @@ function TagEditor({ tags, canWrite, onChange }: { tags: string[]; canWrite: boo
   );
 }
 
-function Attachments({ entity, id, files, onChanged }: { entity: string; id: string; files: Attachment[]; onChanged: () => unknown }) {
+function Attachments({ entity, id, files, onChanged, canWrite }: { entity: string; id: string; files: Attachment[]; onChanged: () => unknown; canWrite: boolean }) {
   const [busy, setBusy] = useState(false);
   const upload = async (file: File | undefined) => {
     if (!file) return;
@@ -388,11 +388,13 @@ function Attachments({ entity, id, files, onChanged }: { entity: string; id: str
           </button>
         </div>
       ))}
+      {canWrite && (
       <label className="btn btn-default btn-sm" style={{ alignSelf: "flex-start" }} aria-busy={busy}>
         <Icon name="upload" />
         {busy ? tr("Uploading…") : tr("Attach file")}
         <input type="file" className="sr-only" onChange={(e) => void upload(e.target.files?.[0])} disabled={busy} />
       </label>
+      )}
     </div>
   );
 }
