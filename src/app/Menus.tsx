@@ -253,6 +253,13 @@ function MenuForm({ start, taken, onClose, onSaved }: { start: MenuDraft; taken:
         <span className="mono">{d.color || tr("none")}</span>
         {d.color && <Button size="sm" onClick={() => set({ ...d, color: "" })}>{tr("No colour")}</Button>}
       </div>
+      <div className="stack">
+        <label className="check-field">
+          <input type="checkbox" checked={d.portal} onChange={(e) => set({ ...d, portal: e.target.checked })} />
+          {tr("Show it in the portal too")}
+        </label>
+        <p className="faint">{tr("Outside people whose portal role reaches one of its record types get it as their home. Needs the Studio app.")}</p>
+      </div>
       <fieldset style={box} className="stack">
         <legend className="field-label">{tr("Items, in order")}</legend>
         <p className="faint">{tr("Record types and reports. A record type with a tick also gets an entry in the + menu.")}</p>
