@@ -117,6 +117,7 @@ const words: Record<string, string> = {
   "Find a word": "ابحث عن كلمة",
   "Save {n} words": "حفظ {n} كلمة",
   "The workspace's words could not be read": "تعذّرت قراءة كلمات مساحة العمل",
+  "This workspace's own names": "أسماء مساحة العمل الخاصة بها",
   "Interface words": "كلمات الواجهة",
   "English": "الإنجليزية",
   "The interface's own": "ترجمة الواجهة",

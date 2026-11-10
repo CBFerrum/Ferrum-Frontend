@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, docPath, errorMessage, newKey } from "../lib/api";
 import { builtInWords, interfaceWords, LANGUAGES, t } from "../lib/i18n";
-import type { Doc, ListResponse } from "../lib/meta";
+import { useMetaIndex, type Doc, type EntityMeta, type ListResponse } from "../lib/meta";
 import { Button, EmptyState, Spinner, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -20,6 +20,27 @@ export interface AppWords {
   app: string;
   title: string;
   words: string[];
+}
+
+/** The group of the names the workspace gave its own entities, among the apps' groups. */
+const OWN = "~workspace";
+/** The most descriptions fetched for that group: a workspace with more made entities shows the first ones. */
+export const OWN_ENTITIES_CAP = 60;
+
+/**
+ * The names a workspace gave an entity it made itself (`package` "tenant" or `custom`): its labels,
+ * fields, choices, buttons, workflow and form sections. A packaged entity gives nothing: the
+ * description does not say which of its fields the workspace added.
+ */
+export function ownNames(m: Pick<EntityMeta, "package" | "custom" | "label" | "label_plural" | "fields" | "actions" | "workflow" | "form">): string[] {
+  if (m.package !== "tenant" && !m.custom) return [];
+  const out = [m.label, m.label_plural];
+  for (const f of m.fields ?? []) out.push(f.label, ...(f.options ?? []));
+  for (const a of m.actions ?? []) out.push(a.label, a.confirm ?? "", ...(a.params ?? []).flatMap((p) => [p.label, ...(p.options ?? [])]));
+  for (const s of m.workflow?.states ?? []) out.push(s.name);
+  for (const x of m.workflow?.transitions ?? []) out.push(x.action);
+  for (const s of m.form ?? []) out.push(s.label ?? "");
+  return out.filter(Boolean);
 }
 
 /** The workspace's words in `language`, by their English, every page of them. */
@@ -55,6 +76,18 @@ export function InterfaceWords() {
   const [find, setFind] = useState("");
   const [of, setOf] = useState("");
   const apps = useQuery({ queryKey: ["app-words"], queryFn: ({ signal }) => api.get<{ apps: AppWords[] }>("/api/shell/words", undefined, signal), staleTime: 60_000 });
+  const index = useMetaIndex();
+  const made = (index.data?.entities ?? []).filter((e) => e.package === "tenant" || e.custom).map((e) => e.name).slice(0, OWN_ENTITIES_CAP);
+  // Fetched when the group is opened: the description of each entity the workspace made.
+  const names = useQuery({
+    queryKey: ["own-entity-names", made],
+    enabled: of === OWN && !!made.length,
+    staleTime: 60_000,
+    queryFn: async ({ signal }) => {
+      const metas = await Promise.all(made.map((n) => api.get<EntityMeta>(`/api/meta/${encodeURIComponent(n)}`, undefined, signal).catch(() => null)));
+      return metas.flatMap((m) => (m ? ownNames(m) : []));
+    },
+  });
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const own = useQuery({ queryKey: ["interface-words", language], queryFn: ({ signal }) => ownWords(language, signal) });
@@ -63,10 +96,12 @@ export function InterfaceWords() {
   const asked = useQuery({ queryKey: ["interface-words-asked"], queryFn: interfaceWords, staleTime: Infinity });
   const builtIn = useMemo(() => catalog.data ?? {}, [catalog.data]);
   const words = useMemo(() => {
-    const all = of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : (asked.data ?? []);
+    const listed = new Set([...(asked.data ?? []), ...(apps.data?.apps ?? []).flatMap((a) => a.words)]);
+    const mine = [...new Set(names.data ?? [])].filter((w) => !listed.has(w)).sort((a, b) => a.localeCompare(b));
+    const all = of === OWN ? mine : of ? (apps.data?.apps.find((a) => a.app === of)?.words ?? []) : (asked.data ?? []);
     const q = find.trim().toLowerCase();
     return q ? all.filter((w) => w.toLowerCase().includes(q) || (builtIn[w] ?? "").toLowerCase().includes(q)) : all;
-  }, [find, builtIn, of, apps.data, asked.data]);
+  }, [find, builtIn, of, apps.data, asked.data, names.data]);
   const written = (w: string) => draft[w] ?? (typeof own.data?.get(w)?.words === "string" ? String(own.data.get(w)?.words) : "");
   const pending = Object.keys(draft).filter((w) => change(own.data?.get(w), draft[w]) !== null);
 
@@ -122,6 +157,7 @@ export function InterfaceWords() {
         />
         <select className="select" aria-label={t("Words of")} value={of} onChange={(e) => setOf(e.target.value)}>
           <option value="">{t("The interface")}</option>
+          <option value={OWN}>{t("This workspace's own names")}</option>
           {(apps.data?.apps ?? []).map((a) => (
             <option key={a.app} value={a.app}>
               {isolate(a.title)}
