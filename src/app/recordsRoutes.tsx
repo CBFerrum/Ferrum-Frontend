@@ -23,6 +23,7 @@ export const recordsRoutes: RouteObject[] = [
   { path: "r/:name", lazy: () => import("./ReportView").then((m) => ({ Component: m.ReportView })) },
   { path: "customize/new", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
   { path: "customize/:entity/design", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
+  { path: "customize/packs", lazy: () => import("./Packs").then((m) => ({ Component: m.PacksPage })) },
   { path: "customize/:entity?", lazy: () => import("./Customize").then((m) => ({ Component: m.CustomizePage })) },
   { path: "customize/:entity/form", lazy: () => import("./FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
   { path: "customize/:entity/workflow", lazy: () => import("./WorkflowDesigner").then((m) => ({ Component: m.WorkflowDesignerPage })) },
