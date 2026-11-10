@@ -7,7 +7,7 @@ export { cn, insideNativeDialog } from "../../../src/lib/utils";
 export { placed } from "../../../src/lib/placed";
 export { Markdown } from "../../../src/app/studio/dashboard/MarkdownView";
 export { goBack, PageHeader, useUnsavedGuard } from "../../../src/app/studio/dashboard/ui";
-export { AppIcon } from "./AppIcon";
+export { AppIcon, APP_ICON_NAMES } from "./AppIcon";
 export { FamilyNav } from "./FamilyNav";
 export { useLiveEntity, useLivePush, type LiveEvent } from "./live";
 export { useCanIntent, useShellTitle } from "./hooks";

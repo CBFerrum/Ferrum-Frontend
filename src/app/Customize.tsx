@@ -113,6 +113,9 @@ export function CustomizePage() {
               {tr("Buttons")}
             </Link>
           )}
+          <Link className="btn" to="/customize/menus">
+            {tr("Menus")}
+          </Link>
           <Link className="btn" to="/customize/packs">
             {tr("Packs")}
           </Link>
@@ -729,6 +732,12 @@ export function describeOp(op: Record<string, unknown>): string {
     }
     case "remove_action":
       return tr("Remove button {name}", { name: String(op.name) });
+    case "define_module": {
+      const m = op.module as { name?: string; label?: string } | undefined;
+      return tr("Menu: {label}", { label: m?.label || m?.name || "?" });
+    }
+    case "remove_module":
+      return tr("Remove menu {name}", { name: String(op.name) });
     case "set_print_template":
       return tr("Replace print template");
     default:

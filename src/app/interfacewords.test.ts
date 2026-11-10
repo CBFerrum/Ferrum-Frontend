@@ -1,7 +1,7 @@
 // What a save on Admin's Interface words page does with each word.
 
 import { describe, expect, it } from "vitest";
-import { change, ownNames } from "./InterfaceWords";
+import { change, ownMenuNames, ownNames } from "./InterfaceWords";
 
 describe("a word on the interface words page", () => {
   it("is made, changed, removed or left as it was", () => {
@@ -22,5 +22,11 @@ describe("the workspace's own names", () => {
   });
   it("are nothing from a packaged entity, whose added fields the description does not mark", () => {
     expect(ownNames({ ...base, package: "erp" })).toEqual([]);
+  });
+});
+
+describe("the workspace's own menus' names", () => {
+  it("are the labels and descriptions of its menus, not a package's modules", () => {
+    expect(ownMenuNames([{ package: "tenant", label: "Governance", description: "Risks" }, { package: "tenant", label: "Audit" }, { package: "crm", label: "CRM", description: "Sales" }])).toEqual(["Governance", "Risks", "Audit"]);
   });
 });
