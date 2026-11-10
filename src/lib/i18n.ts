@@ -133,6 +133,12 @@ const extra = new Map<string, Record<string, string>>();
 /** The workspace's own words in the page's language (its InterfaceWord records): over every catalog. */
 let workspace: Record<string, string> = {};
 
+/** A word of a list of words: its own entry only, so a record called "constructor" stays text. */
+const own = (words: Record<string, string>, key: string): string | undefined => (Object.hasOwn(words, key) ? words[key] : undefined);
+/** A name in the workspace's own words first, then the apps' names, then the interface's own words
+ *  (a field the workspace called "Status" reads as the interface's "Status" does). */
+const named = (text: string): string | undefined => own(workspace, text) ?? own(names, text) ?? own(catalog, text);
+
 /** The interface's catalog, an app's own over it, and the workspace's words over both. */
 function merge(): void {
   const base = baseLanguage(language);
@@ -159,13 +165,13 @@ export function addCatalog(tag: string, words: Record<string, string>): void {
  * filled with the name of a record, field, option or action is filled with its name in the language.
  */
 export function t(english: string, vars?: Record<string, string | number>): string {
-  const known = catalog[english] ?? names[english];
+  const known = own(catalog, english) ?? own(names, english);
   const text = known ?? english;
   const filled = vars
     ? text.replace(/\{(\w+)\}/g, (whole, key: string) => {
         if (!(key in vars)) return whole;
         const v = vars[key];
-        return typeof v === "string" ? (names[v] ?? v) : String(v);
+        return typeof v === "string" ? (named(v) ?? v) : String(v);
       })
     : text;
   // English left in a page that reads right to left keeps its own order (a sentence's full stop
@@ -183,8 +189,8 @@ export function isolate(text: string): string;
 export function isolate<T extends null | undefined>(text: string | T): string | T;
 export function isolate(text: string | null | undefined): string | null | undefined {
   if (!text) return text;
-  const named = names[text];
-  if (named !== undefined) return named;
+  const known = named(text);
+  if (known !== undefined) return known;
   return direction(language) === "rtl" ? `\u2068${text}\u2069` : text;
 }
 
