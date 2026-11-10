@@ -7,6 +7,8 @@ export interface FieldError {
   message: string;
   /** `[tableField, rowIndex]` for errors in child rows. */
   row?: [string, number];
+  /** `[[tableField, rowIndex], [subTableField, rowIndex]]` for errors in a line's own lines; `row` is then the line. */
+  path?: [string, number][];
 }
 
 export class ApiError extends Error {
@@ -52,7 +54,10 @@ export function parseApiError(status: number, body: unknown): ApiError {
   let message = typeof b.message === "string" && b.message ? b.message : fbMessage;
   const fields: FieldError[] = (Array.isArray(b.fields) ? b.fields : []).filter(isFieldError).map((f) => {
     const row = Array.isArray(f.row) && typeof f.row[0] === "string" && Number.isInteger(f.row[1]) ? f.row : undefined;
-    return row ? { field: f.field, message: f.message, row: [row[0], row[1]] } : { field: f.field, message: f.message };
+    if (!row) return { field: f.field, message: f.message };
+    const steps = Array.isArray(f.path) ? f.path : [];
+    const path = steps.length > 1 && steps.every((s) => Array.isArray(s) && typeof s[0] === "string" && Number.isInteger(s[1])) ? steps.map((s): [string, number] => [s[0], s[1]]) : undefined;
+    return path ? { field: f.field, message: f.message, row: [row[0], row[1]], path } : { field: f.field, message: f.message, row: [row[0], row[1]] };
   });
   const errorId = typeof b.error_id === "string" ? b.error_id : undefined;
   if (errorId) message = `${message} (reference ${errorId})`;
@@ -74,7 +79,7 @@ export function isStale(e: unknown): e is ApiError {
 export function errorMessage(e: unknown, withFields = true): string {
   if (e instanceof ApiError) {
     if (withFields && e.fields.length) {
-      const detail = e.fields.map((f) => (f.row ? `row ${f.row[1] + 1} ${f.field}` : f.field) + `: ${f.message}`).join("; ");
+      const detail = e.fields.map((f) => (f.path ? `${f.path.map(([t, i]) => `${t} row ${i + 1}`).join(" ")} ${f.field}` : f.row ? `row ${f.row[1] + 1} ${f.field}` : f.field) + `: ${f.message}`).join("; ");
       return `${e.message} — ${detail}`;
     }
     return e.message;

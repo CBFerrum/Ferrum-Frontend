@@ -19,6 +19,7 @@ import {
 } from "react";
 import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
+import { asRows } from "../lib/doc";
 import { t } from "../lib/i18n";
 import { stateTone, stateWords } from "../lib/targetDraft";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
@@ -669,6 +670,11 @@ function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches);
 }
 
+/** The edited cell of a lines grid; for a cell in a line's own lines, `field` is that table and `sub` the cell in it. */
+export type GridCell = { row: number; field: string; sub?: { row: number; field: string } };
+
+const countText = (n: number) => (n === 1 ? tr("1 row") : tr("{value} rows", { value: n }));
+
 export function TableGrid({
   child,
   rows,
@@ -680,11 +686,12 @@ export function TableGrid({
   precisionOf,
   entity,
   recordId,
+  within,
 }: {
   child: ChildTable;
   rows: Doc[];
   /** `cell` names the edited cell so its error can be cleared; structural edits omit it. */
-  onChange: (rows: Doc[], cell?: { row: number; field: string }) => void;
+  onChange: (rows: Doc[], cell?: GridCell) => void;
   locked: boolean;
   errors: FieldError[];
   parent: Doc;
@@ -692,14 +699,27 @@ export function TableGrid({
   precisionOf: (f: Field, row: Doc) => number | undefined;
   entity: string;
   recordId?: string;
+  /** Set on the grid of a line's own lines: which line it belongs to ("Tests, row 1"). It has no lines of its own to edit. */
+  within?: string;
 }) {
   const gridId = useId();
+  const name = within ? tr("{within}: {label}", { within, label: child.label }) : child.label;
   // Phones get one card per row (same breakpoint as records.css) and edit in the row dialog.
   const phone = useMediaQuery("(max-width: 720px)");
   const [editing, setEditing] = useState<number | null>(null);
   const visible = child.fields.filter((f) => f.can_read === true && !f.hidden && f.type !== "table");
   const listed = visible.filter((f) => f.in_list);
   const cols = listed.length ? listed : visible.slice(0, 5);
+  // A line's own table shows as a count in the grid and is edited in the row's dialog.
+  const subs = within ? [] : child.fields.filter((f) => f.type === "table" && f.can_read === true && !f.hidden && child.children?.[f.name]);
+  const span = cols.length + subs.length + 2;
+  const ownErrors = (i: number) => errors.filter((e) => e.row?.[1] === i && !e.path);
+  const subErrors = (i: number) => errors.filter((e) => e.row?.[1] === i && e.path);
+  const subLabel = (name: string) => subs.find((f) => f.name === name)?.label ?? humanize(name);
+  const subFieldLabel = (table: string, field: string) => child.children?.[table]?.fields.find((f) => f.name === field)?.label ?? humanize(field);
+  // Where an error in a line's own lines is, said on the line: "Evidence, row 2, Title: is required".
+  const subText = (e: FieldError) =>
+    e.path ? `${tr("{meta} row {value}, {value2}", { meta: subLabel(e.path[1][0]), value: e.path[1][1] + 1, value2: subFieldLabel(e.path[1][0], e.field) })} ${e.message}` : e.message;
   const cellId = (i: number, f: string) => `${gridId}-${i}-${f}`;
   // Focus moves after the re-render that creates/moves the row (not rAF: paused in background tabs).
   const pendingFocus = useRef<string | null>(null);
@@ -745,6 +765,37 @@ export function TableGrid({
     }
   };
   const labelOf = (name: string) => child.fields.find((f) => f.name === name)?.label ?? humanize(name);
+  // A failed save opens the dialog of a line whose own lines are wrong (FormView clicks `data-reveal`): land on the field.
+  useEffect(() => {
+    if (editing !== null) document.querySelector<HTMLElement>('dialog[open] [aria-invalid="true"]')?.focus();
+  }, [editing]);
+  const subTable = (f: Field, i: number) => {
+    const r = rows[i];
+    const sub = child.children![f.name];
+    const st = fieldState(f, { doc: r, parent, user }, locked);
+    const lineName = tr("{label}, row {value}", { label: child.label, value: i + 1 });
+    const subErrs = errors.filter((e) => e.row?.[1] === i && e.path?.[1][0] === f.name).map((e): FieldError => ({ field: e.field, message: e.message, row: [f.name, e.path![1][1]] }));
+    return (
+      <div key={f.name} className="field span-all" role="group" aria-labelledby={`${gridId}-dlg-${f.name}-label`}>
+        <div className="field-label" id={`${gridId}-dlg-${f.name}-label`}>
+          {isolate(f.label)}
+        </div>
+        <TableGrid
+          child={sub}
+          rows={asRows(r[f.name])}
+          onChange={(next, cell) => onChange(rows.map((x, j) => (j === i ? { ...x, [f.name]: next } : x)), cell && { row: i, field: f.name, sub: cell })}
+          locked={st.disabled}
+          errors={subErrs}
+          parent={parent}
+          user={user}
+          precisionOf={precisionOf}
+          entity={entity}
+          recordId={recordId}
+          within={lineName}
+        />
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -752,9 +803,10 @@ export function TableGrid({
         {phone ? (
           rows.length ? (
             // List semantics stated explicitly: Safari drops them for unstyled lists.
-            <ol className="grid-cards" role="list" aria-label={isolate(child.label)}>
+            <ol className="grid-cards" role="list" aria-label={isolate(name)}>
               {rows.map((r, i) => {
-                const errs = errors.filter((e) => e.row?.[1] === i);
+                const errs = ownErrors(i);
+                const subErrs = subErrors(i);
                 const errId = `${gridId}-${i}-errors`;
                 return (
                   <li key={rowKey(r, i)} className="grid-card">
@@ -771,14 +823,20 @@ export function TableGrid({
                             </div>
                           ),
                       )}
+                      {subs.map((f) => (
+                        <div key={f.name}>
+                          <dt>{isolate(f.label)}</dt>
+                          <dd>{countText(asRows(r[f.name]).length)}</dd>
+                        </div>
+                      ))}
                     </dl>
-                    {errs.length > 0 && (
+                    {errs.length + subErrs.length > 0 && (
                       <p className="field-error" id={errId}>
-                        {isolate(errs.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · "))}
+                        {isolate([...errs.map((e) => `${labelOf(e.field)} ${e.message}`), ...subErrs.map(subText)].join(" · "))}
                       </p>
                     )}
                     <div className="grid-card-actions">
-                      <Button aria-label={(locked ? tr("View row {value2}", { value2: i + 1 }) : tr("Edit row {value2}", { value2: i + 1 }))} aria-describedby={errs.length ? errId : undefined} onClick={() => setEditing(i)}>
+                      <Button aria-label={(locked ? tr("View row {value2}", { value2: i + 1 }) : tr("Edit row {value2}", { value2: i + 1 }))} aria-describedby={errs.length + subErrs.length ? errId : undefined} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                         {locked ? tr("View") : tr("Edit")}
                       </Button>
                       {!locked && (
@@ -803,7 +861,7 @@ export function TableGrid({
             <p className="grid-empty">{t("No rows yet.")}</p>
           )
         ) : (
-          <table className="grid" aria-label={isolate(child.label)}>
+          <table className="grid" aria-label={isolate(name)}>
             <thead>
               <tr>
                 <th className="grid-idx" scope="col">
@@ -819,6 +877,11 @@ export function TableGrid({
                     )}
                   </th>
                 ))}
+                {subs.map((f) => (
+                  <th key={f.name} scope="col">
+                    {isolate(f.label)}
+                  </th>
+                ))}
                 <th scope="col">
                   <span className="sr-only">{t("Row actions")}</span>
                 </th>
@@ -826,7 +889,8 @@ export function TableGrid({
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                const errs = errors.filter((e) => e.row?.[1] === i);
+                const errs = ownErrors(i);
+                const subErrs = subErrors(i);
                 const other = errs.filter((e) => !cols.some((c) => c.name === e.field));
                 const scope = { doc: r, parent, user };
                 return (
@@ -863,8 +927,20 @@ export function TableGrid({
                           </td>
                         );
                       })}
+                      {subs.map((f) => (
+                        <td key={f.name}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={tr("{within}: {label}", { within: tr("{label}, row {value}", { label: f.label, value: i + 1 }), label: countText(asRows(r[f.name]).length) })}
+                            onClick={() => setEditing(i)}
+                          >
+                            {countText(asRows(r[f.name]).length)}
+                          </Button>
+                        </td>
+                      ))}
                       <td className="grid-actions">
-                        <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Show all fields of row {value}", { value: i + 1 })} title={tr("All fields")} onClick={() => setEditing(i)}>
+                        <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Show all fields of row {value}", { value: i + 1 })} title={tr("All fields")} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                           <Icon name="expand" size={14} />
                         </button>
                         {!locked && (
@@ -888,10 +964,10 @@ export function TableGrid({
                         )}
                       </td>
                     </tr>
-                    {other.length > 0 && (
+                    {other.length + subErrs.length > 0 && (
                       <tr className="row-errors">
-                        <td colSpan={cols.length + 2}>
-                          {tr("Row")} {i + 1}: {isolate(other.map((e) => `${labelOf(e.field)} ${e.message}`).join(" · "))}
+                        <td colSpan={span}>
+                          {tr("Row")} {i + 1}: {isolate([...other.map((e) => `${labelOf(e.field)} ${e.message}`), ...subErrs.map(subText)].join(" · "))}
                         </td>
                       </tr>
                     )}
@@ -900,7 +976,7 @@ export function TableGrid({
               })}
               {!rows.length && (
                 <tr>
-                  <td colSpan={cols.length + 2} className="grid-empty">
+                  <td colSpan={span} className="grid-empty">
                     {t("No rows yet.")}
                   </td>
                 </tr>
@@ -920,7 +996,7 @@ export function TableGrid({
       <Dialog
         open={editing !== null && !!rows[editing]}
         onClose={() => setEditing(null)}
-        title={tr("{label} — row {value}", { label: child.label, value: (editing ?? 0) + 1 })}
+        title={tr("{label} — row {value}", { label: name, value: (editing ?? 0) + 1 })}
         wide
         footer={
           <Button variant="primary" onClick={() => setEditing(null)}>
@@ -934,7 +1010,7 @@ export function TableGrid({
               const r = rows[editing];
               const st = fieldState(f, { doc: r, parent, user }, locked);
               if (!st.visible) return null;
-              const err = errors.find((e) => e.row?.[1] === editing && e.field === f.name);
+              const err = ownErrors(editing).find((e) => e.field === f.name);
               const fid = `${gridId}-dlg-${f.name}`;
               const control = (
                 <FieldControl
@@ -965,6 +1041,7 @@ export function TableGrid({
                 </FieldWrap>
               );
             })}
+            {subs.map((f) => subTable(f, editing))}
           </div>
         )}
       </Dialog>
