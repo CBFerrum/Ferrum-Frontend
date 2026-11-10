@@ -17,6 +17,7 @@ import { Alert, Button, Dialog, ErrorState, Field, toast } from "../ui/kit";
 import { ExprInput } from "./author/ExprInput";
 import { FilterRows, grow, optionsOf, Pick, Tools, wrap } from "./author/controls";
 import { useRoleNames } from "./author/RoleSelect";
+import { InvokeCard, useCapabilities } from "./author/InvokeCard";
 
 /** Rows of field → expression. */
 function Rows({ rows, fields, onChange, what }: { rows: Row[]; fields: MetaField[]; onChange: (r: Row[]) => void; what: string }) {
@@ -104,10 +105,10 @@ export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: 
   );
 }
 
-export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), raw: tr("Other action") });
+export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), raw: tr("Other action") });
 
-export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity }: {
-  error?: string; entity: string;
+export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false }: {
+  error?: string; entity: string; owner?: string; inButton?: boolean;
   a: DraftAction; index: number; count: number; entities: { value: string; label: string }[]; chips: MetaField[]; fields: MetaField[];
   onChange: (patch: Partial<DraftAction>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; flagged: boolean;
 }) {
@@ -275,6 +276,8 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
           </>
         )}
+        {index > 0 && (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked") && <p className="faint">{tr("Values can also use results[n]: what the earlier steps made, n counting from 0.")}</p>}
+        {a.kind === "invoke" && <InvokeCard a={a} index={index} owner={owner} inButton={inButton} chips={chips} onChange={patch} />}
         {a.kind === "raw" && (
           <>
             <p className="faint">{tr("The editor has no form for this action. It is kept exactly as it is; change it under Edit as JSON.")}</p>
@@ -451,6 +454,7 @@ export function AddActions({ count, max, onAdd }: { count: number; max: number; 
     [tr("Create a record"), () => ({ key: newKey(), kind: "create_document", entity: "", rows: row() })],
     [tr("Change the record a link names"), () => ({ key: newKey(), kind: "update_linked", link: "", rows: [] })],
     [tr("Notify"), () => ({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })],
+    [tr("Do a step of another app"), () => ({ key: newKey(), kind: "invoke", capability: "", rows: [], once: false, onceKey: "", extra: {} })],
     [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
   ];
   return (
@@ -478,7 +482,8 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
   const submittable = meta.data?.submittable ?? index.data?.entities.find((e) => e.name === draft.entity)?.submittable ?? true;
   const chips = fields.filter((f) => f.type !== "table");
   const entities = [...(index.data?.entities ?? [])].sort((a, b) => a.label.localeCompare(b.label)).map((e) => ({ value: e.name, label: e.label }));
-  const ctx = { submittable, fields };
+  const caps = useCapabilities(draft.actions.some((a) => a.kind === "invoke"));
+  const ctx = { submittable, fields, capabilities: caps.data?.capabilities };
 
   const set = (d: Draft) => {
     setDraft(d);
@@ -630,6 +635,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
                 flagged={flagged.has(a.key)}
                 error={refusal?.actions.get(i)}
                 entity={draft.entity}
+                owner={draft.name}
                 onChange={(p) => patchAction(a.key, p)}
                 onMove={(by) => set({ ...draft, actions: move(draft.actions, i, by) })}
                 onRemove={() => set({ ...draft, actions: draft.actions.filter((x) => x.key !== a.key) })}

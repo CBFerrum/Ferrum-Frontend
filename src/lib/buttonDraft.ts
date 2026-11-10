@@ -4,7 +4,7 @@
 // person did not touch. `checkButton` says in words what would not work; what the server refuses is shown as it words it.
 
 import { t as tr } from "@ferrum/client";
-import { actionJson, checkActions, fromAction as fromEffect, newKey, type DraftAction, type Problem } from "./automationDraft";
+import { actionJson, checkActions, fromAction as fromEffect, newKey, type Capability, type DraftAction, type Problem } from "./automationDraft";
 import { fieldName } from "./entityDraft";
 
 export type Raw = Record<string, unknown>;
@@ -148,7 +148,7 @@ export interface ButtonProblem extends Problem {
 }
 
 /** What is wrong with a draft, in words a person who is not a developer follows. `taken`: names of the actions the entity has. */
-export function checkButton(d: ButtonDraft, taken: string[], packaged: boolean): ButtonProblem[] {
+export function checkButton(d: ButtonDraft, taken: string[], packaged: boolean, catalog?: Capability[]): ButtonProblem[] {
   const out: ButtonProblem[] = [];
   const say = (message: string, row?: string) => out.push({ message, row });
   if (!d.label.trim()) say(tr("Give the button a label."));
@@ -171,7 +171,7 @@ export function checkButton(d: ButtonDraft, taken: string[], packaged: boolean):
     if (p.type === "select" && !p.options.some((o) => o.trim())) at(tr("list the choices."));
     if (p.type === "link" && !p.to) at(tr("choose what it links to."));
   });
-  out.push(...checkActions(d.effects, MAX_EFFECTS).map((p) => ({ ...p, message: p.message === tr("Add at least one action.") ? tr("Add at least one thing the button does.") : p.message })));
+  out.push(...checkActions(d.effects, MAX_EFFECTS, catalog).map((p) => ({ ...p, message: p.message === tr("Add at least one action.") ? tr("Add at least one thing the button does.") : p.message })));
   return out;
 }
 
