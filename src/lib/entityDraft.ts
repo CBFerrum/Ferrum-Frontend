@@ -240,6 +240,23 @@ export function fromDef(def: Raw, children: Record<string, Raw>, taken: string[]
   return { taken, entity: entityFrom(def, children) };
 }
 
+/** The definitions of the entities that hold a definition's lines, and their lines' lines (two levels, no more),
+ *  by name, as `fromDef` takes them; `find` looks one up. */
+export function gatherLines(def: Raw, find: (name: string) => Raw | null | undefined): Record<string, Raw> {
+  const out: Record<string, Raw> = {};
+  const walk = (d: Raw, depth: number) => {
+    for (const f of (d.fields as Raw[] | undefined) ?? []) {
+      const of = f.type === "table" ? str(f.of) : "";
+      const child = of && !(of in out) ? find(of) : null;
+      if (!child) continue;
+      out[of] = child;
+      if (depth < 1) walk(child, depth + 1);
+    }
+  };
+  walk(def, 0);
+  return out;
+}
+
 const bool = (o: Raw, k: string, v: boolean) => void (v && (o[k] = true));
 const text = (o: Raw, k: string, v: string) => void (v.trim() && (o[k] = v.trim()));
 const whole = (v: string) => (v.trim() && Number.isFinite(Number(v)) ? Number(v) : undefined);
@@ -320,18 +337,23 @@ export interface DefOf {
   def: Raw;
 }
 
-/** Every entity the draft makes or changes, the entities that hold lines first (they are defined before their parent). */
+/** Every entity the draft makes or changes: the entities that hold lines of lines first, then those that hold lines,
+ *  then the record's (each is defined before its parent). */
 export function entityDefs(d: Draft): DefOf[] {
-  const e = d.entity;
-  const names = linesNames(e, d.taken);
-  const children = e.fields
-    .filter((f) => f.lines && !f.lines.extra.__missing)
-    .map((f) => {
-      const c = f.lines as DraftEntity;
-      const child: DraftEntity = c.saved ? c : { ...c, name: names[f.key], label: `${e.label.trim()} ${f.label.trim()}`.trim() };
-      return { name: child.name, label: child.label || f.label, lines: true, def: entityDef(child, {}) };
-    });
-  return [...children, { name: e.name, label: e.label, lines: false, def: entityDef(e, names) }];
+  const used = [...d.taken];
+  const out: DefOf[] = [];
+  const walk = (e: DraftEntity, lines: boolean, fallback: string) => {
+    const names = linesNames(e, used);
+    used.push(...Object.values(names));
+    for (const f of e.fields) {
+      if (!f.lines || f.lines.extra.__missing) continue;
+      const c = f.lines;
+      walk(c.saved ? c : { ...c, name: names[f.key], label: `${e.label.trim()} ${f.label.trim()}`.trim() }, true, f.label);
+    }
+    out.push({ name: e.name, label: e.label || fallback, lines, def: entityDef(e, names) });
+  };
+  walk(d.entity, false, "");
+  return out;
 }
 
 /** The definitions as saved, keyed by name, for `buildBatch` to tell what changed. */
@@ -368,13 +390,17 @@ export function buildBatch(d: Draft, saved: Record<string, string> = {}, note = 
 
 /** The draft after a save: everything in it is now on the server. */
 export function markSaved(d: Draft): Draft {
-  const names = linesNames(d.entity, d.taken);
-  const entity = (e: DraftEntity, name: string): DraftEntity => ({
-    ...e, saved: true, name, nameTouched: true,
-    fields: e.fields.map((f) => ({ ...f, saved: true, savedType: f.type, nameTouched: true, lines: f.lines && !f.lines.extra.__missing ? entity(f.lines, names[f.key] ?? f.lines.name) : f.lines })),
-  });
+  const taken = [...d.taken, d.entity.name];
+  const entity = (e: DraftEntity, name: string): DraftEntity => {
+    const named = { ...e, name };
+    const names = linesNames(named, taken);
+    taken.push(...Object.values(names));
+    return {
+      ...named, saved: true, nameTouched: true,
+      fields: named.fields.map((f) => ({ ...f, saved: true, savedType: f.type, nameTouched: true, lines: f.lines && !f.lines.extra.__missing ? entity(f.lines, names[f.key] ?? f.lines.name) : f.lines })),
+    };
+  };
   const e = entity(d.entity, d.entity.name);
-  const taken = [...d.taken, e.name, ...Object.values(names)];
   return { taken, entity: e };
 }
 
@@ -443,7 +469,6 @@ export function checkDraft(d: Draft): Problem[] {
     if (!(e.numbering.digits >= 1 && e.numbering.digits <= 12)) add(tr("Numbers have between 1 and 12 digits."), "");
     if (/[{}]/.test(e.numbering.prefix)) add(tr("The start of a number cannot contain curly brackets."), "");
   }
-  const tables = e.fields.filter((f) => f.type === "table");
   const checkEntity = (x: DraftEntity, scope: string, label: string) => {
     const seen = new Set<string>();
     const shown = (f: DraftField) => f.label.trim() || f.name || tr("a field with no label");
@@ -465,7 +490,7 @@ export function checkDraft(d: Draft): Problem[] {
       if (f.type === "table") {
         const rows = f.lines;
         if (!rows || rows.extra.__missing) add(tr("The lines “{lines}” could not be read: its definition is missing.", { lines: shown(f) }), scope, f.key);
-        else if (!rows.fields.length) add(tr("The lines “{lines}” need at least one field.", { lines: shown(f) }), f.key);
+        else if (!rows.fields.length) add(tr("The lines “{lines}” need at least one field.", { lines: shown(f) }), scope ? `${scope}/${f.key}` : f.key);
       }
     }
     if (x.title && !x.fields.some((f) => f.key === x.title)) add(tr("The title field of {entity} is not one of its fields.", { entity: label }), scope);
@@ -477,28 +502,34 @@ export function checkDraft(d: Draft): Problem[] {
       else if (groups.has([...keys].sort().join())) add(tr("The same unique combination is listed twice."), scope);
       groups.add([...keys].sort().join());
     }
+    for (const f of x.fields.filter((o) => o.rollup)) {
+      const r = f.rollup as NonNullable<DraftField["rollup"]>;
+      const shown = f.label.trim() || f.name;
+      const table = x.fields.find((t) => t.type === "table" && t.key === r.table);
+      if (!table) add(tr("The total {field} needs a lines table to add up.", { field: shown }), scope, f.key);
+      else if (r.op === "sum") {
+        const row = table.lines?.fields.find((l) => l.key === r.field);
+        if (!row) add(tr("The total {field} needs a field of {lines} to add up.", { field: shown, lines: table.label.trim() || "…" }), scope, f.key);
+        else if (!isNumeric(row.type)) add(tr("The total {field} adds up “{row}”, which is not a number.", { field: shown, row: row.label.trim() || row.name }), scope, f.key);
+      }
+      if (!isNumeric(f.type)) add(tr("The total {field} must be a number.", { field: shown }), scope, f.key);
+    }
   };
   checkEntity(e, "", e.label.trim() || tr("this entity"));
   const sharing = new Map<string, number>();
-  for (const f of tables) {
-    if (f.lines?.extra.__missing) continue;
-    if (f.lines?.saved) sharing.set(f.lines.name, (sharing.get(f.lines.name) ?? 0) + 1);
-    if (f.lines) checkEntity(f.lines, f.key, f.label.trim() || tr("the lines"));
-    if (f.lines && f.lines.fields.some((l) => l.type === "table")) add(tr("The lines “{lines}” cannot hold lines of their own.", { lines: f.label.trim() || "…" }), f.key);
-  }
-  for (const [name, n] of sharing) if (n > 1) add(tr("{name} is the lines of {n} tables: each lines table needs its own.", { name, n }), "");
-  for (const f of e.fields.filter((x) => x.rollup)) {
-    const r = f.rollup as NonNullable<DraftField["rollup"]>;
-    const shown = f.label.trim() || f.name;
-    const table = tables.find((t) => t.key === r.table);
-    if (!table) add(tr("The total {field} needs a lines table to add up.", { field: shown }), "", f.key);
-    else if (r.op === "sum") {
-      const row = table.lines?.fields.find((l) => l.key === r.field);
-      if (!row) add(tr("The total {field} needs a field of {lines} to add up.", { field: shown, lines: table.label.trim() || "…" }), "", f.key);
-      else if (!isNumeric(row.type)) add(tr("The total {field} adds up “{row}”, which is not a number.", { field: shown, row: row.label.trim() || row.name }), "", f.key);
+  // Lines, and their lines: two levels, so lines of lines hold no table.
+  const walk = (x: DraftEntity, scope: string, depth: number) => {
+    for (const f of x.fields.filter((o) => o.type === "table")) {
+      if (!f.lines || f.lines.extra.__missing) continue;
+      const inner = scope ? `${scope}/${f.key}` : f.key;
+      if (f.lines.saved) sharing.set(f.lines.name, (sharing.get(f.lines.name) ?? 0) + 1);
+      checkEntity(f.lines, inner, f.label.trim() || tr("the lines"));
+      if (depth >= 1 && f.lines.fields.some((l) => l.type === "table")) add(tr("The lines “{lines}” cannot hold lines of their own.", { lines: f.label.trim() || "…" }), inner);
+      else walk(f.lines, inner, depth + 1);
     }
-    if (!isNumeric(f.type)) add(tr("The total {field} must be a number.", { field: shown }), "", f.key);
-  }
+  };
+  walk(e, "", 0);
+  for (const [name, n] of sharing) if (n > 1) add(tr("{name} is the lines of {n} tables: each lines table needs its own.", { name, n }), "");
   return out;
 }
 

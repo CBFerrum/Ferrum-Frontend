@@ -3995,6 +3995,14 @@ const words: Record<string, string> = {
   "choose the table field that holds the lines.": "اختر حقل الجدول الذي يحتوي على الأسطر.",
   "say which line to change.": "حدّد أي سطر يجب تغييره.",
   "add at least one line field to fill in.": "أضف حقل سطر واحدًا على الأقل لتعبئته.",
+  "Add lines of lines": "إضافة أسطر داخل الأسطر",
+  "Each line can hold rows of its own, such as the evidence of a test. They go one level down and no further.": "يمكن لكل سطر أن يحمل صفوفًا خاصة به، مثل أدلة اختبار ما. تنزل مستوى واحدًا ولا أكثر.",
+  "Lines of lines in {name}": "أسطر داخل أسطر {name}",
+  "Lines of lines": "أسطر داخل الأسطر",
+  "{meta}, row {value}, {sub}, row {value2}": "{meta}، الصف {value}، {sub}، الصف {value2}",
+  "table of {value}, each with {inner}": "جدول {value}، لكل منها {inner}",
+  "1 row": "صف واحد",
+  "{within}: {label}": "{within}: {label}",
 };
 
 export default words;

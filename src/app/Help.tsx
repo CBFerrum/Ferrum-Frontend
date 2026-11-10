@@ -168,7 +168,7 @@ export function HelpArticle() {
         <>
           <h2>{tr("Its tables")}</h2>
           <ul>
-            {Object.values(meta.children).map((c) => (
+            {Object.values(meta.children).flatMap((c) => [c, ...Object.values(c.children ?? {})]).map((c) => (
               <li key={c.entity}>
                 <strong>{isolate(c.label)}</strong>: {isolate(c.fields.filter((f) => !f.hidden).map((f) => f.label).join(", "))}
               </li>
