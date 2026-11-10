@@ -78,6 +78,7 @@ const pages: Record<string, RouteObject[]> = {
     // Customize, for every workspace on the shell, with ERP or without.
     { path: "customize/new", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
     { path: "customize/:entity/design", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
+    { path: "customize/packs", lazy: () => import("@/app/Packs").then((m) => ({ Component: m.PacksPage })) },
     { path: "customize/:entity?", lazy: () => import("@/app/Customize").then((m) => ({ Component: m.CustomizePage })) },
     { path: "customize/:entity/form", lazy: () => import("@/app/FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },
     { path: "customize/:entity/workflow", lazy: () => import("@/app/WorkflowDesigner").then((m) => ({ Component: m.WorkflowDesignerPage })) },

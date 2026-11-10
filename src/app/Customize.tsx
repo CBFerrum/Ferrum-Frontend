@@ -105,6 +105,9 @@ export function CustomizePage() {
               {tr("Design workflow")}
             </Link>
           )}
+          <Link className="btn" to="/customize/packs">
+            {tr("Packs")}
+          </Link>
           <ChangeSet />
         </div>
       </div>
@@ -290,7 +293,8 @@ function ChangeSet() {
     }
   };
   return (
-    <>
+    <div className="row" role="group" aria-label={tr("Only the customizations")} style={{ gap: 8, flexWrap: "wrap" }}>
+      <span className="muted">{tr("Only the customizations")}</span>
       <Button icon="download" onClick={() => void exportSet()}>
         {tr("Export")}
       </Button>
@@ -308,7 +312,7 @@ function ChangeSet() {
           e.target.value = "";
         }}
       />
-    </>
+    </div>
   );
 }
 
