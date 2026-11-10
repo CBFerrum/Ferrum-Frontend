@@ -3977,6 +3977,8 @@ const words: Record<string, string> = {
   "give “{name}” a value.": "أعطِ «{name}» قيمة.",
   "“{name}” is not something {id} takes.": "«{name}» ليس مدخلًا تقبله {id}.",
   "write the key that makes it happen once.": "اكتب المفتاح الذي يجعلها تحدث مرة واحدة.",
+  "Nothing changed": "لم يتغير شيء",
+  "Time counts only while the calendar is open: a day here is 24 open hours, not a working day.": "يُحتسب الوقت فقط أثناء فتح التقويم: اليوم هنا 24 ساعة مفتوحة، وليس يوم عمل.",
 };
 
 export default words;

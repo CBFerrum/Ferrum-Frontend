@@ -3977,6 +3977,8 @@ const words: Record<string, string> = {
   "give “{name}” a value.": "“{name}” को एक मान दें।",
   "“{name}” is not something {id} takes.": "“{name}” कोई ऐसी चीज़ नहीं जो {id} लेता है।",
   "write the key that makes it happen once.": "वह कुंजी लिखें जिससे यह एक ही बार हो।",
+  "Nothing changed": "कुछ नहीं बदला",
+  "Time counts only while the calendar is open: a day here is 24 open hours, not a working day.": "समय तभी गिना जाता है जब कैलेंडर खुला हो: यहाँ एक दिन 24 खुले घंटे है, एक कार्य दिवस नहीं।",
 };
 
 export default words;

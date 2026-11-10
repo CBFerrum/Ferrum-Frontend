@@ -45,7 +45,8 @@ export function useApplyAll(entity: string) {
 
 /** Why a batch was refused: the server's words, and which operation (by place) it names, if it says. */
 export class BatchRefused extends Error {
-  constructor(message: string, readonly index: number | null) {
+  /** `unchanged`: the one operation sent is already what the workspace has, so there was nothing to save. */
+  constructor(message: string, readonly index: number | null, readonly unchanged = false) {
     super(message);
   }
 }
@@ -58,7 +59,8 @@ export async function postBatch(ops: { entity: string; op: Op; note?: string }[]
   } catch (e) {
     const body = errorBody(e);
     const index = typeof body?.index === "number" ? body.index : null;
-    throw new BatchRefused(typeof body?.message === "string" && body.message ? body.message : errorMessage(e), index);
+    const message = typeof body?.message === "string" && body.message ? body.message : errorMessage(e);
+    throw new BatchRefused(message, index, ops.length === 1 && /nothing would change$/.test(message));
   }
 }
 

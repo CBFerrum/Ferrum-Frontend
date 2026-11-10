@@ -202,6 +202,10 @@ function TargetForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: 
       toast(d.saved ? tr("Target saved") : tr("Target created"));
       onClose();
     } catch (e) {
+      if (e instanceof BatchRefused && e.unchanged) {
+        toast(tr("Nothing changed"));
+        return onClose();
+      }
       setRefusal(e instanceof BatchRefused ? e.message : errorMessage(e));
     } finally {
       setBusy(false);
@@ -299,7 +303,7 @@ function TargetForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: 
         )}
       </fieldset>
 
-      <Field label={tr("Counted in")} htmlFor="tg-calendar" hint={!calendars.data?.length && !calendars.isLoading ? tr("No business calendar yet: time counts as plain elapsed time. Calendars are made under Administration, Calendars.") : undefined}>
+      <Field label={tr("Counted in")} htmlFor="tg-calendar" hint={!calendars.data?.length && !calendars.isLoading ? tr("No business calendar yet: time counts as plain elapsed time. Calendars are made under Administration, Calendars.") : d.calendar ? tr("Time counts only while the calendar is open: a day here is 24 open hours, not a working day.") : undefined}>
         <select id="tg-calendar" className="select" value={d.calendar} onChange={(e) => set({ ...d, calendar: e.target.value })}>
           <option value="">{tr("Plain time")}</option>
           {(calendars.data ?? []).map((c) => <option key={c.name} value={c.name}>{isolate(c.name)}</option>)}
@@ -308,11 +312,11 @@ function TargetForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: 
       </Field>
 
       <div className="stack">
-        <WhenInput value={d.startWhen} fields={fields} words={STARTS()} onChange={(startWhen) => set({ ...d, startWhen })} />
+        <WhenInput optional value={d.startWhen} fields={fields} words={STARTS()} onChange={(startWhen) => set({ ...d, startWhen })} />
         <p className="faint">{tr("Leave it empty to start the clock when the record is created.")}</p>
       </div>
       <div className="stack">
-        <WhenInput value={d.pauseWhen} fields={fields} words={PAUSES()} onChange={(pauseWhen) => set({ ...d, pauseWhen })} />
+        <WhenInput optional value={d.pauseWhen} fields={fields} words={PAUSES()} onChange={(pauseWhen) => set({ ...d, pauseWhen })} />
         <p className="faint">{tr("Optional: while it holds the clock is stopped, and the time left is kept.")}</p>
       </div>
       <WhenInput value={d.metWhen} fields={fields} words={MET()} onChange={(metWhen) => set({ ...d, metWhen })} />
