@@ -128,6 +128,9 @@ describe("a workspace's own words", () => {
     expect(t("New {entity}", { entity: "Membership" })).toBe("\u2068New عضوية\u2069");
     applyLocale({ language: "ar", words: {} }, undefined);
     expect(isolate("Membership")).toBe("عضوية التطبيق");
+    // A name the interface has a word for reads as that word.
+    addCatalog("ar", { Status: "الحالة" });
+    expect(isolate("Status")).toBe("الحالة");
   });
 
   it("stand over the catalog's in the page's language, and give the words it lacks", async () => {
