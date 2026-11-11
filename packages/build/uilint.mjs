@@ -40,7 +40,8 @@ function walk(dir, root, out) {
 /** A token file defines the palette in a :root block. */
 const isTokenFile = (text) => /:root\s*\{/.test(text) && /--bg\s*:/.test(text) && /--surface\s*:/.test(text);
 
-const px = (n, unit) => (unit === "rem" || unit === "em" ? n * 16 : n);
+// The kit's root is 14px (87.5%, docs/design/FOUNDATIONS.md), so 0.8rem renders 11.2px; em is taken against body text.
+const px = (n, unit) => (unit === "rem" || unit === "em" ? n * 14 : n);
 
 /** Findings for one file's text: [{ rule, line, text }], before allow comments. */
 function scan(file, text, app) {
