@@ -31,6 +31,16 @@
   }
 }
 
+/* Editing is a mode you can see: the grid has its own dashed frame and every widget a dashed edge, a drag handle and a resize corner. */
+.dash-edit {
+  outline: 1px dashed var(--border-strong);
+  outline-offset: 6px;
+  border-radius: var(--radius);
+}
+.dash-edit .react-grid-item section[aria-label] {
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
 .dash-edit .react-grid-item.react-grid-placeholder {
   background: var(--primary);
   opacity: 0.15;

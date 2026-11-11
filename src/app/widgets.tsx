@@ -21,7 +21,9 @@ import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { asRows } from "../lib/doc";
 import { t } from "../lib/i18n";
+import { cn } from "../lib/utils";
 import { stateTone, stateWords } from "../lib/targetDraft";
+import { docstatusTone } from "../lib/statusTones";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
 import {
@@ -34,7 +36,7 @@ import {
   type Field,
   type ListResponse,
 } from "../lib/meta";
-import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, StatusBadge, toast, useDebounced, useDismiss } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
 export interface ControlProps {
@@ -62,6 +64,29 @@ const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 const QueryInput = lazy(() => import("./QueryInput"));
 const orNull = (s: string) => (s === "" ? null : s);
 
+/** Kinds that keep their own read-only form: a tick, a link with its open button, a preview, a picker, a secret. */
+const NOT_AS_TEXT = new Set(["check", "link", "json", "attach", "color", "secret", "table"]);
+const MULTILINE = new Set(["text", "markdown", "code"]);
+
+/** What a field the person cannot edit looks like: its value as text, in the field's own grid cell (numbers end-aligned). Not tabbable, so Tab skips the figures; a click selects and copies. */
+function ReadOnlyValue({ field: f, value, id, invalid, describedBy, compact, label, currencyPrecision }: ControlProps) {
+  const common = {
+    id,
+    readOnly: true,
+    tabIndex: -1,
+    placeholder: "—",
+    value: formatValue(f, value, { currencyPrecision }),
+    "aria-invalid": invalid || undefined,
+    "aria-describedby": describedBy,
+    "aria-label": compact ? label : undefined,
+  };
+  return MULTILINE.has(f.type) ? (
+    <textarea className={`textarea read-value ${f.type === "code" ? "mono" : ""}`} rows={1} {...common} />
+  ) : (
+    <input className={`input read-value ${NUMERIC_TYPES.has(f.type) ? "num" : ""}`} {...common} />
+  );
+}
+
 export function FieldControl(p: ControlProps) {
   const { field: f, value, onChange, disabled } = p;
   const common = {
@@ -77,6 +102,12 @@ export function FieldControl(p: ControlProps) {
     const v = text(value);
     return <output id={p.id} aria-describedby={p.describedBy}>{v && <Badge tone={stateTone(v)}>{isolate(stateWords()[v] ?? v)}</Badge>}</output>;
   }
+  // A tick the person cannot change is a word in its place ("Yes" / "No"), named by its label like any value.
+  if (f.type === "check" && disabled) {
+    return <output id={p.id} aria-describedby={p.describedBy} aria-label={p.compact ? p.label : undefined} className={cn("read-text", value !== true && "read-text-off")}>{value === true ? t("Yes") : t("No")}</output>;
+  }
+  // A value the person cannot edit is shown as text (an input that is readOnly, so it stays selectable and named by its label), not as a greyed box.
+  if (disabled && !NOT_AS_TEXT.has(f.type)) return <ReadOnlyValue {...p} />;
   switch (f.type) {
     case "check":
       return <input type="checkbox" {...common} checked={value === true} onChange={(e) => onChange(e.target.checked)} />;
@@ -393,7 +424,7 @@ export function LinkInput({
       <input
         ref={input}
         id={id}
-        className="input"
+        className={disabled ? "input read-value" : "input"}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={open}
@@ -403,9 +434,10 @@ export function LinkInput({
         aria-describedby={describedBy}
         aria-label={label}
         aria-required={required || undefined}
-        disabled={disabled}
+        readOnly={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
         autoComplete="off"
-        placeholder={disabled ? "" : (placeholder ?? t("Search {name}…", { name }))}
+        placeholder={disabled ? "—" : (placeholder ?? t("Search {name}…", { name }))}
         value={typed ?? resolved ?? (value ? "…" : "")}
         onChange={(e) => {
           setTyped(e.target.value);
@@ -612,10 +644,10 @@ export function CellValue({
   if (value === null || value === undefined || value === "") return null;
   if (field.name === "docstatus" && typeof value === "number") {
     const label = DOCSTATUS_LABEL[value] ?? String(value);
-    return <Badge tone={statusTone(label)}>{isolate(label)}</Badge>;
+    return <Badge tone={docstatusTone(value)}>{isolate(label)}</Badge>;
   }
   if (field.kept_by_target && field.type !== "datetime") return <Badge tone={stateTone(String(value))}>{isolate(stateWords()[String(value)] ?? String(value))}</Badge>;
-  if (field.name === "status" || field.name === "workflow_state") return <Badge tone={statusTone(value)}>{isolate(String(value))}</Badge>;
+  if (field.name === "status" || field.name === "workflow_state") return <StatusBadge value={value} />;
   switch (field.type) {
     case "link":
       return <>{title ?? shortId(value)}</>;
@@ -799,23 +831,23 @@ export function TableGrid({
 
   return (
     <div>
-      <div className="grid-wrap">
+      <div className="line-grid-wrap">
         {phone ? (
           rows.length ? (
             // List semantics stated explicitly: Safari drops them for unstyled lists.
-            <ol className="grid-cards" role="list" aria-label={isolate(name)}>
+            <ol className="line-grid-cards" role="list" aria-label={isolate(name)}>
               {rows.map((r, i) => {
                 const errs = ownErrors(i);
                 const subErrs = subErrors(i);
                 const errId = `${gridId}-${i}-errors`;
                 return (
-                  <li key={rowKey(r, i)} className="grid-card">
-                    <span className="grid-card-idx">{i + 1}</span>
+                  <li key={rowKey(r, i)} className="line-grid-card">
+                    <span className="line-grid-card-idx">{i + 1}</span>
                     <dl>
-                      {cols.slice(0, 3).map(
+                      {cols.map(
                         (f) =>
                           fieldState(f, { doc: r, parent, user }, locked).visible && (
-                            <div key={f.name}>
+                            <div key={f.name} className={NUMERIC_TYPES.has(f.type) ? "num" : undefined}>
                               <dt>{isolate(f.label)}</dt>
                               <dd>
                                 <CellValue field={f} value={r[f.name]} title={r._titles?.[f.name]} currencyPrecision={precisionOf(f, r)} />
@@ -835,7 +867,7 @@ export function TableGrid({
                         {isolate([...errs.map((e) => `${labelOf(e.field)} ${e.message}`), ...subErrs.map(subText)].join(" · "))}
                       </p>
                     )}
-                    <div className="grid-card-actions">
+                    <div className="line-grid-card-actions">
                       <Button aria-label={(locked ? tr("View row {value2}", { value2: i + 1 }) : tr("Edit row {value2}", { value2: i + 1 }))} aria-describedby={errs.length + subErrs.length ? errId : undefined} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                         {locked ? tr("View") : tr("Edit")}
                       </Button>
@@ -858,13 +890,13 @@ export function TableGrid({
               })}
             </ol>
           ) : (
-            <p className="grid-empty">{t("No rows yet.")}</p>
+            <p className="line-grid-empty">{t("No rows yet.")}</p>
           )
         ) : (
-          <table className="grid" aria-label={isolate(name)}>
+          <table className="line-grid" aria-label={isolate(name)}>
             <thead>
               <tr>
-                <th className="grid-idx" scope="col">
+                <th className="line-grid-idx" scope="col">
                   #
                 </th>
                 {cols.map((f) => (
@@ -896,7 +928,7 @@ export function TableGrid({
                 return (
                   <Fragment key={rowKey(r, i)}>
                     <tr onKeyDown={onRowKey(i)}>
-                      <td className="grid-idx">{i + 1}</td>
+                      <td className="line-grid-idx">{i + 1}</td>
                       {cols.map((f) => {
                         const st = fieldState(f, scope, locked);
                         const err = errs.find((e) => e.field === f.name);
@@ -939,7 +971,7 @@ export function TableGrid({
                           </Button>
                         </td>
                       ))}
-                      <td className="grid-actions">
+                      <td className="line-grid-actions">
                         <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Show all fields of row {value}", { value: i + 1 })} title={tr("All fields")} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                           <Icon name="expand" size={14} />
                         </button>
@@ -976,7 +1008,7 @@ export function TableGrid({
               })}
               {!rows.length && (
                 <tr>
-                  <td colSpan={span} className="grid-empty">
+                  <td colSpan={span} className="line-grid-empty">
                     {t("No rows yet.")}
                   </td>
                 </tr>
@@ -986,7 +1018,7 @@ export function TableGrid({
         )}
       </div>
       {!locked && (
-        <div className="grid-foot">
+        <div className="line-grid-foot">
           <Button size="sm" icon="plus" onClick={() => add()}>
             {t("Add row")}
           </Button>

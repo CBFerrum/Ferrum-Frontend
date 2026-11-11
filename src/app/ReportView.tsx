@@ -5,11 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, saveBlob } from "../lib/api";
-import { formatDate, formatValue, humanize, isDecimalString, NUMERIC_TYPES, todayIso } from "../lib/format";
+import { formatDate, formatMoment, formatValue, humanize, isDecimalString, NUMERIC_TYPES, todayIso } from "../lib/format";
 import { useMe, useReports, type Me, type ReportDef, type ReportParam } from "../lib/meta";
 import { Alert, Button, EmptyState, ErrorState, Field as FieldWrap, PageLoading } from "../ui/kit";
+import { TableSkeleton } from "../ui/patterns";
 import { LinkInput } from "./widgets";
 import { t, isolate } from "@ferrum/client";
+import { cn } from "../lib/utils";
 
 interface Column {
   name: string;
@@ -88,6 +90,14 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         <div>
           <p className="crumbs">{t("Report")}</p>
           <h1 className="page-title">{isolate(title)}</h1>
+          {/* When the figures were drawn: the parameters above are what they answer; a stale screen must not pass for current. */}
+          {data && !result.isFetching && result.dataUpdatedAt > 0 && (
+            <p className="report-meta">
+              {[...splitTotals(data).facts.map(([, v]) => isolate(summaryValue(v, false))), t("Run {when}", { when: formatMoment(result.dataUpdatedAt, { dateStyle: "medium", timeStyle: "short" }) })].map((x, i) => (
+                <span key={i}>{x}</span>
+              ))}
+            </p>
+          )}
         </div>
         <div className="page-actions">
           {data && data.rows.length > 0 && (
@@ -104,14 +114,10 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         </Alert>
       )}
 
-      <form className="card card-pad" onSubmit={run} style={{ marginBottom: 16 }} aria-label={t("Report parameters")}>
-        {params.length > 0 && (
-          <div className="form-grid" style={{ ["--cols" as string]: 3, marginBottom: 14 }}>
-            {params.map((p) => (
-              <ParamInput key={p.name} param={p} value={values[p.name] ?? ""} onChange={(v) => setValues((s) => ({ ...s, [p.name]: v }))} />
-            ))}
-          </div>
-        )}
+      <form className="card card-pad report-params" onSubmit={run} style={{ marginBottom: 16 }} aria-label={t("Report parameters")}>
+        {params.map((p) => (
+          <ParamInput key={p.name} param={p} value={values[p.name] ?? ""} onChange={(v) => setValues((s) => ({ ...s, [p.name]: v }))} />
+        ))}
         <Button type="submit" variant="primary" loading={result.isFetching}>
           {t("Run report")}
         </Button>
@@ -127,7 +133,7 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         </div>
       ) : !data ? (
         <div className="card">
-          <PageLoading label={t("Running report…")} />
+          <TableSkeleton columns={4} rows={6} />
         </div>
       ) : (
         <ReportTable data={data} />
@@ -170,6 +176,14 @@ function ParamInput({ param: p, value, onChange }: { param: ReportParam; value: 
   );
 }
 
+/** A figure's own sign tells it apart: nothing is recomputed. Zero recedes; a negative (a minus in front of the exact value) is unmistakable. */
+export function figureTone(v: unknown): string | false {
+  if (typeof v === "number") return v === 0 ? "zero" : v < 0 ? "neg" : false;
+  if (typeof v !== "string" || !isDecimalString(v)) return false;
+  if (/^[-+]?0*\.?0*$/.test(v.trim())) return "zero";
+  return v.trim().startsWith("-") ? "neg" : false;
+}
+
 const isNumeric = (c: Column) => NUMERIC_TYPES.has(c.type ?? "");
 
 function display(c: Column, row: Row | Record<string, unknown>, key = c.name): string {
@@ -185,8 +199,11 @@ function splitTotals(data: ReportResult) {
   const totals = data.totals ?? {};
   const aligned = Object.keys(totals).some((k) => names.has(k));
   const extra = Object.entries(totals).filter(([k]) => !names.has(k));
-  const meta = Object.entries(data.meta ?? {}).filter(([k, v]) => k !== "truncated" && (v === null || typeof v !== "object"));
-  return { aligned, extra, meta };
+  const scalars = Object.entries(data.meta ?? {}).filter(([k, v]) => k !== "truncated" && (v === null || typeof v !== "object"));
+  // What was run (a company, a currency, a period) reads as one quiet line under the title; figures and ticks stay in the summary. By the value's type, never by words.
+  const facts = scalars.filter(([, v]) => typeof v === "string" && v !== "" && !isDecimalString(v));
+  const meta = scalars.filter((e) => !facts.includes(e));
+  return { aligned, extra, meta, facts };
 }
 
 function summaryValue(v: unknown, money: boolean): string {
@@ -229,7 +246,7 @@ function ReportTable({ data }: { data: ReportResult }) {
           ))}
         </dl>
       )}
-      <div className="table-wrap">
+      <div className="table-wrap report-frame">
         <table className="table report">
           <caption className="sr-only">{isolate(data.label ?? data.name)}</caption>
           <thead>
@@ -247,8 +264,8 @@ function ReportTable({ data }: { data: ReportResult }) {
                 {cols.map((c, j) => (
                   <td
                     key={c.name}
-                    className={isNumeric(c) ? "num" : undefined}
-                    style={j === 0 && r._indent ? { paddingLeft: `${0.75 + Number(r._indent) * 1.25}rem` } : undefined}
+                    className={cn(isNumeric(c) && "num", isNumeric(c) && figureTone(r[c.name]))}
+                    style={j === 0 && r._indent ? { paddingInlineStart: `${0.75 + Number(r._indent) * 1.25}rem` } : undefined}
                   >
                     {isolate(display(c, r))}
                   </td>
@@ -285,9 +302,9 @@ function toCsv(data: ReportResult): string {
   for (const r of data.rows) {
     lines.push(cols.map((c, j) => cell(j === 0 && r._indent ? `${"  ".repeat(Number(r._indent))}${r[c.name] ?? ""}` : r[c.name])).join(","));
   }
-  const { aligned, extra, meta } = splitTotals(data);
+  const { aligned, extra, meta, facts } = splitTotals(data);
   if (aligned) lines.push(cols.map((c, j) => cell(data.totals?.[c.name] ?? (j === 0 ? "Total" : ""))).join(","));
-  if (extra.length || meta.length) lines.push("");
-  for (const [k, v] of [...extra, ...meta]) lines.push(`${cell(humanize(k))},${cell(v)}`);
+  if (extra.length || meta.length || facts.length) lines.push("");
+  for (const [k, v] of [...extra, ...facts, ...meta]) lines.push(`${cell(humanize(k))},${cell(v)}`);
   return lines.join("\r\n");
 }

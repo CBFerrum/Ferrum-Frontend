@@ -17,6 +17,8 @@ import { relativeTime } from "@/lib/format";
 import { can, useMetaIndex } from "@/lib/meta";
 import { STUDIO_ENTITY, studio, useDeleteStudioRecord, useStudioList, type ReportKind, type Sharing, type StudioListRow } from "@/lib/studio";
 import { confirmDialog, ErrorState, toast } from "@/ui/kit";
+import { cn } from "@/lib/utils";
+import { plainLink } from "./dashboard/ui";
 import { encodeParam, recordFromState, stateFromRecord } from "./report/state";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -84,10 +86,10 @@ export function ReportList() {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11">
+    <div className="grid w-full gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11">
       <header className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold">{tr("Reports")}</h1>
+          <h1 className="page-title">{tr("Reports")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{tr("Tables, summaries, pivots and charts over any records. Each person sees only the data their permissions allow.")}</p>
         </div>
         {canCreate && (
@@ -178,14 +180,12 @@ export function ReportList() {
             const K = KIND_META[r.kind]?.icon ?? Rows3;
             const S = SHARING[r.sharing]?.icon ?? Lock;
             return (
-              <li key={r.id} className="relative flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-xs transition-colors focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-border-strong">
+              <li key={r.id} className="relative flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-card p-4 transition-colors focus-within:ring-[3px] focus-within:ring-ring/50 hover:border-border-strong">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
-                    <K className="size-4" />
-                  </span>
+                  <K className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-medium">
-                      <Link to={`/studio/reports/${encodeURIComponent(r.id)}`} className="outline-none after:absolute after:inset-0 after:content-['']">
+                      <Link to={`/studio/reports/${encodeURIComponent(r.id)}`} className={cn(plainLink, "outline-none after:absolute after:inset-0 after:content-['']")}>
                         {isolate(r.label)}
                       </Link>
                     </h2>

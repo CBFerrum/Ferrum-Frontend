@@ -1,0 +1,262 @@
+# Patterns
+
+Governed patterns of `@ferrum/kit` and the task layouts they compose. Everything here is exported from `@ferrum/kit` (`src/ui/patterns.tsx`); `npm run gallery` (port 5199, development only) shows each one in every state, in light and dark, comfortable and compact, normal and more contrast, left to right and right to left. The gallery's test runs axe over its sections. Component tests and axe in jsdom are not browser proof: layout, contrast and focus order still need a real browser and a person.
+
+## Page anatomy
+
+Every page of the shell, Studio, Administration and the record screens follows one frame (`src/styles.css`: `main`, `.page-head`, `.page-title`, `.page-sub`, `.page-actions`, `.crumbs`). The gallery's "Page anatomy" section shows it.
+
+| Part | Rule |
+|---|---|
+| Content area (`main`) | 20px above, 24px at the sides, 48px below; 16px above and at the sides on phones. Pages with an app sidebar start 24px right of it (272px from the window edge at the standard sidebar); pages without one (Administration) start 24px from the window edge. The only centred pages are landings: the shell home and a person's account, at most 1180px / 760px wide. Work pages (lists, records, reports, dashboards, admin) fill the area; a single column of prose is capped by its own rule, never by the page. |
+| Above the title | One optional line, `.crumbs` (`text-xs`, muted, 4px below): the parent list on a record, "Report", the section of a Studio page. Nothing else. |
+| Title | `h1.page-title`: `text-2xl`, weight 600, tracking -0.015em, line height 1.25, one per page, sentence case. Its box is one control tall (`--control-h`), so a title and the buttons beside it share a centre line; its box starts 68px under the top of the window (the 48px bar and 20px of padding in `main`) on every page that has no line above it, and the first line of text sits 3px lower inside it. A count or state beside it sits on its baseline (`.page-titles`), muted. |
+| Under the title | `.page-sub`: `text-base`, muted, 2px below. One line; where the line is only for assistive technology it is `sr-only`. |
+| Action row | `.page-actions`, at the end of the title row, 8px between buttons, centred on the title line. At most one primary button; the rest are the default button; secondary and rare actions wait in one overflow menu ("More actions", an icon button with that name). Below 720px the row goes under the title. |
+| Header to content | 16px (`.page-head` margin). A tab list or toolbar follows at the same 16px. |
+| Work surfaces | One `.card` (or `.form-card`, `.list-card`): `--surface`, 1px `--border`, `--radius`. Cards do not nest. Dashboards and Studio's tiles use the same card. |
+| Gaps | Between cards or sections 24px; between fields 16px (24px between columns); inside a card 16px; between a label and its control 6px. Only the 4/8/12/16/24/32/48 steps. |
+| Section headings | `text-base`, weight 600, inside dense tools; `text-xl` only for a heading that names a whole region of a landing page. |
+| Tables | One header style everywhere (`.table th`, `.line-grid th`, Studio's `TableHead`): `text-xs`, weight 500, muted, on `--surface-2`; rows 36px (32 compact); figures end-aligned and tabular. |
+| Navigation | Record tabs, Administration's section list and Studio's sidebar differ by what they navigate, not by look: the selected item is `--primary-soft` with `--primary` text, hover is `--surface-2`, focus is the global outline. Segmented controls (list views) are for switching how the same data is shown. |
+| Empty and failed regions | `StatePanel`, top-weighted: it starts where the content would, 48 to 64px under the region's top, never dead centre. |
+
+## Read-only values
+
+A value the person cannot edit is text in the field's own place (`.read-value`), not a disabled box; a control that is only temporarily unavailable keeps its shape (`:disabled`). A tick that cannot be changed is a word, "Yes" or "No" (`.read-text`; an `<output>` named by the label, so assertions by label keep working). A read-only field with nothing in it recedes: the label stays, the dash is fainter and the row tighter (`.field-empty`). Three or more of those side by side in one section fold into a single quiet line, "Not set: Web payment, Contact email, Ship to", a button (`aria-expanded`) that opens, by click, Enter or Space, to the fields as they are (`src/app/EmptyRun.tsx`, rule in `FormView.tsx`: `isQuiet`, `FOLD_EMPTY_MIN`). Editable fields, required fields and fields with an error are never folded; read-only fields are not tab stops, so folding hides nothing from the keyboard.
+
+## The list toolbar
+
+A list page is the page frame above, then one `.list-card` holding the toolbar and the table (or board, calendar, timeline). The header carries the view switcher (a segmented control: list, board, calendar, timeline), one "More actions" menu (import, export, columns, and the rest) and the primary "New" button. The toolbar row inside the card is search (`--control-h`), "Filter", the group-by control for boards, "Views" and "Columns"; its height is one control. Rows selected replace the toolbar with `SelectionToolbar`. `.select` is part of the same control family as `.input`: same height, boundary, radius and a quiet chevron (two token-coloured strokes, no image) in both themes and both directions.
+
+## Administration
+
+The page frame, then a two-column layout: a grouped section list (208px, `.admin-nav`; group labels are `text-xs`, weight 500, muted, sentence case, as the app sidebar's are) and the section's own card. Narrow screens turn the list into one scrolling strip. Row actions are `.row-actions` (a flex row with a 4px gap, not text spaces), with the rare ones in an overflow menu that is named per row ("Actions for ...").
+
+## Navigation icons
+
+Every row of a left menu starts with a 16px stroke icon in a fixed slot, then an 8px gap and the label: the app sidebar (Home, each module's entities, reports, add-on pages, Administration), Studio's sidebar and Administration's section list. Group headings stay text. Colour is `--muted-foreground` at rest, `--text` on hover and `--primary` on the open row; never filled or coloured (the app's coloured tile is only in the sidebar head). Only a link to a page outside the app keeps a mark at the row's end. Icons are decorative (`aria-hidden`; the label is the name) and use `currentColor`. `navIcon({ icon, entity, kind, submittable, to })` (`packages/kit/src/navIconName.ts`) picks the name, in this order: (1) the icon the row declares (a lucide name in kebab-case, from metadata, an app's nav item or `EntitySummary.icon`; an unknown name falls through and is logged once in development); (2) the concept dictionary, keyed on the entity's stable name split into whole words (CamelCase or snake_case, plurals folded), the longest run of words first and the last such run when equal, so the same concept has the same icon in every app; (3) the kind: report, page, settings, document or submittable, otherwise a list. It is never empty. **The dictionary (`CONCEPTS` in that file) is the place to add a concept**; a test requires every entity name in `navIconName.entities.json` (the installed apps' record types) to resolve through a concept word, and that the drawing table (`NavIcon.tsx`) holds exactly the names the resolver can return. `NavIcon` and `navIcon` are exported from `@ferrum/kit` for an app that draws a left menu of its own; Mail's folders, Drive's places and Chat's channels keep their own marks.
+
+## App icons
+
+`AppIcon` (kit) draws an app's Lucide glyph in the app's colour; `tile` puts it on a soft tile of that colour, one rule for the bar, the launcher and the family navigation, with the glyph held to 3:1 against its tile in both themes (`packages/kit/src/AppIcon.test.ts`). A name outside the set shows the app's initial on the tile.
+
+## Overlays
+
+Menus, popovers, dialogs, sheets and toasts are one family: `--surface`, 1px `--border`, `--radius` (12px for dialogs), `--shadow` (the only floating elevation), opening with `--duration-overlay` fade and a 3px / 98% scale from the trigger, closing faster, nothing under reduced motion. Menu rows are 32px; a row that cannot be chosen says why. Focus moves into a dialog or menu when it opens and returns to the trigger when it closes (asserted for the list's overflow menu, a menu item that opens a dialog and the Administration dialogs by `evidence/integration-after/tab-order.json`). Toasts (`Toaster`) announce politely and never carry the only copy of an error.
+
+## Generic reports
+
+`ReportView` (`/…/r/<name>`) draws any report the server describes, with the discipline of a financial statement and only from what the data says: `_indent` (tree depth, 1.25rem a level), `_bold` (a group, subtotal or total: weight 600 and a single rule above, never a fill) and the `totals` row (a rule above, a double rule under). The table scrolls inside `.report-frame` so the head and the first column (what a row is) stay in view on a wide report. A figure whose own value is zero is faint, one with a minus in front is `--danger` (the text is shown exactly as the server sent it); figures are tabular, end-aligned and isolated so a minus stays in front in right-to-left. What was run (the company, currency and period the report states as text) is one quiet line under the title, followed by when; figures and ticks the report states stay in the summary above the table. No row kind is ever inferred from a word.
+
+## Chips
+
+`.chip` is a general pill: a filter, a tag, a toggle. It is a button, a link or a span; its content is centred whatever the children (text, icon, count); it wraps inside `.chips`. Hover is `--primary-soft` with accent text; pressed (`aria-pressed="true"`) is the accent fill, and a pressed chip that is hovered goes to `--primary-hover` with the same text, so it stays legible. The list filter's own token (field, value, remove button) is `.chip.chip-field`. The same hover-over-selected check holds for the segmented control, tabs, nav items, table rows and the toggle (pressed is the selection fill, hover does not change it).
+
+## Printing
+
+`@media print` (end of `src/styles.css`) prints a page as its content: the sidebar, bar offset, banners, toasts, tab lists, toolbars, filters, parameters, peek panel, row actions and "Add row" controls are hidden; `main` is the full page width; nothing is sticky or clipped (tables print whole, every row unbroken, headers and footers repeat); the colour scheme is forced to light whatever the theme, so text is dark on white; links are not underlined or coloured; controls print as plain boxes without arrows. The platform's own bar is hidden by the platform; the kit reserves no space for it. A record prints as a document: `@page` margin 14mm (only a real print or `page.pdf()` shows it; `emulateMedia` screenshots do not), the form card has no frame or padding, advisory alerts (not errors), collapsed sections (header included), link-out icons (`.combo-actions`), menus and empty child tables with their label are hidden, and an open section prints its heading without a chevron. Checked by `page.pdf()` on a record, a list, a report and a long ledger (`evidence/integration-after/print-*.pdf`).
+
+## Charts with two scales
+
+A bar, line or area chart that plots measures of very different size (a count of 3 beside a sum of 22,000) would draw the small one as nothing. When the largest value of a measure is under 2% of the largest of the others (`smallSeries` in `src/app/studio/dashboard/charts.ts`), it gets its own axis on the right, named quietly in the measure's label, and a bar chart draws it as a line so the two never overlap. Data is never dropped or rescaled; stacked bars never split (their total is the point).
+
+## State → what the user sees → component
+
+| State | What the user sees | Component |
+|---|---|---|
+| Loading (shape known) | Grey shapes where the content will be | `ListSkeleton`, `TableSkeleton`, `FormSkeleton`, `ReaderSkeleton` |
+| Loading (nothing to shape) | Spinner and "Loading…" | `StatePanel kind="loading"` |
+| Loading (a route) | A title bar, a line and a few rows in quiet skeletons, named "Loading…" | `PageLoading` (same props as before; every app's route fallback) |
+| First-use empty | What this is and the first step | `StatePanel kind="empty"` (`EmptyState` still works) |
+| No matches | "No matches", why, "Clear filters" | `StatePanel kind="no-matches"` |
+| Denied | "You don't have access to this" and how to ask; never what exists | `StatePanel kind="denied"` |
+| Offline | "You're offline" and, if true for the caller, that work is kept; "Try again" when the caller passes `onRetry` | `StatePanel kind="offline"` |
+| Failed | What failed, the reason, "Try again"; context stays | `StatePanel kind="failed"` (`ErrorState` still works) |
+| Stale | The content stays; a non-blocking notice with "Refresh" | kit `Alert` with a refresh `action` (no component) |
+| A change's progress | Draft, saving, saved, kept on this device, conflict, failed, unknown | `SaveStatus` |
+| Rows selected | How many, of what scope, the actions, "Clear selection" | `SelectionToolbar` |
+
+`EmptyState` and `ErrorState` (in `src/ui/kit.tsx`) remain, because apps use them; they map onto `StatePanel`'s `empty` and `failed`. `PageLoading` is no longer a spinner block: it is the shape of a page built from `Skeleton` (`role="status"`, `aria-busy`, its label read by assistive technology), so an app that still uses it as a route fallback improves without a change. New code uses `StatePanel`, which also has `no-matches`, `denied` and `offline`.
+
+## StatePanel
+
+For a request that failed, use `LoadFailed` (`<LoadFailed error={query.error} onRetry={() => query.refetch()} />`): it picks `denied` for 401 and 403, `offline` when there was no answer, `failed` otherwise, so apps do not each write that mapping. `failureKind(error)` gives the kind alone.
+
+When: a region has nothing to show. Pick the kind by why, not by how it looks.
+
+```tsx
+import { StatePanel } from "@ferrum/kit";
+<StatePanel kind="no-matches" onClear={clearFilters}>{t("Nothing matches “{q}”.", { q })}</StatePanel>
+<StatePanel kind="failed" error={query.error} onRetry={() => query.refetch()} />
+<StatePanel kind="offline" onRetry={() => query.refetch()}>{t("Your changes are kept on this device until you are back online.")}</StatePanel>
+```
+
+Accessibility: `failed` is `role="alert"`; `loading` is `role="status"` with `aria-busy`; `no-matches` is `role="status"` (it replaces content after the user's action); the others announce nothing. Icons are decorative, one size; tone differs per kind (only `failed` is red).
+
+Do not: show `loading` for longer than the load; use `empty` when a filter hid the rows (that is `no-matches`); say in `denied` what the thing is or whether it exists; claim in `offline` that work is kept unless the caller keeps it (the sentence is the caller's `children`); replace a screen with `failed` when stale content could stay; hide the retry.
+
+## Content-shaped loading
+
+When: a route, dialog or list is waiting and its shape is known. A blank or spinner-only fallback loses the user's place; `fallback={null}` is a lint finding (`blank-fallback`).
+
+```tsx
+import { ListSkeleton, TableSkeleton } from "@ferrum/kit";
+<Suspense fallback={<TableSkeleton columns={4} rows={4} />}><ApiKeys /></Suspense>
+```
+
+`ListSkeleton` (leading mark, two lines, trailing value; Mail and file lists), `TableSkeleton` (header and rows), `FormSkeleton` (label and control pairs at the control height of the density), `ReaderSkeleton` (title, who and when, paragraphs; a message or document). Widths vary by position, never at random, so snapshots and hydration agree.
+
+Accessibility: one wrapper with `role="status"` and `aria-label` "Loading…"; the shapes are `aria-hidden`. The pulse stops for reduced motion (`motion-reduce` and the global rule in `styles.css`).
+
+Do not: keep a skeleton once data arrives, even empty; use one for a background refresh (keep the content); use a skeleton of another shape "because it exists". A tiny inline control (a field's lazy editor) may keep a small spinner.
+
+## SaveStatus
+
+When: a change is being made and the user needs to know where it stands.
+
+```tsx
+import { SaveStatus } from "@ferrum/kit";
+<SaveStatus state={saving ? "saving" : dirty ? "draft" : "saved"} at={savedAt} />
+```
+
+States: `draft` (changes not sent), `saving`, `saved` (the server confirmed), `local` (kept on this device, not on the server), `conflict` (someone else changed it first), `failed`, `unknown` (no answer, so nothing is claimed). `at` is shown with `formatMoment`.
+
+Accessibility: `role="status"`, polite; icon plus words, never colour alone.
+
+Do not: show `saved` before the durable milestone, or for `local`; lose the draft on `failed` or `conflict`; invent other states.
+
+## SelectionToolbar
+
+When: rows are selected. `BulkBar` (the list's bulk actions) renders through it.
+
+```tsx
+import { SelectionToolbar } from "@ferrum/kit";
+<SelectionToolbar label={t("Actions for the {what} selected", { what })} count={n} scope={all ? "matching" : "shown"} of={total} onClear={clear} extend={selectAllButtons}>{actions}</SelectionToolbar>
+```
+
+Scope sentence: "3 selected"; "All 240 matching selected"; "500 selected" with "of 1,200 matching" when a cap applies. `extend` holds the buttons that widen the selection; children are the actions. Escape clears.
+
+Accessibility: `role="toolbar"` with the caller's `aria-label`. There is no arrow-key roving between its buttons (BulkBar has none); each is a tab stop. Focus return after the bar unmounts is the caller's (BulkBar returns it to the list).
+
+Do not: say "All" when the count is a capped fetch; put destructive actions without confirmation; hide the count.
+
+## Work home
+
+An app's own home page answers "what needs me now?" for a person in a role. Use it for a landing page made of queues of work (contracts by stage, open incidents, today's trips) and tiles of things with a live state (tables, rooms, units). Not for dashboards of figures and charts (those are cards and `FilterBar`), nor for a list of records (the records list).
+
+Anatomy, top to bottom, all from `@ferrum/kit`:
+
+1. **`PageHead`** (the same component as `PageHeader`): `title` (the page's one `h1`, in the person's words: "Contracts", "The floor"), `description` (one quiet line built from numbers the page already has; leave it out rather than invent), `actions` at the end, `back` ({ to, label }) for a way up. The one main action is a primary `ButtonLink` with `icon="plus"` where it creates something; other actions are default buttons; more than three fold into a `Menu`. A bare text link is never an action. A date or site selector that scopes the page goes in `actions` as a small control with a visible label.
+2. **What needs attention first**: a `Queue tone="attention"` for what is overdue or blocking, before the others, only when there is something.
+3. **`QueueGrid`** of **`Queue`s**; each holds up to the app's limit of **`QueueItem`s** (default 5) and `more` for the rest.
+4. **`TileGrid`** of **`Tile`s** for a small set of things with a live state.
+5. First use (every queue empty and no records at all): one `StatePanel kind="empty"` with the main action under the head, not a row of zeros. Setup needed: a `StatePanel` with the action, under the head. Loading: `HomeSkeleton`; failure: `LoadFailed`; both under the `PageHead`, whose title needs no data.
+
+Exports and props (all from `@ferrum/kit`; every prop is optional unless shown):
+
+| Name | Props |
+|---|---|
+| `PageHead` | `title`, `description`, `actions`, `back: { to; label }`, `eyebrow` (a trail above the title) |
+| `ButtonLink` | exactly one of `to` (a path in this app's router) or `href` (a destination outside it, e.g. another app's page: a plain anchor); `variant: "default" \| "primary" \| "ghost"`, `size: "sm" \| "md"`, `icon`, `download` (`true` or the file name), `target`, `rel` (with `target="_blank"` and no `rel`, `noopener noreferrer` is added), `children`. `download`, `target` and `rel` reach the anchor in both forms: a dataset link keeps `download`, an external link keeps its new tab. Both `to` and `href`: `to` wins; neither: nothing is drawn (both log an error). |
+| `PageSplit` | `main`, `aside` (both required), `className`: a main column and a side column (about 2:1, the side 280 to 400px), one column under 900px with the main first; for a feed with its spaces, an overview with its side facts. The aside is a plain `div`, not a landmark. |
+| `PageStack` | `gap: "md" \| "lg"` (16 / 24px between sections; the head is always 16px above the first), `className`, `children` |
+| `QueueGrid` | `columns: 1` (a page that is one column of queues), `className`, `children` |
+| `Queue` | `title` (required string: the section's name), `count`, `tone: "default" \| "attention"`, `link: { to; label }`, `empty` (default "Nothing waiting"), `more: { to; count }`, `progress: { value; max?; label?; tone? }`, `children` (`QueueItem`s) |
+| `QueueItem` | `title` (required string), `to` (omit for a plain row), `meta`, `lead`, `trailing`, `action` |
+| `TileGrid` | `min: "sm" \| "md" \| "lg"` (narrowest tile 200 / 280 / 360px), `label` (names the list), `className`, `children` |
+| `Tile` | `title` (required), `to`, `meta` (one or two `span` lines), `figures: { label; value: ReactNode }[]`, `progress: { value; max?; label; tone? }` (label required), `status` |
+| `HomeSection` | `title` (required), `count`, `link: { to; label }`, `actions` (buttons), `empty` (one quiet line when there are no children), `children` |
+| `StatGrid` | `min: "sm" \| "md" \| "lg"` (narrowest stat 11 / 15 / 20rem; `lg` for figures like "1,676,650.75"), `className`, `children` |
+| `Stat` | `label`, `value` (required), `hint`, `to`, `tone: "attention" \| "danger"`, `progress: { value; max?; label?; tone? }` |
+| `Progress` | `value`, `max` (default 100), `label` (required: the accessible name), `tone: "default" \| "good" \| "attention" \| "danger"` |
+| `HomeSkeleton` | `queues` (default 3), `className` |
+| `Tone` (type) | `"neutral" \| "blue" \| "green" \| "amber" \| "red" \| "purple"`, for tone maps |
+
+`lead`, `trailing` or `action`? **`lead`** is what the row is about in a column before the name: a time (09:30), a room number, a thumbnail (`<img>`, drawn 40px square, `object-fit: cover`); it sits in a fixed 3rem column with tabular numerals so leads align down the queue; keep it short. **`trailing`** is a state: a badge or mark, read, not pressed. **`action`** is what the person does to the row: a small `Button` or link ("Check in", "Apply"); it takes the click above the row link and comes after it in the keyboard order. If the row has no page to open, leave `to` out: it is a plain row (no hover, no link) and the action is the point. A string `meta` is also the row's tooltip, and takes two lines on a phone.
+
+`Progress`, `Stat` and `Tile` meters: use the `Progress` export, never a hand-drawn bar (`.ast-tile` meter, `.trip-meter`). It needs no class: a block as wide as its container, 6px high, filling from the reading start. Place it by putting it in the parent's layout (a `Tile`'s or `Stat`'s or `Queue`'s `progress` prop, which adds the percentage at the end for `Queue` only: a `Stat`'s value is its figure, so its bar prints no percentage and keeps its accessible name (default: the stat's label) and value, or as a child of a `HomeSection` or any flex or grid cell). Name it for what it measures ("Key results done"), not "progress".
+
+`progress.tone` is the same as `Progress`'s (`good`, `attention`, `danger`), on `Tile`, `Queue` and `Stat`.
+
+A money or count value at a row's end goes in `trailing` as plain tabular text (`<span className="num">₹4,200.00</span>`), not in a badge: a badge is for a state. A `meta` that is a node wraps onto a second line on a phone like a string does.
+
+`Stat` rules: one number a person should see first ("Applicants waiting 4"), in the text colour, `text-2xl` semibold, tabular. A zero, an empty value or a dash is quiet (muted, regular weight): nothing needs you. Never colour a number by default; `tone` is for a number that is itself a warning (overdue 3). The whole stat is a link when `to` is given. Pass money and dates already formatted. A value never breaks inside a number: if it does not fit it steps down one type role (and on a phone it starts a role smaller), then is cut with an ellipsis. `Stat` replaces the Assets `.ast-tile`, including the slim bar under "Depreciated 16%" (`progress`).
+
+`HomeSection` is for a labelled group that is not a queue (a `TileGrid` per property, a `StatGrid`, a table, "What posts did" with two header buttons in `actions`); a `TileGrid`'s own `label` stays for a grid that only needs an accessible name. A tile's `status` may be a long phrase or several badges: they wrap onto a second line. `figures` (Worth, Certified, Held) are label at the start, value at the end; give a tile at most three.
+
+`PageStack`'s track is `minmax(0, 1fr)`, so a wide child (a table, a long card) cannot push the page wider than the screen: no `min-w-0` on each section.
+
+`PageStack` or `.page-head`'s own margin? Seventeen screens use `.page-head` and space themselves with its 16px bottom margin, so that stays as it is. `PageStack` (a grid, `gap` 16 or 24) is the one way to space a work home: inside it the head's margin is cancelled so the head never stacks a second gap. Do not wrap content in `grid gap-4`.
+
+Queue grid: tracks are 300px at least, so a lone queue keeps one track's width instead of stretching; four queues use 400px tracks so they sit 2x2 where three and one would otherwise. Five stay 3+2; seven leave a last orphan (no clean CSS-only rule), so cap or group them.
+
+Touch: on a coarse pointer everything a person presses is 44px: buttons, icon buttons, tabs, chips, menu and select items, each `.segmented` button (the frame is 50 with its border), the shadcn `xs` buttons, a 16px checkbox or radio and a 32x16 switch (their look stays; a transparent 44px hit area is drawn around them), the fold button of an empty run and the header link of a `HomeSection`. Read-only value fields are not pressed and stay 24px. Dense desktop sizes do not change.
+
+File input: `<input type="file" className="input">` (or bare inside `Field`) is drawn in the control's frame with its selector as the default small button, in both themes, right to left, disabled and focused; no script.
+
+Behaviour you get without asking: a queue is a `section` named by its heading, its rows are a list, the whole row is one link (focus ring on the row), the count is a quiet counter outside the heading (so the name is read once) with tabular numerals, an empty queue keeps its header and count 0 and is one row high, queues in a grid keep their tops aligned and fall to one column at 390, rows are 52px (44 compact), touch targets stay at 44px, an attention queue gets a warning edge and counter, logical properties throughout (RTL), tokens only, no motion.
+
+Do:
+- Put the count in `count`, never in the title: if a catalog string was "Active ({length})", use "Active".
+- Pass `title` as a string, and cap the rows yourself (`slice(0, 5)`) with `more={{ to, count: total - 5 }}`.
+- Keep a status's tone from its stored id (`StatusBadge`, `tones`), and keep severity or priority marks as they were.
+
+Don't:
+- Wrap queues in `card card-pad` or write `np-page` / `np-columns` again; stretch a badge across a row; make a tall hollow box for nothing; show "(0)" in a title; use a bare text link as the page's action; put an interactive control in `trailing`.
+
+A typical home (Contracts), about twenty lines:
+
+```tsx
+export function Home() {
+  const q = useQuery(homeQuery);
+  const head = <PageHead title={t("Contracts")} actions={<ButtonLink to="/e/Contract/new" variant="primary" icon="plus">{t("New contract")}</ButtonLink>} />;
+  if (q.isPending) return <><PageHead title={t("Contracts")} /><HomeSkeleton /></>;
+  if (q.isError) return <>{head}<LoadFailed error={q.error} onRetry={() => void q.refetch()} /></>;
+  const { contracts, obligations } = q.data;
+  const notice = contracts.filter((c) => c.notice_due);
+  const row = (c: Row) => <QueueItem key={c.id} to={`/e/Contract/${c.id}`} title={String(c.title)} meta={String(c.counterparty_name)} trailing={<Badge>{String(c.status)}</Badge>} />;
+  return (
+    <>
+      <PageHead title={t("Contracts")} description={t("{n} notice due", { n: notice.length })} actions={<ButtonLink to="/e/Contract/new" variant="primary" icon="plus">{t("New contract")}</ButtonLink>} />
+      <QueueGrid>
+        {notice.length > 0 && <Queue title={t("Notice due before renewal")} count={notice.length} tone="attention">{notice.slice(0, 5).map(row)}</Queue>}
+        {byStage(contracts).map(([stage, list]) => (
+          <Queue key={stage} title={stage} count={list.length} more={{ to: "/e/Contract", count: list.length - 5 }}>{list.slice(0, 5).map(row)}</Queue>
+        ))}
+      </QueueGrid>
+    </>
+  );
+}
+```
+
+The same home compiles and runs in `src/ui/home.test.tsx`; the gallery's "Work home" section shows a normal home, an empty one, one with an attention queue, tiles and the skeleton.
+
+## Task layouts
+
+These are compositions of what exists, not components.
+
+- **Inbox** (Mail): a list pane and a reader pane in `resizable.tsx` (`ResizablePanelGroup`), `ListSkeleton` while loading, `ReaderSkeleton` for the reader, `StatePanel` for empty, no matches and failed, `SelectionToolbar` for multi-select.
+- **File browser** (Drive): a `FilterBar`/breadcrumb above a list or table, `TableSkeleton`, `Menu` for row actions, `SelectionToolbar`, `StatePanel kind="empty"` with the upload action.
+- **Editor** (Docs, designers): the document in the main area, `SaveStatus` in the header, `useUnsavedGuard` for leaving, `Dialog` for decisions; a `resizable.tsx` inspector beside it where there is one.
+- **Record workspace** (ERP, CRM): `PageHeader`, `Tabs` with `TabPanel`, the record form (`FormSkeleton` while loading), `RecordPeek` and `Related` for context, `Alert` for stale and conflicts.
+- **Builder** (Studio): a canvas, a palette and an inspector in `resizable.tsx`, `SaveStatus`, `Dialog` for publish decisions.
+- **Analytics** (dashboards, reports): `PageHeader`, `FilterBar`, chart cards, `StatePanel` per card for loading, no data and failed, so one failing card does not blank the page.
+
+## Not built yet
+
+No kit implementation exists; each waits for the screen that should drive it.
+
+- **ContextInspector**: a side panel for the selected thing. Drive it from `src/app/list/RecordPeek.tsx` and Mail's reader.
+- **ApprovalPreview**: what an approval will do, before it is done. Drive it from `src/app/ActionDialog.tsx` and the bulk submit/cancel confirmations in `BulkBar`.
+- **TransferTray**: uploads and downloads in flight, with retry. Drive it from Drive's upload flow.
+- **AppHeader / ViewToolbar** as distinct components: today `PageHeader` and each app's own toolbar. Drive them from the ERP list header and Mail's toolbar.
+- **StaleBanner**: no real consumer found; use `Alert` with a refresh action until one appears.
+
+## Scrolling rows
+
+A row that scrolls sideways inside its frame (`.tabs`, `.segmented`, the family navigation, anything given `.scroll-cue`) shows the same end-edge fade as `.table-wrap`: the edge with more beyond fades while there is more to scroll, mirrored in right-to-left, drawn by the one scroll-timeline mechanism (`edge-cue`) and no script. The fade steps aside while an item inside has keyboard focus, so a focus ring is never dimmed. A new scrolling row adds `scroll-cue`; an app that sets `animation: none` under reduced motion switches the cue off for its own pages, so use `animation-duration` there.
+
+## Labels and direction
+
+`.btn` sets `unicode-bidi: plaintext`: each label takes its direction from its own first strong letter, so an untranslated Latin label ending in punctuation ("What is in a bin?") reads correctly in a right-to-left page, while the button's own layout (icon on the start side) still follows the page direction.

@@ -215,7 +215,7 @@ export function applyLocale(
   // Where the names of the workspace's models and manifests are in that language.
   namesUrl = baseLanguage(tag) === "en" ? null : (locale?.names ?? null);
   setLanguage(tag);
-  setFormatLocale(locale?.chosen ? tag : undefined);
+  setFormatLocale(locale?.chosen ? tag : undefined, tag);
   if (!doc?.documentElement) return;
   doc.documentElement.lang = tag;
   doc.documentElement.dir = locale?.dir ?? direction(tag);

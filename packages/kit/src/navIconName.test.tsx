@@ -1,0 +1,66 @@
+// The menu's icon rule: a declared name wins, then the concept dictionary by whole words (longest run first), then the row's kind; never empty.
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import entities from "./navIconName.entities.json";
+import { NavIcon, NAV_ICONS } from "./NavIcon";
+import { conceptIcon, DICTIONARY, nameWords, NAV_ICON_NAMES, navIcon } from "./navIconName";
+
+describe("navIcon", () => {
+  it("takes the declared icon first, including the shell's older names", () => {
+    expect(navIcon({ icon: "receipt", entity: "Customer" })).toBe("receipt");
+    expect(navIcon({ icon: "dashboard", kind: "page" })).toBe("layout-dashboard");
+    expect(navIcon({ icon: "chart", to: "/r/x" })).toBe("chart-column");
+  });
+  it("falls from an unknown declared name to the concept, then the kind", () => {
+    expect(navIcon({ icon: "no-such-icon", entity: "SalesInvoice" })).toBe("receipt");
+    expect(navIcon({ icon: "no-such-icon", kind: "master" })).toBe("list");
+  });
+  it("matches whole words of a stable name, CamelCase or snake_case, plurals included", () => {
+    expect(nameWords("PosInvoice")).toEqual(["pos", "invoice"]);
+    expect(nameWords("pos_invoice")).toEqual(["pos", "invoice"]);
+    expect(conceptIcon("Invoices")).toBe("receipt");
+    expect(conceptIcon("Warehouse")).toBe("warehouse");
+    // a substring is not a word: "Bin" is not in "Binder", "Tax" not in "Taxi"
+    expect(conceptIcon("Binder")).toBeNull();
+    expect(conceptIcon("Taxi")).toBeNull();
+  });
+  it("takes the longest run of words, the last when equal", () => {
+    expect(conceptIcon("JournalEntry")).toBe("notebook"); // not history (entry)
+    expect(conceptIcon("PriceList")).toBe("tag");
+    expect(conceptIcon("PosClosingEntry")).toBe("store");
+    expect(conceptIcon("ItemPrice")).toBe("tag"); // item (package) then price: the head noun
+    expect(conceptIcon("TaxRate")).toBe("percent");
+  });
+  it("falls to the kind and is never empty", () => {
+    expect(navIcon({ kind: "report" })).toBe("chart-column");
+    expect(navIcon({ to: "/r/aging" })).toBe("chart-column");
+    expect(navIcon({ to: "/x/app/page" })).toBe("app-window");
+    expect(navIcon({ to: "/" })).toBe("house");
+    expect(navIcon({ entity: "Zzz", kind: "settings" })).toBe("settings");
+    expect(navIcon({ entity: "Zzz", kind: "document" })).toBe("file-text");
+    expect(navIcon({ entity: "Zzz", kind: "master", submittable: true })).toBe("file-text");
+    expect(navIcon({ entity: "Zzz", kind: "master" })).toBe("list");
+    expect(navIcon({})).toBe("list");
+  });
+  it("reads the entity from a /e/ address", () => {
+    expect(navIcon({ to: "/e/Patient" })).toBe("heart-pulse");
+  });
+  it("gives a concrete icon to every entity the installed apps define (the checked-in list)", () => {
+    const fell = (entities as string[]).filter((n) => !conceptIcon(n));
+    expect(fell).toEqual([]);
+    expect(entities.length).toBeGreaterThan(400);
+  });
+});
+
+describe("the drawing", () => {
+  it("has exactly the names the resolver can return", () => {
+    expect(Object.keys(NAV_ICONS).sort()).toEqual([...NAV_ICON_NAMES].sort());
+    for (const icon of DICTIONARY.values()) expect(NAV_ICONS[icon], icon).toBeTruthy();
+  });
+  it("is a decorative 16px stroke", () => {
+    const html = renderToStaticMarkup(<NavIcon entity="Customer" />);
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('width="16"');
+    expect(html).toContain("nav-icon");
+  });
+});

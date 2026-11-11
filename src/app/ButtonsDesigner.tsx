@@ -127,10 +127,10 @@ function Buttons({ meta }: { meta: EntityMeta }) {
                         <td>{mine ? <Badge tone="blue">{tr("Set up by configuration")}</Badge> : <Badge>{tr("Comes with the app")}</Badge>}{a.hidden && <span className="faint"> {tr("Called by code only, never a button")}</span>}</td>
                         <td className="nowrap">
                           {mine && (
-                            <>
-                              <Button size="sm" onClick={() => setEditing(fromButton(a as unknown as Raw))} aria-label={tr("Edit {name}", { name: a.label })}>{tr("Edit")}</Button>{" "}
+                            <div className="row-actions">
+                              <Button size="sm" onClick={() => setEditing(fromButton(a as unknown as Raw))} aria-label={tr("Edit {name}", { name: a.label })}>{tr("Edit")}</Button>
                               <Button size="sm" icon="trash" loading={removing === a.name} disabled={!!removing} onClick={() => void remove(a)} aria-label={tr("Remove {name}", { name: a.label })} />
-                            </>
+                            </div>
                           )}
                         </td>
                       </tr>

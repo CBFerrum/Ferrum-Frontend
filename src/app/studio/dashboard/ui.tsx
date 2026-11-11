@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useBlocker, useHref, type BlockerFunction, type NavigateFunction } from "react-router";
 import { bootstrap, shell, t, isolate } from "@ferrum/client";
-import { AlertCircle, RefreshCw, type LucideIcon } from "lucide-react";
+import { AlertCircle, ChevronLeft, RefreshCw, type LucideIcon } from "lucide-react";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,10 @@ export const useReducedMotion = () =>
     () => false,
   );
 
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+/** A page's head: the title (`h1.page-title`, which also names the tab), a quiet one-line summary, the actions at the end
+ *  (the main one a primary button), and above them either a trail (`eyebrow`) or a way back (`back`). Exported from
+ *  `@ferrum/kit` as `PageHeader` and as `PageHead`. */
+export function PageHeader({ eyebrow, title, description, actions, back }: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; actions?: ReactNode; back?: { to: string; label: string } }) {
   // A page named in words names the tab and the bar too, so a screen reader and a list of tabs tell pages apart;
   // the app's own name comes back when the page goes.
   const named = typeof title === "string" ? title.replace(/[\u2066-\u2069]/g, "").trim() : "";
@@ -46,13 +49,19 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?:
     return () => shell().title("");
   }, [named]);
   return (
-    <header className="mb-4 flex flex-wrap items-start gap-3">
+    <header className="page-head">
       <div className="min-w-0 flex-1 basis-64">
-        {eyebrow && <div className="mb-1 text-xs text-muted-foreground">{eyebrow}</div>}
-        <h1 className="text-xl leading-tight font-semibold [overflow-wrap:anywhere]">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {back && (
+          <Link className="page-back" to={back.to}>
+            <ChevronLeft aria-hidden size={14} />
+            {back.label}
+          </Link>
+        )}
+        {eyebrow && <div className="crumbs">{eyebrow}</div>}
+        <h1 className="page-title">{title}</h1>
+        {description && <p className="page-sub">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="page-actions">{actions}</div>}
     </header>
   );
 }

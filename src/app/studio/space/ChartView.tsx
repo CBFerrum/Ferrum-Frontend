@@ -270,7 +270,7 @@ function HeatmapView({ model }: { model: ChartModel }) {
   });
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">
-      <div className="grid shrink-0 grid-rows-7 gap-[3px] text-[10px] leading-none text-muted-foreground" aria-hidden="true">
+      <div className="grid shrink-0 grid-rows-7 gap-[3px] text-xs leading-none text-muted-foreground" aria-hidden="true">
         {WEEKDAYS.map((d, i) => (
           <span key={i} className="flex h-3 items-center">
             {isolate(d)}

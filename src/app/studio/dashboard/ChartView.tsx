@@ -4,7 +4,7 @@
 // its dimension values (drill-down); the data table is the keyboard equivalent.
 
 import { useMemo, type ReactNode } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, LineChart, Pie, PieChart, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,7 +26,7 @@ import {
   type ResultLike,
   type ResultRow,
 } from "@/lib/studio";
-import { compactTick, describeChart, formatShare, shortLabel, toHeat, toScatter, toSingle, toSlices, type Slice } from "./charts";
+import { compactTick, describeChart, formatShare, shortLabel, smallSeries, toHeat, toScatter, toSingle, toSlices, type Slice } from "./charts";
 import type { DrillPoint } from "./drill";
 import { useReducedMotion } from "./ui";
 import { t as tr, isolate } from "@ferrum/client";
@@ -142,11 +142,26 @@ function CartesianChart({ type, data, o, title, reduced, onPoint }: { type: Char
     onClick: drillable && type !== "bar" && type !== "stacked_bar" ? clickAt : undefined,
     className: drillable ? "cursor-pointer" : undefined,
   };
+  // A measure far smaller than another (under 2% of it) would be invisible on one axis: it gets its own, on the right, named quietly.
+  const small = useMemo(() => (type === "stacked_bar" ? new Set<string>() : smallSeries(model)), [type, model]);
+  const smallOnes = model.series.filter((s) => small.has(s.key));
+  const split = smallOnes.length > 0;
   const axes = (
     <>
       <CartesianGrid vertical={false} />
       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={12} tickFormatter={(v) => shortLabel(String(v))} />
-      <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v) => compactTick(v, o.locale)} />
+      <YAxis yAxisId={split ? "main" : undefined} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => compactTick(v, o.locale)} />
+      {split && (
+        <YAxis
+          yAxisId="small"
+          orientation="right"
+          tickLine={false}
+          axisLine={false}
+          width={52}
+          tickFormatter={(v) => compactTick(v, o.locale)}
+          label={{ value: smallOnes.map((s) => s.label).join(", "), angle: 90, position: "insideRight", offset: 4, className: "fill-muted-foreground", fontSize: 12 }}
+        />
+      )}
       <Tooltip content={(p) => <SeriesTip active={p.active} payload={p.payload} model={model} />} cursor={type === "line" || type === "area" ? true : { fill: "var(--muted)" }} />
       {model.series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
     </>
@@ -157,16 +172,44 @@ function CartesianChart({ type, data, o, title, reduced, onPoint }: { type: Char
       <LineChart {...common}>
         {axes}
         {model.series.map((s) => (
-          <Line key={s.key} dataKey={s.key} name={s.label} type="monotone" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={dots ? { r: 3 } : false} activeDot={{ r: 4 }} isAnimationActive={!reduced} />
+          <Line key={s.key} yAxisId={split ? (small.has(s.key) ? "small" : "main") : undefined} dataKey={s.key} name={s.label} type="monotone" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={dots ? { r: 3 } : false} activeDot={{ r: 4 }} isAnimationActive={!reduced} />
         ))}
       </LineChart>
     ) : type === "area" ? (
       <AreaChart {...common}>
         {axes}
         {model.series.map((s) => (
-          <Area key={s.key} dataKey={s.key} name={s.label} type="monotone" stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.18} strokeWidth={2} isAnimationActive={!reduced} />
+          <Area key={s.key} yAxisId={split ? (small.has(s.key) ? "small" : "main") : undefined} dataKey={s.key} name={s.label} type="monotone" stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.18} strokeWidth={2} isAnimationActive={!reduced} />
         ))}
       </AreaChart>
+    ) : split && type === "bar" ? (
+      // Bars for the measures that share an axis, a line for the small ones on theirs, so the two never sit on top of each other.
+      <ComposedChart {...common}>
+        {axes}
+        {model.series.filter((s) => !small.has(s.key)).map((s) => (
+          <Bar
+            key={s.key}
+            yAxisId="main"
+            dataKey={s.key}
+            name={s.label}
+            fill={`var(--color-${s.key})`}
+            radius={[4, 4, 0, 0]}
+            maxBarSize={56}
+            isAnimationActive={!reduced}
+            onClick={
+              drillable
+                ? (_: unknown, i: number) => {
+                    const p = pointsAt(model.rows[i], s.dims);
+                    if (p) onPoint?.(p);
+                  }
+                : undefined
+            }
+          />
+        ))}
+        {smallOnes.map((s) => (
+          <Line key={s.key} yAxisId="small" dataKey={s.key} name={s.label} type="linear" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 4 }} isAnimationActive={!reduced} />
+        ))}
+      </ComposedChart>
     ) : (
       <BarChart {...common}>
         {axes}

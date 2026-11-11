@@ -123,9 +123,9 @@ function Latest({ section }: { section: Section }) {
 function Count({ kind, label, to, icon }: { kind: StudioKind; label: string; to: string; icon: ReactNode }) {
   const n = useStudioList(kind).data?.length;
   return (
-    <Link to={to} className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none [&_svg]:size-4 [&_svg]:text-muted-foreground">
+    <Link to={to} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:no-underline [&_svg]:size-4">
       {icon}
-      <span className="font-medium">{isolate(label)}</span>
+      <span className="font-medium text-foreground">{isolate(label)}</span>
       <span className="text-muted-foreground tabular-nums">{n ?? "…"}</span>
     </Link>
   );
@@ -134,17 +134,12 @@ function Count({ kind, label, to, icon }: { kind: StudioKind; label: string; to:
 export function StudioHome() {
   const me = useMe().data;
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4">
+    <div className="grid w-full gap-6">
       <PageHeader
         title={t("Studio")}
         description={t("Reports, charts, dashboards and spaces, built without code. What they show always follows each viewer's own permissions.")}
         actions={
           <>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/studio/dashboards">
-                <LayoutDashboard /> {t("Dashboards")}
-              </Link>
-            </Button>
             <Button asChild size="sm">
               <Link to="/studio/reports/new">
                 <Plus /> {t("New report")}
@@ -158,30 +153,30 @@ export function StudioHome() {
           <Latest key={s.kind} section={s} />
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <nav aria-label={t("More in Studio")} className="flex flex-wrap gap-x-2 gap-y-1 border-t pt-4">
         <Count kind="charts" label={t("Charts")} to="/studio/dashboards?tab=charts" icon={<ChartColumn aria-hidden />} />
         <Count kind="cards" label={t("Number cards")} to="/studio/dashboards?tab=cards" icon={<Hash aria-hidden />} />
-        <Link to="/studio/tasks" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+        <Link to="/studio/tasks" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:no-underline [&_svg]:size-4">
           <ListChecks aria-hidden />
-          <span className="font-medium">{t("Tasks")}</span>
+          <span className="font-medium text-foreground">{t("Tasks")}</span>
         </Link>
-        <Link to="/studio/runs" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+        <Link to="/studio/runs" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:no-underline [&_svg]:size-4">
           <Workflow aria-hidden />
-          <span className="font-medium">{t("Runs")}</span>
+          <span className="font-medium text-foreground">{t("Runs")}</span>
         </Link>
         {(me?.user.is_admin || me?.user.roles.includes("Solution Author")) && (
-          <Link to="/studio/solutions" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+          <Link to="/studio/solutions" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:no-underline [&_svg]:size-4">
             <Blocks aria-hidden />
-            <span className="font-medium">{t("Solutions")}</span>
+            <span className="font-medium text-foreground">{t("Solutions")}</span>
           </Link>
         )}
         {me?.user.is_admin && (
-          <a href="/data/customize/" className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-accent [&_svg]:size-4 [&_svg]:text-muted-foreground">
+          <a href="/data/customize/" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:no-underline [&_svg]:size-4">
             <SlidersHorizontal aria-hidden />
-            <span className="font-medium">{t("Customize your records")}</span>
+            <span className="font-medium text-foreground">{t("Customize your records")}</span>
           </a>
         )}
-      </div>
+      </nav>
     </div>
   );
 }

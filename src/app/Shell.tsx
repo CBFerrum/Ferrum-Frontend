@@ -8,7 +8,7 @@ import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "r
 import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
-import { humanize, relativeTime } from "../lib/format";
+import { humanize, initials, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
@@ -29,6 +29,9 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
+import { Kbd } from "@/components/ui/kbd";
+import { FormSkeleton, ListSkeleton, TableSkeleton } from "../ui/patterns";
+import { NavIcon } from "../../packages/kit/src/NavIcon";
 import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
 
 // The person's menu's dialogs load when one is opened: every interface's first script holds this
@@ -37,7 +40,7 @@ const TwoFactorSettings = lazy(() => import("./TwoFactor").then((m) => ({ defaul
 const ApiKeys = lazy(() => import("./Admin").then((m) => ({ default: m.ApiKeys })));
 const CalendarApps = lazy(() => import("./Admin").then((m) => ({ default: m.CalendarApps })));
 
-type NavItem = { label: string; to: string; icon: string };
+type NavItem = { label: string; to: string; icon?: string; entity?: string; kind?: string; submittable?: boolean };
 
 /** The Studio app (package and module): its records open in their builders, not the generic list and form. */
 export const STUDIO = "studio";
@@ -71,10 +74,10 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
   const links = m.items.flatMap((item) => {
     if (item.startsWith("report:")) {
       const name = item.slice(7);
-      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
+      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), kind: "report" }];
     }
     const e = readable.get(item);
-    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
+    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: e.icon ?? undefined, entity: e.name, kind: e.kind, submittable: e.submittable }] : [];
   });
   if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
   if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
@@ -238,7 +241,7 @@ function Shell() {
       <aside className="sidebar" aria-label={tr("Sidebar")} onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            {frameMode === "app" ? appName().slice(0, 2) : tr("Fe")}
+            {frameMode === "app" ? Array.from(appName())[0] : tr("Fe")}
           </span>
           {frameMode === "app" ? isolate(appName()) : tr("Ferrum")}
         </NavLink>
@@ -346,35 +349,46 @@ function Sidebar() {
       .filter((g) => g.items.length);
   }, [meta, reports, meet, me]);
 
+  // The page's own entry is in view when the page opens, and after a move to a page whose entry is not.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".sidebar > nav");
+    const here = scroller?.querySelector<HTMLElement>(".nav-link.active");
+    if (!scroller || !here) return;
+    const box = scroller.getBoundingClientRect();
+    const at = here.getBoundingClientRect();
+    if (at.top < box.top || at.bottom > box.bottom) scroller.scrollTop += at.top - box.top - box.height / 3;
+  }, [pathname, groups.length]);
+
   return (
     <nav aria-label={tr("Main")}>
       <NavLink to="/" end className="nav-link">
-        <Icon name="home" />
-        {tr("Home")}
+        <NavIcon to="/" />
+        <span className="nav-label">{tr("Home")}</span>
       </NavLink>
       {/* Under the platform's bar, other apps are in its launcher. */}
       {frameMode === "classic" && comms && (
         <NavLink to="/mail" className="nav-link">
-          <Icon name="mail" />
-          {tr("Mail")}
+          <NavIcon icon="mail" />
+          <span className="nav-label">{tr("Mail")}</span>
         </NavLink>
       )}
       {frameMode === "classic" && meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
-          <Icon name="file" />
-          {tr("Files")}
+          <NavIcon icon="folder" />
+          <span className="nav-label">{tr("Files")}</span>
         </NavLink>
       )}
       {groups.map((g) => (
         <details key={g.name} className="nav-group" open>
           <summary>
+            <span>{isolate(g.label)}</span>
             <Icon name="chevronRight" size={12} />
-            {isolate(g.label)}
           </summary>
           {g.items.map((i) => (
             <NavLink key={i.to} to={i.to} className="nav-link">
-              <Icon name={i.icon} />
-              {isolate(i.label)}
+              <NavIcon {...i} />
+              <span className="nav-label">{isolate(i.label)}</span>
             </NavLink>
           ))}
         </details>
@@ -382,13 +396,13 @@ function Sidebar() {
       {pages.length > 0 && (
         <details className="nav-group" open>
           <summary>
+            <span>{tr("Add-ons")}</span>
             <Icon name="chevronRight" size={12} />
-            {tr("Add-ons")}
           </summary>
           {pages.map((p) => (
             <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
-              <Icon name={p.icon ?? "apps"} />
-              {isolate(p.title ?? "")}
+              <NavIcon icon={p.icon} to={`/x/${p.app}/${p.id}`} />
+              <span className="nav-label">{isolate(p.title ?? "")}</span>
             </NavLink>
           ))}
         </details>
@@ -396,48 +410,56 @@ function Sidebar() {
       {me?.user.is_admin && (
         <details className="nav-group" open>
           <summary>
+            <span>{tr("Administration")}</span>
             <Icon name="chevronRight" size={12} />
-            {tr("Administration")}
           </summary>
           {frameMode === "classic" ? (
             <>
               <NavLink to="/apps" className="nav-link">
-                <Icon name="apps" />
-                {tr("Apps")}
+                <NavIcon icon="layout-grid" />
+                <span className="nav-label">{tr("Apps")}</span>
               </NavLink>
               <NavLink to="/admin" className="nav-link">
-                <Icon name="settings" />
-                {tr("Admin")}
+                <NavIcon icon="shield" />
+                <span className="nav-label">{tr("Admin")}</span>
               </NavLink>
             </>
           ) : (
             <>
               {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
               <a href="/store/" className="nav-link">
-                <Icon name="apps" />
-                {tr("Apps")}
+                <NavIcon icon="layout-grid" />
+                <span className="nav-label">{tr("Apps")}</span>
+                <NavGlyph external />
               </a>
               <a href="/admin/" className="nav-link">
-                <Icon name="settings" />
-                {tr("Admin")}
+                <NavIcon icon="shield" />
+                <span className="nav-label">{tr("Admin")}</span>
+                <NavGlyph external />
               </a>
             </>
           )}
           {frameHasPages ? (
             <NavLink to="/customize" className="nav-link">
-              <Icon name="edit" />
-              {tr("Customize")}
+              <NavIcon icon="sliders-horizontal" />
+              <span className="nav-label">{tr("Customize")}</span>
             </NavLink>
           ) : (
             <a href="/data/customize/" className="nav-link">
-              <Icon name="edit" />
-              {tr("Customize")}
+              <NavIcon icon="sliders-horizontal" />
+              <span className="nav-label">{tr("Customize")}</span>
+              <NavGlyph external />
             </a>
           )}
         </details>
       )}
     </nav>
   );
+}
+
+/** The mark at the end of a sidebar entry that leads outside this app; the row's own icon leads it (NavIcon). */
+function NavGlyph({ external }: { external?: boolean }) {
+  return external ? <Icon name="external" size={14} /> : null;
 }
 
 // ── search / command palette ──
@@ -566,11 +588,7 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
       />
-      {mode === "inline" && !q && (
-        <span className="kbd" aria-hidden="true">
-          /
-        </span>
-      )}
+      {mode === "inline" && !q && <Kbd className="search-kbd" aria-hidden="true">/</Kbd>}
       {showList && (
         <ul className="listbox" role="listbox" id={listId}>
           {items.map((t, i) => (
@@ -682,7 +700,7 @@ function Notifications() {
               <button key={n.id} type="button" className={`notif ${n.read_at ? "" : "notif-unread"}`} onClick={() => openOne(n)}>
                 <strong>{isolate(n.title)}</strong>
                 {n.body && <div className="muted">{isolate(n.body)}</div>}
-                <div className="faint" style={{ fontSize: 12 }}>
+                <div className="faint text-xs">
                   {isolate(relativeTime(n.created_at))}
                 </div>
               </button>
@@ -730,15 +748,15 @@ function UserMenu() {
 
   return (
     <>
-      <Menu ariaLabel={tr("Account menu")} icon="user" buttonClass="icon-btn">
+      <Menu ariaLabel={tr("Account menu")} label={<span className="avatar-initial">{initials(me?.user.full_name ?? "")}</span>} buttonClass="icon-btn avatar-btn">
         {(close) => (
           <>
             <div className="menu-head">
               <strong>{me?.user.full_name ?? "…"}</strong>
-              <div className="muted" style={{ fontSize: 12.5 }}>
+              <div className="muted text-xs">
                 {isolate(me?.user.email ?? "")}
               </div>
-              <div className="faint" style={{ fontSize: 12 }}>
+              <div className="faint text-xs">
                 {tr("Workspace: {tenant}", { tenant: getSession()?.tenant ?? "" })}
               </div>
             </div>
@@ -817,21 +835,21 @@ function UserMenu() {
       <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
       <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title={tr("Two-factor sign-in")}>
         {dialog === "2fa" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<FormSkeleton fields={2} />}>
             <TwoFactorSettings />
           </Suspense>
         )}
       </Dialog>
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title={tr("Your API keys")} wide>
         {dialog === "keys" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<TableSkeleton columns={4} rows={4} />}>
             <ApiKeys />
           </Suspense>
         )}
       </Dialog>
       <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title={tr("Calendar and contacts apps")} wide>
         {dialog === "cal" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<ListSkeleton rows={3} />}>
             <CalendarApps email={me?.user.email ?? ""} />
           </Suspense>
         )}

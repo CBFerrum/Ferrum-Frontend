@@ -59,7 +59,7 @@ export function SpacesPage() {
     <div className="mx-auto w-full max-w-screen-2xl">
       <header className="mb-5 flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1 basis-64">
-          <h1 className="text-xl font-semibold tracking-tight">{tr("Spaces")}</h1>
+          <h1 className="page-title">{tr("Spaces")}</h1>
           <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">
             {tr("Home pages for modules and teams: shortcuts with live counts, charts, number cards, recent records, notes and checklists.")}
           </p>
@@ -110,7 +110,7 @@ export function SpacesPage() {
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label={tr("Loading spaces")}>
           {Array.from({ length: 6 }, (_, i) => (
             <li key={i}>
-              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-lg" />
             </li>
           ))}
         </ul>
@@ -196,10 +196,10 @@ function SpaceCard({ row: r, moduleLabel, canEdit, canDelete, canCreate }: { row
     <li className="relative">
       <Link
         to={PATHS.space(r.id)}
-        className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 pe-12 text-card-foreground shadow-xs transition-colors outline-none hover:bg-accent/50 hover:no-underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="flex h-full items-start gap-3 rounded-lg border bg-card p-4 pe-12 text-card-foreground transition-colors outline-none hover:bg-accent/50 hover:no-underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-          <SpaceIcon name={r.icon} className="size-5" />
+        <span className="mt-0.5 shrink-0 text-muted-foreground">
+          <SpaceIcon name={r.icon} className="size-4" />
         </span>
         <span className="grid min-w-0 gap-1">
           <span className="truncate font-medium">{isolate(r.label)}</span>

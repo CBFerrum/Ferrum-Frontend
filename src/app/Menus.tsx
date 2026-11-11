@@ -111,9 +111,11 @@ function Menus() {
                     <td className="mono">{isolate(m.name)}</td>
                     <td>{m.items.length}</td>
                     <td className="nowrap">
-                      <a className="btn btn-sm" href={openHref(m.name)} aria-label={tr("Open {name}", { name: m.label })}>{tr("Open")}</a>{" "}
-                      <Button size="sm" onClick={() => { setSaved(null); setEditing(fromModule(m as unknown as Raw)); }} aria-label={tr("Edit {name}", { name: m.label })}>{tr("Edit")}</Button>{" "}
-                      <Button size="sm" icon="trash" loading={removing === m.name} disabled={!!removing} onClick={() => void remove(m)} aria-label={tr("Remove {name}", { name: m.label })} />
+                      <div className="row-actions">
+                        <a className="btn btn-sm" href={openHref(m.name)} aria-label={tr("Open {name}", { name: m.label })}>{tr("Open")}</a>
+                        <Button size="sm" onClick={() => { setSaved(null); setEditing(fromModule(m as unknown as Raw)); }} aria-label={tr("Edit {name}", { name: m.label })}>{tr("Edit")}</Button>
+                        <Button size="sm" icon="trash" loading={removing === m.name} disabled={!!removing} onClick={() => void remove(m)} aria-label={tr("Remove {name}", { name: m.label })} />
+                      </div>
                     </td>
                   </tr>
                 ))}

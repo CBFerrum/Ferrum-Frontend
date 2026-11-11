@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc --noEmit && npm run build:apps",
     "build:apps": "vite build --config apps/shell/vite.config.ts && vite build --config apps/studio/vite.config.ts && node scripts/releases.mjs && node scripts/budgets.mjs",
+    "gallery": "vite --config apps/gallery/vite.config.ts --port 5199",
     "typecheck": "tsc --noEmit",
+    "lint:ui": "node scripts/ui-lint.mjs",
     "test": "vitest run"
   },
   "dependencies": {

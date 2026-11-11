@@ -63,7 +63,7 @@ export function WidgetFrame({ title, label, accent, menu, handle, children, clas
   return (
     <section
       aria-label={label}
-      className={cn("relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm", className)}
+      className={cn("relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card text-card-foreground", className)}
       style={accent && isSafeColor(accent) ? { borderTop: `3px solid ${accent}` } : undefined}
     >
       {(title || menu || handle) && (
@@ -386,7 +386,7 @@ export function WidgetView({ widget, handle, editMenu, title }: { widget: Resolv
     case "heading": {
       const H = (["h2", "h3", "h4"] as const)[Math.min(Math.max(widget.level, 1), 3) - 1];
       return (
-        <div className={cn("flex h-full min-h-0 items-end gap-1", (handle || menu) && "rounded-xl border border-dashed bg-card/50 px-1")}>
+        <div className={cn("flex h-full min-h-0 items-end gap-1", (handle || menu) && "rounded-lg border border-dashed bg-card/50 px-1")}>
           {handle}
           <H className={cn("min-w-0 flex-1 truncate pb-0.5 font-semibold", widget.level <= 1 ? "text-lg" : widget.level === 2 ? "text-base" : "text-sm text-muted-foreground")}>{isolate(widget.text)}</H>
           {menu && (
