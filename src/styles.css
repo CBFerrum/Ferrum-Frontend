@@ -18,8 +18,12 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 1rem/calc(20 / 14) var(--font);
   -webkit-font-smoothing: antialiased;
+}
+
+/* On body only: the `font` shorthand on html would reset the root's size to 1rem of the browser's default. */
+body {
+  font: 1rem/calc(20 / 14) var(--font);
 }
 
 body {
