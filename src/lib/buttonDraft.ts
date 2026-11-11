@@ -91,8 +91,8 @@ export function fromButton(a: Raw): ButtonDraft {
       };
     }),
     effects: (Array.isArray(a.effects) ? a.effects : []).map(fromEffect),
-    // `may_run` is the server's answer to whoever asked, not part of the definition: sent back, it is refused.
-    extra: rest(a, [...KNOWN, "may_run"]),
+    // `may_run` and `package` are the server's marks, not part of the definition: sent back, they are refused.
+    extra: rest(a, [...KNOWN, "may_run", "package"]),
   };
 }
 

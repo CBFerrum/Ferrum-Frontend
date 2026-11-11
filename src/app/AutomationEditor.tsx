@@ -10,39 +10,15 @@ import { api, ApiError, errorMessage } from "../lib/api";
 import { filterable } from "../lib/filters";
 import { useEntityMeta, useMetaIndex, type EntityMeta, type Field as MetaField } from "../lib/meta";
 import {
-  checkAutomation, EVENTS, fromAutomation, MAX_ACTIONS, mapRefusal, move, newKey, readBack, toAutomation, weekday, type Refusal,
-  type Automation, type Draft, type DraftAction, type NotifyTo, type Problem, type Row, type Trigger,
+  checkAutomation, EVENTS, fromAutomation, MAX_ACTIONS, MAX_LOOP_EFFECTS, mapRefusal, move, newKey, readBack, toAutomation, weekday, type Refusal,
+  type Automation, type Draft, type DraftAction, type NotifyTo, type Problem, type Trigger,
 } from "../lib/automationDraft";
 import { Alert, Button, Dialog, ErrorState, Field, toast } from "../ui/kit";
 import { ExprInput, linkChips } from "./author/ExprInput";
-import { FilterRows, grow, optionsOf, Pick, Tools, wrap } from "./author/controls";
+import { FilterRows, grow, optionsOf, Pick, Rows, Tools, wrap } from "./author/controls";
 import { useRoleNames } from "./author/RoleSelect";
 import { InvokeCard, useCapabilities } from "./author/InvokeCard";
-
-/** Rows of field → expression. */
-function Rows({ rows, fields, onChange, what, typed }: { /** Names are typed: the fields are not known. */ typed?: boolean; rows: Row[]; fields: MetaField[]; onChange: (r: Row[]) => void; what: string }) {
-  const edit = (key: string, patch: Partial<Row>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  return (
-    <div className="stack">
-      {rows.map((r, i) => (
-        <div key={r.key} className="row" style={wrap}>
-          <div style={grow}>
-            {typed ? (
-              <input className="input mono" aria-label={tr("Field of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.field} onChange={(e) => edit(r.key, { field: e.target.value })} />
-            ) : (
-              <Pick label={tr("Field of {what} {n}", { what, n: i + 1 })} value={r.field} onChange={(v) => edit(r.key, { field: v })} options={optionsOf(fields, r.field)} />
-            )}
-          </div>
-          <input className="input mono" style={{ ...grow, flexBasis: 240 }} aria-label={tr("Value of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.expr} onChange={(e) => edit(r.key, { expr: e.target.value })} />
-          <Button size="sm" icon="trash" aria-label={tr("Remove {what} {n}", { what, n: i + 1 })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))} />
-        </div>
-      ))}
-      <div>
-        <Button size="sm" icon="plus" onClick={() => onChange([...rows, { key: newKey(), field: "", expr: "" }])}>{tr("Add a field")}</Button>
-      </div>
-    </div>
-  );
-}
+import { CopyLinesBody, FindBody, ForEachHead, WhenBox } from "./author/FlowCards";
 
 /** The mail's formatted message, with the record's fields as chips that insert `{{ doc.field }}`. */
 function TemplateInput({ value, onChange, fields, error }: { value: string; onChange: (v: string) => void; fields: MetaField[]; error?: string }) {
@@ -109,9 +85,13 @@ export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: 
   );
 }
 
-export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), append_line: tr("Add a line"), set_line: tr("Change one line"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), raw: tr("Other action") });
+export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), append_line: tr("Add a line"), set_line: tr("Change one line"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), find: tr("Find"), for_each: tr("For each"), copy_lines: tr("Copy lines"), raw: tr("Other action") });
 
-export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false, lines }: {
+export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false, lines, earlier, nested = false }: {
+  /** The effects before this one (a Copy lines may take its lines from a Find among them); none inside a loop. */
+  earlier?: DraftAction[];
+  /** An effect inside a loop: no loop of its own, and `item` besides. */
+  nested?: boolean;
   /** The record's table fields with their line entities (`children` of its description); absent on an older server. */
   lines?: EntityMeta["children"];
   error?: string; entity: string; owner?: string; inButton?: boolean;
@@ -295,8 +275,27 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
           </>
         )}
+        {a.kind === "find" && <FindBody a={a} fields={fields} chips={chips} entities={entities} patch={patch} />}
+        {a.kind === "copy_lines" && <CopyLinesBody a={a} fields={fields} chips={chips} entities={entities} patch={patch} lines={lines} earlier={earlier} />}
+        {a.kind === "for_each" && (
+          <>
+            <ForEachHead a={a} fields={fields} chips={chips} entities={entities} patch={patch} owner={entity} />
+            <div className="stack" role="group" aria-label={tr("Effects of the loop")}>
+              {a.effects.map((x, j) => (
+                <ActionCard
+                  key={x.key} a={x} index={j} count={a.effects.length} entities={entities} chips={chips} fields={fields} flagged={false} entity={entity} owner={owner} inButton={inButton} lines={lines} nested
+                  onChange={(p) => patch({ effects: a.effects.map((y) => (y.key === x.key ? { ...y, ...p } : y)) })}
+                  onMove={(by) => patch({ effects: move(a.effects, j, by) })}
+                  onRemove={() => patch({ effects: a.effects.filter((y) => y.key !== x.key) })}
+                />
+              ))}
+              <AddActions nested hasTable={fields.some((f) => f.type === "table")} count={a.effects.length} max={MAX_LOOP_EFFECTS} onAdd={(x) => patch({ effects: [...a.effects, x] })} />
+            </div>
+          </>
+        )}
         {index > 0 && (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked" || a.kind === "append_line" || a.kind === "set_line") && <p className="faint">{tr("Values can also use results[n]: what the earlier steps made, n counting from 0.")}</p>}
         {a.kind === "invoke" && <InvokeCard a={a} index={index} owner={owner} inButton={inButton} chips={chips} links={linkChips(fields)} onChange={patch} />}
+        {a.kind !== "raw" && <WhenBox a={a} fields={fields} chips={chips} patch={patch} nested={nested} />}
         {a.kind === "raw" && (
           <>
             <p className="faint">{tr("The editor has no form for this action. It is kept exactly as it is; change it under Edit as JSON.")}</p>
@@ -466,7 +465,7 @@ function TriggerCard({ trigger, onChange, fields, submittable, sentence, error }
 }
 
 /** The buttons that add an action card; `max` is how many the list may hold. */
-export function AddActions({ count, max, onAdd, hasTable }: { hasTable: boolean; count: number; max: number; onAdd: (a: DraftAction) => void }) {
+export function AddActions({ count, max, onAdd, hasTable, nested }: { /** Inside a loop: no loop. */ nested?: boolean; hasTable: boolean; count: number; max: number; onAdd: (a: DraftAction) => void }) {
   const row = () => [{ key: newKey(), field: "", expr: "" }];
   const kinds: [string, () => DraftAction][] = [
     [tr("Set fields"), () => ({ key: newKey(), kind: "set_fields", rows: row() })],
@@ -479,6 +478,9 @@ export function AddActions({ count, max, onAdd, hasTable }: { hasTable: boolean;
     [tr("Notify"), () => ({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })],
     [tr("Do a step of another app"), () => ({ key: newKey(), kind: "invoke", capability: "", rows: [], once: false, onceKey: "", extra: {} })],
     [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
+    [tr("Find"), () => ({ key: newKey(), kind: "find", entity: "", by: row(), create: null, update: null, extra: {} })],
+    ...(nested ? [] : ([[tr("For each"), () => ({ key: newKey(), kind: "for_each", over: "table", table: "", entity: "", link: "", where: "", effects: [], extra: {} })]] as [string, () => DraftAction][])),
+    ...(hasTable ? ([[tr("Copy lines"), () => ({ key: newKey(), kind: "copy_lines", table: "", source: "link", link: "", result: "", from_table: "", rows: row(), mode: "", extra: {} })]] as [string, () => DraftAction][]) : []),
   ];
   return (
     <div role="group" aria-label={tr("Add an action")} className="row" style={{ flexWrap: "wrap" }}>
@@ -642,6 +644,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
             fields={chips}
             links={linkChips(fields)}
             error={conditionError}
+            functions
             hint={tr("For example doc.grand_total > 100000.0. The server checks it when you save.")}
           />
           <section className="stack" aria-labelledby="au-actions-h">
@@ -661,6 +664,7 @@ export function AutomationEditor({ initial, onClose, onDone }: { initial: Partia
                 entity={draft.entity}
                 owner={draft.name}
                 lines={meta.data?.children}
+                earlier={draft.actions.slice(0, i)}
                 onChange={(p) => patchAction(a.key, p)}
                 onMove={(by) => set({ ...draft, actions: move(draft.actions, i, by) })}
                 onRemove={() => set({ ...draft, actions: draft.actions.filter((x) => x.key !== a.key) })}
