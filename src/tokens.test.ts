@@ -133,3 +133,14 @@ describe("colour tokens (src/index.css)", () => {
     console.log(`| theme | pair | ratio | minimum |\n|---|---|---|---|\n${table.join("\n")}`);
   });
 });
+
+// Seen in a real browser on 11 Nov 2026: `html, body { font: 1rem/… }` reset the root to 16px, so every rem
+// size was 14% too big. Only a browser shows computed sizes; this keeps the cause from coming back.
+describe("the root's size", () => {
+  const legacy = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+  it("is 87.5% and no rule sets `font` or `font-size` on html after it", () => {
+    const onHtml = [...legacy.matchAll(/(^|\})\s*([^{}]*\bhtml\b[^{}]*)\{([^}]*)\}/g)].filter((m) => /(^|,)\s*html\s*(,|$)/.test(m[2].trim()));
+    const sizes = onHtml.flatMap((m) => [...m[3].matchAll(/(?:^|;)\s*(font|font-size)\s*:\s*([^;]+)/g)].map((d) => `${d[1]}: ${d[2].trim().replace(/\s*\/\*.*$/, "")}`));
+    expect(sizes).toEqual(["font-size: 87.5%"]);
+  });
+});
