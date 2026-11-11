@@ -345,7 +345,7 @@ function ChartEditor({
 
   const meta = preview.data?.data && "meta" in preview.data.data ? (preview.data.data.meta as { row_count?: number; sql_ms?: number; truncated?: boolean } | undefined) : undefined;
   const previewPane = (
-    <section aria-label={tr("Preview")} className="flex h-[22rem] flex-col rounded-xl border bg-card shadow-sm lg:sticky lg:top-4 lg:h-[min(36rem,calc(100vh-10rem))]">
+    <section aria-label={tr("Preview")} className="flex h-[22rem] flex-col rounded-lg border bg-card lg:sticky lg:top-4 lg:h-[min(36rem,calc(100vh-10rem))]">
       <header className="flex items-center gap-2 border-b px-3 py-2">
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">{rec.label || tr("Preview")}</h2>
         {preview.isFetching && <Spinner className="text-muted-foreground" aria-label={tr("Updating the preview")} />}

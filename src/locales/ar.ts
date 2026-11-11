@@ -4078,6 +4078,17 @@ const words: Record<string, string> = {
   "Fields to fix": "الحقول المطلوب تصحيحها",
   "Nothing matches your search or filters.": "لا شيء يطابق بحثك أو عوامل التصفية.",
   "{table}: {message}": "{table}: {message}",
+  "Search this list…": "ابحث في هذه القائمة…",
+  "People and access": "الأشخاص والوصول",
+  "Apps and integrations": "التطبيقات والتكاملات",
+  "Setup": "الإعداد",
+  "Data and review": "البيانات والمراجعة",
+  "Administration sections": "أقسام الإدارة",
+  "Actions for {name}": "إجراءات {name}",
+  "You cannot deactivate your own account": "لا يمكنك إلغاء تنشيط حسابك",
+  "More in Studio": "المزيد في Studio",
+  "Run {when}": "شُغّل {when}",
+  "Showing {n} of {total}": "عرض {n} من {total}",
 };
 
 export default words;

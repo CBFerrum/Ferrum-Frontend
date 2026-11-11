@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { api, saveBlob } from "../lib/api";
-import { formatDate, formatValue, humanize, isDecimalString, NUMERIC_TYPES, todayIso } from "../lib/format";
+import { formatDate, formatMoment, formatValue, humanize, isDecimalString, NUMERIC_TYPES, todayIso } from "../lib/format";
 import { useMe, useReports, type Me, type ReportDef, type ReportParam } from "../lib/meta";
 import { Alert, Button, EmptyState, ErrorState, Field as FieldWrap, PageLoading } from "../ui/kit";
+import { TableSkeleton } from "../ui/patterns";
 import { LinkInput } from "./widgets";
 import { t, isolate } from "@ferrum/client";
 
@@ -88,6 +89,10 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         <div>
           <p className="crumbs">{t("Report")}</p>
           <h1 className="page-title">{isolate(title)}</h1>
+          {/* When the figures were drawn: the parameters above are what they answer; a stale screen must not pass for current. */}
+          {data && !result.isFetching && result.dataUpdatedAt > 0 && (
+            <p className="report-meta">{t("Run {when}", { when: formatMoment(result.dataUpdatedAt, { dateStyle: "medium", timeStyle: "short" }) })}</p>
+          )}
         </div>
         <div className="page-actions">
           {data && data.rows.length > 0 && (
@@ -104,14 +109,10 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         </Alert>
       )}
 
-      <form className="card card-pad" onSubmit={run} style={{ marginBottom: 16 }} aria-label={t("Report parameters")}>
-        {params.length > 0 && (
-          <div className="form-grid" style={{ ["--cols" as string]: 3, marginBottom: 14 }}>
-            {params.map((p) => (
-              <ParamInput key={p.name} param={p} value={values[p.name] ?? ""} onChange={(v) => setValues((s) => ({ ...s, [p.name]: v }))} />
-            ))}
-          </div>
-        )}
+      <form className="card card-pad report-params" onSubmit={run} style={{ marginBottom: 16 }} aria-label={t("Report parameters")}>
+        {params.map((p) => (
+          <ParamInput key={p.name} param={p} value={values[p.name] ?? ""} onChange={(v) => setValues((s) => ({ ...s, [p.name]: v }))} />
+        ))}
         <Button type="submit" variant="primary" loading={result.isFetching}>
           {t("Run report")}
         </Button>
@@ -127,7 +128,7 @@ function ReportInner({ name, def, catalogError, me }: { name: string; def?: Repo
         </div>
       ) : !data ? (
         <div className="card">
-          <PageLoading label={t("Running report…")} />
+          <TableSkeleton columns={4} rows={6} />
         </div>
       ) : (
         <ReportTable data={data} />
@@ -248,7 +249,7 @@ function ReportTable({ data }: { data: ReportResult }) {
                   <td
                     key={c.name}
                     className={isNumeric(c) ? "num" : undefined}
-                    style={j === 0 && r._indent ? { paddingLeft: `${0.75 + Number(r._indent) * 1.25}rem` } : undefined}
+                    style={j === 0 && r._indent ? { paddingInlineStart: `${0.75 + Number(r._indent) * 1.25}rem` } : undefined}
                   >
                     {isolate(display(c, r))}
                   </td>

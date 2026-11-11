@@ -49,7 +49,7 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?:
     <header className="mb-4 flex flex-wrap items-start gap-3">
       <div className="min-w-0 flex-1 basis-64">
         {eyebrow && <div className="mb-1 text-xs text-muted-foreground">{eyebrow}</div>}
-        <h1 className="text-xl leading-tight font-semibold [overflow-wrap:anywhere]">{title}</h1>
+        <h1 className="text-2xl leading-tight font-semibold tracking-tight [overflow-wrap:anywhere]">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
