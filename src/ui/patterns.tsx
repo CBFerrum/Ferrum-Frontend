@@ -6,13 +6,12 @@ import { CheckIcon, CircleHelpIcon, HardDriveIcon, InboxIcon, Loader2Icon, LockI
 import { Children, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { formatMoment } from "../lib/format";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { Button, Icon } from "./kit";
+import { Button, Icon, Menu, MenuItem } from "./kit";
 import { foldActions } from "./selectionFold";
 
 // ── StatePanel ──
@@ -385,29 +384,39 @@ function FoldingActions({ actions }: { actions: SelectionAction[] }) {
       {a.label}
     </Button>
   );
-  const moreButton = (
-    <Button size="sm" aria-label={t("More actions")}>
+  const moreLabel = (
+    <>
       <MoreHorizontalIcon size={16} aria-hidden="true" /> {t("More")}
-    </Button>
+    </>
   );
   return (
     <div ref={box} className="relative flex min-w-0 flex-1 items-center justify-end gap-2">
       {shown.map(button)}
       {menu.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>{moreButton}</DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {menu.map((a) => (
-              <DropdownMenuItem key={a.id} variant={a.danger ? "destructive" : "default"} disabled={a.disabled} title={a.title} onSelect={a.onSelect}>
+        // The kit's own menu (no Radix in the page's first load): arrow keys, Escape back to the button, and on a phone it opens upward from the bar.
+        <Menu label={moreLabel} ariaLabel={t("More actions")} buttonClass="btn btn-default btn-sm">
+          {(close) =>
+            menu.map((a) => (
+              <MenuItem
+                key={a.id}
+                danger={a.danger}
+                refusal={a.disabled ? a.title || t("Not available") : null}
+                onSelect={() => {
+                  close();
+                  a.onSelect();
+                }}
+              >
                 {a.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              </MenuItem>
+            ))
+          }
+        </Menu>
       )}
       <div ref={gauge} aria-hidden="true" inert className="pointer-events-none invisible fixed top-0 flex w-max items-center gap-2 whitespace-nowrap [&>*]:shrink-0" style={{ insetInlineStart: 0 }}>
         {actions.map(button)}
-        {moreButton}
+        <Button size="sm" aria-label={t("More actions")}>
+          {moreLabel}
+        </Button>
       </div>
     </div>
   );
