@@ -36,8 +36,8 @@ export function FamilyNav({ className }: { className?: string }) {
           href={e.url}
           aria-current={e === here ? "page" : undefined}
           className={cn(
-            "inline-flex h-8 shrink-0 items-center gap-2 rounded-md px-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground no-underline transition-colors outline-none",
-            "hover:bg-surface-2 hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            "inline-flex h-8 shrink-0 items-center gap-2 rounded-md ps-1.5 pe-3 text-sm font-medium whitespace-nowrap text-muted-foreground no-underline transition-colors duration-(--duration-state)",
+            "hover:bg-surface-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring",
             e === here && "bg-primary-soft text-primary hover:bg-primary-soft hover:text-primary",
           )}
           onClick={(ev) => {
@@ -46,7 +46,7 @@ export function FamilyNav({ className }: { className?: string }) {
             shell().navigate(e.url);
           }}
         >
-          <AppIcon name={e.icon} color={e === here ? null : e.color} />
+          <AppIcon name={e.icon} color={e.color} title={isolate(e.title)} tile size={12} />
           {isolate(e.title)}
         </a>
       ))}

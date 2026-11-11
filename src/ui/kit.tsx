@@ -49,6 +49,7 @@ const ICONS: Record<string, string> = {
   doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
   expand: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
   check: "M20 6 9 17l-5-5",
+  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 16v-4M12 8h.01",
   alert: "M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
   copy: "M9 9h11v11H9zM5 15H4V4h11v1",
   list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
@@ -201,6 +202,7 @@ export function Dialog({
   children,
   footer,
   wide,
+  description,
 }: {
   open: boolean;
   onClose: () => void;
@@ -208,9 +210,12 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  /** One quiet line under the title: what this is about or what happens next. */
+  description?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const descId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -226,6 +231,7 @@ export function Dialog({
       ref={ref}
       className={`dialog ${wide ? "dialog-wide" : ""}`}
       aria-labelledby={titleId}
+      aria-describedby={description ? descId : undefined}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -237,7 +243,14 @@ export function Dialog({
       {open && (
         <div className="dialog-inner">
           <header className="dialog-header">
-            <h2 id={titleId}>{title}</h2>
+            <div className="dialog-heading">
+              <h2 id={titleId}>{title}</h2>
+              {description && (
+                <p id={descId} className="dialog-description">
+                  {description}
+                </p>
+              )}
+            </div>
             <button type="button" className="icon-btn" aria-label={t("Close")} onClick={onClose}>
               <Icon name="x" />
             </button>
@@ -313,11 +326,14 @@ export function TabPanel({ id, tab, children }: { id: string; tab: string; child
 
 // ── states ──
 
+/** The states share one language: a soft rounded square with the icon, a title, one line of help, one action. */
 export function PageLoading({ label = t("Loading…") }: { label?: string }) {
   return (
-    <div className="state">
-      <Spinner label={label} />
-      <span className="muted">{label}</span>
+    <div className="state" role="status">
+      <span className="state-icon">
+        <Spinner />
+      </span>
+      <p className="state-title">{label}</p>
     </div>
   );
 }
@@ -326,7 +342,7 @@ export function EmptyState({ title, children, icon = "file" }: { title: string; 
   return (
     <div className="state">
       <span className="state-icon">
-        <Icon name={icon} size={28} />
+        <Icon name={icon} size={20} />
       </span>
       <p className="state-title">{title}</p>
       {children}
@@ -338,7 +354,7 @@ export function ErrorState({ error, onRetry, title = t("Something went wrong") }
   return (
     <div className="state" role="alert">
       <span className="state-icon state-icon-error">
-        <Icon name="alert" size={28} />
+        <Icon name="alert" size={20} />
       </span>
       <p className="state-title">{title}</p>
       <p className="muted">{errorMessage(error)}</p>
@@ -354,6 +370,7 @@ export function ErrorState({ error, onRetry, title = t("Something went wrong") }
 export function Alert({ tone = "info", children, action }: { tone?: "info" | "warning" | "error" | "success"; children: ReactNode; action?: ReactNode }) {
   return (
     <div className={`alert alert-${tone}`} role={tone === "error" ? "alert" : "status"}>
+      <Icon name={tone === "success" ? "check" : tone === "info" ? "info" : "alert"} size={16} />
       <div className="alert-body">{children}</div>
       {action}
     </div>
@@ -409,14 +426,19 @@ function dismissToast(id: number) {
   toasts.set(toasts.get().filter((t) => t.id !== id));
 }
 
+const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
+
 export function Toaster() {
   const list = useSyncExternalStore(toasts.subscribe, toasts.get);
   return (
     <div className="toaster" role="status" aria-live="polite">
       {list.map((n) => (
         <div key={n.id} className={`toast toast-${n.tone}`}>
-          <span>{n.message}</span>
-          <button type="button" className="icon-btn" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
+          <span className="toast-icon">
+            <Icon name={TOAST_ICON[n.tone]} size={16} />
+          </span>
+          <span className="toast-message">{n.message}</span>
+          <button type="button" className="icon-btn icon-btn-sm" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -560,9 +582,9 @@ export function Menu({
 /** `refusal`: why it cannot be chosen now. It stays in the menu, reachable by keyboard, says so in words, and does nothing. */
 export function MenuItem({ onSelect, children, danger, refusal }: { onSelect: () => void; children: ReactNode; danger?: boolean; refusal?: string | null }) {
   return (
-    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} aria-disabled={refusal ? true : undefined} title={refusal ?? undefined} onClick={refusal ? undefined : onSelect}>
+    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} aria-disabled={refusal ? true : undefined} onClick={refusal ? undefined : onSelect}>
       {children}
-      {refusal && <span className="sr-only">{`: ${refusal}`}</span>}
+      {refusal && <span className="menu-item-why">{refusal}</span>}
     </button>
   );
 }

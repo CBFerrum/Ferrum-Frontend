@@ -6,8 +6,9 @@ import { AppIcon } from "@ferrum/kit";
 import { FirstRun } from "@/app/FirstRun";
 import { ScreenWidgets } from "@/app/Screen";
 import { api, errorMessage } from "@/lib/api";
+import { formatMoment } from "@/lib/format";
 import { EmptyState, Spinner } from "@/ui/kit";
-import { MyWork, type WorkProvider } from "./MyWork";
+import { localDay, MyWork, type WorkProvider } from "./MyWork";
 import "./shell.css";
 import { t, isolate } from "@ferrum/client";
 
@@ -52,15 +53,16 @@ export function ShellHome() {
   const first = info.data?.person.name.split(" ")[0];
   return (
     <div className="shell-home">
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">
-            {isolate(greeting)}
-            {first ? `, ${first}` : ""}
-          </h1>
-          <p className="page-sub">{isolate(info.data?.workspace.name ?? "")}</p>
-        </div>
-      </div>
+      <header className="shell-greet">
+        <h1>
+          {isolate(greeting)}
+          {first ? `, ${first}` : ""}
+        </h1>
+        <p>
+          {info.data?.workspace.name && <span>{isolate(info.data.workspace.name)}</span>}
+          <time dateTime={localDay()}>{formatMoment(new Date(), { weekday: "long", day: "numeric", month: "long" })}</time>
+        </p>
+      </header>
       <FirstRun />
       {info.error ? (
         <EmptyState title={t("Your apps cannot be shown")}>
@@ -72,9 +74,9 @@ export function ShellHome() {
         <nav aria-label={t("Apps")} className="shell-apps">
           {info.data.apps.map((a) => (
             <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={isolate(a.description ?? undefined)}>
-              <AppIcon name={a.icon} color={tileColour(a)} title={isolate(a.title)} tile size={30} />
+              <AppIcon name={a.icon} color={tileColour(a)} title={isolate(a.title)} tile size={24} />
               <span className="shell-app-title">{isolate(a.title)}</span>
-              {a.classic && <span className="faint shell-app-note">{t("classic")}</span>}
+              {a.classic && <span className="shell-app-note">{t("classic")}</span>}
             </a>
           ))}
         </nav>

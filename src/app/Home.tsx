@@ -8,24 +8,28 @@ import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, 
 import { FirstRun } from "./FirstRun";
 import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
-import { Badge, EmptyState, Icon } from "../ui/kit";
+import { Badge, EmptyState } from "../ui/kit";
 import { docstatusTone } from "../lib/statusTones";
 import { moduleLinks, ownModule, reportItems, STUDIO } from "./Shell";
 import { PATHS } from "./studio/space/model";
 import { t, isolate } from "@ferrum/client";
 
 /** The module's Space when the viewer may open one: the first by the server's order, as `useModuleSpace`
- *  picks it, from one list shared by every module card. */
-function SpaceChip({ module }: { module: string }) {
+ *  picks it, from one list shared by every section. */
+function SpaceLink({ module }: { module: string }) {
   const space = useStudioList("spaces").data?.find((s) => s.module === module);
   if (!space) return null;
   return (
-    <Link className="module-link" to={PATHS.space(space.id)}>
-      <Icon name="space" size={14} />
-      {space.label || t("Space")}
-    </Link>
+    <li>
+      <Link className="home-link" to={PATHS.space(space.id)}>
+        {space.label || t("Space")}
+      </Link>
+    </li>
   );
 }
+
+/** How many modules' latest records the start page shows: it is a start, not a report. */
+const RECENT_GROUPS = 6;
 
 export function Home() {
   const meta = useMetaIndex().data;
@@ -49,25 +53,13 @@ export function Home() {
       return { m, links, key: (documents.length ? documents : entities).slice(0, 2) };
     })
     .filter((x) => x.links.length);
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? t("Good morning") : hour < 18 ? t("Good afternoon") : t("Good evening");
-  const first = me?.user.full_name?.split(" ")[0];
+  // The start: what is waiting, the latest records of the first modules, then the way into every module.
+  const recent = modules.flatMap((x) => x.key.slice(0, 1)).slice(0, RECENT_GROUPS);
 
   return (
-    <div>
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">
-            {isolate(greeting)}
-            {first ? `, ${first}` : ""}
-          </h1>
-          <p className="page-sub">
-            {t("Pick a module")}{studio && <>{t(", open your")} <Link to="/studio/dashboards">{t("dashboards")}</Link></>}
-            <span className="keys-hint"> {t("or press")} <span className="kbd">{t("Ctrl")}</span> <span className="kbd">K</span> {t("to jump anywhere")}</span>.
-          </p>
-        </div>
-      </div>
+    <div className="home">
+      {/* The page's heading for assistive technology: the person's own page opens with what needs them. */}
+      <h1 className="sr-only">{t("Home")}</h1>
       <FirstRun />
       <MyWork />
       <ScreenWidgets />
@@ -76,29 +68,35 @@ export function Home() {
           <p className="muted">{t("You do not have access to any module. Ask an administrator for a role.")}</p>
         </EmptyState>
       ) : (
-        <div className="home-grid">
-          {modules.map(({ m, links, key }) => (
-            <section key={m.name} className="card" aria-labelledby={`mod-${m.name}`}>
-              <div className="card-head">
-                <h2 id={`mod-${m.name}`}>{isolate(m.label)}</h2>
-              </div>
-              <div className="card-body stack">
-                <div className="chips">
-                  {studio && <SpaceChip module={m.name} />}
+        <>
+          {/* Hidden by CSS while no group has anything to show. */}
+          {recent.length > 0 && (
+            <div className="home-recent">
+              {recent.map((e) => (
+                <RecentDocs key={e.name} entity={e} />
+              ))}
+            </div>
+          )}
+          <div className="home-modules">
+            {modules.map(({ m, links }) => (
+              <nav key={m.name} className="home-section" aria-labelledby={`mod-${m.name}`}>
+                <h2 id={`mod-${m.name}`} className="home-h">
+                  {isolate(m.label)}
+                </h2>
+                <ul>
+                  {studio && <SpaceLink module={m.name} />}
                   {links.map((l) => (
-                    <Link key={l.to} className="module-link" to={l.to}>
-                      <Icon name={l.icon} size={14} />
-                      {isolate(l.label)}
-                    </Link>
+                    <li key={l.to}>
+                      <Link className="home-link" to={l.to}>
+                        {isolate(l.label)}
+                      </Link>
+                    </li>
                   ))}
-                </div>
-                {key.map((e) => (
-                  <RecentDocs key={e.name} entity={e} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+                </ul>
+              </nav>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -118,11 +116,11 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
     enabled: !!meta,
   });
   const rows = q.data?.rows ?? [];
+  // A module with nothing yet is not a heading and a shrug: it is left out until it has records.
+  if (meta && !q.isLoading && !q.error && !rows.length) return null;
   return (
-    <div>
-      <h3 className="field-label" style={{ marginBottom: 4 }}>
-        {t("Recent {value}", { value: entity.label_plural.toLowerCase() })}
-      </h3>
+    <section className="home-section" aria-label={t("Recent {value}", { value: entity.label_plural.toLowerCase() })}>
+      <h2 className="home-h">{t("Recent {value}", { value: entity.label_plural.toLowerCase() })}</h2>
       {q.isLoading || !meta ? (
         <div className="stack" style={{ gap: 8 }}>
           <div className="skeleton" />
@@ -130,27 +128,26 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
         </div>
       ) : q.error ? (
         <p className="muted">{isolate(errorMessage(q.error))}</p>
-      ) : !rows.length ? (
-        <p className="faint">{t("Nothing yet.")}</p>
       ) : (
-        <ul className="recent">
+        <ul className="feed">
           {rows.map((r) => {
             const title = recordTitle(meta, r);
             const ds = Number(r.docstatus ?? 0);
+            const number = r.number && r.number !== title ? String(r.number) : "";
+            const when = typeof r.updated_at === "string" ? relativeTime(r.updated_at) : "";
             return (
               <li key={String(r.id)}>
                 <Link className="title" to={`/e/${entity.name}/${r.id}`}>
                   {isolate(title)}
                 </Link>
-                {r.number && r.number !== title ? <span className="faint nowrap">{isolate(String(r.number))}</span> : null}
                 {entity.submittable && <Badge tone={docstatusTone(ds)}>{DOCSTATUS_LABEL[ds] ?? ds}</Badge>}
-                {typeof r.updated_at === "string" && <span className="faint nowrap">{isolate(relativeTime(r.updated_at))}</span>}
+                <span className="meta">{isolate([number, when].filter(Boolean).join(" · "))}</span>
               </li>
             );
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -172,20 +169,21 @@ export function MyWork() {
   if (!list.length) return null;
   const today = todayIso();
   return (
-    <section className="card my-work" aria-labelledby="my-work">
-      <div className="card-head">
-        <h2 id="my-work">{t("Assigned to you")}</h2>
-        <span className="faint">{list.length}</span>
-      </div>
-      <ul className="recent">
+    <section className="home-section my-work" aria-labelledby="my-work">
+      <h2 id="my-work" className="home-h">
+        {t("Assigned to you")} <span className="faint num-inline">{list.length}</span>
+      </h2>
+      <ul className="feed">
         {list.slice(0, 8).map((a) => (
           <li key={a.id}>
-            <Link to={`/e/${a.entity}/${a.record_id}`}>
-              <span className="cell-title">{isolate(a.title ?? "")}</span> <span className="faint">{isolate(a.entity_label ?? "")}</span>
+            <Link className="title" to={`/e/${a.entity}/${a.record_id}`}>
+              {isolate(a.title ?? "")}
             </Link>
-            {a.note && <div className="muted">{isolate(a.note)}</div>}
-            {a.due_date && <Badge tone={a.due_date < today ? "red" : "neutral"}>{t("due {due_date}", { due_date: a.due_date })}</Badge>}
-            {a.priority === "High" && <Badge tone="red">{t("High")}</Badge>}
+            <span className="feed-end">
+              {a.priority === "High" && <Badge tone="red">{t("High")}</Badge>}
+              {a.due_date && <Badge tone={a.due_date < today ? "red" : "neutral"}>{t("due {due_date}", { due_date: a.due_date })}</Badge>}
+            </span>
+            <span className="meta">{isolate([a.entity_label, a.note].filter(Boolean).join(" · "))}</span>
           </li>
         ))}
       </ul>
