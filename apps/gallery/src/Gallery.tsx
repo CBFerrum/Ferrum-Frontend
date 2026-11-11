@@ -15,7 +15,7 @@ import { EmptyRun } from "@/app/EmptyRun";
 import { Alert, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
 import { MemoryRouter } from "react-router";
 import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
-import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
+import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageSplit, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
 
 const FILE = "Q3-consolidated-statement-of-financial-position-final-reviewed-v12 (copy).xlsx";
 const PEOPLE = ["Aarav Sharma", "فاطمة المنصوري", "李明", "Zoë Kowalski", "Дмитрий Орлов", "प्रिया नायर"];
@@ -238,6 +238,35 @@ function WorkHomes() {
           <Field label="Attachment" htmlFor="g-file"><input id="g-file" type="file" className="input" /></Field>
           <Field label="Disabled" htmlFor="g-file2"><input id="g-file2" type="file" className="input" disabled /></Field>
         </div>
+      </div>
+      <div data-gallery="home3" className={frame}>
+        <PageStack>
+          <PageHead title="Intranet" actions={<><ButtonLink href="/data.csv" download="data.csv" size="sm" icon="plus">Download data</ButtonLink><ButtonLink href="https://example.test" target="_blank" size="sm">External</ButtonLink></>} />
+          <StatGrid min="lg">
+            <Stat label="Total invoiced" value="₹1,676,650.75" hint="this year" progress={{ value: 80, label: "Collected", tone: "good" }} />
+            <Stat label="Overdue" value="₹12,00,000.00" tone="danger" progress={{ value: 30, label: "Overdue share", tone: "danger" }} />
+          </StatGrid>
+          <PageSplit
+            main={
+              <Queue title="Feed" count={2}>
+                <QueueItem to="/f/1" title="Quarter close checklist" meta={<span className="num">12 comments · updated 3 Mar, 4:40 pm by the finance team</span>} trailing={<span className="num">₹4,200.00</span>} />
+                <QueueItem to="/f/2" title="Office move" meta="Facilities · Friday" trailing={<span className="num">18</span>} />
+              </Queue>
+            }
+            aside={
+              <Queue title="Spaces" count={2}>
+                <QueueItem to="/s/1" title="Finance" />
+                <QueueItem to="/s/2" title="Facilities" />
+              </Queue>
+            }
+          />
+          <div data-gallery="touch" className="flex flex-wrap items-center gap-4">
+            <div className="segmented" role="group" aria-label="View"><button type="button" aria-pressed="true">List</button><button type="button" aria-pressed="false">Board</button></div>
+            <Checkbox aria-label="Done" />
+            <Switch aria-label="On" />
+            <ShButton size="xs">Extra small</ShButton>
+          </div>
+        </PageStack>
       </div>
       <div data-gallery="home-loading" className={frame}>
         <HomeSkeleton queues={3} />

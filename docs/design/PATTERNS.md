@@ -154,16 +154,17 @@ Exports and props (all from `@ferrum/kit`; every prop is optional unless shown):
 | Name | Props |
 |---|---|
 | `PageHead` | `title`, `description`, `actions`, `back: { to; label }`, `eyebrow` (a trail above the title) |
-| `ButtonLink` | exactly one of `to` (a path in this app's router) or `href` (a destination outside it, e.g. another app's page: a plain anchor); `variant: "default" \| "primary" \| "ghost"`, `icon`, `children`. Both: `to` wins; neither: nothing is drawn (both log an error). |
+| `ButtonLink` | exactly one of `to` (a path in this app's router) or `href` (a destination outside it, e.g. another app's page: a plain anchor); `variant: "default" \| "primary" \| "ghost"`, `size: "sm" \| "md"`, `icon`, `download` (`true` or the file name), `target`, `rel` (with `target="_blank"` and no `rel`, `noopener noreferrer` is added), `children`. `download`, `target` and `rel` reach the anchor in both forms: a dataset link keeps `download`, an external link keeps its new tab. Both `to` and `href`: `to` wins; neither: nothing is drawn (both log an error). |
+| `PageSplit` | `main`, `aside` (both required), `className`: a main column and a side column (about 2:1, the side 280 to 400px), one column under 900px with the main first; for a feed with its spaces, an overview with its side facts. The aside is a plain `div`, not a landmark. |
 | `PageStack` | `gap: "md" \| "lg"` (16 / 24px between sections; the head is always 16px above the first), `className`, `children` |
 | `QueueGrid` | `columns: 1` (a page that is one column of queues), `className`, `children` |
-| `Queue` | `title` (required string: the section's name), `count`, `tone: "default" \| "attention"`, `link: { to; label }`, `empty` (default "Nothing waiting"), `more: { to; count }`, `progress: { value; max?; label? }`, `children` (`QueueItem`s) |
+| `Queue` | `title` (required string: the section's name), `count`, `tone: "default" \| "attention"`, `link: { to; label }`, `empty` (default "Nothing waiting"), `more: { to; count }`, `progress: { value; max?; label?; tone? }`, `children` (`QueueItem`s) |
 | `QueueItem` | `title` (required string), `to` (omit for a plain row), `meta`, `lead`, `trailing`, `action` |
 | `TileGrid` | `min: "sm" \| "md" \| "lg"` (narrowest tile 200 / 280 / 360px), `label` (names the list), `className`, `children` |
-| `Tile` | `title` (required), `to`, `meta` (one or two `span` lines), `figures: { label; value: ReactNode }[]`, `progress: { value; max?; label }` (label required), `status` |
+| `Tile` | `title` (required), `to`, `meta` (one or two `span` lines), `figures: { label; value: ReactNode }[]`, `progress: { value; max?; label; tone? }` (label required), `status` |
 | `HomeSection` | `title` (required), `count`, `link: { to; label }`, `actions` (buttons), `empty` (one quiet line when there are no children), `children` |
-| `StatGrid` | `className`, `children` |
-| `Stat` | `label`, `value` (required), `hint`, `to`, `tone: "attention" \| "danger"`, `progress: { value; max?; label? }` |
+| `StatGrid` | `min: "sm" \| "md" \| "lg"` (narrowest stat 11 / 15 / 20rem; `lg` for figures like "1,676,650.75"), `className`, `children` |
+| `Stat` | `label`, `value` (required), `hint`, `to`, `tone: "attention" \| "danger"`, `progress: { value; max?; label?; tone? }` |
 | `Progress` | `value`, `max` (default 100), `label` (required: the accessible name), `tone: "default" \| "good" \| "attention" \| "danger"` |
 | `HomeSkeleton` | `queues` (default 3), `className` |
 | `Tone` (type) | `"neutral" \| "blue" \| "green" \| "amber" \| "red" \| "purple"`, for tone maps |
@@ -172,13 +173,21 @@ Exports and props (all from `@ferrum/kit`; every prop is optional unless shown):
 
 `Progress`, `Stat` and `Tile` meters: use the `Progress` export, never a hand-drawn bar (`.ast-tile` meter, `.trip-meter`). It needs no class: a block as wide as its container, 6px high, filling from the reading start. Place it by putting it in the parent's layout (a `Tile`'s or `Stat`'s or `Queue`'s `progress` prop, which also adds the percentage at the end for `Stat` and `Queue`, or as a child of a `HomeSection` or any flex or grid cell). Name it for what it measures ("Key results done"), not "progress".
 
-`Stat` rules: one number a person should see first ("Applicants waiting 4"), in the text colour, `text-2xl` semibold, tabular. A zero, an empty value or a dash is quiet (muted, regular weight): nothing needs you. Never colour a number by default; `tone` is for a number that is itself a warning (overdue 3). The whole stat is a link when `to` is given. Pass money and dates already formatted. `Stat` replaces the Assets `.ast-tile`, including the slim bar under "Depreciated 16%" (`progress`).
+`progress.tone` is the same as `Progress`'s (`good`, `attention`, `danger`), on `Tile`, `Queue` and `Stat`.
+
+A money or count value at a row's end goes in `trailing` as plain tabular text (`<span className="num">₹4,200.00</span>`), not in a badge: a badge is for a state. A `meta` that is a node wraps onto a second line on a phone like a string does.
+
+`Stat` rules: one number a person should see first ("Applicants waiting 4"), in the text colour, `text-2xl` semibold, tabular. A zero, an empty value or a dash is quiet (muted, regular weight): nothing needs you. Never colour a number by default; `tone` is for a number that is itself a warning (overdue 3). The whole stat is a link when `to` is given. Pass money and dates already formatted. A value never breaks inside a number: if it does not fit it steps down one type role (and on a phone it starts a role smaller), then is cut with an ellipsis. `Stat` replaces the Assets `.ast-tile`, including the slim bar under "Depreciated 16%" (`progress`).
 
 `HomeSection` is for a labelled group that is not a queue (a `TileGrid` per property, a `StatGrid`, a table, "What posts did" with two header buttons in `actions`); a `TileGrid`'s own `label` stays for a grid that only needs an accessible name. A tile's `status` may be a long phrase or several badges: they wrap onto a second line. `figures` (Worth, Certified, Held) are label at the start, value at the end; give a tile at most three.
+
+`PageStack`'s track is `minmax(0, 1fr)`, so a wide child (a table, a long card) cannot push the page wider than the screen: no `min-w-0` on each section.
 
 `PageStack` or `.page-head`'s own margin? Seventeen screens use `.page-head` and space themselves with its 16px bottom margin, so that stays as it is. `PageStack` (a grid, `gap` 16 or 24) is the one way to space a work home: inside it the head's margin is cancelled so the head never stacks a second gap. Do not wrap content in `grid gap-4`.
 
 Queue grid: tracks are 300px at least, so a lone queue keeps one track's width instead of stretching; four queues use 400px tracks so they sit 2x2 where three and one would otherwise. Five stay 3+2; seven leave a last orphan (no clean CSS-only rule), so cap or group them.
+
+Touch: on a coarse pointer everything a person presses is 44px: buttons, icon buttons, tabs, chips, menu and select items, each `.segmented` button (the frame is 50 with its border), the shadcn `xs` buttons, a 16px checkbox or radio and a 32x16 switch (their look stays; a transparent 44px hit area is drawn around them), the fold button of an empty run and the header link of a `HomeSection`. Read-only value fields are not pressed and stay 24px. Dense desktop sizes do not change.
 
 File input: `<input type="file" className="input">` (or bare inside `Field`) is drawn in the control's frame with its selector as the default small button, in both themes, right to left, disabled and focused; no script.
 
