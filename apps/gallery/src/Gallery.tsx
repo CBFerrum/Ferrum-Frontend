@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyRun } from "@/app/EmptyRun";
-import { Alert, announce, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
+import { Alert, announce, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, useToastPlacement, type Tone, type ToastPlacement } from "@/ui/kit";
 import { MemoryRouter } from "react-router";
 import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
 import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageSplit, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
@@ -481,6 +481,7 @@ export function Sections() {
           <Button onClick={() => announce("3 conversations moved to Trash")}>Announce only</Button>
           <Button variant="danger" onClick={() => void confirmDialog({ title: "Delete INV-2026-00418?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true })}>Confirm…</Button>
         </Row>
+        <PlacementDemo />
         <Toaster />
         <ConfirmHost />
       </Section>
@@ -588,6 +589,27 @@ export function Sections() {
 }
 
 /** Every shadcn/Radix overlay the kit owns, each with a trigger of its own, and the combinations that went wrong: a menu in a dialog, a pop-up in a sheet, a confirm over a dialog. */
+function PlacementDemo() {
+  const [at, setAt] = useState<ToastPlacement | null>(null);
+  return (
+    <div data-gallery="toast-placement" className="flex flex-col gap-3">
+      <Row label="placement">
+        {(["bottom-start", "top-end"] as const).map((p) => (
+          <Button key={p} onClick={() => setAt(at === p ? null : p)}>{at === p ? `Stop asking for ${p}` : `Ask for ${p}`}</Button>
+        ))}
+        <span className="text-sm text-muted-foreground">Phones keep notices at the top.</span>
+      </Row>
+      {at && <ComposeStack placement={at} />}
+    </div>
+  );
+}
+
+/** A page that occupies the bottom end (a compose window) asks the toaster to move for as long as it is mounted. */
+function ComposeStack({ placement }: { placement: ToastPlacement }) {
+  useToastPlacement(placement);
+  return <div data-gallery="compose-stack" className="rounded-md border border-border bg-surface px-3 py-2 text-sm">Compose window (asks for {placement})</div>;
+}
+
 function MenusAndPopups() {
   const [dlg, setDlg] = useState(false);
   const [dlg2, setDlg2] = useState(false);
