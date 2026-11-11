@@ -1111,48 +1111,36 @@ input[type="color"] {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-/* A table wider than its frame scrolls inside it, and the edge that has more beyond fades (a quiet cue, drawn only
-   while the frame really scrolls: the scroll timeline is inactive otherwise, and so are the defaults). Browsers
-   without scroll-driven animations show no fade; the frame still scrolls and takes the keyboard. */
-@property --edge-s {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
+/* A row that scrolls sideways inside its frame (a table, tab list, segmented control, anything given .scroll-cue) fades
+   the edge that has more beyond. Which edges those are is a state, not motion: packages/client/src/edgeCue.ts sets
+   data-more="end" (more after, at rest), "both" (in the middle) or "start" (at the end), and nothing when the row fits.
+   It is not a scroll-driven animation on purpose: a screenshot that disables animations finishes or cancels one (the
+   cue then vanished from the very pictures reviewers looked at), and Firefox has none. (Measured: reduced motion does not
+   switch the animation off in Chrome.) The fade is 44px and reaches nothing at the edge, so a cut label reads as
+   "continues". It steps aside while an item inside has the keyboard, so a focus ring is never dimmed. */
+:root {
+  --edge-cue: 44px;
 }
-@property --edge-e {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="end"] {
+  mask-image: linear-gradient(to right, var(--text) calc(100% - var(--edge-cue)), transparent calc(100% - 4px));
 }
-@keyframes edge-cue {
-  0% {
-    --edge-s: 0;
-    --edge-e: 1;
-  }
-  4%,
-  96% {
-    --edge-s: 1;
-    --edge-e: 1;
-  }
-  100% {
-    --edge-s: 1;
-    --edge-e: 0;
-  }
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="start"] {
+  mask-image: linear-gradient(to right, transparent 4px, var(--text) var(--edge-cue));
 }
-/* The same cue for the kit's own scrolling rows: tab lists, segmented controls, and the family navigation (.scroll-cue).
-   While one of their items has the keyboard the fade steps aside, so a focus ring at the edge is never dimmed. */
-@supports (animation-timeline: scroll()) {
-  :is(.table-wrap, .tabs, .segmented, .scroll-cue) {
-    animation: edge-cue linear both;
-    animation-timeline: scroll(self inline);
-    mask-image: linear-gradient(to right, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
-  }
-  :is(.table-wrap, .tabs, .segmented, .scroll-cue):dir(rtl) {
-    mask-image: linear-gradient(to left, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
-  }
-  :is(.tabs, .segmented, .scroll-cue):has(:focus-visible) {
-    mask-image: none;
-  }
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="both"] {
+  mask-image: linear-gradient(to right, transparent 4px, var(--text) var(--edge-cue), var(--text) calc(100% - var(--edge-cue)), transparent calc(100% - 4px));
+}
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="end"]:dir(rtl) {
+  mask-image: linear-gradient(to left, var(--text) calc(100% - var(--edge-cue)), transparent calc(100% - 4px));
+}
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="start"]:dir(rtl) {
+  mask-image: linear-gradient(to left, transparent 4px, var(--text) var(--edge-cue));
+}
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more="both"]:dir(rtl) {
+  mask-image: linear-gradient(to left, transparent 4px, var(--text) var(--edge-cue), var(--text) calc(100% - var(--edge-cue)), transparent calc(100% - 4px));
+}
+:is(.table-wrap, .tabs, .segmented, .scroll-cue)[data-more]:has(:focus-visible) {
+  mask-image: none;
 }
 .table-wrap:focus-visible {
   outline: 2px solid var(--primary);
