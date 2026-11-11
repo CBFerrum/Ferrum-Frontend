@@ -17,6 +17,7 @@ import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import type { Automation } from "../lib/automationDraft";
 import { Connections } from "./Connections";
 import { InterfaceWords } from "./InterfaceWords";
+import { Services } from "./Services";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
   Alert,
@@ -54,10 +55,11 @@ export const TABS = [
   { id: "calendars", get label() { return tr("Calendars"); } },
   { id: "words", get label() { return tr("Interface words"); } },
   { id: "exceptions", get label() { return tr("Needs a person"); } },
+  { id: "services", get label() { return tr("Services"); } },
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", webhooks: "share-2", automations: "workflow", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", webhooks: "share-2", automations: "workflow", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -78,7 +80,7 @@ export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
   { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
   { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "webhooks", "automations", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
-  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions"] },
+  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services"] },
 ];
 
 /** Section navigation that scales: a column of groups beside the page, a scrolling strip on narrow screens. One tablist per group, arrow keys move across all. */
@@ -166,6 +168,7 @@ export function AdminPage() {
         )}
         {tab === "words" && <InterfaceWords />}
         {tab === "exceptions" && <Exceptions />}
+        {tab === "services" && <Services />}
       </TabPanel>
       </div>
     </div>

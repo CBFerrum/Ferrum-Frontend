@@ -456,36 +456,96 @@ function createStore<T>(initial: T) {
   };
 }
 
-type ToastItem = { id: number; message: string; tone: "success" | "error" | "info" };
+type ToastItem = { id: number; message: string; tone: "success" | "error" | "info"; action?: ToastAction; duration: number };
+/** A button in the toast ("Undo"): pressing it dismisses the toast and calls `onSelect` once. */
+export interface ToastAction {
+  label: string;
+  onSelect: () => void;
+}
+export interface ToastOptions {
+  action?: ToastAction;
+  /** Milliseconds it stays. A toast with an action stays at least `ACTION_TOAST_MS` (8 s), so Undo can be reached. */
+  duration?: number;
+}
+export const ACTION_TOAST_MS = 8000;
 const toasts = createStore<ToastItem[]>([]);
 let toastSeq = 0;
 
-export function toast(message: string, tone: ToastItem["tone"] = "success"): void {
+/** Shows a short message. `opts.action` adds one button (Undo); every destructive or filing action offers Undo for at least 8 seconds. */
+export function toast(message: string, tone: ToastItem["tone"] = "success", opts: ToastOptions = {}): void {
   const id = ++toastSeq;
-  toasts.set([...toasts.get(), { id, message, tone }].slice(-5));
-  setTimeout(() => dismissToast(id), tone === "error" ? 9000 : 4000);
+  const base = opts.duration ?? (tone === "error" ? 9000 : 4000);
+  const duration = opts.action ? Math.max(base, ACTION_TOAST_MS) : base;
+  toasts.set([...toasts.get(), { id, message, tone, action: opts.action, duration }].slice(-5));
 }
 
 function dismissToast(id: number) {
   toasts.set(toasts.get().filter((t) => t.id !== id));
 }
 
+// A sentence for assistive technology only, spoken by the toaster's live region. The key makes the same sentence speak again.
+const spoken = createStore<{ text: string; n: number }>({ text: "", n: 0 });
+/** Speaks a sentence politely without showing anything ("3 conversations moved to Trash"). Needs `Toaster` on the page. */
+export function announce(message: string): void {
+  spoken.set({ text: message, n: spoken.get().n + 1 });
+}
+
 const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
+
+/** One toast; its timer stops while the pointer is over it or focus is inside, and resumes with what was left. */
+function ToastView({ n }: { n: ToastItem }) {
+  const [paused, setPaused] = useState(false);
+  const left = useRef(n.duration);
+  useEffect(() => {
+    if (paused) return;
+    const started = Date.now();
+    const timer = setTimeout(() => dismissToast(n.id), left.current);
+    return () => {
+      clearTimeout(timer);
+      left.current -= Date.now() - started;
+    };
+  }, [paused, n.id]);
+  const select = () => {
+    if (!toasts.get().some((x) => x.id === n.id)) return;
+    dismissToast(n.id);
+    n.action?.onSelect();
+  };
+  return (
+    <div
+      className={`toast toast-${n.tone}`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setPaused(false)}
+    >
+      <span className="toast-icon">
+        <Icon name={TOAST_ICON[n.tone]} size={16} />
+      </span>
+      <span className="toast-message">{n.message}</span>
+      {n.action && (
+        <Button size="sm" variant="ghost" className="toast-action" onClick={select}>
+          {n.action.label}
+        </Button>
+      )}
+      <button type="button" className="icon-btn icon-btn-sm" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
+        <Icon name="x" size={14} />
+      </button>
+    </div>
+  );
+}
 
 export function Toaster() {
   const list = useSyncExternalStore(toasts.subscribe, toasts.get, toasts.get);
+  const say = useSyncExternalStore(spoken.subscribe, spoken.get, spoken.get);
   return (
     <div className="toaster" role="status" aria-live="polite">
+      {say.text && (
+        <span key={say.n} className="sr-only">
+          {say.text}
+        </span>
+      )}
       {list.map((n) => (
-        <div key={n.id} className={`toast toast-${n.tone}`}>
-          <span className="toast-icon">
-            <Icon name={TOAST_ICON[n.tone]} size={16} />
-          </span>
-          <span className="toast-message">{n.message}</span>
-          <button type="button" className="icon-btn icon-btn-sm" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
-            <Icon name="x" size={14} />
-          </button>
-        </div>
+        <ToastView key={n.id} n={n} />
       ))}
     </div>
   );
