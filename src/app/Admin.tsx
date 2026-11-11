@@ -28,6 +28,7 @@ import {
   Field as FieldWrap,
   Icon,
   PageLoading,
+  ScrollRegion,
   TabPanel,
   toast,
 } from "../ui/kit";
@@ -1262,8 +1263,8 @@ function Users() {
       </div>
       <Loaded q={users}>
         {(data) => (
-          <div className="table-wrap">
-            <table className="table">
+          <ScrollRegion label={tr("Users")}>
+            <table className="table list-table">
               <thead>
                 <tr>
                   <th scope="col">{tr("User")}</th>
@@ -1278,14 +1279,14 @@ function Users() {
               <tbody>
                 {data.users.map((u) => (
                   <tr key={u.id}>
-                    <td>
+                    <td className="card-lead">
                       <div>
                         {isolate(u.full_name)} {u.is_admin && <Badge tone="purple">{tr("admin")}</Badge>}{isolate(" ")}
                         {u.kind && u.kind !== "member" && <Badge tone="amber">{isolate(u.kind)}</Badge>}
                       </div>
                       <div className="muted">{isolate(u.email)}</div>
                     </td>
-                    <td>
+                    <td data-label={tr("Roles")}>
                       <div className="chips">
                         {u.roles.length ? (
                           u.roles.map((r) => (
@@ -1299,7 +1300,7 @@ function Users() {
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td data-label={tr("Status")}>
                       <div className="chips">
                         <Badge tone={u.is_active ? "green" : "red"}>{u.is_active ? tr("active") : tr("inactive")}</Badge>
                         {u.locked && <Badge tone="red">{tr("locked")}</Badge>}
@@ -1307,7 +1308,7 @@ function Users() {
                         {u.sso && <Badge tone="purple">{tr("SSO")}</Badge>}
                       </div>
                     </td>
-                    <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">{tr("never")}</span>}</td>
+                    <td className="nowrap" data-label={tr("Last sign-in")}>{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">{tr("never")}</span>}</td>
                     <td>
                       <div className="row-actions">
                         <Button size="sm" onClick={() => setEditRoles(u)}>
@@ -1336,7 +1337,7 @@ function Users() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </Loaded>
       <NewUserDialog open={creating} roles={roleNames} portalRoles={portalRoleNames} onClose={() => setCreating(false)} onDone={refresh} />
@@ -3599,8 +3600,8 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
 
   return (
     <section className="card">
-      <form className="toolbar" onSubmit={create} aria-label={app ? tr("Create an app password") : tr("Create an API key")}>
-        <FieldWrap label={app ? tr("App or device") : tr("Key name")} htmlFor="key-name" className="field-wide">
+      <form className="field-row" onSubmit={create} aria-label={app ? tr("Create an app password") : tr("Create an API key")}>
+        <FieldWrap label={app ? tr("App or device") : tr("Key name")} htmlFor="key-name">
           <input
             id="key-name"
             className="input"
@@ -3611,7 +3612,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
             placeholder={app ? tr("e.g. iPhone") : tr("e.g. Warehouse scanner")}
           />
         </FieldWrap>
-        <FieldWrap label={tr("Expires (optional)")} htmlFor="key-exp">
+        <FieldWrap label={tr("Expires (optional)")} htmlFor="key-exp" className="field-narrow">
           <input id="key-exp" className="input" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
         </FieldWrap>
         {!app && (
@@ -3630,9 +3631,11 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
             />
           </FieldWrap>
         )}
-        <Button type="submit" variant="primary" icon="plus" loading={busy}>
-          {app ? tr("Create app password") : tr("Create key")}
-        </Button>
+        <div className="field-row-action">
+          <Button type="submit" variant="primary" icon="plus" loading={busy}>
+            {app ? tr("Create app password") : tr("Create key")}
+          </Button>
+        </div>
       </form>
       {error && (
         <div className="card-body">

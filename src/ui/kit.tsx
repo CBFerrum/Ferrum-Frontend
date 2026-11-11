@@ -271,6 +271,30 @@ export function Dialog({
   );
 }
 
+// ── a frame that scrolls sideways ──
+
+/** A table's frame (`.table-wrap`): a table wider than it scrolls inside it, and only then does the frame take the
+ *  keyboard (a focusable region with a name, so the arrow keys reach what is cut off). */
+export function ScrollRegion({ label, className, children }: { label?: string; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => setWide(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={cn("table-wrap", className)} {...(wide ? { role: "region", tabIndex: 0, "aria-label": label ?? t("Table") } : {})}>
+      {children}
+    </div>
+  );
+}
+
 // ── tabs (WAI-ARIA tabs pattern with arrow-key navigation) ──
 
 export function Tabs({

@@ -3,7 +3,7 @@
 // for the colours the suite's apps ship (from /api/shell) and the ones Home derives from a name.
 import { describe, expect, it } from "vitest";
 import { contrastRatio } from "../../../src/lib/theme";
-import { APP_TILE } from "./AppIcon";
+import { APP_ICON_NAMES, APP_TILE } from "./AppIcon";
 import { tileColour } from "../../../apps/shell/src/Home";
 
 const APPS = "#475569 #0e7490 #a63089 #be185d #2563eb #0891b2 #7c3aed #16a34a #0f766e #2f5bea #ca8a04 #ea580c #dc2626 #a63e30 #30a67d #4f46e5 #b45309 #c026d3".split(" ");
@@ -25,4 +25,12 @@ describe("app tile colour rule", () => {
       }
     });
   }
+});
+
+describe("app icon vocabulary", () => {
+  // Every `icon:` the suite's manifests declare (ferrum-app-*/app.yaml and the ERP add-ons) has a glyph, so none falls back to a letter.
+  it("draws the icons the apps declare", () => {
+    const declared = "bed-double boxes building-2 calendar calendar-check clipboard-list cloud contact factory file-text folder-kanban graduation-cap hand-heart hard-drive hard-hat headset landmark layout-dashboard layout-grid mail megaphone message-square plug presentation server share-2 sheet shopping-cart signature stethoscope store truck users utensils video warehouse wrench".split(" ");
+    expect(declared.filter((n) => !APP_ICON_NAMES.includes(n))).toEqual([]);
+  });
 });

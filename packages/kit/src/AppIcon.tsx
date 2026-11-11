@@ -23,6 +23,7 @@ import {
   Headset,
   Landmark,
   LayoutDashboard,
+  LayoutGrid,
   type LucideIcon,
   Mail,
   Megaphone,
@@ -43,6 +44,7 @@ import {
   Users,
   Utensils,
   Video,
+  Warehouse,
   Wrench,
 } from "lucide-react";
 import { cn } from "../../../src/lib/utils";
@@ -68,6 +70,7 @@ const ICONS: Record<string, LucideIcon> = {
   headset: Headset,
   landmark: Landmark,
   "layout-dashboard": LayoutDashboard,
+  "layout-grid": LayoutGrid,
   mail: Mail,
   megaphone: Megaphone,
   "message-square": MessageSquare,
@@ -87,6 +90,7 @@ const ICONS: Record<string, LucideIcon> = {
   users: Users,
   utensils: Utensils,
   video: Video,
+  warehouse: Warehouse,
   wrench: Wrench,
 };
 

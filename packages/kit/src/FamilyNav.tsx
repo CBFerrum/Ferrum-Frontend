@@ -29,7 +29,7 @@ export function FamilyNav({ className }: { className?: string }) {
   // The entry whose address is the longest match is this page's.
   const here = family.entries.filter((e) => under(e.url)).sort((a, b) => b.url.length - a.url.length)[0];
   return (
-    <nav aria-label={isolate(family.title)} className={cn("-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pb-1", className)}>
+    <nav aria-label={isolate(family.title)} className={cn("-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}>
       {family.entries.map((e) => (
         <a
           key={`${e.app}.${e.id}`}

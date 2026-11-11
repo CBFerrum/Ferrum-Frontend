@@ -399,12 +399,10 @@
   min-height: var(--control-h-sm);
 }
 .peek-row dt {
-  overflow: hidden;
   padding: 3px 6px;
   color: var(--muted-foreground);
   font-size: var(--text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere; /* a label is never cut: a long one wraps onto a second line */
 }
 .peek-row dd {
   min-width: 0;
@@ -505,6 +503,9 @@ button.peek-value:hover {
     color: var(--muted-foreground);
     font-size: var(--text-xs);
     text-align: start;
+  }
+  .list-table td.card-lead {
+    padding-bottom: 12px; /* the title and what names it stand apart from the label/value lines below */
   }
   .list-table td:empty {
     display: none;

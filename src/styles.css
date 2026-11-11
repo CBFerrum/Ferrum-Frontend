@@ -1047,6 +1047,48 @@ input[type="color"] {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+/* A table wider than its frame scrolls inside it, and the edge that has more beyond fades (a quiet cue, drawn only
+   while the frame really scrolls: the scroll timeline is inactive otherwise, and so are the defaults). Browsers
+   without scroll-driven animations show no fade; the frame still scrolls and takes the keyboard. */
+@property --edge-s {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@property --edge-e {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+@keyframes edge-cue {
+  0% {
+    --edge-s: 0;
+    --edge-e: 1;
+  }
+  4%,
+  96% {
+    --edge-s: 1;
+    --edge-e: 1;
+  }
+  100% {
+    --edge-s: 1;
+    --edge-e: 0;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .table-wrap {
+    animation: edge-cue linear both;
+    animation-timeline: scroll(self inline);
+    mask-image: linear-gradient(to right, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
+  }
+  .table-wrap:dir(rtl) {
+    mask-image: linear-gradient(to left, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
+  }
+}
+.table-wrap:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
 /* Rows are 36px (32 compact): --row-h is the cell's minimum height (a badge or a 16px checkbox fits inside it). */
 .table {
   --row-h: 36px;
@@ -1595,6 +1637,10 @@ input[type="color"] {
   overflow-x: auto;
   scrollbar-width: none;
 }
+.tabs::-webkit-scrollbar,
+.segmented::-webkit-scrollbar {
+  display: none;
+}
 .tab {
   border: 0;
   background: none;
@@ -1845,6 +1891,36 @@ input[type="color"] {
   }
   .toolbar .field-wide {
     width: 100%;
+  }
+}
+/* A row of labelled fields and the button that sends them: fields start on the same line whatever their hints
+   add underneath; where the button shares the line it drops by the label (20px line + 6px gap) so it sits with the
+   controls, and where the fields wrap it takes a line of its own. */
+.field-row {
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.field-row > .field {
+  flex: 1 1 220px;
+}
+.field-row > .field-narrow {
+  flex: 0 1 180px;
+}
+.field-row > .field-wide {
+  flex: 2 1 320px;
+}
+.field-row-action {
+  flex: 1 0 100%;
+}
+@container (min-width: 880px) {
+  .field-row-action {
+    flex: none;
+    margin-top: 26px;
   }
 }
 .range {
@@ -2419,12 +2495,18 @@ pre.code {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  max-width: 100%; /* wider than its row (phones): it scrolls sideways, without a scrollbar, instead of being cut */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
 .segmented button {
+  flex: none;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2454,7 +2536,7 @@ pre.code {
 }
 .segmented button:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: 1px;
+  outline-offset: -2px; /* inside the frame, which scrolls and would clip it */
 }
 .view-note {
   padding: 8px 16px 12px;
@@ -3276,6 +3358,7 @@ main:has(> [data-fullbleed]) {
     background: none !important;
   }
   .table-wrap,
+  .line-grid-wrap,
   .report-frame,
   .list-card,
   .card,
@@ -3312,6 +3395,7 @@ main:has(> [data-fullbleed]) {
     break-after: avoid;
   }
   .table th,
+  .line-grid th,
   .report thead th {
     background: none;
     border-bottom: 1px solid var(--border-strong);
@@ -3320,17 +3404,45 @@ main:has(> [data-fullbleed]) {
   .report th {
     background: none !important;
   }
-  /* Controls print as text: no box, no arrow. */
+  /* Controls print as text, as a document reads: the value alone, with no box, no placeholder, no arrow or picker
+     glyph; an empty optional field is blank (nothing hollow); buttons and toolbars are not part of the page. */
+  main :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea),
   .input,
   .select,
   .textarea {
     appearance: none;
-    background: none;
-    border-color: var(--border);
+    background: none !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    height: auto;
+    min-height: 0;
+    padding: 0 !important;
+    resize: none;
+    field-sizing: content;
+    overflow: visible;
+    color: CanvasText;
   }
-  .select {
-    background-image: none;
-    padding-inline-end: 10px;
+  main :is(input, textarea)::placeholder {
+    color: transparent;
+  }
+  main input[value=""] {
+    color: transparent; /* an empty optional field prints as blank space, not a date mask or a hollow box */
+  }
+  main input[value=""]::-webkit-datetime-edit {
+    visibility: hidden;
+  }
+  main .field-hint {
+    display: none; /* help for filling the form in, not part of the document */
+  }
+  main input::-webkit-calendar-picker-indicator,
+  main input::-webkit-inner-spin-button,
+  main input::-webkit-search-cancel-button {
+    display: none;
+  }
+  main :is(button, .btn):not(.peek-value, .link-btn, [role="tab"]),
+  main :is(.toolbar, [role="toolbar"]) {
+    display: none !important;
   }
   main a,
   main .link-btn {
