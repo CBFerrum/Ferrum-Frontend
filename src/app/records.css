@@ -29,13 +29,13 @@
   pointer-events: none;
 }
 .list-search .input {
-  height: 30px;
+  height: var(--control-h); /* one row, one height: the buttons beside it are --control-h */
   padding-inline-start: 29px;
 }
 .chip {
   display: inline-flex;
   align-items: stretch;
-  height: 30px;
+  height: var(--control-h);
   max-width: 280px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -87,7 +87,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 30px;
+  height: var(--control-h);
   padding: 0 9px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -345,7 +345,7 @@
   display: grid;
   grid-template-columns: 38% minmax(0, 1fr);
   align-items: center;
-  min-height: 30px;
+  min-height: var(--control-h-sm);
 }
 .peek-row dt {
   overflow: hidden;
@@ -362,7 +362,7 @@
 .peek-value {
   display: block;
   width: 100%;
-  min-height: 26px;
+  min-height: calc(var(--control-h-sm) - 2px);
   padding: 3px 6px;
   overflow-wrap: anywhere;
   border: 0;
@@ -381,7 +381,7 @@ button.peek-value:hover {
 }
 .peek-row dd .input,
 .peek-row dd .select {
-  height: 28px;
+  height: var(--control-h-sm);
   font-size: var(--text-sm);
 }
 .table .row-link[data-peeked] td {
@@ -499,67 +499,66 @@ button.peek-value:hover {
 
   /* ── child tables (TableGrid renders these cards instead of the grid on phones) ── */
 
-  .grid-cards {
+  .line-grid-cards {
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .grid-card {
+  .line-grid-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 6px 10px;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
   }
-  .grid-card:last-child {
+  .line-grid-card:last-child {
     border-bottom: 0;
   }
-  .grid-card > :not(.grid-card-idx) {
+  .line-grid-card > :not(.line-grid-card-idx) {
     grid-column: 2;
   }
-  .grid-card-idx {
+  .line-grid-card-idx {
     min-width: 16px;
     color: var(--faint);
     font-variant-numeric: tabular-nums;
     text-align: end;
   }
-  .grid-card dl {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 16px;
+  .line-grid-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* every visible column: a line without its rate and amount is not usable */
+    gap: 6px 16px;
     margin: 0;
     overflow-wrap: anywhere;
   }
-  .grid-card dt {
+  .line-grid-card dt {
     font-size: var(--text-xs);
     color: var(--muted-foreground);
   }
-  .grid-card dd {
+  .line-grid-card dl > .num {
+    text-align: end; /* money and quantities end-aligned, as in the table */
+  }
+  .line-grid-card dd {
     margin: 0;
     display: -webkit-box; /* long text (descriptions) clamped to keep cards compact */
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
   }
-  .grid-card dd:empty::before {
+  .line-grid-card dd:empty::before {
     content: "—";
     color: var(--faint);
   }
-  .grid-card-actions {
+  .line-grid-card-actions {
     display: flex;
     gap: 4px;
   }
-  .grid-card-actions .btn {
+  .line-grid-card-actions .btn {
     margin-inline-end: auto; /* Edit apart from move/remove */
   }
 }
 
 @media (pointer: coarse) {
-  /* Link fields: room in the input for both 44px clear/open buttons. */
-  .combo .input {
-    padding-inline-end: 94px;
-  }
-  .grid td:has(> .combo) {
+  .line-grid td:has(> .combo) {
     min-width: 200px; /* the dense grid (tablets) keeps some room for the text */
   }
 }

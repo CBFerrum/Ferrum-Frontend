@@ -47,7 +47,7 @@ function defaults(kind: StateKind): { title: string; hint?: string } {
 /**
  * Why there is nothing to show: loading, first-use empty, no matches, denied, offline or failed, each
  * with its own icon, tone and words. `children` is the description: say what the caller knows (that
- * work is kept while offline, what to create first). `failed` shows `error` and offers `onRetry`;
+ * work is kept while offline, what to create first). `failed` shows `error`; `failed` and `offline` offer `onRetry`;
  * `no-matches` offers `onClear`. Denied never says what exists.
  */
 export function StatePanel({
@@ -89,7 +89,7 @@ export function StatePanel({
       {(onRetry || onClear || action) && (
         <EmptyContent>
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {kind === "failed" && onRetry && (
+            {(kind === "failed" || kind === "offline") && onRetry && (
               <Button icon="refresh" onClick={onRetry}>
                 {t("Try again")}
               </Button>

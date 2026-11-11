@@ -800,23 +800,23 @@ export function TableGrid({
 
   return (
     <div>
-      <div className="grid-wrap">
+      <div className="line-grid-wrap">
         {phone ? (
           rows.length ? (
             // List semantics stated explicitly: Safari drops them for unstyled lists.
-            <ol className="grid-cards" role="list" aria-label={isolate(name)}>
+            <ol className="line-grid-cards" role="list" aria-label={isolate(name)}>
               {rows.map((r, i) => {
                 const errs = ownErrors(i);
                 const subErrs = subErrors(i);
                 const errId = `${gridId}-${i}-errors`;
                 return (
-                  <li key={rowKey(r, i)} className="grid-card">
-                    <span className="grid-card-idx">{i + 1}</span>
+                  <li key={rowKey(r, i)} className="line-grid-card">
+                    <span className="line-grid-card-idx">{i + 1}</span>
                     <dl>
-                      {cols.slice(0, 3).map(
+                      {cols.map(
                         (f) =>
                           fieldState(f, { doc: r, parent, user }, locked).visible && (
-                            <div key={f.name}>
+                            <div key={f.name} className={NUMERIC_TYPES.has(f.type) ? "num" : undefined}>
                               <dt>{isolate(f.label)}</dt>
                               <dd>
                                 <CellValue field={f} value={r[f.name]} title={r._titles?.[f.name]} currencyPrecision={precisionOf(f, r)} />
@@ -836,7 +836,7 @@ export function TableGrid({
                         {isolate([...errs.map((e) => `${labelOf(e.field)} ${e.message}`), ...subErrs.map(subText)].join(" · "))}
                       </p>
                     )}
-                    <div className="grid-card-actions">
+                    <div className="line-grid-card-actions">
                       <Button aria-label={(locked ? tr("View row {value2}", { value2: i + 1 }) : tr("Edit row {value2}", { value2: i + 1 }))} aria-describedby={errs.length + subErrs.length ? errId : undefined} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                         {locked ? tr("View") : tr("Edit")}
                       </Button>
@@ -859,13 +859,13 @@ export function TableGrid({
               })}
             </ol>
           ) : (
-            <p className="grid-empty">{t("No rows yet.")}</p>
+            <p className="line-grid-empty">{t("No rows yet.")}</p>
           )
         ) : (
-          <table className="grid" aria-label={isolate(name)}>
+          <table className="line-grid" aria-label={isolate(name)}>
             <thead>
               <tr>
-                <th className="grid-idx" scope="col">
+                <th className="line-grid-idx" scope="col">
                   #
                 </th>
                 {cols.map((f) => (
@@ -897,7 +897,7 @@ export function TableGrid({
                 return (
                   <Fragment key={rowKey(r, i)}>
                     <tr onKeyDown={onRowKey(i)}>
-                      <td className="grid-idx">{i + 1}</td>
+                      <td className="line-grid-idx">{i + 1}</td>
                       {cols.map((f) => {
                         const st = fieldState(f, scope, locked);
                         const err = errs.find((e) => e.field === f.name);
@@ -940,7 +940,7 @@ export function TableGrid({
                           </Button>
                         </td>
                       ))}
-                      <td className="grid-actions">
+                      <td className="line-grid-actions">
                         <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Show all fields of row {value}", { value: i + 1 })} title={tr("All fields")} data-reveal={subErrs.length ? "" : undefined} onClick={() => setEditing(i)}>
                           <Icon name="expand" size={14} />
                         </button>
@@ -977,7 +977,7 @@ export function TableGrid({
               })}
               {!rows.length && (
                 <tr>
-                  <td colSpan={span} className="grid-empty">
+                  <td colSpan={span} className="line-grid-empty">
                     {t("No rows yet.")}
                   </td>
                 </tr>
@@ -987,7 +987,7 @@ export function TableGrid({
         )}
       </div>
       {!locked && (
-        <div className="grid-foot">
+        <div className="line-grid-foot">
           <Button size="sm" icon="plus" onClick={() => add()}>
             {t("Add row")}
           </Button>

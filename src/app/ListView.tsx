@@ -7,7 +7,7 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, NavigationType, useNavigate, useNavigationType, useParams, useSearchParams } from "react-router";
-import { api, docPath, download, errorMessage } from "../lib/api";
+import { api, ApiError, docPath, download, errorMessage } from "../lib/api";
 import { filterable, isWord, readFilters, serializeFilters, writeFilters } from "../lib/filters";
 import { NUMERIC_TYPES } from "../lib/format";
 import { useLiveEntity } from "../lib/live";
@@ -25,7 +25,8 @@ import {
   type EntityMeta,
   type ListResponse,
 } from "../lib/meta";
-import { Button, EmptyState, ErrorState, Field as FieldWrap, Icon, PageLoading, toast, useDebounced } from "../ui/kit";
+import { Button, ErrorState, Field as FieldWrap, Icon, PageLoading, toast, useDebounced } from "../ui/kit";
+import { StatePanel } from "../ui/patterns";
 import { pageState, togglePage, toggleRow } from "./list/bulk";
 import { BulkBar, SelectBox } from "./list/BulkBar";
 import { ColumnChooser, ColumnResizer } from "./list/ColumnChooser";
@@ -79,6 +80,32 @@ const usePhone = () =>
     () => window.matchMedia(PHONE).matches,
     () => false,
   );
+
+/** Why a list shows no rows, one state per reason: refused (never what exists), failed (try again), a search or filter hid
+ *  the rows (clear it), or there are none yet (create the first when allowed). */
+export function ListNothing({ error, onRetry, filtered, onClear, label, labelPlural, newHref }: { error?: unknown; onRetry?: () => void; filtered?: boolean; onClear?: () => void; label?: string; labelPlural?: string; newHref?: string }) {
+  if (error) return error instanceof ApiError && error.status === 403 ? <StatePanel kind="denied" /> : <StatePanel kind="failed" error={error} onRetry={onRetry} />;
+  if (filtered)
+    return (
+      <StatePanel kind="no-matches" onClear={onClear}>
+        {tr("Nothing matches your search or filters.")}
+      </StatePanel>
+    );
+  return (
+    <StatePanel
+      kind="empty"
+      title={tr("No {value} yet", { value: (labelPlural ?? "").toLowerCase() })}
+      action={
+        newHref && (
+          <Link className="btn btn-primary btn-md" to={newHref}>
+            <Icon name="plus" />
+            {tr("New {label}", { label: label ?? "" })}
+          </Link>
+        )
+      }
+    />
+  );
+}
 
 export function ListView() {
   const { entity = "" } = useParams();
@@ -556,20 +583,9 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         ) : view === "timeline" ? (
           <TimelineView meta={meta} start={span![0]} end={span![1]} filters={filters} q={q} onOpen={phone ? undefined : setPeek} />
         ) : list.error ? (
-          <ErrorState error={list.error} onRetry={() => list.refetch()} />
+          <ListNothing error={list.error} onRetry={() => list.refetch()} />
         ) : !list.isLoading && !rows.length ? (
-          <EmptyState title={filtered ? tr("No matching records") : tr("No {value} yet", { value: meta.label_plural.toLowerCase() })}>
-            {filtered ? (
-              <Button onClick={clearFilters}>{tr("Clear filters")}</Button>
-            ) : (
-              canCreate && (
-                <Link className="btn btn-primary btn-md" to={newHref}>
-                  <Icon name="plus" />
-                  {tr("New {label}", { label: meta.label })}
-                </Link>
-              )
-            )}
-          </EmptyState>
+          <ListNothing filtered={filtered} onClear={clearFilters} label={meta.label} labelPlural={meta.label_plural} newHref={canCreate ? newHref : undefined} />
         ) : (
           <div className="table-wrap">
             {/* Explicit roles: the phone card layout changes `display`, which drops native table semantics. */}

@@ -11,7 +11,7 @@ Governed patterns of `@ferrum/kit` and the task layouts they compose. Everything
 | First-use empty | What this is and the first step | `StatePanel kind="empty"` (`EmptyState` still works) |
 | No matches | "No matches", why, "Clear filters" | `StatePanel kind="no-matches"` |
 | Denied | "You don't have access to this" and how to ask; never what exists | `StatePanel kind="denied"` |
-| Offline | "You're offline" and, if true for the caller, that work is kept | `StatePanel kind="offline"` |
+| Offline | "You're offline" and, if true for the caller, that work is kept; "Try again" when the caller passes `onRetry` | `StatePanel kind="offline"` |
 | Failed | What failed, the reason, "Try again"; context stays | `StatePanel kind="failed"` (`ErrorState` still works) |
 | Stale | The content stays; a non-blocking notice with "Refresh" | kit `Alert` with a refresh `action` (no component) |
 | A change's progress | Draft, saving, saved, kept on this device, conflict, failed, unknown | `SaveStatus` |
@@ -27,7 +27,7 @@ When: a region has nothing to show. Pick the kind by why, not by how it looks.
 import { StatePanel } from "@ferrum/kit";
 <StatePanel kind="no-matches" onClear={clearFilters}>{t("Nothing matches “{q}”.", { q })}</StatePanel>
 <StatePanel kind="failed" error={query.error} onRetry={() => query.refetch()} />
-<StatePanel kind="offline">{t("Your changes are kept on this device until you are back online.")}</StatePanel>
+<StatePanel kind="offline" onRetry={() => query.refetch()}>{t("Your changes are kept on this device until you are back online.")}</StatePanel>
 ```
 
 Accessibility: `failed` is `role="alert"`; `loading` is `role="status"` with `aria-busy`; `no-matches` is `role="status"` (it replaces content after the user's action); the others announce nothing. Icons are decorative, one size; tone differs per kind (only `failed` is red).

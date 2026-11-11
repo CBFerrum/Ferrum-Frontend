@@ -4075,6 +4075,9 @@ const words: Record<string, string> = {
   "Could not confirm it was saved": "यह पुष्टि नहीं हो सकी कि सहेजा गया",
   "All {n} matching selected": "सभी {n} मेल खाने वाले चुने गए",
   "Clear selection": "चयन हटाएँ",
+  "Fields to fix": "ठीक करने वाले फ़ील्ड",
+  "Nothing matches your search or filters.": "आपकी खोज या फ़िल्टर से कुछ मेल नहीं खाता।",
+  "{table}: {message}": "{table}: {message}",
 };
 
 export default words;
