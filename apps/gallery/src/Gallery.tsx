@@ -562,6 +562,21 @@ export function Sections() {
             <Button size="sm">Assign</Button>
           </SelectionToolbar>
         </div>
+        <div data-gallery="selection-folding" className="relative">
+          <SelectionToolbar
+            label="Actions for the 4 invoices selected"
+            count={4}
+            onClear={() => {}}
+            actions={[
+              { id: "archive", label: "Archive", icon: "file", onSelect: () => {} },
+              { id: "assign", label: "Assign to…", icon: "user", onSelect: () => {} },
+              { id: "export", label: "Export", icon: "download", onSelect: () => {} },
+              { id: "print", label: "Print", icon: "printer", onSelect: () => {} },
+              { id: "share", label: "Share by link", icon: "external", onSelect: () => {} },
+              { id: "delete", label: "Delete", icon: "trash", danger: true, priority: true, onSelect: () => {} },
+            ]}
+          />
+        </div>
         <div data-gallery="selection-capped" className="relative">
           <SelectionToolbar label="Actions for the 500 invoices selected" count={500} scope="matching" of={1200} onClear={() => {}}>
             <Button size="sm">Assign</Button>
