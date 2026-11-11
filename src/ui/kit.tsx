@@ -523,7 +523,7 @@ function ToastView({ n }: { n: ToastItem }) {
       </span>
       <span className="toast-message">{n.message}</span>
       {n.action && (
-        <Button size="sm" variant="ghost" onClick={select}>
+        <Button size="sm" variant="ghost" className="toast-action" onClick={select}>
           {n.action.label}
         </Button>
       )}
