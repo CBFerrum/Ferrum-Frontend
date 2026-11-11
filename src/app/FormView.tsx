@@ -687,7 +687,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       const child = meta.children[f.name];
       if (!child) return null;
       return (
-        <div key={f.name} className="field span-all" role="group" aria-labelledby={`${fid}-label`}>
+        <div key={f.name} className={cn("field span-all", !st.required && asRows(doc[f.name]).length === 0 && "print-blank")} role="group" aria-labelledby={`${fid}-label`}>
           <div className={soleInSection ? "sr-only" : "field-label"} id={`${fid}-label`}>
             {isolate(f.label)}
             {st.required && (
@@ -750,7 +750,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       );
     }
     return (
-      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={cn(WIDE.has(f.type) && "span-all", isQuiet(f, st) && "field-empty")}>
+      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={cn(WIDE.has(f.type) && "span-all", isQuiet(f, st) && "field-empty", !st.required && !f.kept_by_target && isEmptyValue(doc[f.name]) && "print-blank")}>
         {control}
       </FieldWrap>
     );
