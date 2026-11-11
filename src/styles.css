@@ -3960,8 +3960,10 @@ a.queue-name:focus-visible::after {
     padding: 0;
     background: none;
   }
-  .section > summary .icon {
-    display: none;
+  .section > summary .icon,
+  .req,
+  .help-link {
+    display: none !important; /* the chevron, the required mark and the help link are for filling the form in, not part of the document (records.css sets the link's display later) */
   }
   .table-wrap > .table {
     min-width: 0;
