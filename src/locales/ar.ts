@@ -4075,6 +4075,9 @@ const words: Record<string, string> = {
   "Could not confirm it was saved": "تعذّر التأكد من أنه حُفظ",
   "All {n} matching selected": "تم تحديد كل العناصر المطابقة ({n})",
   "Clear selection": "إلغاء التحديد",
+  "Fields to fix": "الحقول المطلوب تصحيحها",
+  "Nothing matches your search or filters.": "لا شيء يطابق بحثك أو عوامل التصفية.",
+  "{table}: {message}": "{table}: {message}",
 };
 
 export default words;

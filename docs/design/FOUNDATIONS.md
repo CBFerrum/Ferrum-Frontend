@@ -79,6 +79,8 @@ Before this change `--faint` was 3.11:1 on white (2.87:1 on the page) and the co
 
 **Spacing is a true 4px.** `--spacing` is set to `calc(4 / 14 * 1rem)` in `src/index.css`, so under the 87.5% root every Tailwind spacing utility is N x 4px at the default font size (`h-8` 32, `h-9` 36, `h-10` 40, `h-11` 44, `p-4` 16, `gap-2` 8). Tailwind's own `0.25rem` would be 3.5px here and make every primitive 12.5% smaller than designed. Controls (`Button`, `Input`, `Select`, `Textarea`, `Toggle`, `InputGroup`, tab list) take `h-(--control-h)` and `h-(--control-h-sm)` for `sm`, so density and touch reach them as they reach the legacy `.btn`/`.input` classes. `Button` `xs` (24px) and `lg` (40px, 44px on touch) are fixed. Fixed widths written in `rem` (sidebar, panels) are unaffected by the unit.
 
+**One row, one control height.** A toolbar row uses one height: the list's search box and filter chips are `--control-h`, like the buttons beside them. The child-table (line) grid's inputs, selects and link buttons are deliberately smaller than form fields and are `--control-h-sm` explicitly (32px, 36px on touch); the record peek's inline editors are too. The link field's clear and open buttons are `--control-h` minus 8px (`--control-h-sm` minus 8px in the line grid) and the input's end padding is computed from how many are shown. The line grid's class family is `line-grid` (not `grid`, which Tailwind's utility would override).
+
 Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's mapping gives `rounded-sm` 4, `rounded-md` 6, `rounded-lg` 8, `rounded-xl` 12 (large dialogs). Density is `data-density="compact"` on `<html>`; touch targets are 44px whatever the density.
 
 ## Motion
@@ -105,5 +107,5 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
 - `packages/build/*` and a few primitives (`command.tsx` input at `h-10`, `calendar.tsx` text) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
-- Legacy CSS that keeps px sizes on purpose: `.page-title` at 20px (between the section and page heading roles), the fluid `clamp()` heading in `apps/shell/src/shell.css`, grid cell controls at 32px, and the 44px touch overrides in the narrow-screen block of `src/styles.css`.
+- Legacy CSS that keeps px sizes on purpose: `.page-title` at 20px (between the section and page heading roles), the fluid `clamp()` heading in `apps/shell/src/shell.css`, and the 44px touch overrides in the narrow-screen block of `src/styles.css`.
 - Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.

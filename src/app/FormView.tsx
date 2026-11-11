@@ -162,6 +162,29 @@ const tabId = (tab: string | null) => (tab === null ? "details" : `tab:${tab}`);
 /** Signed in as a portal person or a guest. */
 const outside = ["portal", "guest"].includes(bootstrap()?.person?.kind ?? "");
 
+export type SummaryItem = { text: string; message?: string; field: string; row?: [string, number]; tab?: string };
+
+/** What a refused save names: each field (or table row) as a button that moves focus to it. Inside the alert, and frozen
+ *  when the save failed, so it is read out once and not again as fields are fixed. */
+export function ErrorSummary({ items, onGo }: { items: SummaryItem[]; onGo: (it: SummaryItem) => void }) {
+  if (!items.length) return null;
+  return (
+    <>
+      <p className="summary-lead">{tr("Fields to fix")}</p>
+      <ul className="error-summary">
+        {items.map((it, i) => (
+          <li key={i}>
+            <button type="button" className="link-btn" onClick={() => onGo(it)}>
+              {isolate(it.text)}
+            </button>
+            {it.message && <>: {isolate(it.message)}</>}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 /** A tab's label with how many errors its fields have. */
 function tabLabel(label: string, errors: number): ReactNode {
   if (!errors) return label;
@@ -195,6 +218,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const [touched, setTouched] = useState(false);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [banner, setBanner] = useState<string | null>(null);
+  // What the refused save named, frozen when it failed: the list is part of one alert and must not change (and be read out again) as the person fixes fields.
+  const [summary, setSummary] = useState<SummaryItem[]>([]);
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [calc, setCalc] = useState<{ pending: boolean; error?: string }>({ pending: false });
@@ -342,6 +367,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     if (e instanceof ApiError && e.fields.length) {
       setErrors(e.fields);
       setBanner(e.message);
+      setSummary(e.fields.map((f) => ({ ...describeError(f), field: f.field, row: f.row, tab: tabOf.get(f.row ? f.row[0] : f.field) })));
       // The first tab with a failing field (the banner lists those no tab shows).
       setTab(e.fields.map((f) => tabOf.get(f.row ? f.row[0] : f.field)).find(Boolean) ?? tabs[0]?.id ?? "details");
       setFocusError((n) => n + 1);
@@ -353,6 +379,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const save = async (): Promise<Doc | null> => {
     setBusy("save");
     setBanner(null);
+    setSummary([]);
     try {
       if (isNew) {
         // One key per attempt: the client's own retries on connection errors reuse it.
@@ -587,7 +614,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     return items.length ? [{ s, items }] : [];
   });
   const tabOf = new Map(shown.flatMap(({ s, items }) => items.map(({ f }) => [f.name, tabId(s.tab)] as const)));
-  const unplaced = errors.filter((e) => !tabOf.has(e.row ? e.row[0] : e.field));
   const tabs = [
     ...layout.tabs.filter((t) => shown.some(({ s }) => s.tab === t)).map((tab) => ({ id: tabId(tab), label: tab ?? t("Details") })),
     ...(isNew
@@ -606,6 +632,41 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         ]),
   ];
   const active = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "details");
+  /** An error as a person names it: the field's label, or the table's label and the row. */
+  const describeError = (e: FieldError): { text: string; message?: string } => {
+    if (e.path) {
+      return {
+        text: tr("{meta}, row {value}, {sub}, row {value2}", { meta: fieldLabel(meta, e.row![0]), value: e.row![1] + 1, sub: meta.children[e.row![0]]?.children?.[e.path[1][0]]?.label ?? humanize(e.path[1][0]), value2: e.path[1][1] + 1 }),
+        message: e.message,
+      };
+    }
+    if (e.row) {
+      return { text: tr("{meta} row {value}, {value2}", { meta: fieldLabel(meta, e.row[0]), value: e.row[1] + 1, value2: meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field) }), message: e.message };
+    }
+    return { text: fieldLabel(meta, e.field), message: meta.fields.find((f) => f.name === e.field)?.type === "table" || !tabOf.has(e.field) ? e.message : undefined };
+  };
+  /** Moves focus to what an error in the summary names: the field, the cell, or the table's own controls. */
+  const goTo = (it: { field: string; row?: [string, number]; tab?: string }) => {
+    if (it.tab) setTab(it.tab);
+    setTimeout(() => {
+      const table = it.row?.[0] ?? (meta.fields.find((f) => f.name === it.field)?.type === "table" ? it.field : undefined);
+      let el: HTMLElement | null | undefined;
+      if (!table) el = document.getElementById(`f-${it.field}`);
+      else {
+        const group = document.querySelector<HTMLElement>(`[aria-labelledby="f-${table}-label"]`);
+        if (it.row) {
+          el = group?.querySelector<HTMLElement>(`[id$="-${it.row[1]}-${it.field}"]`) ?? group?.querySelector<HTMLElement>('[aria-invalid="true"]');
+          if (!el) {
+            group?.querySelector<HTMLElement>("[data-reveal]")?.click();
+            el = group;
+          }
+        } else el = group?.querySelector<HTMLElement>(".line-grid-foot button") ?? group;
+      }
+      if (!el) return;
+      if (el.getAttribute("role") === "group") el.scrollIntoView({ block: "center" });
+      else el.focus();
+    }, 60);
+  };
   const currencyPrecision = (f: Field, row: Doc, parent?: Doc) =>
     f.type === "currency" && f.currency
       ? precisionOf(f.currency.startsWith("parent.") ? parent?.[f.currency.slice(7)] : row[f.currency])
@@ -639,7 +700,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             entity={E}
             recordId={id}
           />
-          {err && <p className="field-error">{isolate(err)}</p>}
+          {err && <p className="field-error">{isolate(tr("{table}: {message}", { table: f.label, message: err }))}</p>}
         </div>
       );
     }
@@ -902,20 +963,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       {banner && (
         <Alert tone="error">
           {isolate(banner)}
-          {unplaced.length > 0 && (
-            <ul>
-              {unplaced.map((e, i) => (
-                <li key={i}>
-                  {e.path
-                    ? tr("{meta}, row {value}, {sub}, row {value2}", { meta: fieldLabel(meta, e.row![0]), value: e.row![1] + 1, sub: meta.children[e.row![0]]?.children?.[e.path[1][0]]?.label ?? humanize(e.path[1][0]), value2: e.path[1][1] + 1 })
-                    : e.row
-                    ? tr("{meta} row {value}, {value2}", { meta: fieldLabel(meta, e.row[0]), value: e.row[1] + 1, value2: meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field) })
-                    : fieldLabel(meta, e.field)}
-                  : {isolate(e.message)}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ErrorSummary items={summary} onGo={goTo} />
         </Alert>
       )}
       {!isNew && docstatus === 1 && meta.submittable && (

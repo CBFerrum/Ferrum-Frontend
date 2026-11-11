@@ -20,7 +20,7 @@ function SpaceChip({ module }: { module: string }) {
   const space = useStudioList("spaces").data?.find((s) => s.module === module);
   if (!space) return null;
   return (
-    <Link className="chip" to={PATHS.space(space.id)}>
+    <Link className="module-link" to={PATHS.space(space.id)}>
       <Icon name="space" size={14} />
       {space.label || t("Space")}
     </Link>
@@ -86,7 +86,7 @@ export function Home() {
                 <div className="chips">
                   {studio && <SpaceChip module={m.name} />}
                   {links.map((l) => (
-                    <Link key={l.to} className="chip" to={l.to}>
+                    <Link key={l.to} className="module-link" to={l.to}>
                       <Icon name={l.icon} size={14} />
                       {isolate(l.label)}
                     </Link>

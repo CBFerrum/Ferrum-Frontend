@@ -423,10 +423,11 @@ main:focus {
   padding: 0 10px;
   font-size: var(--text-sm);
 }
-.btn:hover:not(:disabled):not([aria-disabled="true"]) {
+/* :where() keeps this below the variants' own hover: without it a primary button hovered turned pale under white text. */
+.btn:hover:where(:not(:disabled):not([aria-disabled="true"])) {
   background: var(--surface-2);
 }
-.btn:active:not(:disabled):not([aria-disabled="true"]) {
+.btn:active:where(:not(:disabled):not([aria-disabled="true"])) {
   background: var(--surface-3);
 }
 /* aria-disabled: a button that says why it cannot be pressed stays reachable by keyboard. */
@@ -624,13 +625,24 @@ input[type="color"] {
   align-items: center;
   min-width: 0;
 }
-.combo .input {
-  padding-inline-end: 54px;
+.combo {
+  --combo-btn: calc(var(--control-h) - 8px); /* the clear/open buttons sit inside the control's border with a 3px gap */
+}
+/* Room for the buttons actually present: clear + open, or open alone (a locked field). */
+.combo:has(.combo-actions > *) .input {
+  padding-inline-end: calc(var(--combo-btn) + 6px);
+}
+.combo:has(.combo-actions > :nth-child(2)) .input {
+  padding-inline-end: calc(2 * var(--combo-btn) + 6px);
 }
 .combo-actions {
   position: absolute;
   inset-inline-end: 3px;
   display: flex;
+}
+.combo-actions .icon-btn {
+  width: var(--combo-btn);
+  height: var(--combo-btn);
 }
 .listbox {
   position: absolute;
@@ -826,25 +838,26 @@ input[type="color"] {
 }
 
 /* editable child grid */
-.grid-wrap {
+.line-grid-wrap {
   position: relative;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-.grid {
+.line-grid {
+  display: table; /* not Tailwind's .grid utility: this class family was renamed to stop that collision */
   width: 100%;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
-.grid th,
-.grid td {
+.line-grid th,
+.line-grid td {
   padding: 5px 6px;
   border-bottom: 1px solid var(--border);
   text-align: start;
   vertical-align: top;
 }
-.grid th {
+.line-grid th {
   background: var(--surface-2);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -852,49 +865,59 @@ input[type="color"] {
   white-space: nowrap;
   padding: 7px 8px;
 }
-.grid td {
+.line-grid td {
   min-width: 120px;
 }
-.grid td.grid-idx,
-.grid th.grid-idx {
+.line-grid td.line-grid-idx,
+.line-grid th.line-grid-idx {
   min-width: 0;
   width: 36px;
   text-align: center;
   color: var(--faint);
   padding-top: 12px;
 }
-.grid td.grid-actions {
+.line-grid td.line-grid-actions {
   min-width: 0;
   width: 1%;
   white-space: nowrap;
 }
-.grid .input,
-.grid .select {
-  height: 32px;
+/* Deliberately smaller than form fields: one dense row of cells at --control-h-sm. */
+.line-grid .input,
+.line-grid .select {
+  height: var(--control-h-sm);
 }
-.grid .textarea {
-  min-height: 32px;
-  height: 32px;
+.line-grid .textarea {
+  min-height: var(--control-h-sm);
+  height: var(--control-h-sm);
 }
-.grid .cell-error {
+.line-grid .combo {
+  --combo-btn: calc(var(--control-h-sm) - 8px);
+}
+.line-grid th.num,
+.line-grid td.num,
+.line-grid .input.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.line-grid .cell-error {
   font-size: var(--text-xs);
   color: var(--danger);
   margin-top: 3px;
 }
-.grid tr.row-errors td {
+.line-grid tr.row-errors td {
   color: var(--danger);
   font-size: var(--text-xs);
   background: var(--danger-soft);
 }
-.grid tbody tr:focus-within td {
+.line-grid tbody tr:focus-within td {
   background: color-mix(in srgb, var(--primary-soft) 45%, transparent);
 }
-.grid-empty {
+.line-grid-empty {
   padding: 14px;
   color: var(--muted-foreground);
   text-align: center;
 }
-.grid-foot {
+.line-grid-foot {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -968,6 +991,18 @@ input[type="color"] {
 .alert-body {
   flex: 1;
   min-width: 200px;
+}
+.summary-lead {
+  margin: 8px 0 2px;
+  font-weight: 600;
+}
+.error-summary {
+  margin: 0;
+  padding-inline-start: 20px;
+}
+.error-summary .link-btn {
+  color: inherit;
+  text-decoration: underline;
 }
 .alert-info {
   background: var(--primary-soft);
@@ -1410,6 +1445,28 @@ input[type="color"] {
   background: var(--surface-2);
   color: var(--text);
   font-size: var(--text-sm);
+}
+/* Home's module links: navigation, not a filter token (.chip), so no accent fill. */
+.module-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-h-sm);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+.module-link:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+}
+.module-link .icon {
+  flex: none;
 }
 .chip:hover {
   background: var(--primary-soft);
@@ -2270,6 +2327,7 @@ pre.code {
   .option,
   .tab,
   .chip,
+  .module-link,
   .check-field,
   .card-head .check-field {
     min-height: 44px;

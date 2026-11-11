@@ -20,6 +20,11 @@ describe("StatePanel", () => {
     expect(html).not.toContain("Clear filters");
     expect(renderToString(<StatePanel kind="no-matches" onClear={() => {}} />)).toContain("Clear filters");
   });
+  it("offers a retry when offline, and not on the kinds that cannot be retried", () => {
+    expect(renderToString(<StatePanel kind="offline" onRetry={() => {}} />)).toContain("Try again");
+    expect(renderToString(<StatePanel kind="offline" />)).not.toContain("Try again");
+    expect(renderToString(<StatePanel kind="empty" onRetry={() => {}} />)).not.toContain("Try again");
+  });
   it("does not say what exists when access is denied", () => {
     expect(renderToString(<StatePanel kind="denied" />)).toContain("You don&#x27;t have access to this");
   });
