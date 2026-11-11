@@ -31,6 +31,7 @@ import {
 } from "../ui/kit";
 import { Kbd } from "@/components/ui/kbd";
 import { FormSkeleton, ListSkeleton, TableSkeleton } from "../ui/patterns";
+import { NavIcon } from "../../packages/kit/src/NavIcon";
 import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
 
 // The person's menu's dialogs load when one is opened: every interface's first script holds this
@@ -39,7 +40,7 @@ const TwoFactorSettings = lazy(() => import("./TwoFactor").then((m) => ({ defaul
 const ApiKeys = lazy(() => import("./Admin").then((m) => ({ default: m.ApiKeys })));
 const CalendarApps = lazy(() => import("./Admin").then((m) => ({ default: m.CalendarApps })));
 
-type NavItem = { label: string; to: string; icon: string };
+type NavItem = { label: string; to: string; icon?: string; entity?: string; kind?: string; submittable?: boolean };
 
 /** The Studio app (package and module): its records open in their builders, not the generic list and form. */
 export const STUDIO = "studio";
@@ -73,10 +74,10 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
   const links = m.items.flatMap((item) => {
     if (item.startsWith("report:")) {
       const name = item.slice(7);
-      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), icon: "chart" }];
+      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), kind: "report" }];
     }
     const e = readable.get(item);
-    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: "file" }] : [];
+    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: e.icon ?? undefined, entity: e.name, kind: e.kind, submittable: e.submittable }] : [];
   });
   if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
   if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
@@ -362,16 +363,19 @@ function Sidebar() {
   return (
     <nav aria-label={tr("Main")}>
       <NavLink to="/" end className="nav-link">
+        <NavIcon to="/" />
         <span className="nav-label">{tr("Home")}</span>
       </NavLink>
       {/* Under the platform's bar, other apps are in its launcher. */}
       {frameMode === "classic" && comms && (
         <NavLink to="/mail" className="nav-link">
+          <NavIcon icon="mail" />
           <span className="nav-label">{tr("Mail")}</span>
         </NavLink>
       )}
       {frameMode === "classic" && meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
+          <NavIcon icon="folder" />
           <span className="nav-label">{tr("Files")}</span>
         </NavLink>
       )}
@@ -383,8 +387,8 @@ function Sidebar() {
           </summary>
           {g.items.map((i) => (
             <NavLink key={i.to} to={i.to} className="nav-link">
+              <NavIcon {...i} />
               <span className="nav-label">{isolate(i.label)}</span>
-              <NavGlyph icon={i.icon} />
             </NavLink>
           ))}
         </details>
@@ -397,8 +401,8 @@ function Sidebar() {
           </summary>
           {pages.map((p) => (
             <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
+              <NavIcon icon={p.icon} to={`/x/${p.app}/${p.id}`} />
               <span className="nav-label">{isolate(p.title ?? "")}</span>
-              <NavGlyph icon={p.icon ?? "apps"} />
             </NavLink>
           ))}
         </details>
@@ -412,9 +416,11 @@ function Sidebar() {
           {frameMode === "classic" ? (
             <>
               <NavLink to="/apps" className="nav-link">
+                <NavIcon icon="layout-grid" />
                 <span className="nav-label">{tr("Apps")}</span>
               </NavLink>
               <NavLink to="/admin" className="nav-link">
+                <NavIcon icon="shield" />
                 <span className="nav-label">{tr("Admin")}</span>
               </NavLink>
             </>
@@ -422,10 +428,12 @@ function Sidebar() {
             <>
               {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
               <a href="/store/" className="nav-link">
+                <NavIcon icon="layout-grid" />
                 <span className="nav-label">{tr("Apps")}</span>
                 <NavGlyph external />
               </a>
               <a href="/admin/" className="nav-link">
+                <NavIcon icon="shield" />
                 <span className="nav-label">{tr("Admin")}</span>
                 <NavGlyph external />
               </a>
@@ -433,10 +441,12 @@ function Sidebar() {
           )}
           {frameHasPages ? (
             <NavLink to="/customize" className="nav-link">
+              <NavIcon icon="sliders-horizontal" />
               <span className="nav-label">{tr("Customize")}</span>
             </NavLink>
           ) : (
             <a href="/data/customize/" className="nav-link">
+              <NavIcon icon="sliders-horizontal" />
               <span className="nav-label">{tr("Customize")}</span>
               <NavGlyph external />
             </a>
@@ -447,11 +457,9 @@ function Sidebar() {
   );
 }
 
-/** The mark at the end of a sidebar entry, only where it differs from a list of records (a report, a page
- *  of its own, a page outside this app): a records list, most of the sidebar, carries none. */
-function NavGlyph({ icon, external }: { icon?: string; external?: boolean }) {
-  const name = external ? "external" : icon && icon !== "file" ? icon : null;
-  return name ? <Icon name={name} size={14} /> : null;
+/** The mark at the end of a sidebar entry that leads outside this app; the row's own icon leads it (NavIcon). */
+function NavGlyph({ external }: { external?: boolean }) {
+  return external ? <Icon name="external" size={14} /> : null;
 }
 
 // ── search / command palette ──
