@@ -64,10 +64,29 @@ What changed in each, beyond sizes: loading shows skeletons shaped like the cont
 | Check | Result |
 |---|---|
 | `npm run typecheck` | clean |
-| `npm test` | 91 files, 809 tests passing |
+| `npm test` | 96 files, 829 tests passing |
 | `npm run lint:ui` | within its baseline (20 raw colours, 2 arbitrary text sizes left; no text under 12px, no blank fallback). The rule first read rem at 16px and missed 0.8rem text; it now reads it at the kit's 14px |
 | `npm run build:apps` | shell entry 140.2 KB JS / 30.6 KB CSS, Studio 139.9 / 30.6, of 200 / 50. The entry grew about 14 KB: the shell's dialogs now load behind the kit's skeletons and state panel |
 | axe over the gallery (jsdom) | no violations in light theme. jsdom has no layout: it does not check contrast or focus order |
+
+## The craft pass (11 Nov, second half)
+
+Done in three isolated worktrees, each with its own server so its engineer looked at real pages, then merged and reviewed as a whole; a fourth pass crafted the platform's own bar and pages (they live in the platform repository, `server/shell/`), and a fifth ERP's own finance pages.
+
+| Part | What changed (seen rendered, light and dark) |
+|---|---|
+| Chrome | Sidebar rows are text, with a glyph only for kinds that differ; the open page is unmistakable and scrolled into view. The records home is the attention strip, recent records and text links in columns. App icons are a soft tile of the app's colour (a test holds the glyph to 3:1). Dialogs, menus, popovers, sheets and toasts share radius, hairline, shadow and motion |
+| Record workspace | A value that cannot be edited is its label and text, not a greyed box; a run of read-only money fields is a totals column; three or more empty read-only fields fold into one line that opens; the header stays in view; the error summary names each field; Activity is a from → to timeline |
+| Lists and data | One header anatomy (title and count, compact view switcher, one overflow menu, one primary action); 36px rows; selecting rows does not move the table; reports get statement discipline from the data's own row flags; Administration's fifteen tabs are a grouped side navigation with the same ids and URLs |
+| Whole | One page-title size and place everywhere; a print stylesheet (checked as PDF: a record, a list, a report, a 37-page ledger); menus and dialogs return focus to their opener (asserted in a tab-order script for list, record and admin); relative times follow the page's language and keep their order right to left |
+| Platform bar and pages | `theme.css` carries the kit's tokens value for value; the bar keeps its height; launcher, search palette, menus, notifications and the assistant share the kit's language; sign-in, sign-up, consent, portal and status pages are one calm card or state panel. Compiled and run for real: the bar's nine controls all have names |
+| ERP's own pages | Home strip as linked counts by urgency; Accounts today as a queue; statements with indentation, weights, rules and a double rule under the final total. Bank, apply payments, revalue and portal were seen on fixture data only |
+
+**Every app interface is adopted** (40 repositories, each on a local `ui/kit-adoption` branch): `uikit/tools/rebuild-all.sh` rebuilds each against the final kit and runs its typecheck, tests, build and interface check; all 40 pass, each with an empty lint baseline. Twenty-two were adopted from source without being seen rendered at the time (the test workspace did not have them installed); the release-candidate capture below is where they are first seen.
+
+**Found by looking, fixed:** an alarm's severity was coloured four ways in Edge (a Major alarm neutral on one tile); a pressed chip lost its text on hover; a long sender pushed Mail's time off the row; ERP's statement flipped a negative's sign right to left; POS's touch minimum rendered at 42px; Bookings' hour labels wrapped; several apps drew a refused page as an empty one.
+
+**Local gates run:** this repository's typecheck, tests, UI lint and build; every app's `cli.mjs typecheck`, `test`, `build`, `check`; the platform's `cargo fmt --check`, a full build with all 40 app crates patched to their local worktrees, and its shell and app-fit tests (25 pass). Not run: the apps' Rust suites (interface-only changes), the platform's database suites, any image build.
 
 ## Not done, and why
 
