@@ -30,7 +30,7 @@ describe("app tile colour rule", () => {
 describe("app icon vocabulary", () => {
   // Every `icon:` the suite's manifests declare (ferrum-app-*/app.yaml and the ERP add-ons) has a glyph, so none falls back to a letter.
   it("draws the icons the apps declare", () => {
-    const declared = "bed-double boxes building-2 calendar calendar-check clipboard-list cloud contact factory file-text folder-kanban graduation-cap hand-heart hard-drive hard-hat headset landmark layout-dashboard layout-grid mail megaphone message-square plug presentation server share-2 sheet shopping-cart signature stethoscope store truck users utensils video warehouse wrench".split(" ");
+    const declared = "bed-double boxes building-2 calendar calendar-check circle-help clipboard-list cloud contact factory file-text folder-kanban graduation-cap hand-heart hard-drive hard-hat headset landmark layout-dashboard layout-grid mail megaphone message-square plug presentation server share-2 sheet shopping-cart signature sparkles stethoscope store truck users utensils video warehouse wrench".split(" ");
     expect(declared.filter((n) => !APP_ICON_NAMES.includes(n))).toEqual([]);
   });
 });
