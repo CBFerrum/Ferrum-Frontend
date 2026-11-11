@@ -178,8 +178,9 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
           <h2>{doc ? recordTitle(meta, doc) : "…"}</h2>
           {typeof doc?.status === "string" && <StatusBadge value={doc.status} />}
         </div>
-        <Link className="icon-btn" to={`/e/${E}/${id}`} aria-label={tr("Open the full record")} title={tr("Open the full record")}>
-          <Icon name="expand" size={15} />
+        <Link className="btn btn-ghost btn-sm" to={`/e/${E}/${id}`} aria-label={tr("Open the full record")} title={tr("Open the full record")}>
+          <Icon name="expand" size={14} />
+          {tr("Open")}
         </Link>
         <button type="button" className="icon-btn" aria-label={tr("Close")} title={tr("Close (Esc)")} onClick={onClose}>
           <Icon name="x" size={15} />

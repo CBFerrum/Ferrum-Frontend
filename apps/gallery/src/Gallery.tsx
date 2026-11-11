@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, Badge, Button, Dialog, Menu, MenuItem, TabPanel, Tabs, type Tone } from "@/ui/kit";
+import { Alert, Badge, Button, Dialog, Field, Menu, MenuItem, TabPanel, Tabs, type Tone } from "@/ui/kit";
 import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type SaveState, type StateKind } from "@/ui/patterns";
 
 const FILE = "Q3-consolidated-statement-of-financial-position-final-reviewed-v12 (copy).xlsx";
@@ -184,6 +184,42 @@ export function Sections() {
             </div>
           );
         })}
+      </Section>
+
+      <Section id="record-form" title="Record form">
+        <div data-gallery="record-form-states" className="form-grid" style={{ "--cols": 3 } as React.CSSProperties}>
+          <Field label="Customer" htmlFor="rf-editable">
+            <input id="rf-editable" className="input" defaultValue={PEOPLE[2]} />
+          </Field>
+          <Field label="Order date" htmlFor="rf-required" required>
+            <input id="rf-required" className="input" defaultValue="2026-10-30" type="date" />
+          </Field>
+          <Field label="Customer PO no" htmlFor="rf-hint" hint="Printed on the invoice; leave empty if the customer sent none.">
+            <input id="rf-hint" className="input" />
+          </Field>
+          <Field label="Contact email" htmlFor="rf-invalid" error="Enter an address like name@example.com." required>
+            <input id="rf-invalid" className="input" defaultValue="not-an-address" aria-invalid="true" aria-describedby="rf-invalid-error" />
+          </Field>
+          <Field label="Customer name (read-only value)" htmlFor="rf-readonly">
+            <input id="rf-readonly" className="input read-value" readOnly tabIndex={-1} placeholder="—" defaultValue="Acme Traders Pvt Ltd" />
+          </Field>
+          <Field label="Quotation (read-only, empty)" htmlFor="rf-readonly-empty">
+            <input id="rf-readonly-empty" className="input read-value" readOnly tabIndex={-1} placeholder="—" />
+          </Field>
+          <Field label="Credit limit (disabled control)" htmlFor="rf-disabled" hint="Available once the customer is approved.">
+            <input id="rf-disabled" className="input" disabled defaultValue="50,000.00" />
+          </Field>
+          <Field label="Terms" htmlFor="rf-text">
+            <textarea id="rf-text" className="textarea" defaultValue="Net 30" />
+          </Field>
+        </div>
+        <div data-gallery="record-form-totals" className="totals">
+          {[["rf-t1", "Total", "7,500.00"], ["rf-t2", "Total taxes", "1,350.00"], ["rf-t3", "Grand total", "8,850.00"]].map(([id, label, v]) => (
+            <Field key={id} label={label} htmlFor={id}>
+              <input id={id} className="input read-value num" readOnly tabIndex={-1} defaultValue={v} />
+            </Field>
+          ))}
+        </div>
       </Section>
 
       <Section id="badges" title="Badges">
