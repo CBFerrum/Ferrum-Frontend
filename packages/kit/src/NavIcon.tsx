@@ -1,63 +1,40 @@
-// The drawing of a left-menu row's icon (names are resolved in navIconName.ts). Named imports only: the table is the
-// menu's whole vocabulary, so a name outside it is not drawn (navIconName.test.ts keeps this table and the names equal).
+// A left-menu row's icon: a 16px slot that is there at once and is drawn when the drawing table arrives. The table
+// (NavIconTable.tsx, every named lucide import the menu has) is one lazy chunk, requested by the first row drawn and
+// preloaded by the built page's HTML, so in practice the icons are there at first paint; until then the slot is empty
+// (same size, no spinner, no shift) and once it has arrived every later render draws at once. Names are resolved in
+// navIconName.ts, which stays in the entry.
 
-import {
-  Activity, AppWindow, Archive, ArrowLeftRight, AtSign, Award, BadgeCheck, BadgePercent, Banknote, BanknoteArrowUp, BedDouble, Bell, BellRing, Blocks,
-  BookOpen, Bookmark, Box, Boxes, Briefcase, Building2, Calculator, Calendar, CalendarCheck, CalendarClock, CalendarCog, CalendarHeart, CalendarOff,
-  CalendarPlus, CalendarRange, CalendarSync, Camera, Car, ChartColumn, ChartGantt, ChartLine, ChartPie, CheckCheck, ChefHat, CircleAlert, CircleHelp,
-  CirclePlus, CircleX, ClipboardCheck, ClipboardList, ClipboardPen, Clock, Cloud, Cog, Coins, Contact, Container, Cpu, CreditCard, Database, Diff,
-  DoorOpen, Drill, ExternalLink, Factory, FileBadge, FileCheck, FileInput, FileOutput, FileSignature, FileSpreadsheet, FileText, FileUp, FileUser,
-  FlaskConical, Folder, FolderKanban, Fuel, Funnel, Gauge, GitBranch, Globe, Goal, GraduationCap, Hammer, HandCoins, HandHeart, HandHelping,
-  Handshake, HardDrive, HardHat, Headset, HeartHandshake, HeartPulse, History, Hourglass, House, IdCard, Image, Inbox, Key, Landmark, Languages,
-  Layers, LayoutDashboard, LayoutGrid, LayoutTemplate, Library, LifeBuoy, List, ListChecks, ListTree, Lock, LogIn, Mail, MailCheck, MailWarning,
-  Mails, MapPin, Megaphone, MessageCircleQuestion, MessageSquare, MessagesSquare, Milestone, Moon, Move, Newspaper, Notebook, NotebookPen,
-  NotebookText, Package, PackageCheck, PackageOpen, PackagePlus, PanelTop, Percent, PiggyBank, Play, Plug, Presentation, Puzzle, Radio, Receipt,
-  ReceiptText, RefreshCw, Replace, Rocket, RotateCcw, Route, Rss, Ruler, Scale, ScanSearch, School, Scroll, Search, SearchCheck, Send, Server,
-  Settings, Share2, Sheet, Shield, ShieldCheck, Ship, ShoppingBag, ShoppingCart, Signature, Siren, SlidersHorizontal, Sparkles, Split, SprayCan,
-  SquareCheck, Stamp, Star, Stethoscope, Store, Table2, Tag, Tags, Target, TicketPercent, Timer, TrendingDown, TrendingUp, TriangleAlert, Truck,
-  Undo2, User, UserCheck, UserCog, UserMinus, UserPen, UserPlus, UserSearch, Users, Utensils, Video, Wallet, Warehouse, Workflow, Wrench,
-  type LucideIcon,
-} from "lucide-react";
+import { useSyncExternalStore } from "react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "../../../src/lib/utils";
 import { navIcon, type NavIconInput } from "./navIconName";
 
-export const NAV_ICONS: Record<string, LucideIcon> = {
-  activity: Activity, "app-window": AppWindow, archive: Archive, "arrow-left-right": ArrowLeftRight, "at-sign": AtSign, award: Award,
-  "badge-check": BadgeCheck, "badge-percent": BadgePercent, banknote: Banknote, "banknote-arrow-up": BanknoteArrowUp, "bed-double": BedDouble,
-  bell: Bell, "bell-ring": BellRing, blocks: Blocks, "book-open": BookOpen, bookmark: Bookmark, box: Box, boxes: Boxes, briefcase: Briefcase,
-  "building-2": Building2, calculator: Calculator, calendar: Calendar, "calendar-check": CalendarCheck, "calendar-clock": CalendarClock,
-  "calendar-cog": CalendarCog, "calendar-heart": CalendarHeart, "calendar-off": CalendarOff, "calendar-plus": CalendarPlus,
-  "calendar-range": CalendarRange, "calendar-sync": CalendarSync, camera: Camera, car: Car, "chart-column": ChartColumn, "chart-gantt": ChartGantt,
-  "chart-line": ChartLine, "chart-pie": ChartPie, "check-check": CheckCheck, "chef-hat": ChefHat, "circle-alert": CircleAlert,
-  "circle-help": CircleHelp, "circle-plus": CirclePlus, "circle-x": CircleX, "clipboard-check": ClipboardCheck, "clipboard-list": ClipboardList,
-  "clipboard-pen": ClipboardPen, clock: Clock, cloud: Cloud, cog: Cog, coins: Coins, contact: Contact, container: Container, cpu: Cpu,
-  "credit-card": CreditCard, database: Database, diff: Diff, "door-open": DoorOpen, drill: Drill, "external-link": ExternalLink, factory: Factory,
-  "file-badge": FileBadge, "file-check": FileCheck, "file-input": FileInput, "file-output": FileOutput, "file-signature": FileSignature,
-  "file-spreadsheet": FileSpreadsheet, "file-text": FileText, "file-up": FileUp, "file-user": FileUser, "flask-conical": FlaskConical, folder: Folder,
-  "folder-kanban": FolderKanban, fuel: Fuel, funnel: Funnel, gauge: Gauge, "git-branch": GitBranch, globe: Globe, goal: Goal,
-  "graduation-cap": GraduationCap, hammer: Hammer, "hand-coins": HandCoins, "hand-heart": HandHeart, "hand-helping": HandHelping,
-  handshake: Handshake, "hard-drive": HardDrive, "hard-hat": HardHat, headset: Headset, "heart-handshake": HeartHandshake, "heart-pulse": HeartPulse,
-  history: History, hourglass: Hourglass, house: House, "id-card": IdCard, image: Image, inbox: Inbox, key: Key, landmark: Landmark,
-  languages: Languages, layers: Layers, "layout-dashboard": LayoutDashboard, "layout-grid": LayoutGrid, "layout-template": LayoutTemplate,
-  library: Library, "life-buoy": LifeBuoy, list: List, "list-checks": ListChecks, "list-tree": ListTree, lock: Lock, "log-in": LogIn, mail: Mail,
-  "mail-check": MailCheck, "mail-warning": MailWarning, mails: Mails, "map-pin": MapPin, megaphone: Megaphone,
-  "message-circle-question": MessageCircleQuestion, "message-square": MessageSquare, "messages-square": MessagesSquare, milestone: Milestone,
-  moon: Moon, move: Move, newspaper: Newspaper, notebook: Notebook, "notebook-pen": NotebookPen, "notebook-text": NotebookText, package: Package,
-  "package-check": PackageCheck, "package-open": PackageOpen, "package-plus": PackagePlus, "panel-top": PanelTop, percent: Percent,
-  "piggy-bank": PiggyBank, play: Play, plug: Plug, presentation: Presentation, puzzle: Puzzle, radio: Radio, receipt: Receipt,
-  "receipt-text": ReceiptText, "refresh-cw": RefreshCw, replace: Replace, rocket: Rocket, "rotate-ccw": RotateCcw, route: Route, rss: Rss,
-  ruler: Ruler, scale: Scale, "scan-search": ScanSearch, school: School, scroll: Scroll, search: Search, "search-check": SearchCheck, send: Send,
-  server: Server, settings: Settings, "share-2": Share2, sheet: Sheet, shield: Shield, "shield-check": ShieldCheck, ship: Ship,
-  "shopping-bag": ShoppingBag, "shopping-cart": ShoppingCart, signature: Signature, siren: Siren, "sliders-horizontal": SlidersHorizontal,
-  sparkles: Sparkles, split: Split, "spray-can": SprayCan, "square-check": SquareCheck, stamp: Stamp, star: Star, stethoscope: Stethoscope,
-  store: Store, "table-2": Table2, tag: Tag, tags: Tags, target: Target, "ticket-percent": TicketPercent, timer: Timer, "trending-down": TrendingDown,
-  "trending-up": TrendingUp, "triangle-alert": TriangleAlert, truck: Truck, "undo-2": Undo2, user: User, "user-check": UserCheck, "user-cog": UserCog,
-  "user-minus": UserMinus, "user-pen": UserPen, "user-plus": UserPlus, "user-search": UserSearch, users: Users, utensils: Utensils, video: Video,
-  wallet: Wallet, warehouse: Warehouse, workflow: Workflow, wrench: Wrench,
-};
+let table: Record<string, LucideIcon> | null = null;
+let loading: Promise<void> | null = null;
+const listeners = new Set<() => void>();
 
-/** The row's icon: 16px stroke in the row's text colour (`currentColor`), decorative (the label is the name), never blank. */
+/** Resolves when the drawing table has arrived (or failed to: the slots then stay empty). One request for the session. For tests and capture scripts. */
+export function navIconsReady(): Promise<void> {
+  loading ??= import("./NavIconTable").then(
+    (m) => {
+      table = m.NAV_ICONS;
+      listeners.forEach((l) => l());
+    },
+    () => {}, // the chunk did not load: rows keep their label, the slot stays empty
+  );
+  return loading;
+}
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => void listeners.delete(l);
+};
+const snapshot = () => table;
+
+/** The row's icon: 16px stroke in the row's text colour (`currentColor`), decorative (the label is the name), never blank once drawn. */
 export function NavIcon({ className, size = 16, ...row }: NavIconInput & { className?: string; size?: number }) {
-  const Glyph = NAV_ICONS[navIcon(row)] ?? NAV_ICONS.list!;
+  const t = useSyncExternalStore(subscribe, snapshot, snapshot);
+  if (!t) void navIconsReady(); // the first slot rendered asks for the table; the built page's HTML has preloaded it already
+  const Glyph = t && (t[navIcon(row)] ?? t.list);
+  if (!Glyph) return <span aria-hidden className={cn("nav-icon shrink-0", className)} style={{ display: "inline-block", width: size, height: size }} />;
   return <Glyph aria-hidden size={size} strokeWidth={1.75} className={cn("nav-icon shrink-0", className)} />;
 }
