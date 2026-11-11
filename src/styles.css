@@ -265,7 +265,7 @@ html[data-ferrum-host] .topbar {
 .nav-group[open] > summary .icon {
   transform: rotate(90deg);
 }
-/* A row of the navigation: 32px, text first. Hover, the open page and the pressed row differ in fill. */
+/* A row of the navigation: 32px, a 16px icon in a fixed slot, then the label. Hover, the open page and the pressed row differ in fill. */
 .nav-link {
   display: flex;
   align-items: center;
@@ -295,12 +295,27 @@ html[data-ferrum-host] .topbar {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* The one mark an entry may carry, at the end: a report, a page of its own, a page outside the app. */
-.nav-link > .icon {
-  color: var(--faint);
+/* The row's leading icon (NavIcon): a stroke in the muted colour at rest, the text colour on hover, the primary on the open page.
+   It is currentColor, so forced colours keep it in the text colour; flex order and logical gap put it first in either direction. */
+.nav-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+  transition: color var(--duration-state) ease-out;
 }
-.nav-link.active > .icon {
+.nav-link:hover .nav-icon,
+.admin-tab:hover .nav-icon {
+  color: var(--text);
+}
+.nav-link.active .nav-icon,
+.admin-tab[aria-selected="true"] .nav-icon {
   color: var(--primary);
+}
+/* The mark at the end of a row that leads outside the app. */
+.nav-link > .icon {
+  flex: none;
+  color: var(--faint);
 }
 
 .main-col {
@@ -1022,6 +1037,7 @@ input[type="color"] {
 .admin-tab {
   display: flex;
   align-items: center;
+  gap: 8px;
   width: 100%;
   height: var(--control-h-sm);
   padding: 0 12px;
