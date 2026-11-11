@@ -110,6 +110,23 @@ export function StatePanel({
   );
 }
 
+/** What a failed request means for the person: refused (401, 403), no answer (status 0, or the browser is offline), or failed. */
+export function failureKind(error: unknown): Extract<StateKind, "denied" | "offline" | "failed"> {
+  const status = (error as { status?: unknown } | null | undefined)?.status;
+  if (status === 401 || status === 403) return "denied";
+  if (status === 0 || (typeof navigator !== "undefined" && navigator.onLine === false)) return "offline";
+  return "failed";
+}
+
+/**
+ * The panel for a request that failed, so every screen tells refused, offline and failed apart the
+ * same way. Denied offers no retry and shows no server text; failed shows the reason and "Try again".
+ */
+export function LoadFailed({ error, onRetry, className }: { error: unknown; onRetry?: () => void; className?: string }) {
+  const kind = failureKind(error);
+  return <StatePanel kind={kind} error={kind === "failed" ? error : undefined} onRetry={kind === "denied" ? undefined : onRetry} className={className} />;
+}
+
 // ── content-shaped loading ──
 
 // Widths vary, but the same way every time (no Math.random: snapshots and hydration stay stable).
