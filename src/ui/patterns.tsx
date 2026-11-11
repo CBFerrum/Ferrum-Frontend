@@ -58,6 +58,7 @@ export function StatePanel({
   error,
   onRetry,
   onClear,
+  clearLabel,
   className,
 }: {
   kind: StateKind;
@@ -67,6 +68,8 @@ export function StatePanel({
   error?: unknown;
   onRetry?: () => void;
   onClear?: () => void;
+  /** What `onClear` undoes, when it is not filters: "Clear the search". */
+  clearLabel?: string;
   className?: string;
 }) {
   const { icon: Glyph, tone, role } = KIND[kind];
@@ -94,7 +97,7 @@ export function StatePanel({
                 {t("Try again")}
               </Button>
             )}
-            {kind === "no-matches" && onClear && <Button onClick={onClear}>{t("Clear filters")}</Button>}
+            {kind === "no-matches" && onClear && <Button onClick={onClear}>{clearLabel ?? t("Clear filters")}</Button>}
             {action}
           </div>
         </EmptyContent>
