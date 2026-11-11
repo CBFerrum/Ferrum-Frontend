@@ -13,7 +13,9 @@ import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyRun } from "@/app/EmptyRun";
 import { Alert, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
-import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type SaveState, type StateKind } from "@/ui/patterns";
+import { MemoryRouter } from "react-router";
+import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
+import { ButtonLink, FormSkeleton, HomeSkeleton, ListSkeleton, Queue, QueueGrid, QueueItem, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
 
 const FILE = "Q3-consolidated-statement-of-financial-position-final-reviewed-v12 (copy).xlsx";
 const PEOPLE = ["Aarav Sharma", "فاطمة المنصوري", "李明", "Zoë Kowalski", "Дмитрий Орлов", "प्रिया नायर"];
@@ -107,6 +109,77 @@ function Controls() {
       {pick("Contrast", contrast, setContrast, ["normal", "more"])}
       {pick("Direction", dir, setDir, ["ltr", "rtl"])}
     </div>
+  );
+}
+
+const contract = (i: number, title: string, who: string, due: string, status: string, tone?: Tone) => (
+  <QueueItem key={i} to={`/c/${i}`} title={title} meta={`${who} · ${due}`} trailing={<Badge tone={tone}>{status}</Badge>} />
+);
+
+/** Work homes: a normal one, one with nothing waiting, one with something that needs attention first, and tiles. */
+function WorkHomes() {
+  const head = (summary?: string) => <PageHead title="Contracts" description={summary} actions={<ButtonLink to="/c/new" variant="primary" icon="plus">New contract</ButtonLink>} />;
+  const frame = "rounded-lg border border-dashed border-border p-4";
+  return (
+    <MemoryRouter>
+      <div data-gallery="home-normal" className={frame}>
+        {head("2 notices due · 4 obligations open")}
+        <QueueGrid>
+          <Queue title="In the works" count={2} link={{ to: "/c", label: "All contracts" }}>
+            {contract(1, "Cleaning services 2027", "Acme Facilities", "ends 3 Mar 2027", "In Review")}
+            {contract(2, "Office lease, Pune, second floor, renewal with revised escalation clause", "Meridian Estates Pvt Ltd", "ends 30 Jun 2028", "Draft")}
+          </Queue>
+          <Queue title="Out for signature" count={1}>
+            {contract(3, "Master services agreement", "Northwind Traders", "sent 9 Nov", "Out for Signature", "blue")}
+          </Queue>
+          <Queue title="Active" count={7} more={{ to: "/c", count: 2 }}>
+            {contract(4, "Logistics framework", "Blue Dart", "ends 1 Apr 2027", "Active", "green")}
+            {contract(5, "Software licence", "Vendor Co", "ends 12 Aug 2027", "Active", "green")}
+            {contract(6, "Insurance", "Safe Mutual", "ends 2 Jan 2027", "Active", "green")}
+            {contract(7, "Audit retainer", "Ledger LLP", "ends 31 Mar 2027", "Active", "green")}
+            {contract(8, "Courier", "Speedy", "ends 5 Dec 2026", "Active", "green")}
+          </Queue>
+          <Queue title="Obligations" count={1}>
+            <QueueItem to="/o/1" title="Send the quarterly usage report" meta="Due 15 Nov" trailing={<Badge tone="red">Overdue</Badge>} />
+          </Queue>
+        </QueueGrid>
+      </div>
+      <div data-gallery="home-empty" className={frame}>
+        {head("Nothing needs you right now")}
+        <QueueGrid>
+          <Queue title="Drafts" count={0} />
+          <Queue title="Sent" count={0} />
+          <Queue title="Running" count={0} />
+          <Queue title="Duties" count={0} empty="No obligations are open" />
+        </QueueGrid>
+      </div>
+      <div data-gallery="home-attention" className={frame}>
+        {head("1 notice due · 1 obligation overdue")}
+        <QueueGrid>
+          <Queue title="Notice due before renewal" count={1} tone="attention">
+            {contract(9, "Cloud hosting", "Hyperscale Inc", "renews after 14 Dec", "Active", "amber")}
+          </Queue>
+          <Queue title="Overdue obligations" count={1} tone="attention">
+            <QueueItem to="/o/1" title="Send the quarterly usage report" meta="Due 15 Nov" trailing={<Badge tone="red">Overdue</Badge>} />
+          </Queue>
+          <Queue title="Renewing later" count={1}>
+            {contract(4, "Logistics framework", "Blue Dart", "ends 1 Apr 2027", "Active", "green")}
+          </Queue>
+        </QueueGrid>
+      </div>
+      <div data-gallery="home-tiles" className={frame}>
+        <PageHead title="The floor" actions={<ButtonLink to="/t/new" icon="plus">New booking</ButtonLink>} />
+        <TileGrid label="Tables">
+          <Tile to="/t/1" title="Table 1" meta={<><span>4 covers</span><span>Seated 19:10</span></>} status={<Badge tone="green">Open</Badge>} />
+          <Tile to="/t/2" title="Table 2" meta={<span>2 seats</span>} status={<Badge>Free</Badge>} />
+          <Tile to="/t/3" title="Window table with the long name" meta={<><span>6 covers</span><span>Bill requested</span></>} status={<Badge tone="amber">Billing</Badge>} />
+          <Tile title="Terrace" meta={<span>Closed today</span>} />
+        </TileGrid>
+      </div>
+      <div data-gallery="home-loading" className={frame}>
+        <HomeSkeleton queues={3} />
+      </div>
+    </MemoryRouter>
   );
 }
 
@@ -323,6 +396,10 @@ export function Sections() {
           </div>
           <div className="card card-pad">The content starts one gap (16px) under the header.</div>
         </div>
+      </Section>
+
+      <Section id="work-home" title="Work home">
+        <WorkHomes />
       </Section>
 
       <Section id="alerts" title="Alerts">

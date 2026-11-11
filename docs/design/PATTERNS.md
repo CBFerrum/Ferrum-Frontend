@@ -137,6 +137,68 @@ Accessibility: `role="toolbar"` with the caller's `aria-label`. There is no arro
 
 Do not: say "All" when the count is a capped fetch; put destructive actions without confirmation; hide the count.
 
+## Work home
+
+An app's own home page answers "what needs me now?" for a person in a role. Use it for a landing page made of queues of work (contracts by stage, open incidents, today's trips) and tiles of things with a live state (tables, rooms, units). Not for dashboards of figures and charts (those are cards and `FilterBar`), nor for a list of records (the records list).
+
+Anatomy, top to bottom, all from `@ferrum/kit`:
+
+1. **`PageHead`** (the same component as `PageHeader`): `title` (the page's one `h1`, in the person's words: "Contracts", "The floor"), `description` (one quiet line built from numbers the page already has; leave it out rather than invent), `actions` at the end, `back` ({ to, label }) for a way up. The one main action is a primary `ButtonLink` with `icon="plus"` where it creates something; other actions are default buttons; more than three fold into a `Menu`. A bare text link is never an action. A date or site selector that scopes the page goes in `actions` as a small control with a visible label.
+2. **What needs attention first**: a `Queue tone="attention"` for what is overdue or blocking, before the others, only when there is something.
+3. **`QueueGrid`** of **`Queue`s**; each holds up to the app's limit of **`QueueItem`s** (default 5) and `more` for the rest.
+4. **`TileGrid`** of **`Tile`s** for a small set of things with a live state.
+5. First use (every queue empty and no records at all): one `StatePanel kind="empty"` with the main action under the head, not a row of zeros. Setup needed: a `StatePanel` with the action, under the head. Loading: `HomeSkeleton`; failure: `LoadFailed`; both under the `PageHead`, whose title needs no data.
+
+Exports and props:
+
+| Name | Props |
+|---|---|
+| `PageHead` | `title`, `description?`, `actions?`, `back?: { to; label }`, `eyebrow?` (a trail above the title) |
+| `ButtonLink` | `to`, `variant?: "default" \| "primary" \| "ghost"`, `icon?`, `children` |
+| `QueueGrid` | `children`, `className?` |
+| `Queue` | `title` (string, the section's name), `count?` (a number), `tone?: "default" \| "attention"`, `link?: { to; label }` (header link: "All incidents"), `empty?` (the one line, default "Nothing waiting"), `more?: { to; count }` (shows "and N more" when `count > 0`), `children` (`QueueItem`s) |
+| `QueueItem` | `to`, `title` (string; the full text is its tooltip when truncated), `meta?` (one quiet line: number, counterparty, due date, in the app's formatting), `trailing?` (a `Badge`/`StatusBadge` or mark; not interactive) |
+| `TileGrid` | `children`, `label?` (names the list), `className?` |
+| `Tile` | `title`, `to?` (the whole tile opens it), `meta?` (one or two lines, each a `span`), `status?` (a badge at its natural width, at the foot so tiles in a row line up) |
+| `HomeSkeleton` | `queues?` (default 3), `className?` |
+
+Behaviour you get without asking: a queue is a `section` named by its heading, its rows are a list, the whole row is one link (focus ring on the row), the count is a quiet counter outside the heading (so the name is read once) with tabular numerals, an empty queue keeps its header and count 0 and is one row high, queues in a grid keep their tops aligned and fall to one column at 390, rows are 52px (44 compact), touch targets stay at 44px, an attention queue gets a warning edge and counter, logical properties throughout (RTL), tokens only, no motion.
+
+Do:
+- Put the count in `count`, never in the title: if a catalog string was "Active ({length})", use "Active".
+- Pass `title` as a string, and cap the rows yourself (`slice(0, 5)`) with `more={{ to, count: total - 5 }}`.
+- Keep a status's tone from its stored id (`StatusBadge`, `tones`), and keep severity or priority marks as they were.
+
+Don't:
+- Wrap queues in `card card-pad` or write `np-page` / `np-columns` again; stretch a badge across a row; make a tall hollow box for nothing; show "(0)" in a title; use a bare text link as the page's action; put an interactive control in `trailing`.
+
+A typical home (Contracts), about twenty lines:
+
+```tsx
+export function Home() {
+  const q = useQuery(homeQuery);
+  const head = <PageHead title={t("Contracts")} actions={<ButtonLink to="/e/Contract/new" variant="primary" icon="plus">{t("New contract")}</ButtonLink>} />;
+  if (q.isPending) return <><PageHead title={t("Contracts")} /><HomeSkeleton /></>;
+  if (q.isError) return <>{head}<LoadFailed error={q.error} onRetry={() => void q.refetch()} /></>;
+  const { contracts, obligations } = q.data;
+  const notice = contracts.filter((c) => c.notice_due);
+  const row = (c: Row) => <QueueItem key={c.id} to={`/e/Contract/${c.id}`} title={String(c.title)} meta={String(c.counterparty_name)} trailing={<Badge>{String(c.status)}</Badge>} />;
+  return (
+    <>
+      <PageHead title={t("Contracts")} description={t("{n} notice due", { n: notice.length })} actions={<ButtonLink to="/e/Contract/new" variant="primary" icon="plus">{t("New contract")}</ButtonLink>} />
+      <QueueGrid>
+        {notice.length > 0 && <Queue title={t("Notice due before renewal")} count={notice.length} tone="attention">{notice.slice(0, 5).map(row)}</Queue>}
+        {byStage(contracts).map(([stage, list]) => (
+          <Queue key={stage} title={stage} count={list.length} more={{ to: "/e/Contract", count: list.length - 5 }}>{list.slice(0, 5).map(row)}</Queue>
+        ))}
+      </QueueGrid>
+    </>
+  );
+}
+```
+
+The same home compiles and runs in `src/ui/home.test.tsx`; the gallery's "Work home" section shows a normal home, an empty one, one with an attention queue, tiles and the skeleton.
+
 ## Task layouts
 
 These are compositions of what exists, not components.

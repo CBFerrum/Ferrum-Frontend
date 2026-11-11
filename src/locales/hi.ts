@@ -4094,6 +4094,8 @@ const words: Record<string, string> = {
   "Showing {n} of {total}": "{total} में से {n} दिखाए गए",
   "Not set: {labels}": "सेट नहीं: {labels}",
   "Hide empty fields": "खाली फ़ील्ड छिपाएँ",
+  "Nothing waiting": "कुछ प्रतीक्षा में नहीं",
+  "and {n} more": "और {n}",
 };
 
 export default words;
