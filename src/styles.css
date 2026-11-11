@@ -3239,7 +3239,7 @@ pre.code {
   }
   .segmented button {
     min-width: 44px;
-    min-height: 42px; /* 44px with the group's border, as tall as the buttons beside it */
+    min-height: 44px; /* each button is the target, so each is 44px (the frame is 50 with its border and padding) */
     justify-content: center;
   }
   .mention-list button {
@@ -3680,9 +3680,16 @@ a.queue-name:focus-visible::after {
   font-size: var(--text-sm);
 }
 .stat-grid {
+  --stat-min: 11rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--stat-min)), 1fr));
   gap: 12px;
+}
+.stat-grid[data-min="md"] {
+  --stat-min: 15rem;
+}
+.stat-grid[data-min="lg"] {
+  --stat-min: 20rem;
 }
 .stat {
   display: flex;
@@ -3711,11 +3718,19 @@ a.queue-name:focus-visible::after {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  white-space: nowrap; /* never breaks inside a number; it steps down a role (data-fit) before it is cut */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stat-value[data-fit="small"] {
+  font-size: var(--text-xl);
 }
 @media (max-width: 480px) {
   .stat-value {
     font-size: var(--text-xl); /* two to a row: a money figure keeps to one line */
+  }
+  .stat-value[data-fit="small"] {
+    font-size: var(--text-lg);
   }
 }
 .stat-value[data-quiet] {
@@ -3735,6 +3750,7 @@ a.queue-name:focus-visible::after {
 .page-stack {
   --stack-gap: 16px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* a wide child cannot push the page wider than its container */
   gap: var(--stack-gap);
 }
 .page-stack[data-gap="lg"] {
@@ -3742,6 +3758,21 @@ a.queue-name:focus-visible::after {
 }
 .page-stack > .page-head {
   margin-bottom: calc(16px - var(--stack-gap)); /* its own 16px, so the head never stacks a second gap */
+}
+.page-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 33.33%, 400px);
+  align-items: start;
+  gap: 16px;
+}
+.page-split-main,
+.page-split-aside {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .page-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .home-skeleton {
   display: grid;
@@ -3762,8 +3793,49 @@ a.queue-name:focus-visible::after {
     line-clamp: 2;
     white-space: normal;
   }
+  .queue-meta > :not(svg, img) {
+    white-space: inherit; /* a meta that is a node wraps too, whatever nowrap its parts carry */
+  }
 }
 @media (pointer: coarse) {
+  /* What a person presses is 44px (swept in the gallery under touch emulation). Dense desktop sizes are unchanged. */
+  [data-slot="button"][data-size="xs"],
+  [data-slot="button"][data-size="icon-xs"],
+  button.empty-run,
+  .home-section-end a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .home-section-end a {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* A 16px box or a 32x16 switch keeps its look and gets a 44px hit area from a transparent pseudo-element. */
+  [data-slot="checkbox"],
+  [data-slot="radio-group-item"],
+  [data-slot="switch"] {
+    position: relative;
+  }
+  [data-slot="checkbox"]::after,
+  [data-slot="radio-group-item"]::after {
+    content: "";
+    position: absolute;
+    inset: -15px; /* 16px + 1px borders + 2x15 = 44 */
+  }
+  [data-slot="switch"]::after {
+    content: "";
+    position: absolute;
+    inset: -15px -7px;
+  }
+  [data-slot="dropdown-menu-item"],
+  [data-slot="dropdown-menu-checkbox-item"],
+  [data-slot="dropdown-menu-radio-item"],
+  [data-slot="context-menu-item"],
+  [data-slot="select-item"],
+  [data-slot="command-item"],
+  [role="menuitem"] {
+    min-height: 44px;
+  }
   .queue-link-all,
   .queue-more,
   .page-back {

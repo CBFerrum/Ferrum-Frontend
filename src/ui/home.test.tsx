@@ -10,7 +10,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { PageHead } from "../../packages/kit/src";
 import { Badge } from "./kit";
-import { ButtonLink, HomeSection, HomeSkeleton, Progress, PageStack, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid } from "./patterns";
+import { ButtonLink, HomeSection, PageSplit, HomeSkeleton, Progress, PageStack, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid } from "./patterns";
 import type { Tone } from "../../packages/kit/src";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -266,5 +266,36 @@ describe("HomeSection", () => {
     const h = draw(<HomeSection title="Posts" empty="No posts this week" />);
     expect(h.querySelector(".home-section-empty")!.textContent).toBe("No posts this week");
     expect(draw(<HomeSection title="Posts" />).querySelector(".home-section-empty")).toBeNull();
+  });
+});
+
+describe("the last pass", () => {
+  it("ButtonLink passes download, target and rel through, adds rel to a new tab, and has sizes", () => {
+    const h = draw(<><ButtonLink href="/d.csv" download="data.csv" size="sm">Download</ButtonLink><ButtonLink href="https://x.test" target="_blank">Out</ButtonLink><ButtonLink href="https://y.test" target="_blank" rel="me">Out2</ButtonLink><ButtonLink to="/a" size="sm">In</ButtonLink></>);
+    const [a, b, c, d] = [...h.querySelectorAll("a")];
+    expect([a.getAttribute("download"), a.className]).toEqual(["data.csv", "btn btn-default btn-sm"]);
+    expect([b.getAttribute("target"), b.getAttribute("rel")]).toEqual(["_blank", "noopener noreferrer"]);
+    expect(c.getAttribute("rel")).toBe("me");
+    expect(d.className).toBe("btn btn-default btn-sm");
+    expect(d.hasAttribute("rel")).toBe(false);
+  });
+  it("StatGrid takes a minimum width, and a stat's value is one unbroken run", () => {
+    const h = draw(<StatGrid min="lg"><Stat label="Total" value="1,676,650.75" /></StatGrid>);
+    expect(h.querySelector(".stat-grid")!.getAttribute("data-min")).toBe("lg");
+    expect(h.querySelector(".stat-value")!.textContent).toBe("1,676,650.75");
+    expect(draw(<StatGrid><Stat label="T" value="1" /></StatGrid>).querySelector(".stat-grid")!.hasAttribute("data-min")).toBe(false);
+  });
+  it("a node meta keeps the meta class and no tooltip", () => {
+    const h = draw(<Queue title="Q"><QueueItem to="/a" title="T" meta={<span className="num">₹1,000 · due 3 Mar</span>} /></Queue>);
+    expect(h.querySelector(".queue-meta")!.getAttribute("title")).toBeNull();
+    expect(h.querySelector(".queue-meta .num")).not.toBeNull();
+  });
+  it("progress takes a tone on Tile, Queue and Stat", () => {
+    const h = draw(<><Queue title="Q" progress={{ value: 5, tone: "danger" }} /><TileGrid><Tile title="T" progress={{ value: 5, label: "L", tone: "good" }} /></TileGrid><Stat label="S" value={1} progress={{ value: 5, tone: "attention" }} /></>);
+    expect([...h.querySelectorAll(".meter")].map((m) => m.getAttribute("data-tone"))).toEqual(["danger", "good", "attention"]);
+  });
+  it("PageSplit puts the main column first and the aside second", () => {
+    const h = draw(<PageSplit main={<p>Feed</p>} aside={<p>Spaces</p>} />);
+    expect([...h.querySelector(".page-split")!.children].map((c) => [c.tagName, c.textContent])).toEqual([["DIV", "Feed"], ["DIV", "Spaces"]]);
   });
 });

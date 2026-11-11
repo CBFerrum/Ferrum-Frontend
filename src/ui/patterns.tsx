@@ -3,7 +3,7 @@
 // stands (SaveStatus) and the bar shown while rows are selected (SelectionToolbar).
 
 import { CheckIcon, CircleHelpIcon, HardDriveIcon, InboxIcon, Loader2Icon, LockIcon, PencilIcon, SearchXIcon, TriangleAlertIcon, WifiOffIcon, XCircleIcon, type LucideIcon } from "lucide-react";
-import { Children, useId, type ReactNode } from "react";
+import { Children, useEffect, useId, useRef, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -325,31 +325,47 @@ export function SelectionToolbar({
 
 /** A link that looks like a button: the way a page head offers an action that opens a page ("New contract", with
  *  `icon="plus"`). A bare text link is never an action. Exactly one of `to` (a path in this app's router) or `href` (a
- *  destination outside it, such as another app's page: a plain anchor); given both, `to` wins, given neither it draws nothing. */
+ *  destination outside it, such as another app's page or a file: a plain anchor); `download`, `target` and `rel` pass through
+ *  to the anchor; `size` is `md` (default) or `sm`. Given both, `to` wins, given neither it draws nothing. */
 export function ButtonLink({
   to,
   href,
   variant = "default",
+  size = "md",
   icon,
+  download,
+  target,
+  rel,
   children,
-}: { variant?: "default" | "primary" | "ghost"; icon?: string; children: ReactNode } & ({ to: string; href?: never } | { href: string; to?: never })) {
-  const cls = `btn btn-${variant} btn-md`;
+}: {
+  variant?: "default" | "primary" | "ghost";
+  size?: "sm" | "md";
+  icon?: string;
+  /** A file to save instead of opening (`true`, or the name to save it as). */
+  download?: boolean | string;
+  /** `_blank` opens a new tab; without a `rel`, `noopener noreferrer` is added. */
+  target?: string;
+  rel?: string;
+  children: ReactNode;
+} & ({ to: string; href?: never } | { href: string; to?: never })) {
+  const cls = `btn btn-${variant} btn-${size}`;
   const inside = (
     <>
       {icon && <Icon name={icon} />}
       {children}
     </>
   );
+  const extra = { download, target, rel: rel ?? (target === "_blank" ? "noopener noreferrer" : undefined) };
   if ((to === undefined) === (href === undefined)) console.error("ButtonLink takes exactly one of `to` or `href`");
   if (to !== undefined)
     return (
-      <Link className={cls} to={to}>
+      <Link className={cls} to={to} {...extra}>
         {inside}
       </Link>
     );
   if (href === undefined) return null;
   return (
-    <a className={cls} href={href}>
+    <a className={cls} href={href} {...extra}>
       {inside}
     </a>
   );
@@ -361,6 +377,16 @@ export function PageStack({ children, gap = "md", className }: { children: React
   return (
     <div className={cn("page-stack", className)} data-gap={gap === "lg" ? "lg" : undefined}>
       {children}
+    </div>
+  );
+}
+
+/** A main column and a narrower side column (about 2:1, the side 280 to 400px): one column under 900px, the main first. */
+export function PageSplit({ main, aside, className }: { main: ReactNode; aside: ReactNode; className?: string }) {
+  return (
+    <div className={cn("page-split", className)}>
+      <div className="page-split-main">{main}</div>
+      <div className="page-split-aside">{aside}</div>
     </div>
   );
 }
@@ -397,7 +423,7 @@ export function Queue({
   link?: { to: string; label: string };
   empty?: string;
   more?: { to: string; count: number };
-  progress?: { value: number; max?: number; label?: string };
+  progress?: { value: number; max?: number; label?: string; tone?: ProgressTone };
   children?: ReactNode;
 }) {
   const id = useId();
@@ -430,13 +456,15 @@ export function Queue({
   );
 }
 
+export type ProgressTone = "default" | "good" | "attention" | "danger";
+
 /**
  * The governed slim meter: how far along something is (`value` of `max`, default 100), named for assistive technology by
  * `label`. It is a block as wide as its container, 6px high, filling from the reading start (right to left in RTL), so it
  * needs no class: put it where it goes (a `Tile`'s or `Stat`'s `progress`, a `Queue`'s, or as a child of a `HomeSection`
  * or a flex cell). `tone` colours the fill: default the accent, `good`, `attention`, `danger`.
  */
-export function Progress({ value, max = 100, label, tone = "default" }: { value: number; max?: number; label: string; tone?: "default" | "good" | "attention" | "danger" }) {
+export function Progress({ value, max = 100, label, tone = "default" }: { value: number; max?: number; label: string; tone?: ProgressTone }) {
   const top = max > 0 ? max : 100;
   const v = Math.max(0, Math.min(top, Number.isFinite(value) ? value : 0));
   return (
@@ -447,12 +475,12 @@ export function Progress({ value, max = 100, label, tone = "default" }: { value:
 }
 
 /** A slim meter with its percentage at the end (the queue's and the stat's `progress`). */
-function QueueProgress({ value, max = 100, label }: { value: number; max?: number; label?: string }) {
+function QueueProgress({ value, max = 100, label, tone }: { value: number; max?: number; label?: string; tone?: ProgressTone }) {
   const top = max > 0 ? max : 100;
   const pct = Math.round((Math.max(0, Math.min(top, Number.isFinite(value) ? value : 0)) / top) * 100);
   return (
     <div className="queue-progress">
-      <Progress value={Math.round(value)} max={max} label={label ?? t("Progress")} />
+      <Progress value={Math.round(value)} max={max} label={label ?? t("Progress")} tone={tone} />
       <span aria-hidden="true">{pct}%</span>
     </div>
   );
@@ -505,7 +533,7 @@ export function TileGrid({ children, label, min = "sm", className }: { children:
  *  `figures` (labelled values, the value at the end in tabular numerals), `progress` (a full-width meter, named by `label`)
  *  and the `status` at its natural width at the foot; a long status or several badges wrap onto a second line.
  *  A long title takes two lines before it is cut. */
-export function Tile({ to, title, meta, figures, progress, status }: { to?: string; title: string; meta?: ReactNode; figures?: { label: string; value: ReactNode }[]; progress?: { value: number; max?: number; label: string }; status?: ReactNode }) {
+export function Tile({ to, title, meta, figures, progress, status }: { to?: string; title: string; meta?: ReactNode; figures?: { label: string; value: ReactNode }[]; progress?: { value: number; max?: number; label: string; tone?: ProgressTone }; status?: ReactNode }) {
   return (
     <li className="tile" data-link={to ? "" : undefined}>
       <span className="tile-title">
@@ -579,9 +607,13 @@ export function HomeSection({
   );
 }
 
-/** Linked figures for a home, a few across ("Applicants waiting 4"). */
-export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("stat-grid", className)}>{children}</div>;
+/** Linked figures for a home, a few across ("Applicants waiting 4"); `min` is the narrowest a stat gets: `sm` 11rem, `md` 15rem, `lg` 20rem. */
+export function StatGrid({ children, min = "sm", className }: { children: ReactNode; min?: "sm" | "md" | "lg"; className?: string }) {
+  return (
+    <div className={cn("stat-grid", className)} data-min={min === "sm" ? undefined : min}>
+      {children}
+    </div>
+  );
 }
 
 const QUIET = /^[^\d]*0+([.,]0+)?[^\d]*$/;
@@ -606,12 +638,26 @@ export function Stat({
   hint?: ReactNode;
   to?: string;
   tone?: "attention" | "danger";
-  progress?: { value: number; max?: number; label?: string };
+  progress?: { value: number; max?: number; label?: string; tone?: ProgressTone };
 }) {
+  const fit = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    // A figure never breaks inside a number: if it does not fit on its line it steps down one type role.
+    const el = fit.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      el.removeAttribute("data-fit");
+      if (el.scrollWidth > el.clientWidth + 1) el.setAttribute("data-fit", "small");
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, [value]);
   const inside = (
     <>
       <span className="stat-label">{label}</span>
-      <span className="stat-value" data-quiet={nothing(value) ? "" : undefined} data-tone={tone}>
+      <span ref={fit} className="stat-value" data-quiet={nothing(value) ? "" : undefined} data-tone={tone}>
         {nothing(value) && (value == null || value === "" || value === false) ? "—" : value}
       </span>
       {progress && <QueueProgress {...progress} />}
