@@ -2506,6 +2506,11 @@ input[type="color"] {
 .toast .icon-btn {
   margin-block-start: 2px;
 }
+/* The action reads as something to press, not as more of the sentence. */
+.toast-action {
+  color: var(--primary-text);
+  font-weight: 600;
+}
 @keyframes toast-in {
   from {
     transform: translateY(4px);

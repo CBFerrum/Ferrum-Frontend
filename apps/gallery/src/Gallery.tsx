@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyRun } from "@/app/EmptyRun";
-import { Alert, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
+import { Alert, announce, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
 import { MemoryRouter } from "react-router";
 import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
 import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageSplit, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
@@ -467,6 +467,8 @@ export function Sections() {
         <Row label="raise">
           <Button onClick={() => toast("Invoice INV-2026-00418 approved")}>Show toast</Button>
           <Button onClick={() => toast("The server did not answer in time.", "error")}>Show error toast</Button>
+          <Button onClick={() => toast("3 conversations moved to Trash", "success", { action: { label: "Undo", onSelect: () => toast("Moved back to Inbox") } })}>Show toast with Undo</Button>
+          <Button onClick={() => announce("3 conversations moved to Trash")}>Announce only</Button>
           <Button variant="danger" onClick={() => void confirmDialog({ title: "Delete INV-2026-00418?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true })}>Confirm…</Button>
         </Row>
         <Toaster />
