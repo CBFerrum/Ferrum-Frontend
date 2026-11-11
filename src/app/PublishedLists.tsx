@@ -159,8 +159,10 @@ function Lists({ meta }: { meta: EntityMeta }) {
                       <td>{isolate(l.fields.map((f) => labelOf.get(f) ?? f).join(", "))}{l.csv ? ` · ${tr("CSV download")}` : ""}</td>
                       <td><Address name={l.name} /></td>
                       <td className="nowrap">
-                        <Button size="sm" onClick={() => edit(l)} aria-label={tr("Edit {name}", { name: l.label })}>{tr("Edit")}</Button>{" "}
-                        <Button size="sm" icon="trash" loading={removing === l.name} disabled={!!removing} onClick={() => void takeDown(l)} aria-label={tr("Take down {name}", { name: l.label })}>{tr("Take down")}</Button>
+                        <div className="row-actions">
+                          <Button size="sm" onClick={() => edit(l)} aria-label={tr("Edit {name}", { name: l.label })}>{tr("Edit")}</Button>
+                          <Button size="sm" icon="trash" loading={removing === l.name} disabled={!!removing} onClick={() => void takeDown(l)} aria-label={tr("Take down {name}", { name: l.label })}>{tr("Take down")}</Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

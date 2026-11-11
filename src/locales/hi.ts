@@ -4092,6 +4092,8 @@ const words: Record<string, string> = {
   "More in Studio": "Studio में और",
   "Run {when}": "चलाया गया {when}",
   "Showing {n} of {total}": "{total} में से {n} दिखाए गए",
+  "Not set: {labels}": "सेट नहीं: {labels}",
+  "Hide empty fields": "खाली फ़ील्ड छिपाएँ",
 };
 
 export default words;

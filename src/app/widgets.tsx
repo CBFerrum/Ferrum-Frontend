@@ -21,6 +21,7 @@ import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { asRows } from "../lib/doc";
 import { t } from "../lib/i18n";
+import { cn } from "../lib/utils";
 import { stateTone, stateWords } from "../lib/targetDraft";
 import { docstatusTone } from "../lib/statusTones";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
@@ -100,6 +101,10 @@ export function FieldControl(p: ControlProps) {
   if (f.kept_by_target && (f.type === "select" || f.type === "data")) {
     const v = text(value);
     return <output id={p.id} aria-describedby={p.describedBy}>{v && <Badge tone={stateTone(v)}>{isolate(stateWords()[v] ?? v)}</Badge>}</output>;
+  }
+  // A tick the person cannot change is a word in its place ("Yes" / "No"), named by its label like any value.
+  if (f.type === "check" && disabled) {
+    return <output id={p.id} aria-describedby={p.describedBy} aria-label={p.compact ? p.label : undefined} className={cn("read-text", value !== true && "read-text-off")}>{value === true ? t("Yes") : t("No")}</output>;
   }
   // A value the person cannot edit is shown as text (an input that is readOnly, so it stays selectable and named by its label), not as a greyed box.
   if (disabled && !NOT_AS_TEXT.has(f.type)) return <ReadOnlyValue {...p} />;

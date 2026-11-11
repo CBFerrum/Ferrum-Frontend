@@ -119,8 +119,10 @@ function Targets({ meta }: { meta: EntityMeta }) {
                       <td>{isolate(withinWords(t, meta.fields))}</td>
                       <td>{t.calendar ? isolate(t.calendar) : tr("Plain time")}</td>
                       <td className="nowrap">
-                        <Button size="sm" onClick={() => setEditing(fromTarget(t as unknown as Record<string, unknown>, meta.fields))} aria-label={tr("Edit {name}", { name: t.label })}>{tr("Edit")}</Button>{" "}
-                        <Button size="sm" icon="trash" loading={removing === t.name} disabled={!!removing} onClick={() => void remove(t)} aria-label={tr("Remove {name}", { name: t.label })} />
+                        <div className="row-actions">
+                          <Button size="sm" onClick={() => setEditing(fromTarget(t as unknown as Record<string, unknown>, meta.fields))} aria-label={tr("Edit {name}", { name: t.label })}>{tr("Edit")}</Button>
+                          <Button size="sm" icon="trash" loading={removing === t.name} disabled={!!removing} onClick={() => void remove(t)} aria-label={tr("Remove {name}", { name: t.label })} />
+                        </div>
                       </td>
                     </tr>
                   ))}

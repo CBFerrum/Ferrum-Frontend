@@ -519,7 +519,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
           </Link>
         </Button>
         <div className="min-w-0 flex-1 basis-48">
-          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? draft.label.trim() ? tr("Edit {value}", { value: draft.label.trim() }) : tr("Edit space") : tr("New space")}</h1>
+          <h1 className="page-title truncate">{saved.id ? draft.label.trim() ? tr("Edit {value}", { value: draft.label.trim() }) : tr("Edit space") : tr("New space")}</h1>
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {save.isPending ? tr("Saving…") : dirty ? tr("Unsaved changes") : saved.id ? updated ? (by ? tr("Saved {when} by {by}", { when: relativeTime(updated), by }) : tr("Saved {when}", { when: relativeTime(updated) })) : by ? tr("Saved by {by}", { by }) : tr("Saved") : tr("Not saved yet")}
           </p>

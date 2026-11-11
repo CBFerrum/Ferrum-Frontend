@@ -3,7 +3,7 @@
   box-sizing: border-box;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 24px clamp(12px, 3vw, 32px) 48px;
+  padding: 20px clamp(12px, 3vw, 32px) 48px;
 }
 /* The greeting: who, where, when, in type alone. */
 .shell-greet {
@@ -14,9 +14,10 @@
 .shell-greet h1 {
   margin: 0;
   font-size: var(--text-2xl);
-  line-height: var(--text-2xl--line-height);
+  line-height: 1.25;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
+  padding-block: calc((var(--control-h) - 1.25 * var(--text-2xl)) / 2); /* as .page-title */
 }
 .shell-greet p {
   display: flex;

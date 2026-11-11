@@ -534,7 +534,7 @@ function Editor({ record }: { record?: ReportRecord }) {
               </>
             )}
           </nav>
-          <h1 className="flex min-w-0 items-center gap-2 text-xl font-semibold">
+          <h1 className="page-title flex min-w-0 items-center gap-2">
             <span className="truncate">{isolate(title)}</span>
             {dirty && (
               <Badge variant="secondary" className="shrink-0">

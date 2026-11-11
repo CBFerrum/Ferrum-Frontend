@@ -2,6 +2,7 @@
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { PageLoading } from "./kit";
 import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type StateKind } from "./patterns";
 
 describe("StatePanel", () => {
@@ -63,5 +64,16 @@ describe("SelectionToolbar", () => {
     expect(capped).toContain("500 selected");
     expect(capped).toContain("of 1,200 matching");
     expect(draw({})).toContain("Clear selection");
+  });
+});
+
+describe("PageLoading", () => {
+  it("is a named status shaped like a page: a title bar and rows, no spinner", () => {
+    const html = renderToString(<PageLoading label="Loading invoices…" />);
+    expect(html).toMatch(/role="status"[^>]*aria-busy="true"/);
+    expect(html).toContain("Loading invoices…");
+    expect(html.match(/data-slot="skeleton"/g)!.length).toBeGreaterThanOrEqual(6);
+    expect(html).not.toContain("spinner");
+    expect(renderToString(<PageLoading />)).toContain("Loading…");
   });
 });

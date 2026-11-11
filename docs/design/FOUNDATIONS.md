@@ -83,6 +83,15 @@ Before this change `--faint` was 3.11:1 on white (2.87:1 on the page) and the co
 
 Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's mapping gives `rounded-sm` 4, `rounded-md` 6, `rounded-lg` 8, `rounded-xl` 12 (large dialogs). Density is `data-density="compact"` on `<html>`; touch targets are 44px whatever the density.
 
+### The crafted kit: what the foundations now say about composition
+
+- **Page frame.** `main` has 20px above, 24px at the sides and 48px below; `.page-title` is `text-2xl`, weight 600, tracking -0.015em, line height 1.25, in a box one `--control-h` tall so a title and its buttons share a centre line. The rest of the anatomy (header action row, 16px to content, cards, gaps) is in PATTERNS.md, "Page anatomy".
+- **One control family.** `.input`, `.select` and `.textarea` share boundary (`--border-control`), radius (`--radius-sm`), height (`--control-h`), side padding (10px) and fill. `.select` drops the native arrow and draws a chevron from two token-coloured gradient strokes at its inline end (mirrored under `:dir(rtl)`), so it follows the theme and forced colours; `multiple` and `size` selects keep their native list.
+- **Quiet read-only values.** A value that cannot be edited is `--text` text with no box (`.read-value`, `.read-text`); an empty one is `--faint` at reduced opacity on a 20px row (`.field-empty`). Disabled controls keep the control shape at reduced emphasis.
+- **Floating things.** Menus, popovers, dialogs, sheets and toasts use `--surface`, `--border`, `--shadow` and the overlay duration; nothing else casts a shadow.
+- **App tiles.** An app's colour becomes a soft tile and a glyph that keeps 3:1 against it in both themes (`AppIcon`), the same in the bar, the launcher and the family navigation.
+- **Loading placeholders.** Skeletons are `--muted` shapes that pulse and stop for reduced motion; `PageLoading` is a title bar, a line and five rows of them.
+
 ## Motion
 
 `--duration-state` 100ms (hover, press), `--duration-overlay` 140ms (menus, dialogs), `--duration-panel` 180ms (sliding panels). All are 0ms under `prefers-reduced-motion: reduce`. A global rule in `src/styles.css` also cuts every animation and transition to 0.01ms there, so hand-written motion needs no extra handling.
@@ -107,5 +116,5 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
 - `packages/build/*` and a few primitives (`command.tsx` input at `h-10`, `calendar.tsx` text) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
-- Legacy CSS that keeps px sizes on purpose: `.page-title` at 20px (between the section and page heading roles), the fluid `clamp()` heading in `apps/shell/src/shell.css`, and the 44px touch overrides in the narrow-screen block of `src/styles.css`.
+- Legacy CSS that keeps px sizes on purpose: the 44px touch overrides in the narrow-screen block of `src/styles.css`. (`.page-title` is the `text-2xl` role now, and the shell home's greeting uses the same size, weight and tracking.)
 - Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.

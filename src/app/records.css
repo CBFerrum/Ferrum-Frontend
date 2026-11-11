@@ -3,8 +3,7 @@
 /* The list's bar: search, filters as chips, then views and columns. Nothing takes room until used. */
 /* The page header: title and count as one unit, the view switcher, quiet secondary actions, one primary. */
 .list-head {
-  align-items: center;
-  margin-bottom: 12px;
+  align-items: flex-start;
 }
 .list-actions {
   gap: 12px;
@@ -70,17 +69,23 @@
   height: var(--control-h); /* one row, one height: the buttons beside it are --control-h */
   padding-inline-start: 29px;
 }
-.chip {
+/* The list filter's own token (field: value, and a button to remove it): a bordered, control-high box whose two buttons share it. */
+.chip.chip-field {
   display: inline-flex;
   align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
   height: var(--control-h);
+  min-height: 0;
   max-width: 280px;
+  padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text);
   font-size: var(--text-sm);
 }
-.chip[data-empty] {
+.chip.chip-field[data-empty] {
   background: var(--surface);
   border-style: dashed;
 }
@@ -123,8 +128,9 @@
 .chip-x:hover {
   color: var(--text);
 }
-.chip:hover {
+.chip.chip-field:hover {
   background: var(--surface-2);
+  color: var(--text);
 }
 .chip-add,
 .chip-clear {
@@ -801,12 +807,7 @@ button.peek-value:hover {
   align-items: center;
   gap: 4px 12px;
 }
-.record-head .page-title {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
+
 .record-sub {
   color: var(--muted-foreground);
   font-size: var(--text-base);
@@ -908,6 +909,57 @@ button.peek-value:hover {
 .textarea.read-value:focus-visible {
   border-color: transparent;
   outline-offset: 0;
+}
+/* A read-only boolean is a word: "Yes" in the text colour, "No" quieter. */
+.read-text {
+  display: block;
+  min-height: 24px;
+  padding: 2px 0;
+  color: var(--text);
+}
+.read-text-off {
+  color: var(--muted-foreground);
+}
+/* A read-only field with nothing in it recedes: the label stays, the dash is fainter and the row tighter. */
+.field-empty {
+  gap: 0;
+}
+.field-empty .input.read-value::placeholder,
+.field-empty .textarea.read-value::placeholder {
+  opacity: 0.55;
+}
+.field-empty .input.read-value,
+.field-empty .textarea.read-value {
+  height: 20px;
+  min-height: 20px;
+  padding-block: 0;
+}
+/* Three or more such fields in a row fold into one line that opens to them. */
+.empty-run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.empty-run:hover {
+  color: var(--text);
+}
+.empty-run svg {
+  flex: none;
+}
+.empty-run-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* A read-only link keeps its open button, right after the text it opens. */
 .combo:has(.read-value) {

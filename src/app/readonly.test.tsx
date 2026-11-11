@@ -26,6 +26,15 @@ describe("a field that cannot be edited", () => {
   it("keeps long text as a read-only textarea that grows to fit", () => {
     expect(render("text", "Net 30")).toMatch(/<textarea[^>]*read-value/);
   });
+  it("shows a tick it cannot change as a word, named by its label, not as a disabled box", () => {
+    const yes = render("check", true);
+    expect(yes).toMatch(/<output id="f-total"[^>]*>Yes<\/output>/);
+    expect(yes).not.toContain("checkbox");
+    expect(yes).not.toContain("disabled");
+    expect(render("check", false)).toMatch(/read-text-off[^>]*>No<\/output>/);
+    expect(render("check", undefined)).toContain(">No<");
+    expect(render("check", true, false)).toContain('type="checkbox"');
+  });
   it("is the editable control when the person can edit", () => {
     const html = render("currency", "7500", false);
     expect(html).not.toContain("read-value");

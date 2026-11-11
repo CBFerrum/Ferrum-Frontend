@@ -9,8 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, Badge, Button, Dialog, Field, Menu, MenuItem, TabPanel, Tabs, type Tone } from "@/ui/kit";
+import { EmptyRun } from "@/app/EmptyRun";
+import { Alert, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
 import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type SaveState, type StateKind } from "@/ui/patterns";
 
 const FILE = "Q3-consolidated-statement-of-financial-position-final-reviewed-v12 (copy).xlsx";
@@ -212,6 +214,25 @@ export function Sections() {
           <Field label="Terms" htmlFor="rf-text">
             <textarea id="rf-text" className="textarea" defaultValue="Net 30" />
           </Field>
+          <Field label="Charge type" htmlFor="rf-select">
+            <select id="rf-select" className="select" defaultValue="Net">
+              <option>Net</option>
+              <option>Actual</option>
+            </select>
+          </Field>
+          <Field label="Web order (read-only, yes)" htmlFor="rf-check-yes">
+            <output id="rf-check-yes" className="read-text">Yes</output>
+          </Field>
+          <Field label="Round off (read-only, no)" htmlFor="rf-check-no">
+            <output id="rf-check-no" className="read-text read-text-off">No</output>
+          </Field>
+          <EmptyRun labels={["Web payment", "Contact email", "Ship to"]}>
+            {["Web payment", "Contact email", "Ship to"].map((l, i) => (
+              <Field key={l} label={l} htmlFor={`rf-run-${i}`} className="field-empty">
+                <input id={`rf-run-${i}`} className="input read-value" readOnly tabIndex={-1} placeholder="—" />
+              </Field>
+            ))}
+          </EmptyRun>
         </div>
         <div data-gallery="record-form-totals" className="totals">
           {[["rf-t1", "Total", "7,500.00"], ["rf-t2", "Total taxes", "1,350.00"], ["rf-t3", "Grand total", "8,850.00"]].map(([id, label, v]) => (
@@ -232,6 +253,24 @@ export function Sections() {
           {(["default", "secondary", "destructive", "outline"] as const).map((v) => (
             <ShBadge key={v} variant={v}>{v}</ShBadge>
           ))}
+        </Row>
+      </Section>
+
+      <Section id="chips" title="Chips and toggles">
+        <div className="chips" data-gallery="chips">
+          <button type="button" className="chip">Button</button>
+          <button type="button" className="chip" aria-pressed="true" data-gallery="chip-pressed">Pressed</button>
+          <button type="button" className="chip" aria-pressed="false">Not pressed</button>
+          <a className="chip" href="#g-chips">Link</a>
+          <span className="chip">Span with a count <strong>3</strong></span>
+          <button type="button" className="chip">Showing Meera Rao&apos;s tickets <span className="icon" aria-hidden="true">×</span></button>
+          <button type="button" className="chip" disabled>Disabled</button>
+          <span className="chip">{FILE}</span>
+        </div>
+        <Row label="segmented">
+          <div className="segmented" role="group" aria-label="View"><button type="button" aria-pressed="true" data-gallery="seg-pressed">List</button><button type="button" aria-pressed="false">Board</button></div>
+          <Toggle pressed aria-label="Bold" data-gallery="toggle-pressed">B</Toggle>
+          <Toggle aria-label="Italic">I</Toggle>
         </Row>
       </Section>
 
@@ -257,6 +296,33 @@ export function Sections() {
         <Dialog open={open} onClose={() => setOpen(false)} title="Approve INV-2026-00418?" footer={<Button variant="primary" onClick={() => setOpen(false)}>Approve</Button>}>
           <p>{PEOPLE[3]} will be notified once it is approved.</p>
         </Dialog>
+      </Section>
+
+      <Section id="toast" title="Toast and confirm">
+        <Row label="raise">
+          <Button onClick={() => toast("Invoice INV-2026-00418 approved")}>Show toast</Button>
+          <Button onClick={() => toast("The server did not answer in time.", "error")}>Show error toast</Button>
+          <Button variant="danger" onClick={() => void confirmDialog({ title: "Delete INV-2026-00418?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true })}>Confirm…</Button>
+        </Row>
+        <Toaster />
+        <ConfirmHost />
+      </Section>
+
+      <Section id="anatomy" title="Page anatomy">
+        <div data-gallery="anatomy" className="rounded-lg border border-dashed border-border p-4">
+          <div className="crumbs">Sales Orders</div>
+          <div className="page-head">
+            <div>
+              <h1 className="page-title">SO-2026-00018</h1>
+              <p className="page-sub">Acme Traders · 3 lines</p>
+            </div>
+            <div className="page-actions">
+              <Button>Save</Button>
+              <Button variant="primary">Submit</Button>
+            </div>
+          </div>
+          <div className="card card-pad">The content starts one gap (16px) under the header.</div>
+        </div>
       </Section>
 
       <Section id="alerts" title="Alerts">
@@ -291,6 +357,7 @@ export function Sections() {
           <div data-gallery="skeleton-table" className="rounded-lg border border-border"><TableSkeleton columns={4} rows={4} /></div>
           <div data-gallery="skeleton-form" className="rounded-lg border border-border p-4"><FormSkeleton fields={3} /></div>
           <div data-gallery="skeleton-reader" className="rounded-lg border border-border"><ReaderSkeleton /></div>
+          <div data-gallery="skeleton-page" className="rounded-lg border border-border p-4"><PageLoading /></div>
         </div>
       </Section>
 
