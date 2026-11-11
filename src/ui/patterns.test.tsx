@@ -77,3 +77,12 @@ describe("PageLoading", () => {
     expect(renderToString(<PageLoading />)).toContain("Loading…");
   });
 });
+
+describe("failureKind", () => {
+  it("tells refused, offline and failed apart by the request's status", async () => {
+    const { failureKind } = await import("./patterns");
+    expect([401, 403, 0, 500, 404].map((status) => failureKind({ status }))).toEqual(["denied", "denied", "offline", "failed", "failed"]);
+    expect(failureKind(new Error("boom"))).toBe("failed");
+    expect(failureKind(null)).toBe("failed");
+  });
+});

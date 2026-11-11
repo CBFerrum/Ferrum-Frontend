@@ -77,6 +77,8 @@ A bar, line or area chart that plots measures of very different size (a count of
 
 ## StatePanel
 
+For a request that failed, use `LoadFailed` (`<LoadFailed error={query.error} onRetry={() => query.refetch()} />`): it picks `denied` for 401 and 403, `offline` when there was no answer, `failed` otherwise, so apps do not each write that mapping. `failureKind(error)` gives the kind alone.
+
 When: a region has nothing to show. Pick the kind by why, not by how it looks.
 
 ```tsx
