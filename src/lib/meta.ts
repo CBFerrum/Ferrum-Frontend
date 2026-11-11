@@ -164,6 +164,8 @@ export interface EntitySummary {
   /** What the record type is for (the server sends it from 0.3.x). */
   description?: string | null;
   submittable: boolean;
+  /** The icon the record type declares (a lucide name in kebab-case); the server does not send it yet, and the menu falls back to a concept icon by name. */
+  icon?: string | null;
   custom?: boolean;
   /** The package that owns it (`tenant` for custom entities). */
   package?: string;

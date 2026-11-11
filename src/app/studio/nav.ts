@@ -9,7 +9,7 @@ export const spaceNav: { label: string; to: string; icon: string }[] = [{ get la
 // Customer solutions, their runs and people's tasks (Ferrum's docs/logic/studio.md). The server decides what
 // each person sees on those pages: everyone has tasks and their own runs; authors have solutions.
 export const solutionNav: { label: string; to: string; icon: string }[] = [
-  { get label() { return t("Solutions"); }, to: "/studio/solutions", icon: "settings" },
+  { get label() { return t("Solutions"); }, to: "/studio/solutions", icon: "puzzle" },
   { get label() { return t("Tasks"); }, to: "/studio/tasks", icon: "check" },
-  { get label() { return t("Runs"); }, to: "/studio/runs", icon: "list" },
+  { get label() { return t("Runs"); }, to: "/studio/runs", icon: "play" },
 ];
