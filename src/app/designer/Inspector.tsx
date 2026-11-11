@@ -169,7 +169,7 @@ export function SectionInspector({
           {serverError ? (
             <>
               <p className="font-medium text-destructive">{tr("The server rejected this condition:")}</p>
-              <pre className="mt-1 max-h-48 overflow-auto rounded-md bg-destructive-soft p-2 font-mono text-[11px] whitespace-pre-wrap text-destructive">
+              <pre className="mt-1 max-h-48 overflow-auto rounded-md bg-destructive-soft p-2 font-mono text-xs whitespace-pre-wrap text-destructive">
                 {isolate(serverError)}
               </pre>
             </>

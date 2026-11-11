@@ -196,7 +196,7 @@ export function BulkBar({
             {total == null ? tr("Select all matching (up to {MAX_BULK})", { MAX_BULK }) : total > MAX_BULK ? tr("Select the first {MAX_BULK} of {total}", { MAX_BULK, total: total.toLocaleString() }) : tr("Select all {total} matching", { total: total.toLocaleString() })}
           </Button>
         )}
-        {allMatching && total != null && total > n && <span className="text-[13px] whitespace-nowrap text-muted-foreground">{tr("of {total} matching", { total: total.toLocaleString() })}</span>}
+        {allMatching && total != null && total > n && <span className="text-sm whitespace-nowrap text-muted-foreground">{tr("of {total} matching", { total: total.toLocaleString() })}</span>}
         <Button size="sm" variant="ghost" icon="x" onClick={clear}>
           {tr("Clear")}
         </Button>
@@ -367,7 +367,7 @@ function RunDialog({
             {isolate(text.running(countOf(meta, run.ids.length)))}
             {run.ids.length > MAX_BULK && tr(" {value} of {value2} done.", { value: run.sent.toLocaleString(), value2: run.ids.length.toLocaleString() })}
           </span>
-          <span className="w-full text-[13px] text-muted-foreground">{tr("You can close this window: the action carries on and its results stay available from the bar.")}</span>
+          <span className="w-full text-sm text-muted-foreground">{tr("You can close this window: the action carries on and its results stay available from the bar.")}</span>
         </div>
       ) : (
         <div className="stack" style={{ gap: 12 }}>
@@ -388,12 +388,12 @@ function RunDialog({
                   <Link to={`/e/${meta.name}/${f.id}`} className="font-medium">
                     {isolate(title(String(f.id)))}
                   </Link>
-                  <span className="text-[13px] text-muted-foreground">{isolate(rowErrorText(meta, f.error))}</span>
+                  <span className="text-sm text-muted-foreground">{isolate(rowErrorText(meta, f.error))}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[13px] text-muted-foreground">{left.length > 0 && tr("The records not done stay selected.")}</p>
+          <p className="text-sm text-muted-foreground">{left.length > 0 && tr("The records not done stay selected.")}</p>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={onClose}>{tr("Close")}</Button>
             {left.length > 0 && (
