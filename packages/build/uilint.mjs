@@ -153,6 +153,8 @@ export function runLint(root, baselinePath, options = {}) {
     return 0;
   }
   if (!existsSync(baselinePath)) {
+    for (const f of findings.slice(0, 40)) console.log(`  ${f.file}:${f.line}  ${f.rule}  ${f.text}`);
+    if (findings.length > 40) console.log(`  … and ${findings.length - 40} more`);
     console.log(`${prefix} interface lint: ${summary}. To adopt the ratchet (CI then fails on new findings): ${options.command ?? "lint"} --update-baseline`);
     return 0;
   }

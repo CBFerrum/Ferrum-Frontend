@@ -59,6 +59,7 @@ export function StatePanel({
   onRetry,
   onClear,
   clearLabel,
+  icon,
   className,
 }: {
   kind: StateKind;
@@ -70,9 +71,12 @@ export function StatePanel({
   onClear?: () => void;
   /** What `onClear` undoes, when it is not filters: "Clear the search". */
   clearLabel?: string;
+  /** The screen's own icon in place of the kind's (a module's glyph on its first-use empty state). */
+  icon?: LucideIcon;
   className?: string;
 }) {
-  const { icon: Glyph, tone, role } = KIND[kind];
+  const { icon: kindIcon, tone, role } = KIND[kind];
+  const Glyph = icon ?? kindIcon;
   const d = defaults(kind);
   const description = children ?? d.hint;
   return (
