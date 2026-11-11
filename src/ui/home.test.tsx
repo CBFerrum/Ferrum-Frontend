@@ -4,12 +4,14 @@
 // Contracts' written as the docs show it (docs/design/PATTERNS.md).
 
 import { act, type ReactNode } from "react";
+import { afterEach, vi } from "vitest";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { PageHead } from "../../packages/kit/src";
 import { Badge } from "./kit";
-import { ButtonLink, HomeSkeleton, Queue, QueueGrid, QueueItem, Tile, TileGrid } from "./patterns";
+import { ButtonLink, HomeSection, HomeSkeleton, Progress, PageStack, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid } from "./patterns";
+import type { Tone } from "../../packages/kit/src";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -121,5 +123,148 @@ describe("a home written on the pattern", () => {
     expect(queues[2].querySelectorAll("li")).toHaveLength(5);
     expect(queues[2].querySelector(".queue-more")!.textContent).toBe("and 2 more");
     expect(queues[3].querySelector(".badge-red")!.textContent).toBe("Overdue");
+  });
+});
+
+describe("QueueItem slots", () => {
+  it("puts the lead first, the trailing mark before the action, and the action outside the row link", () => {
+    const h = draw(<Queue title="Today"><QueueItem to="/a/1" title="Ana Silva" meta="Room 4 · deep clean" lead="09:30" trailing={<Badge>Booked</Badge>} action={<button type="button">Check in</button>} /></Queue>);
+    const li = h.querySelector("li")!;
+    expect([...li.children].map((c) => c.className)).toEqual(["queue-lead", "queue-text", "queue-trailing", "queue-action"]);
+    expect(li.querySelector(".queue-lead")!.textContent).toBe("09:30");
+    expect(li.querySelectorAll("a")).toHaveLength(1);
+    expect(li.querySelector(".queue-action a")).toBeNull();
+    const order = [...li.querySelectorAll("a, button")].map((e) => e.tagName);
+    expect(order).toEqual(["A", "BUTTON"]);
+  });
+  it("lets the action take the click and the row link stay a link", () => {
+    let pressed = 0;
+    const h = draw(<Queue title="Today"><QueueItem to="/a/1" title="Ana" action={<button type="button" onClick={() => pressed++}>Check in</button>} /></Queue>);
+    act(() => h.querySelector<HTMLButtonElement>(".queue-action button")!.click());
+    expect(pressed).toBe(1);
+    expect(h.querySelector(".queue-action")!.closest("a")).toBeNull();
+  });
+  it("is a plain row, with no link, when it has no target", () => {
+    const h = draw(<Queue title="Today"><QueueItem title="Walk-in" action={<button type="button">Check in</button>} /></Queue>);
+    const li = h.querySelector("li")!;
+    expect(li.getAttribute("data-plain")).toBe("");
+    expect(li.querySelector("a")).toBeNull();
+    expect(li.querySelector(".queue-name")!.tagName).toBe("SPAN");
+  });
+  it("keeps a string meta whole in its tooltip", () => {
+    const h = draw(<Queue title="Q"><QueueItem to="/a" title="T" meta="A long line about who and when and where" /></Queue>);
+    expect(h.querySelector(".queue-meta")!.getAttribute("title")).toBe("A long line about who and when and where");
+  });
+});
+
+describe("Queue progress and grid columns", () => {
+  it("draws a named slim bar with the percentage at the end", () => {
+    const h = draw(<Queue title="Launch" progress={{ value: 40.4, label: "Key results done" }} />);
+    const bar = h.querySelector("[role=progressbar]")!;
+    expect(bar.getAttribute("aria-label")).toBe("Key results done");
+    expect(bar.getAttribute("aria-valuenow")).toBe("40");
+    expect(h.querySelector(".queue-progress span")!.textContent).toBe("40%");
+    expect(draw(<Queue title="X" progress={{ value: 250 }} />).querySelector(".queue-progress span")!.textContent).toBe("100%");
+    expect(draw(<Queue title="X" progress={{ value: 3 }} />).querySelector("[role=progressbar]")!.getAttribute("aria-label")).toBe("Progress");
+  });
+  it("is one column when asked", () => {
+    expect(draw(<QueueGrid columns={1}><Queue title="A" /></QueueGrid>).querySelector(".queue-grid")!.getAttribute("data-columns")).toBe("1");
+  });
+});
+
+describe("Tile figures and size", () => {
+  it("lists labelled figures as a description list", () => {
+    const h = draw(<TileGrid min="lg"><Tile title="Block A" figures={[{ label: "Worth", value: "₹1,00,000" }, { label: "Held", value: "₹0" }]} /></TileGrid>);
+    expect(h.querySelector("ul")!.getAttribute("data-min")).toBe("lg");
+    expect([...h.querySelectorAll("dt")].map((e) => e.textContent)).toEqual(["Worth", "Held"]);
+    expect([...h.querySelectorAll("dd")].map((e) => e.textContent)).toEqual(["₹1,00,000", "₹0"]);
+  });
+});
+
+describe("Stat", () => {
+  it("is a link when it has a target and a plain figure when not", () => {
+    const h = draw(<StatGrid><Stat label="Waiting" value={4} to="/w" hint="since Monday" /><Stat label="Cost" value="₹204,500.00" /></StatGrid>);
+    const [a, b] = [...h.querySelectorAll(".stat")];
+    expect([a.tagName, a.getAttribute("href")]).toEqual(["A", "/w"]);
+    expect(b.tagName).toBe("DIV");
+    expect(a.querySelector(".stat-hint")!.textContent).toBe("since Monday");
+  });
+  it("is quiet for zero and empty values, loud only when asked", () => {
+    const quiet = (v: ReactNode) => draw(<Stat label="L" value={v} />).querySelector(".stat-value")!.hasAttribute("data-quiet");
+    expect([0, "0", "₹0.00", "0 h", "", null, "—"].map(quiet)).toEqual([true, true, true, true, true, true, true]);
+    expect([4, "₹172,702.10", "10"].map(quiet)).toEqual([false, false, false]);
+    expect(draw(<Stat label="L" value={3} tone="danger" />).querySelector(".stat-value")!.getAttribute("data-tone")).toBe("danger");
+    expect(draw(<Stat label="L" value={3} />).querySelector(".stat-value")!.hasAttribute("data-tone")).toBe(false);
+  });
+  it("carries a slim named bar", () => {
+    const h = draw(<Stat label="Depreciated" value="16%" progress={{ value: 16, label: "Depreciated" }} />);
+    expect(h.querySelector("[role=progressbar]")!.getAttribute("aria-label")).toBe("Depreciated");
+  });
+});
+
+describe("PageStack", () => {
+  it("is the page's rhythm, 16 or 24", () => {
+    expect(draw(<PageStack><div /></PageStack>).querySelector(".page-stack")!.hasAttribute("data-gap")).toBe(false);
+    expect(draw(<PageStack gap="lg"><div /></PageStack>).querySelector(".page-stack")!.getAttribute("data-gap")).toBe("lg");
+  });
+});
+
+describe("ButtonLink", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("is a router link for `to` and a plain anchor for `href`", () => {
+    const h = draw(<><ButtonLink to="/new">New</ButtonLink><ButtonLink href="/crm/" variant="primary" icon="plus">Open CRM</ButtonLink></>);
+    const [a, b] = [...h.querySelectorAll("a")];
+    expect([a.getAttribute("href"), b.getAttribute("href")]).toEqual(["/new", "/crm/"]);
+    expect([a.className, b.className]).toEqual(["btn btn-default btn-md", "btn btn-primary btn-md"]);
+  });
+  it("needs exactly one of them", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    // @ts-expect-error neither
+    expect(draw(<ButtonLink>None</ButtonLink>).querySelector("a")).toBeNull();
+    // @ts-expect-error both
+    expect(draw(<ButtonLink to="/a" href="/b">Both</ButtonLink>).querySelector("a")!.getAttribute("href")).toBe("/a");
+    expect(err).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Tone", () => {
+  it("is nameable from the kit's entry", () => {
+    const tones: Record<string, Tone> = { Open: "green", Late: "red" };
+    expect(Object.values(tones)).toEqual(["green", "red"]);
+  });
+});
+
+describe("Progress", () => {
+  it("is a named progressbar with its value, max and tone, filling by proportion", () => {
+    const h = draw(<Progress value={3} max={12} label="Rooms ready" tone="good" />);
+    const bar = h.querySelector("[role=progressbar]")!;
+    expect([bar.getAttribute("aria-label"), bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax"), bar.getAttribute("data-tone")]).toEqual(["Rooms ready", "3", "12", "good"]);
+    expect((bar.firstElementChild as HTMLElement).style.inlineSize).toBe("25%");
+    expect((draw(<Progress value={-4} label="x" />).querySelector(".meter-fill") as HTMLElement).style.inlineSize).toBe("0%");
+  });
+  it("is drawn full width under a tile's meta lines, before its status", () => {
+    const h = draw(<TileGrid><Tile title="Trip 9" meta={<span>Pune</span>} progress={{ value: 6, max: 8, label: "Stops done" }} status={<><Badge>On time</Badge><Badge>Priority</Badge></>} /></TileGrid>);
+    const li = h.querySelector("li")!;
+    expect([...li.children].map((c) => c.className)).toEqual(["tile-title", "tile-meta", "tile-progress", "tile-status"]);
+    expect(li.querySelector("[role=progressbar]")!.getAttribute("aria-label")).toBe("Stops done");
+    expect(li.querySelectorAll(".tile-status .badge")).toHaveLength(2);
+  });
+});
+
+describe("HomeSection", () => {
+  it("is a section named by its heading, with a quiet count and header link or actions", () => {
+    const h = draw(<HomeSection title="Maple Heights" count={3} link={{ to: "/p/1", label: "Open" }} actions={<button type="button">Add post</button>}><TileGrid><Tile title="Unit 1" /></TileGrid></HomeSection>);
+    const sec = h.querySelector("section")!;
+    expect(sec.getAttribute("aria-labelledby")).toBe(sec.querySelector("h2")!.id);
+    expect(sec.querySelector("h2")!.textContent).toBe("Maple Heights");
+    expect(sec.querySelector(".queue-count")!.textContent).toBe("3");
+    expect(sec.querySelector(".home-section-end a")!.getAttribute("href")).toBe("/p/1");
+    expect(sec.querySelector(".home-section-end button")!.textContent).toBe("Add post");
+    expect(sec.querySelector(".tile-grid")).not.toBeNull();
+  });
+  it("shows one quiet line when it has nothing", () => {
+    const h = draw(<HomeSection title="Posts" empty="No posts this week" />);
+    expect(h.querySelector(".home-section-empty")!.textContent).toBe("No posts this week");
+    expect(draw(<HomeSection title="Posts" />).querySelector(".home-section-empty")).toBeNull();
   });
 });

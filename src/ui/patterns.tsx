@@ -324,20 +324,55 @@ export function SelectionToolbar({
 // ── work home: queues and tiles ──
 
 /** A link that looks like a button: the way a page head offers an action that opens a page ("New contract", with
- *  `icon="plus"`). A bare text link is never an action. */
-export function ButtonLink({ to, variant = "default", icon, children }: { to: string; variant?: "default" | "primary" | "ghost"; icon?: string; children: ReactNode }) {
-  return (
-    <Link className={`btn btn-${variant} btn-md`} to={to}>
+ *  `icon="plus"`). A bare text link is never an action. Exactly one of `to` (a path in this app's router) or `href` (a
+ *  destination outside it, such as another app's page: a plain anchor); given both, `to` wins, given neither it draws nothing. */
+export function ButtonLink({
+  to,
+  href,
+  variant = "default",
+  icon,
+  children,
+}: { variant?: "default" | "primary" | "ghost"; icon?: string; children: ReactNode } & ({ to: string; href?: never } | { href: string; to?: never })) {
+  const cls = `btn btn-${variant} btn-md`;
+  const inside = (
+    <>
       {icon && <Icon name={icon} />}
       {children}
-    </Link>
+    </>
+  );
+  if ((to === undefined) === (href === undefined)) console.error("ButtonLink takes exactly one of `to` or `href`");
+  if (to !== undefined)
+    return (
+      <Link className={cls} to={to}>
+        {inside}
+      </Link>
+    );
+  if (href === undefined) return null;
+  return (
+    <a className={cls} href={href}>
+      {inside}
+    </a>
+  );
+}
+
+/** The vertical rhythm of a page: the head, then its sections, `gap` apart (`md` 16px, `lg` 24px between unrelated groups);
+ *  the head always sits 16px above the first section. Use it instead of wrapping content in a grid. */
+export function PageStack({ children, gap = "md", className }: { children: ReactNode; gap?: "md" | "lg"; className?: string }) {
+  return (
+    <div className={cn("page-stack", className)} data-gap={gap === "lg" ? "lg" : undefined}>
+      {children}
+    </div>
   );
 }
 
 /** Queues side by side where there is room (three or four at 1440), one per row on a phone; their tops align and
- *  each is as tall as its rows, so an empty queue is one row high. */
-export function QueueGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("queue-grid", className)}>{children}</div>;
+ *  each is as tall as its rows, so an empty queue is one row high. `columns={1}`: a page that is one column of queues. */
+export function QueueGrid({ children, columns, className }: { children: ReactNode; columns?: 1; className?: string }) {
+  return (
+    <div className={cn("queue-grid", className)} data-columns={columns}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -353,6 +388,7 @@ export function Queue({
   link,
   empty,
   more,
+  progress,
   children,
 }: {
   title: string;
@@ -361,6 +397,7 @@ export function Queue({
   link?: { to: string; label: string };
   empty?: string;
   more?: { to: string; count: number };
+  progress?: { value: number; max?: number; label?: string };
   children?: ReactNode;
 }) {
   const id = useId();
@@ -378,6 +415,7 @@ export function Queue({
           </Link>
         )}
       </header>
+      {progress && <QueueProgress {...progress} />}
       {rows.length ? (
         <ul className="queue-list">{rows}</ul>
       ) : (
@@ -392,34 +430,82 @@ export function Queue({
   );
 }
 
-/** A row of a queue: the record's name is the link and the whole row is its target; `meta` is one quiet line under it
- *  (number, counterparty, due date) and `trailing` a status badge or mark at its natural width (not interactive). */
-export function QueueItem({ to, title, meta, trailing }: { to: string; title: string; meta?: ReactNode; trailing?: ReactNode }) {
+/**
+ * The governed slim meter: how far along something is (`value` of `max`, default 100), named for assistive technology by
+ * `label`. It is a block as wide as its container, 6px high, filling from the reading start (right to left in RTL), so it
+ * needs no class: put it where it goes (a `Tile`'s or `Stat`'s `progress`, a `Queue`'s, or as a child of a `HomeSection`
+ * or a flex cell). `tone` colours the fill: default the accent, `good`, `attention`, `danger`.
+ */
+export function Progress({ value, max = 100, label, tone = "default" }: { value: number; max?: number; label: string; tone?: "default" | "good" | "attention" | "danger" }) {
+  const top = max > 0 ? max : 100;
+  const v = Math.max(0, Math.min(top, Number.isFinite(value) ? value : 0));
   return (
-    <li className="queue-item">
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={top} aria-valuenow={Math.round(v * 100) / 100} className="meter" data-tone={tone === "default" ? undefined : tone}>
+      <div className="meter-fill" style={{ inlineSize: `${(v / top) * 100}%` }} />
+    </div>
+  );
+}
+
+/** A slim meter with its percentage at the end (the queue's and the stat's `progress`). */
+function QueueProgress({ value, max = 100, label }: { value: number; max?: number; label?: string }) {
+  const top = max > 0 ? max : 100;
+  const pct = Math.round((Math.max(0, Math.min(top, Number.isFinite(value) ? value : 0)) / top) * 100);
+  return (
+    <div className="queue-progress">
+      <Progress value={Math.round(value)} max={max} label={label ?? t("Progress")} />
+      <span aria-hidden="true">{pct}%</span>
+    </div>
+  );
+}
+
+/**
+ * A row of a queue. `to`: the record's page; the name is the row's one link and the whole row is its target (no `to`: a
+ * plain row, for when the only thing to do is its `action`). `lead`: a time, a room number or a thumbnail (`<img>`, drawn
+ * 40px square) in a fixed column so leads align down the queue. `meta`: one quiet line under the name (a string is also its
+ * tooltip; it may take two lines on a phone). `trailing`: a badge or mark that cannot be pressed. `action`: a button or
+ * link the person presses ("Check in"), after the row link in the keyboard order and above it for the pointer.
+ */
+export function QueueItem({ to, title, meta, lead, trailing, action }: { to?: string; title: string; meta?: ReactNode; lead?: ReactNode; trailing?: ReactNode; action?: ReactNode }) {
+  return (
+    <li className="queue-item" data-plain={to ? undefined : ""}>
+      {lead && <span className="queue-lead">{lead}</span>}
       <div className="queue-text">
-        <Link className="queue-name" to={to} title={title}>
-          {title}
-        </Link>
-        {meta && <span className="queue-meta">{meta}</span>}
+        {to ? (
+          <Link className="queue-name" to={to} title={title}>
+            {title}
+          </Link>
+        ) : (
+          <span className="queue-name" title={title}>
+            {title}
+          </span>
+        )}
+        {meta && (
+          <span className="queue-meta" title={typeof meta === "string" ? meta : undefined}>
+            {meta}
+          </span>
+        )}
       </div>
       {trailing && <span className="queue-trailing">{trailing}</span>}
+      {action && <span className="queue-action">{action}</span>}
     </li>
   );
 }
 
-/** Things with a live state (tables, rooms, units, trips, sites), as tiles of equal height. */
-export function TileGrid({ children, label, className }: { children: ReactNode; label?: string; className?: string }) {
+/** Things with a live state (tables, rooms, units, trips, sites), as tiles of equal height; `min` is the narrowest a tile
+ *  gets: `sm` 200px, `md` 280px, `lg` 360px. */
+export function TileGrid({ children, label, min = "sm", className }: { children: ReactNode; label?: string; min?: "sm" | "md" | "lg"; className?: string }) {
   return (
-    <ul className={cn("tile-grid", className)} aria-label={label}>
+    <ul className={cn("tile-grid", className)} aria-label={label} data-min={min === "sm" ? undefined : min}>
       {children}
     </ul>
   );
 }
 
 /** One tile: the title (the link when `to` is given, and then the whole tile opens it), up to two quiet `meta` lines and
- *  the `status` at its natural width at the foot. */
-export function Tile({ to, title, meta, status }: { to?: string; title: string; meta?: ReactNode; status?: ReactNode }) {
+ *  `figures` (labelled values, the value at the end in tabular numerals), `progress` (a full-width meter, named by `label`)
+ *  and the `status` at its natural width at the foot; a long status or several badges wrap onto a second line.
+ *  A long title takes two lines before it is cut. */
+export function Tile({ to, title, meta, figures, progress, status }: { to?: string; title: string; meta?: ReactNode; figures?: { label: string; value: ReactNode }[]; progress?: { value: number; max?: number; label: string }; status?: ReactNode }) {
   return (
     <li className="tile" data-link={to ? "" : undefined}>
       <span className="tile-title">
@@ -432,8 +518,112 @@ export function Tile({ to, title, meta, status }: { to?: string; title: string; 
         )}
       </span>
       {meta && <span className="tile-meta">{meta}</span>}
+      {figures && figures.length > 0 && (
+        <dl className="tile-figures">
+          {figures.map((f) => (
+            <div key={f.label}>
+              <dt>{f.label}</dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {progress && (
+        <span className="tile-progress">
+          <Progress {...progress} />
+        </span>
+      )}
       {status && <span className="tile-status">{status}</span>}
     </li>
+  );
+}
+
+/**
+ * A labelled group on a home that is not a queue: a heading (named section) with an optional quiet `count`, a header `link`
+ * or `actions` (buttons) at the end, and `children` (a `TileGrid`, a table, a `StatGrid`); with no children it shows
+ * `empty` as one quiet line.
+ */
+export function HomeSection({
+  title,
+  count,
+  link,
+  actions,
+  empty,
+  children,
+}: {
+  title: string;
+  count?: number;
+  link?: { to: string; label: string };
+  actions?: ReactNode;
+  empty?: string;
+  children?: ReactNode;
+}) {
+  const id = useId();
+  const has = Children.toArray(children).length > 0;
+  return (
+    <section className="home-section" aria-labelledby={id}>
+      <header className="home-section-head">
+        <h2 id={id} className="home-section-title">
+          {title}
+        </h2>
+        {count !== undefined && <span className="queue-count">{count}</span>}
+        {(link || actions) && (
+          <div className="home-section-end">
+            {link && <Link to={link.to}>{link.label}</Link>}
+            {actions}
+          </div>
+        )}
+      </header>
+      {has ? children : empty ? <p className="home-section-empty">{empty}</p> : null}
+    </section>
+  );
+}
+
+/** Linked figures for a home, a few across ("Applicants waiting 4"). */
+export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("stat-grid", className)}>{children}</div>;
+}
+
+const QUIET = /^[^\d]*0+([.,]0+)?[^\d]*$/;
+/** A zero, an empty value or a dash is quiet: nothing there to look at. */
+const nothing = (v: ReactNode) => v == null || v === false || v === "" || v === 0 || v === "—" || (typeof v === "string" && QUIET.test(v.trim()));
+
+/**
+ * One figure: `label` (quiet), `value` (large, tabular numerals, in the text colour; a zero or empty value is quiet and
+ * regular), `hint` under it, `progress` (0 to 100) as a slim bar, and `to` to make the whole stat a link. `tone` colours the
+ * value only when the number is itself a warning ("attention", "danger"); never by default.
+ */
+export function Stat({
+  label,
+  value,
+  hint,
+  to,
+  tone,
+  progress,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  to?: string;
+  tone?: "attention" | "danger";
+  progress?: { value: number; max?: number; label?: string };
+}) {
+  const inside = (
+    <>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value" data-quiet={nothing(value) ? "" : undefined} data-tone={tone}>
+        {nothing(value) && (value == null || value === "" || value === false) ? "—" : value}
+      </span>
+      {progress && <QueueProgress {...progress} />}
+      {hint && <span className="stat-hint">{hint}</span>}
+    </>
+  );
+  return to ? (
+    <Link className="stat" to={to} data-link="">
+      {inside}
+    </Link>
+  ) : (
+    <div className="stat">{inside}</div>
   );
 }
 

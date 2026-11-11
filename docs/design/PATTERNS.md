@@ -149,18 +149,38 @@ Anatomy, top to bottom, all from `@ferrum/kit`:
 4. **`TileGrid`** of **`Tile`s** for a small set of things with a live state.
 5. First use (every queue empty and no records at all): one `StatePanel kind="empty"` with the main action under the head, not a row of zeros. Setup needed: a `StatePanel` with the action, under the head. Loading: `HomeSkeleton`; failure: `LoadFailed`; both under the `PageHead`, whose title needs no data.
 
-Exports and props:
+Exports and props (all from `@ferrum/kit`; every prop is optional unless shown):
 
 | Name | Props |
 |---|---|
-| `PageHead` | `title`, `description?`, `actions?`, `back?: { to; label }`, `eyebrow?` (a trail above the title) |
-| `ButtonLink` | `to`, `variant?: "default" \| "primary" \| "ghost"`, `icon?`, `children` |
-| `QueueGrid` | `children`, `className?` |
-| `Queue` | `title` (string, the section's name), `count?` (a number), `tone?: "default" \| "attention"`, `link?: { to; label }` (header link: "All incidents"), `empty?` (the one line, default "Nothing waiting"), `more?: { to; count }` (shows "and N more" when `count > 0`), `children` (`QueueItem`s) |
-| `QueueItem` | `to`, `title` (string; the full text is its tooltip when truncated), `meta?` (one quiet line: number, counterparty, due date, in the app's formatting), `trailing?` (a `Badge`/`StatusBadge` or mark; not interactive) |
-| `TileGrid` | `children`, `label?` (names the list), `className?` |
-| `Tile` | `title`, `to?` (the whole tile opens it), `meta?` (one or two lines, each a `span`), `status?` (a badge at its natural width, at the foot so tiles in a row line up) |
-| `HomeSkeleton` | `queues?` (default 3), `className?` |
+| `PageHead` | `title`, `description`, `actions`, `back: { to; label }`, `eyebrow` (a trail above the title) |
+| `ButtonLink` | exactly one of `to` (a path in this app's router) or `href` (a destination outside it, e.g. another app's page: a plain anchor); `variant: "default" \| "primary" \| "ghost"`, `icon`, `children`. Both: `to` wins; neither: nothing is drawn (both log an error). |
+| `PageStack` | `gap: "md" \| "lg"` (16 / 24px between sections; the head is always 16px above the first), `className`, `children` |
+| `QueueGrid` | `columns: 1` (a page that is one column of queues), `className`, `children` |
+| `Queue` | `title` (required string: the section's name), `count`, `tone: "default" \| "attention"`, `link: { to; label }`, `empty` (default "Nothing waiting"), `more: { to; count }`, `progress: { value; max?; label? }`, `children` (`QueueItem`s) |
+| `QueueItem` | `title` (required string), `to` (omit for a plain row), `meta`, `lead`, `trailing`, `action` |
+| `TileGrid` | `min: "sm" \| "md" \| "lg"` (narrowest tile 200 / 280 / 360px), `label` (names the list), `className`, `children` |
+| `Tile` | `title` (required), `to`, `meta` (one or two `span` lines), `figures: { label; value: ReactNode }[]`, `progress: { value; max?; label }` (label required), `status` |
+| `HomeSection` | `title` (required), `count`, `link: { to; label }`, `actions` (buttons), `empty` (one quiet line when there are no children), `children` |
+| `StatGrid` | `className`, `children` |
+| `Stat` | `label`, `value` (required), `hint`, `to`, `tone: "attention" \| "danger"`, `progress: { value; max?; label? }` |
+| `Progress` | `value`, `max` (default 100), `label` (required: the accessible name), `tone: "default" \| "good" \| "attention" \| "danger"` |
+| `HomeSkeleton` | `queues` (default 3), `className` |
+| `Tone` (type) | `"neutral" \| "blue" \| "green" \| "amber" \| "red" \| "purple"`, for tone maps |
+
+`lead`, `trailing` or `action`? **`lead`** is what the row is about in a column before the name: a time (09:30), a room number, a thumbnail (`<img>`, drawn 40px square, `object-fit: cover`); it sits in a fixed 3rem column with tabular numerals so leads align down the queue; keep it short. **`trailing`** is a state: a badge or mark, read, not pressed. **`action`** is what the person does to the row: a small `Button` or link ("Check in", "Apply"); it takes the click above the row link and comes after it in the keyboard order. If the row has no page to open, leave `to` out: it is a plain row (no hover, no link) and the action is the point. A string `meta` is also the row's tooltip, and takes two lines on a phone.
+
+`Progress`, `Stat` and `Tile` meters: use the `Progress` export, never a hand-drawn bar (`.ast-tile` meter, `.trip-meter`). It needs no class: a block as wide as its container, 6px high, filling from the reading start. Place it by putting it in the parent's layout (a `Tile`'s or `Stat`'s or `Queue`'s `progress` prop, which also adds the percentage at the end for `Stat` and `Queue`, or as a child of a `HomeSection` or any flex or grid cell). Name it for what it measures ("Key results done"), not "progress".
+
+`Stat` rules: one number a person should see first ("Applicants waiting 4"), in the text colour, `text-2xl` semibold, tabular. A zero, an empty value or a dash is quiet (muted, regular weight): nothing needs you. Never colour a number by default; `tone` is for a number that is itself a warning (overdue 3). The whole stat is a link when `to` is given. Pass money and dates already formatted. `Stat` replaces the Assets `.ast-tile`, including the slim bar under "Depreciated 16%" (`progress`).
+
+`HomeSection` is for a labelled group that is not a queue (a `TileGrid` per property, a `StatGrid`, a table, "What posts did" with two header buttons in `actions`); a `TileGrid`'s own `label` stays for a grid that only needs an accessible name. A tile's `status` may be a long phrase or several badges: they wrap onto a second line. `figures` (Worth, Certified, Held) are label at the start, value at the end; give a tile at most three.
+
+`PageStack` or `.page-head`'s own margin? Seventeen screens use `.page-head` and space themselves with its 16px bottom margin, so that stays as it is. `PageStack` (a grid, `gap` 16 or 24) is the one way to space a work home: inside it the head's margin is cancelled so the head never stacks a second gap. Do not wrap content in `grid gap-4`.
+
+Queue grid: tracks are 300px at least, so a lone queue keeps one track's width instead of stretching; four queues use 400px tracks so they sit 2x2 where three and one would otherwise. Five stay 3+2; seven leave a last orphan (no clean CSS-only rule), so cap or group them.
+
+File input: `<input type="file" className="input">` (or bare inside `Field`) is drawn in the control's frame with its selector as the default small button, in both themes, right to left, disabled and focused; no script.
 
 Behaviour you get without asking: a queue is a `section` named by its heading, its rows are a list, the whole row is one link (focus ring on the row), the count is a quiet counter outside the heading (so the name is read once) with tabular numerals, an empty queue keeps its header and count 0 and is one row high, queues in a grid keep their tops aligned and fall to one column at 390, rows are 52px (44 compact), touch targets stay at 44px, an attention queue gets a warning edge and counter, logical properties throughout (RTL), tokens only, no motion.
 
