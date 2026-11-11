@@ -34,7 +34,7 @@ describe("text sizes", () => {
   it("small-text covers css, text-[Npx] and fontSize under 12px", () => {
     expect(
       rules({
-        "a.css": `.a { font-size: 11px; }\n.b { font-size: 12px; }\n.c { font-size: 0.7rem; }\n.d { font-size: 0.75rem; }\n`,
+        "a.css": `.a { font-size: 11px; }\n.b { font-size: 12px; }\n.c { font-size: 0.7rem; }\n.d { font-size: 0.86rem; }\n`,
         "A.tsx": `<i className="text-[11px]" />;\n<i className="text-[12px]" />;\n<i style={{ fontSize: 10 }} />;\n<i style={{ fontSize: 14 }} />;\n`,
       }),
     ).toEqual(["small-text A.tsx:1", "arbitrary-text-size A.tsx:2", "small-text A.tsx:3", "small-text a.css:1", "small-text a.css:3"]);
