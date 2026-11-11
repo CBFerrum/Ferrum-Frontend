@@ -150,7 +150,7 @@ export function ReportRun({ id }: { id: string }) {
             </Link>
             {entityInfo && <> · {isolate(entityInfo.label_plural)}</>}
           </nav>
-          <h1 className="truncate text-xl font-semibold">{isolate(report?.label ?? "")}</h1>
+          <h1 className="page-title truncate">{isolate(report?.label ?? "")}</h1>
           {report?.description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{isolate(report.description)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">

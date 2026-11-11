@@ -159,3 +159,16 @@ export const sameLayout = (a: LayoutSection[], b: LayoutSection[]) => JSON.strin
 
 /** Where the form designer for an entity opens (the designer itself loads on first use). */
 export const formDesignerLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/form`;
+
+/** Nothing entered: no value, an empty string or an empty list. (`false` and `0` are values.) */
+export const isEmptyValue = (v: unknown): boolean => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+
+/** How many items from `from` on satisfy `pred` in an unbroken run. */
+export function runLength<T>(items: readonly T[], from: number, pred: (item: T) => boolean): number {
+  let n = 0;
+  while (from + n < items.length && pred(items[from + n])) n++;
+  return n;
+}
+
+/** Read-only, empty fields a form folds into one quiet line once this many sit side by side. */
+export const FOLD_EMPTY_MIN = 3;

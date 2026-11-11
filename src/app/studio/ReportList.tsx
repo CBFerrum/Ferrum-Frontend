@@ -89,7 +89,7 @@ export function ReportList() {
     <div className="grid w-full gap-4 pointer-coarse:[&_[data-slot=button]]:min-h-11 pointer-coarse:[&_[data-slot=button]]:min-w-11 pointer-coarse:[&_[data-slot=input]]:h-11">
       <header className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold">{tr("Reports")}</h1>
+          <h1 className="page-title">{tr("Reports")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{tr("Tables, summaries, pivots and charts over any records. Each person sees only the data their permissions allow.")}</p>
         </div>
         {canCreate && (

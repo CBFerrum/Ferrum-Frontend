@@ -61,6 +61,32 @@ What turns neutral: every value outside the table, so "Not approved" and "Not ve
 
 Follow-up (server, not in this repository): a per-option tone in field metadata (`options: [{value: Open, tone: neutral}]`) is the long-term owner. Pass it as `tones` once the platform sends it, and shrink the built-in table.
 
+## What an app sees when it rebuilds (crafted kit)
+
+No exported name, prop or legacy class was removed or renamed. What changes on the next build, without any edit in the app:
+
+| Where | Before | Now |
+|---|---|---|
+| `.page-title` | 20px, weight 600 | 24px (`text-2xl`), tracking -0.015em, box one control tall: titles sit 3px lower and headers are 6px taller with the same 16px to the content |
+| `.select` | native arrow, 6px end padding | no native arrow; a quiet chevron; 28px end padding. A `<select multiple>` or `size > 1` keeps the native list |
+| `PageLoading` | centred spinner and label | a title bar, a line and five rows of skeletons, `role="status"` `aria-busy` with the same label (screen readers hear the label; sighted users see a page shape). Props unchanged |
+| `StatePanel` | dead centre of a tall region | top-weighted (48 to 64px under the region's top). `className` still merges |
+| Read-only ticks | a disabled checkbox | "Yes" / "No" text in an `<output>` named by its label. Anything that looked for `input[type=checkbox][disabled]` in a read-only record must look for the label's `output` |
+| Read-only empty fields | a row of dashes | a quieter, tighter row; three or more in a row fold into one "Not set: ..." button that opens to the fields |
+| `Menu` | Escape and choosing an item left focus on a removed element | focus returns to the trigger (Escape, an item chosen); a `Dialog` returns focus to its opener when it closes |
+| Page padding | `main` 20 / 24 | unchanged; the shell home's top moved from 24 to 20 and its heading uses the page-title scale |
+| Charts | one value axis | a measure under 2% of another gets its own right-hand axis (bars: drawn as a line) |
+| `relativeTime` | English words unless a locale was chosen | words follow the page's language; on a right-to-left page the phrase is isolated so "2 hours ago" keeps its number first |
+| `.chip` | bordered, fixed-height filter token (list-only look), pressed + hover unreadable | a general pill (centred content, button, link or span, wraps in `.chips`); pressed + hover legible. The list filter's token is `.chip.chip-field` (FilterBar adds the class). Apps using `className="chip"` get the pill |
+| `.table tfoot` | a `th` kept the header's grey sticky fill beside white `td`s | one plain row: rule above, weight 600, same fill |
+| Generic reports (`.report`) | plain table | scrolls in `.report-frame` with sticky head and first column; `_bold` rows weight + rule; zero faint, negative `--danger`; quiet "what was run" line under the title |
+| Printing | no print rules: the sidebar and bar printed too | `@media print` prints the content only (see PATTERNS.md, Printing) |
+| `Toggle` pressed | `--accent` fill (the same as hover) | `--primary-soft` with accent text, unchanged by hover |
+| `Toaster`, `ConfirmHost`, `useResolvedTheme` | threw when server-rendered | have a server snapshot |
+| Removed CSS | `.module-link` (unused since the records home was rewritten; no app repository uses it) | gone. `.chips` stays: Collab and Apps still use it. `.home-grid` was already gone |
+
+New, additive: `EmptyRun` (`src/app/EmptyRun.tsx`), `.read-text`, `.field-empty`, `.empty-run`, `smallSeries` (`src/app/studio/dashboard/charts.ts`), `setFormatLocale(tag, pageLanguage)`.
+
 ## Rollback
 
 - Spacing unit: delete the `--spacing: calc(4 / 14 * 1rem);` line in `src/index.css` (Tailwind's default returns). Also restore `--control-h-sm` to `calc(28 / 14 * 1rem)` and `SIDEBAR_WIDTH_ICON` to `"3rem"` in `src/components/ui/sidebar.tsx`.

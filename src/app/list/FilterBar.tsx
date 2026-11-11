@@ -164,7 +164,7 @@ function TextFilter({ id, label, value, onChange }: { id: string; label: string;
 
 function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: string; open: boolean; onOpen: (open: boolean) => void; onChange: (v: string) => void }) {
   return (
-    <span className="chip" data-empty={value === "" || undefined}>
+    <span className="chip chip-field" data-empty={value === "" || undefined}>
       <Popover open={open} onOpenChange={onOpen}>
         <PopoverTrigger asChild>
           <button type="button" className="chip-body">

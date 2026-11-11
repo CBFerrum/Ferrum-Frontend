@@ -59,7 +59,7 @@ export function SpacesPage() {
     <div className="mx-auto w-full max-w-screen-2xl">
       <header className="mb-5 flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1 basis-64">
-          <h1 className="text-xl font-semibold tracking-tight">{tr("Spaces")}</h1>
+          <h1 className="page-title">{tr("Spaces")}</h1>
           <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">
             {tr("Home pages for modules and teams: shortcuts with live counts, charts, number cards, recent records, notes and checklists.")}
           </p>

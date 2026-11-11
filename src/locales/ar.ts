@@ -4092,6 +4092,8 @@ const words: Record<string, string> = {
   "More in Studio": "المزيد في Studio",
   "Run {when}": "شُغّل {when}",
   "Showing {n} of {total}": "عرض {n} من {total}",
+  "Not set: {labels}": "غير معيّن: {labels}",
+  "Hide empty fields": "إخفاء الحقول الفارغة",
 };
 
 export default words;

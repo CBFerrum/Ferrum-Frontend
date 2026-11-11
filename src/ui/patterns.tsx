@@ -80,7 +80,7 @@ export function StatePanel({
   const d = defaults(kind);
   const description = children ?? d.hint;
   return (
-    <Empty data-state-kind={kind} role={role} aria-busy={kind === "loading" || undefined} className={className}>
+    <Empty data-state-kind={kind} role={role} aria-busy={kind === "loading" || undefined} className={cn("justify-start pt-12 md:pt-16", className)}>
       <EmptyHeader>
         <EmptyMedia variant="icon" className={tone}>
           <Glyph aria-hidden="true" className={kind === "loading" ? "animate-spin motion-reduce:animate-none" : undefined} />

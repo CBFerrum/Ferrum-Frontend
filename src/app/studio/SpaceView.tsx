@@ -83,7 +83,7 @@ export function SpaceView() {
           <SpaceIcon name={s.icon} className="size-5" />
         </span>
         <div className="min-w-0 flex-1 basis-56">
-          <h1 className="text-xl font-semibold tracking-tight break-words">{isolate(s.label)}</h1>
+          <h1 className="page-title break-words">{isolate(s.label)}</h1>
           {s.description && <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">{isolate(s.description)}</p>}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {module && <Badge variant="outline">{isolate(module.label)}</Badge>}

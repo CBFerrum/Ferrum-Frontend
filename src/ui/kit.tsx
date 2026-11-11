@@ -17,8 +17,10 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
+import { cn } from "../lib/utils";
 import { knownStatusTone } from "../lib/statusTones";
 
 // ── icons ──
@@ -214,17 +216,23 @@ export function Dialog({
   description?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const descId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (open && !d.open) {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       d.showModal();
       // showModal() would focus the header's close button; prefer the marked or first field instead.
       const first = d.querySelector<HTMLElement>("[data-autofocus]") ?? d.querySelector<HTMLElement>(".dialog-body :is(input, select, textarea):not([disabled])");
       first?.focus();
-    } else if (!open && d.open) d.close();
+    } else if (!open && d.open) {
+      d.close();
+      // The browser returns focus to what had it when the dialog opened; where that is gone (a menu that closed) or it is lost, to the opener.
+      if (opener.current?.isConnected && document.activeElement !== opener.current) opener.current.focus();
+    }
   }, [open]);
   return (
     <dialog
@@ -326,18 +334,30 @@ export function TabPanel({ id, tab, children }: { id: string; tab: string; child
 
 // ── states ──
 
-/** The states share one language: a soft rounded square with the icon, a title, one line of help, one action. */
+/** A route's fallback: the shape of a page (a title, a line under it, a few rows) in quiet skeletons, named for assistive technology. */
 export function PageLoading({ label = t("Loading…") }: { label?: string }) {
   return (
-    <div className="state" role="status">
-      <span className="state-icon">
-        <Spinner />
-      </span>
-      <p className="state-title">{label}</p>
+    <div role="status" aria-busy="true" className="grid gap-4 motion-reduce:[&_[data-slot=skeleton]]:animate-none">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="grid gap-4">
+        <div className="grid gap-2">
+          <Skeleton className="h-7 w-56 max-w-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+              <Skeleton className={cn("h-4", ["w-1/4", "w-1/3", "w-1/5", "w-2/5", "w-1/4"][i])} />
+              <Skeleton className="ms-auto h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
+/** The states share one language: a soft rounded square with the icon, a title, one line of help, one action. */
 export function EmptyState({ title, children, icon = "file" }: { title: string; children?: ReactNode; icon?: string }) {
   return (
     <div className="state">
@@ -429,7 +449,7 @@ function dismissToast(id: number) {
 const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
 
 export function Toaster() {
-  const list = useSyncExternalStore(toasts.subscribe, toasts.get);
+  const list = useSyncExternalStore(toasts.subscribe, toasts.get, toasts.get);
   return (
     <div className="toaster" role="status" aria-live="polite">
       {list.map((n) => (
@@ -466,7 +486,7 @@ export function confirmDialog(o: Omit<ConfirmRequest, "resolve">): Promise<boole
 }
 
 export function ConfirmHost() {
-  const req = useSyncExternalStore(confirmStore.subscribe, confirmStore.get);
+  const req = useSyncExternalStore(confirmStore.subscribe, confirmStore.get, confirmStore.get);
   const close = (ok: boolean) => {
     req?.resolve(ok);
     confirmStore.set(null);
@@ -546,9 +566,21 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   useDismiss(ref, open, () => setOpen(false));
+  // Closing from inside the menu (Escape, choosing an item) hands focus back to the button that opened it, so the keyboard keeps its place
+  // and a dialog an item opens returns there when it closes.
+  const closeFromInside = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape" && open) {
+      e.stopPropagation();
+      closeFromInside();
+      return;
+    }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const items = Array.from(ref.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
     if (!items.length) return;
@@ -559,6 +591,7 @@ export function Menu({
   return (
     <div className="menu" ref={ref} onKeyDown={onKeyDown}>
       <button
+        ref={trigger}
         type="button"
         className={buttonClass}
         aria-label={ariaLabel}
@@ -572,7 +605,7 @@ export function Menu({
       </button>
       {open && (
         <div className={`menu-list menu-${align}`} role="menu" id={menuId}>
-          {children(() => setOpen(false))}
+          {children(closeFromInside)}
         </div>
       )}
     </div>

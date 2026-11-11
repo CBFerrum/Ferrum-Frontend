@@ -14,8 +14,9 @@ import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
 import { useContributions } from "../lib/screens";
 import { t } from "../lib/i18n";
+import { cn } from "../lib/utils";
 import { ScreenFrame } from "./Screen";
-import { formDesignerLink } from "../lib/formLayout";
+import { FOLD_EMPTY_MIN, formDesignerLink, isEmptyValue, runLength } from "../lib/formLayout";
 import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
 import {
   Alert,
@@ -40,6 +41,7 @@ import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
+import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
 import { docstatusTone } from "@/lib/statusTones";
@@ -203,6 +205,7 @@ function tabLabel(label: string, errors: number): ReactNode {
 }
 
 const WIDE = new Set(["text", "markdown", "code", "json"]);
+
 /** How many of a record's own actions show as buttons in its header; the rest go in the overflow menu. */
 const INLINE_ACTIONS = 2;
 
@@ -725,7 +728,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         onChange={(v, t) => setField(f.name, v, t)}
       />
     );
-    if (f.type === "check") {
+    if (f.type === "check" && !st.disabled) {
       return (
         <div key={f.name} className="field">
           <div className="check-field">
@@ -747,7 +750,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       );
     }
     return (
-      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={WIDE.has(f.type) ? "span-all" : ""}>
+      <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={cn(WIDE.has(f.type) && "span-all", isQuiet(f, st) && "field-empty")}>
         {control}
       </FieldWrap>
     );
@@ -755,9 +758,22 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
 
   /** Consecutive read-only money fields (totals) read as one summary: labels and figures in a single column, in their own order. */
   const isTotal = (f: Field, st: FieldState) => f.type === "currency" && st.disabled && !f.kept_by_target;
+  /** A read-only field with nothing in it: it recedes, and three or more in a row fold into one line (an editable field never does). */
+  const isQuiet = (f: Field, st: FieldState) => st.disabled && !f.kept_by_target && f.type !== "table" && f.type !== "check" && f.type !== "currency" && isEmptyValue(doc[f.name]);
   const gridItems = (items: { f: Field; st: FieldState }[], sole: boolean): ReactNode[] => {
     const out: ReactNode[] = [];
     for (let i = 0; i < items.length; ) {
+      const quiet = runLength(items, i, ({ f, st }) => isQuiet(f, st) && !topErrors.has(f.name));
+      if (quiet >= FOLD_EMPTY_MIN) {
+        const run = items.slice(i, i + quiet);
+        out.push(
+          <EmptyRun key={`empty-${run[0].f.name}`} labels={run.map(({ f }) => f.label)}>
+            {run.map(({ f, st }) => renderField(f, st))}
+          </EmptyRun>,
+        );
+        i += quiet;
+        continue;
+      }
       let j = i;
       while (j < items.length && isTotal(items[j].f, items[j].st)) j++;
       if (j - i >= 3) {
