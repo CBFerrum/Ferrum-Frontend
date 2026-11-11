@@ -2456,6 +2456,25 @@ input[type="color"] {
   gap: 8px;
   width: min(380px, calc(100vw - 32px));
 }
+/* Where the stack sits when a page occupies the bottom end (a compose window): `toastPlacement()` / `useToastPlacement()` set
+   `data-placement` on the stack, and a page may declare it with `data-toast-placement` on any element. Phones keep the stack
+   at the top (below), where the on-screen keyboard cannot cover it, so these are for wider screens. `top-end` starts below the
+   platform bar. A stack that moves does not play its entrance again: the animation runs when a toast is added, not when the box moves. */
+@media (min-width: 601px) {
+  .toaster[data-placement="bottom-start"],
+  :root:has([data-toast-placement="bottom-start"]) .toaster {
+    inset-inline: max(16px, env(safe-area-inset-left)) auto;
+  }
+  :root:root:root .toaster[data-placement="top-end"], /* outranks the form pages' rule that lifts the stack over their action bar */
+  :root:root:root:has([data-toast-placement="top-end"]) .toaster {
+    top: calc(var(--ferrum-bar-height, var(--topbar-h)) + max(8px, env(safe-area-inset-top)));
+    bottom: auto;
+  }
+  .toaster[data-placement="top-end"] .toast,
+  :root:has([data-toast-placement="top-end"]) .toast {
+    animation-name: toast-in-top;
+  }
+}
 .toast {
   display: flex;
   align-items: flex-start;

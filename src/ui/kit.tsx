@@ -517,6 +517,22 @@ export function announce(message: string): void {
   spoken.set({ text: message, n: spoken.get().n + 1 });
 }
 
+// Where the stack sits: the bottom end unless a page says that corner is occupied. A page declares it with `useToastPlacement` (scoped
+// to the component that mounts it: the last one mounted wins and the one before comes back when it unmounts) or, in markup, with
+// `data-toast-placement="bottom-start | top-end"` on any element (styles.css).
+export type ToastPlacement = "bottom-end" | "bottom-start" | "top-end";
+const placements = createStore<{ id: number; value: ToastPlacement }[]>([]);
+let placementSeq = 0;
+
+/** While the calling component is mounted, notices sit at `placement` (a compose window at the bottom end asks for "bottom-start"). Phones keep them at the top. */
+export function useToastPlacement(placement: ToastPlacement): void {
+  useEffect(() => {
+    const id = ++placementSeq;
+    placements.set([...placements.get(), { id, value: placement }]);
+    return () => placements.set(placements.get().filter((p) => p.id !== id));
+  }, [placement]);
+}
+
 const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
 
 /** One toast; its timer stops while the pointer is over it or focus is inside, and resumes with what was left. */
@@ -564,8 +580,9 @@ function ToastView({ n }: { n: ToastItem }) {
 export function Toaster() {
   const list = useSyncExternalStore(toasts.subscribe, toasts.get, toasts.get);
   const say = useSyncExternalStore(spoken.subscribe, spoken.get, spoken.get);
+  const asked = useSyncExternalStore(placements.subscribe, placements.get, placements.get);
   return (
-    <div className="toaster" role="status" aria-live="polite">
+    <div className="toaster" role="status" aria-live="polite" data-placement={asked.at(-1)?.value}>
       {say.text && (
         <span key={say.n} className="sr-only">
           {say.text}
