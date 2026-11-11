@@ -2461,6 +2461,7 @@ const words: Record<string, string> = {
   "Day": "اليوم",
   "Deleting": "جارٍ الحذف",
   "Dismiss notification": "تجاهل الإشعار",
+  "Menus and pop-ups": "القوائم والنوافذ المنبثقة",
   "Distinct count": "عدد مميز",
   "Document Status": "حالة المستند",
   "Domain removed": "أُزيل النطاق",

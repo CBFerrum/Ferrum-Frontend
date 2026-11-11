@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
+import { PortalContainer } from "../lib/portal";
 import { cn } from "../lib/utils";
 import { knownStatusTone } from "../lib/statusTones";
 
@@ -216,6 +217,7 @@ export function Dialog({
   description?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const [self, setSelf] = useState<HTMLDialogElement | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const descId = useId();
@@ -236,7 +238,10 @@ export function Dialog({
   }, [open]);
   return (
     <dialog
-      ref={ref}
+      ref={(el) => {
+        ref.current = el;
+        setSelf(el);
+      }}
       className={`dialog ${wide ? "dialog-wide" : ""}`}
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
@@ -263,8 +268,11 @@ export function Dialog({
               <Icon name="x" />
             </button>
           </header>
-          <div className="dialog-body">{children}</div>
-          {footer && <footer className="dialog-footer">{footer}</footer>}
+          {/* Menus and pop-ups opened inside are drawn inside the dialog: the page behind it is inert, so a portal to <body> would be dimmed and dead. */}
+          <PortalContainer container={self}>
+            <div className="dialog-body">{children}</div>
+            {footer && <footer className="dialog-footer">{footer}</footer>}
+          </PortalContainer>
         </div>
       )}
     </dialog>

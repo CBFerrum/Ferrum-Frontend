@@ -8,7 +8,13 @@ import { Button as ShButton } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyRun } from "@/app/EmptyRun";
@@ -463,6 +469,10 @@ export function Sections() {
         </Dialog>
       </Section>
 
+      <Section id="menus" title="Menus, pop-ups and dialogs">
+        <MenusAndPopups />
+      </Section>
+
       <Section id="toast" title="Toast and confirm">
         <Row label="raise">
           <Button onClick={() => toast("Invoice INV-2026-00418 approved")}>Show toast</Button>
@@ -562,12 +572,104 @@ export function Sections() {
   );
 }
 
+/** Every shadcn/Radix overlay the kit owns, each with a trigger of its own, and the combinations that went wrong: a menu in a dialog, a pop-up in a sheet, a confirm over a dialog. */
+function MenusAndPopups() {
+  const [dlg, setDlg] = useState(false);
+  const [dlg2, setDlg2] = useState(false);
+  const many = Array.from({ length: 40 }, (_, i) => `Action ${i + 1}`);
+  const menu = (label: string, long = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <ShButton variant="outline" size="sm">{label}</ShButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {(long ? many : ["Open", "Rename", "Move to…"]).map((m) => (
+          <DropdownMenuItem key={m}>{m}</DropdownMenuItem>
+        ))}
+        {!long && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>By link</DropdownMenuItem>
+              <DropdownMenuItem>With a person</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const pop = (label: string) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <ShButton variant="outline" size="sm">{label}</ShButton>
+      </PopoverTrigger>
+      <PopoverContent aria-label="Date range">Pick a date range.</PopoverContent>
+    </Popover>
+  );
+  return (
+    <div data-gallery="menus" className="flex flex-col gap-3">
+      <Row label="menu">{menu("Dropdown menu")}{menu("Long menu", true)}</Row>
+      <Row label="popover">{pop("Popover")}</Row>
+      <Row label="select">
+        <Select>
+          <SelectTrigger className="w-40" aria-label="Status"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="done">Done</SelectItem>
+          </SelectContent>
+        </Select>
+      </Row>
+      <Row label="tooltip, card">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild><ShButton variant="outline" size="sm">Tooltip</ShButton></TooltipTrigger>
+            <TooltipContent>Bold (Ctrl+B)</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <HoverCard openDelay={0}>
+          <HoverCardTrigger asChild><ShButton variant="outline" size="sm">Hover card</ShButton></HoverCardTrigger>
+          <HoverCardContent>{PEOPLE[0]}, Finance</HoverCardContent>
+        </HoverCard>
+        <ContextMenu>
+          <ContextMenuTrigger className="rounded-md border border-dashed border-border px-3 py-1 text-sm">Right-click here</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem>Copy</ContextMenuItem>
+            <ContextMenuItem>Paste</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </Row>
+      <Row label="in a sheet">
+        <Sheet>
+          <SheetTrigger asChild><ShButton variant="outline" size="sm">Open sheet</ShButton></SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription>A pop-up opened from a sheet.</SheetDescription>
+            </SheetHeader>
+            <div className="flex gap-2 p-4">{menu("Menu in a sheet")}{pop("Popover in a sheet")}</div>
+          </SheetContent>
+        </Sheet>
+      </Row>
+      <Row label="in a dialog">
+        <Button onClick={() => setDlg(true)}>Dialog with a menu</Button>
+        <Button onClick={() => setDlg2(true)}>Confirm over a dialog</Button>
+      </Row>
+      <Dialog open={dlg} onClose={() => setDlg(false)} title="Move INV-2026-00418">
+        <div className="flex gap-2">{menu("Menu in a dialog")}{pop("Popover in a dialog")}</div>
+      </Dialog>
+      <Dialog open={dlg2} onClose={() => setDlg2(false)} title="Edit INV-2026-00418" footer={<Button onClick={() => setDlg2(false)}>Close</Button>}>
+        <Button variant="danger" data-gallery="confirm-opener" onClick={() => void confirmDialog({ title: "Discard the changes?", message: "Your edits to INV-2026-00418 are lost.", confirmLabel: "Discard", danger: true })}>Discard changes…</Button>
+      </Dialog>
+    </div>
+  );
+}
+
 export function Gallery() {
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-24">
+    <main className="mx-auto max-w-6xl px-4 pb-24">
       <Controls />
       <h1 className="py-4 text-2xl font-semibold">Ferrum gallery</h1>
       <Sections />
-    </div>
+    </main>
   );
 }
