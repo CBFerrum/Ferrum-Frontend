@@ -50,13 +50,33 @@ function resolveLikeTheKit(root) {
   };
 }
 
+/** The left menu's icons are one lazy chunk (packages/kit/src/NavIconTable.tsx). Every page draws a sidebar, so the page's HTML asks
+ *  for that chunk and what it imports at once, as modulepreload links, and the entry script no longer has to find it first.
+ *  The links say `data-budget="lazy"`: they do not hold the page back, so budgets.mjs does not count them as the entry. */
+export function preloadNavIcons() {
+  return {
+    name: "ferrum:preload-navicons",
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, { bundle }) {
+        const chunks = Object.values(bundle ?? {});
+        const table = chunks.find((c) => c.type === "chunk" && c.facadeModuleId?.replace(/\?.*$/, "").endsWith("/NavIconTable.tsx"));
+        if (!table) return undefined;
+        const entry = new Set(chunks.filter((c) => c.type === "chunk" && c.isEntry).flatMap((c) => [c.fileName, ...c.imports]));
+        const files = [table.fileName, ...table.imports.filter((f) => !entry.has(f))];
+        return files.map((f) => ({ tag: "link", attrs: { rel: "modulepreload", crossorigin: "", href: `./${f}`, "data-budget": "lazy" }, injectTo: "head" }));
+      },
+    },
+  };
+}
+
 /** The configuration for the interface whose `vite.config.mjs` has this `import.meta.url`. */
 export function ferrumApp(configUrl, { outDir = "dist" } = {}) {
   const root = fileURLToPath(new URL(".", configUrl));
   return defineConfig({
     root,
     base: "./",
-    plugins: [tailwindcss(), resolveLikeTheKit(root)],
+    plugins: [tailwindcss(), resolveLikeTheKit(root), preloadNavIcons()],
     resolve: { alias: [{ find: /^@ferrum\/(.*)$/, replacement: `${web}packages/$1/src/index.ts` }] },
     esbuild: { jsx: "automatic" },
     server: { fs: { allow: [root, web] } },

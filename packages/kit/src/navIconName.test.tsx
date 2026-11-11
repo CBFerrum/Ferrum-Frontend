@@ -2,7 +2,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import entities from "./navIconName.entities.json";
-import { NavIcon, NAV_ICONS } from "./NavIcon";
+import { NavIcon, navIconsReady } from "./NavIcon";
+import { NAV_ICONS } from "./NavIconTable";
 import { CONCEPTS, conceptIcon, DICTIONARY, nameWords, NAV_ICON_NAMES, navIcon } from "./navIconName";
 
 describe("navIcon", () => {
@@ -92,10 +93,17 @@ describe("the drawing", () => {
     expect(Object.keys(NAV_ICONS).sort()).toEqual([...NAV_ICON_NAMES].sort());
     for (const icon of DICTIONARY.values()) expect(NAV_ICONS[icon], icon).toBeTruthy();
   });
-  it("is a decorative 16px stroke", () => {
+  it("holds a 16px slot until the table arrives, then draws a decorative 16px stroke", async () => {
+    const slot = renderToStaticMarkup(<NavIcon entity="Customer" />);
+    expect(slot).toContain('aria-hidden="true"');
+    expect(slot).toContain("width:16px");
+    expect(slot).not.toContain("<svg");
+    await navIconsReady();
     const html = renderToStaticMarkup(<NavIcon entity="Customer" />);
     expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('width="16"');
+    expect(html).toContain("<svg");
     expect(html).toContain("nav-icon");
+    expect(await navIconsReady()).toBeUndefined(); // one promise, asked again at no cost
   });
 });

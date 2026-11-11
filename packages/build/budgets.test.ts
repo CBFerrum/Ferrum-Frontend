@@ -27,6 +27,15 @@ describe("size budgets", () => {
     expect(m.total.css).toBeGreaterThan(10_000);
   });
 
+  it("does not count a lazy preload (the menu's icons, fetched early but not needed to start)", () => {
+    const dir = dist(
+      { "index.js": 60_000, "icons.js": 150_000, "index.css": 1_000 },
+      `<script type="module" crossorigin src="./assets/index.js"></script><link rel="modulepreload" crossorigin href="./assets/icons.js" data-budget="lazy"><link rel="stylesheet" href="./assets/index.css">`,
+    );
+    const m = measure(dir, "app");
+    expect(m.total.js).toBeLessThan(65_000);
+  });
+
   it("fails an interface whose first script is too big", () => {
     const dir = dist({ "index.js": 210 * 1024 }, `<script type="module" src="/assets/index.js"></script>`);
     const m = measure(dir, "app");
