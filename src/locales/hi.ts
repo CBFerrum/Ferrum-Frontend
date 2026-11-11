@@ -4112,6 +4112,9 @@ const words: Record<string, string> = {
   "Values from the record can be shown with": "रिकॉर्ड के मान इससे दिखाए जा सकते हैं",
   "Show the refusal on field": "इनकार इस फ़ील्ड पर दिखाएँ",
   "The rule's name (default)": "नियम का नाम (डिफ़ॉल्ट)",
+  "Settings: one record for the workspace": "सेटिंग: कार्यस्थान के लिए एक रिकॉर्ड",
+  "One record for the workspace; rules read it as": "कार्यस्थान के लिए एक रिकॉर्ड; नियम इसे इस रूप में पढ़ते हैं",
+  "Open the settings of {entity}": "{entity} की सेटिंग खोलें",
 };
 
 export default words;

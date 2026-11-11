@@ -164,8 +164,13 @@ function YourEntities() {
             {mine.map((e) => (
               <li key={e.name} className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                 <strong>{isolate(e.label)}</strong>
-                <Badge>{e.kind === "document" ? tr("Document") : tr("List")}</Badge>
+                <Badge>{e.kind === "document" ? tr("Document") : e.kind === "settings" ? tr("Settings") : tr("List")}</Badge>
                 <span className="spacer" />
+                {e.kind === "settings" && (
+                  <Link className="btn btn-sm" to={`/e/${encodeURIComponent(e.name)}`} aria-label={tr("Open the settings of {entity}", { entity: isolate(e.label) })}>
+                    {tr("Open")}
+                  </Link>
+                )}
                 <Link className="btn btn-sm" to={`/customize/${encodeURIComponent(e.name)}/design`} aria-label={tr("Design {entity}", { entity: isolate(e.label) })}>
                   {tr("Design")}
                 </Link>

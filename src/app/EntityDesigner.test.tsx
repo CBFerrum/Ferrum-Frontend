@@ -68,4 +68,12 @@ describe("the entity designer", () => {
     expect(html).toContain("Gold");
     expect(await violations(html)).toEqual([]);
   });
+
+  it("explains a settings entity and leaves out numbering", async () => {
+    const html = await page(fromDef({ name: "XPolicy", label: "Claim Policy", kind: "settings", fields: [{ name: "limit", label: "Limit", type: "int" }] }, {}, ["XPolicy"]));
+    expect(text(html)).toContain("One record for the workspace; rules read it as");
+    expect(html).toContain("XPolicy");
+    expect(text(html)).not.toContain("Number the records automatically");
+    expect(await violations(html)).toEqual([]);
+  });
 });

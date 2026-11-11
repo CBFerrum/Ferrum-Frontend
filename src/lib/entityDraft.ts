@@ -53,7 +53,7 @@ export interface DraftEntity {
   label: string;
   label_plural: string;
   /** `document` is submitted and can be cancelled; `plain-document` is a document never submitted. */
-  kind: "master" | "document" | "plain-document" | "child";
+  kind: "master" | "document" | "plain-document" | "child" | "settings";
   description: string;
   /** Key of a field. */
   title: string;
@@ -217,7 +217,7 @@ function fieldFrom(f: Raw, defs: Record<string, Raw>): DraftField {
 function entityFrom(def: Raw, defs: Record<string, Raw>): DraftEntity {
   const extra: Raw = {};
   for (const [k, v] of Object.entries(def)) if (!KNOWN_ENTITY.has(k)) extra[k] = v;
-  const kind = def.kind === "child" ? "child" : def.kind === "document" ? (def.submittable === true ? "document" : "plain-document") : "master";
+  const kind = def.kind === "child" || def.kind === "settings" ? def.kind : def.kind === "document" ? (def.submittable === true ? "document" : "plain-document") : "master";
   const fields = (Array.isArray(def.fields) ? (def.fields as Raw[]) : []).map((f) => fieldFrom(f, defs));
   const key = (name: string) => fields.find((f) => f.name === name)?.key ?? `?${name}`;
   for (const f of fields) {
@@ -317,7 +317,9 @@ function entityDef(e: DraftEntity, names: Record<string, string>): Raw {
   if (e.kind === "document") out.submittable = true;
   text(out, "description", e.description);
   if (e.title) out.title_field = name(e.title);
-  if (e.numbering) out.numbering = { template: numberingTemplate(e.numbering) };
+  // One record for the workspace has nothing to number.
+  if (e.kind === "settings") delete out.numbering;
+  else if (e.numbering) out.numbering = { template: numberingTemplate(e.numbering) };
   else if (e.numberingRaw) out.numbering = e.numberingRaw;
   out.fields = fields;
   const groups = e.unique.filter((g) => g.length).map((g) => g.map(name));
