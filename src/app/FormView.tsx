@@ -170,7 +170,10 @@ export function ErrorSummary({ items, onGo }: { items: SummaryItem[]; onGo: (it:
   if (!items.length) return null;
   return (
     <>
-      <p className="summary-lead">{tr("Fields to fix")}</p>
+      <p className="summary-lead">
+        <Icon name="alert" size={14} />
+        {tr("Fields to fix")}
+      </p>
       <ul className="error-summary">
         {items.map((it, i) => (
           <li key={i}>
@@ -200,6 +203,8 @@ function tabLabel(label: string, errors: number): ReactNode {
 }
 
 const WIDE = new Set(["text", "markdown", "code", "json"]);
+/** How many of a record's own actions show as buttons in its header; the rest go in the overflow menu. */
+const INLINE_ACTIONS = 2;
 
 function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; initial: Doc | null; reload: () => Promise<Doc | undefined> }) {
   const rec = useRecordsBase();
@@ -643,7 +648,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     if (e.row) {
       return { text: tr("{meta} row {value}, {value2}", { meta: fieldLabel(meta, e.row[0]), value: e.row[1] + 1, value2: meta.children[e.row[0]]?.fields.find((f) => f.name === e.field)?.label ?? humanize(e.field) }), message: e.message };
     }
-    return { text: fieldLabel(meta, e.field), message: meta.fields.find((f) => f.name === e.field)?.type === "table" || !tabOf.has(e.field) ? e.message : undefined };
+    return { text: fieldLabel(meta, e.field), message: e.message };
   };
   /** Moves focus to what an error in the summary names: the field, the cell, or the table's own controls. */
   const goTo = (it: { field: string; row?: [string, number]; tab?: string }) => {
@@ -748,20 +753,42 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     );
   };
 
+  /** Consecutive read-only money fields (totals) read as one summary: labels and figures in a single column, in their own order. */
+  const isTotal = (f: Field, st: FieldState) => f.type === "currency" && st.disabled && !f.kept_by_target;
+  const gridItems = (items: { f: Field; st: FieldState }[], sole: boolean): ReactNode[] => {
+    const out: ReactNode[] = [];
+    for (let i = 0; i < items.length; ) {
+      let j = i;
+      while (j < items.length && isTotal(items[j].f, items[j].st)) j++;
+      if (j - i >= 3) {
+        out.push(
+          <div key={`totals-${items[i].f.name}`} className="totals span-all">
+            {items.slice(i, j).map(({ f, st }) => renderField(f, st))}
+          </div>,
+        );
+        i = j;
+      } else {
+        out.push(renderField(items[i].f, items[i].st, sole));
+        i++;
+      }
+    }
+    return out;
+  };
+
   const details = (tab: string) => (
-    <>
+    <div className="form-card">
       {shown.map(({ s, items }) => {
         if (tabId(s.tab) !== tab) return null;
         const hasError = items.some(({ f }) => topErrors.has(f.name) || errors.some((e) => e.row?.[0] === f.name));
         return (
           <FormSection key={s.key} label={isolate(s.label)} collapsible={s.collapsible} forceOpen={hasError}>
             <div className="form-grid" style={{ "--cols": Math.min(Math.max(s.columns, 1), 4) } as CSSProperties}>
-              {items.map(({ f, st }) => renderField(f, st, items.length === 1 && f.label === s.label))}
+              {gridItems(items, items.length === 1 && items[0].f.label === s.label)}
             </div>
           </FormSection>
         );
       })}
-    </>
+    </div>
   );
 
   const titleValue = meta.title_field ? (doc._titles?.[meta.title_field] ?? doc[meta.title_field]) : null;
@@ -773,34 +800,40 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const canAmend = !isNew && meta.submittable && docstatus === 2 && can(perms, "create");
   const canDelete = !isNew && meta.kind !== "ledger" && docstatus !== 1 && allowed("delete");
   const busyAny = !!busy;
+  // The header keeps one row: the first few of a record's own actions stand as buttons, the rest wait in the overflow menu with the others.
+  const loose = actions.filter((b) => !b.action.group);
+  const inline = loose.slice(0, INLINE_ACTIONS);
+  const spill = loose.slice(INLINE_ACTIONS);
 
   return (
     <div>
-      <div className="page-head">
-        <div style={{ minWidth: 0 }}>
-          <div className="crumbs">
-            <Link to={`${rec}/${E}`}>{isolate(meta.label_plural)}</Link>
-            <Icon name="chevronRight" size={12} />
-          </div>
-          <h1 className="page-title">
-            {isolate(heading)}
-            <HelpLink meta={meta} />
-          </h1>
-          {sub && <p className="page-sub">{isolate(sub)}</p>}
-          <div className="row" style={{ marginTop: 8 }}>
-            {meta.submittable && <Badge tone={docstatusTone(docstatus)}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}
-            {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <StatusBadge value={status} />}
-            {wfState && <Badge tone="purple">{isolate(wfState)}</Badge>}
-            {dirty && <Badge tone="amber">{tr("Not saved")}</Badge>}
-            {calc.pending ? (
-              <span className="row faint" role="status">
-                <Spinner small /> {tr("Calculating…")}
-              </span>
-            ) : calc.error && touched ? (
-              <span className="faint" title={calc.error}>
-                {tr("Totals pending: {error}", { error: calc.error })}
-              </span>
-            ) : null}
+      <div className="crumbs">
+        <Link to={`${rec}/${E}`}>{isolate(meta.label_plural)}</Link>
+        <Icon name="chevronRight" size={12} />
+      </div>
+      <div className="page-head record-head">
+        <div className="record-id">
+          <div className="record-title-line">
+            <h1 className="page-title">
+              {isolate(heading)}
+              <HelpLink meta={meta} />
+            </h1>
+            {sub && <span className="record-sub">{isolate(sub)}</span>}
+            <div className="record-state">
+              {meta.submittable && <Badge tone={docstatusTone(docstatus)}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}
+              {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <StatusBadge value={status} />}
+              {wfState && <Badge tone="purple">{isolate(wfState)}</Badge>}
+              {dirty && <Badge tone="amber">{tr("Not saved")}</Badge>}
+              {calc.pending ? (
+                <span className="row faint" role="status">
+                  <Spinner small /> {tr("Calculating…")}
+                </span>
+              ) : calc.error && touched ? (
+                <span className="faint" title={calc.error}>
+                  {tr("Totals pending: {error}", { error: calc.error })}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="page-actions doc-actions">
@@ -829,11 +862,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               {isolate(t.action)}
             </Button>
           ))}
-          {actions
-            .filter((b) => !b.action.group)
-            .map((b) => (
-              <ActionButton key={b.action.name} state={b} loading={busy === `action:${b.action.name}`} disabled={busyAny} onRun={() => void runAction(b.action)} />
-            ))}
+          {inline.map((b) => (
+            <ActionButton key={b.action.name} state={b} loading={busy === `action:${b.action.name}`} disabled={busyAny} onRun={() => void runAction(b.action)} />
+          ))}
           {[...new Set(actions.map((b) => b.action.group).filter((g): g is string => !!g))].map((group) => (
             <Menu key={group} label={group}>
               {(close) =>
@@ -855,19 +886,13 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             </Menu>
           ))}
           {!isNew && (
-            <Button icon="printer" onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))}>
-              {t("Print")}
-            </Button>
+            <Button variant="ghost" className="btn-icon" icon="printer" aria-label={t("Print")} title={t("Print")} onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))} />
           )}
           {!isNew && pdf && (
-            <Button icon="download" onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))}>
-              {tr("PDF")}
-            </Button>
+            <Button variant="ghost" className="btn-icon" icon="download" aria-label={tr("PDF")} title={tr("PDF")} onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))} />
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
-            <Button icon="mail" onClick={() => setEmailing(true)}>
-              {t("Email")}
-            </Button>
+            <Button variant="ghost" className="btn-icon" icon="mail" aria-label={t("Email")} title={t("Email")} onClick={() => setEmailing(true)} />
           )}
           {asking && (
             <ActionDialog
@@ -903,10 +928,22 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               }}
             />
           )}
-          {(canDelete || me.user.is_admin) && (
+          {(canDelete || me.user.is_admin || spill.length > 0) && (
             <Menu ariaLabel={t("More actions")} icon="chevronDown">
               {(close) => (
                 <>
+                  {spill.map((b) => (
+                    <MenuItem
+                      key={b.action.name}
+                      refusal={b.refusal}
+                      onSelect={() => {
+                        close();
+                        if (!busyAny) void runAction(b.action);
+                      }}
+                    >
+                      {isolate(b.action.label)}
+                    </MenuItem>
+                  ))}
                   {me.user.is_admin && (
                     <MenuItem
                       onSelect={() => {
@@ -1019,9 +1056,7 @@ function FormSection({ label, collapsible, forceOpen, children }: { label: strin
     return (
       <section className="section" aria-label={label ?? undefined}>
         {label && <h2 className="section-title">{isolate(label)}</h2>}
-        <div className="section-body" style={label ? undefined : { paddingTop: 16 }}>
-          {children}
-        </div>
+        <div className="section-body">{children}</div>
       </section>
     );
   }
@@ -1073,14 +1108,14 @@ function AuditPanel({ meta, id }: { meta: EntityMeta; id: string }) {
       {!events.length ? (
         <p className="muted">{tr("No history recorded yet.")}</p>
       ) : (
-        <ol className="timeline">
+        <ol className="timeline audit">
           {[...events].reverse().map((ev, i) => (
             <li key={ev.id ?? `${ev.at}-${i}`}>
-              <div className="row">
+              <div className="audit-head">
                 <strong>{isolate(humanize(ev.action))}</strong>
                 <span className="muted">{tr("by")} {ev.actor_name ?? (ev.actor ? shortId(ev.actor) : tr("System"))}</span>
-                <span className="faint">{isolate(formatDateTime(ev.at))}</span>
                 {ev.version != null && <Badge>v{ev.version}</Badge>}
+                <time className="faint audit-time" dateTime={ev.at}>{isolate(formatDateTime(ev.at))}</time>
               </div>
               <DiffTable meta={meta} diff={ev.diff} />
             </li>
@@ -1091,20 +1126,29 @@ function AuditPanel({ meta, id }: { meta: EntityMeta; id: string }) {
   );
 }
 
+/** How many changed fields an event shows before "Show all". */
+const DIFF_ROWS = 6;
+/** How long a changed value may be before it is cut, with a way to read all of it. */
+const DIFF_CHARS = 80;
+
 function DiffTable({ meta, diff }: { meta: EntityMeta; diff?: Record<string, unknown> | null }) {
+  const [all, setAll] = useState(false);
   const entries = Object.entries(diff ?? {}).filter(([k]) => !AUDIT_SKIP.has(k));
   if (!entries.length) return null;
+  const shown = all ? entries : entries.slice(0, DIFF_ROWS);
   return (
     <div className="table-wrap">
       <table className="diff">
         <tbody>
-          {entries.map(([k, v]) => {
+          {shown.map(([k, v]) => {
             const [before, after] = Array.isArray(v) && v.length === 2 ? v : [undefined, v];
             const f = meta.fields.find((x) => x.name === k);
+            const had = before != null && before !== "";
             return (
               <tr key={k}>
-                <td className="muted">{f?.label ?? SYSTEM_FIELD_LABELS[k] ?? humanize(k)}</td>
-                <td className="old">{before != null && before !== "" && <DiffValue name={k} field={f} value={before} />}</td>
+                <td className="diff-label">{f?.label ?? SYSTEM_FIELD_LABELS[k] ?? humanize(k)}</td>
+                <td className="old">{had && <DiffValue name={k} field={f} value={before} />}</td>
+                <td className="diff-arrow" aria-hidden="true">{had ? "→" : ""}</td>
                 <td className="new">
                   <DiffValue name={k} field={f} value={after} />
                 </td>
@@ -1113,7 +1157,26 @@ function DiffTable({ meta, diff }: { meta: EntityMeta; diff?: Record<string, unk
           })}
         </tbody>
       </table>
+      {entries.length > DIFF_ROWS && (
+        <button type="button" className="link-btn diff-more" aria-expanded={all} onClick={() => setAll(!all)}>
+          {all ? tr("Show less") : tr("Show all {n} changes", { n: entries.length })}
+        </button>
+      )}
     </div>
+  );
+}
+
+/** A changed value; one too long to scan is cut, and the rest is one click away. */
+function Clamp({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  if (text.length <= DIFF_CHARS) return <>{text}</>;
+  return (
+    <>
+      {open ? text : `${text.slice(0, DIFF_CHARS).trimEnd()}…`}{" "}
+      <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? tr("Show less") : tr("Show all")}
+      </button>
+    </>
   );
 }
 
@@ -1122,5 +1185,5 @@ function DiffValue({ name, field, value }: { name: string; field?: Field; value:
   if (name === "docstatus" && typeof value === "number") return <>{DOCSTATUS_LABEL[value] ?? value}</>;
   if (Array.isArray(value)) return <>{tr("{length} row{value}", { length: value.length, value: value.length === 1 ? "" : "s" })}</>;
   if (field?.type === "link" && field.to && typeof value === "string") return <LinkTitle to={field.to} id={value} />;
-  return <>{field ? formatValue(field, value) : typeof value === "object" ? JSON.stringify(value) : String(value)}</>;
+  return <Clamp text={field ? formatValue(field, value) : typeof value === "object" ? JSON.stringify(value) : String(value)} />;
 }

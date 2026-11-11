@@ -12,6 +12,6 @@ describe("the gallery", () => {
 
   it("has stable section ids", () => {
     const html = renderToString(<Sections />);
-    for (const id of ["type", "colour", "buttons", "inputs", "badges", "tabs", "overlays", "alerts", "states", "skeletons", "save", "selection"]) expect(html).toContain(`id="g-${id}" data-gallery="${id}"`);
+    for (const id of ["type", "colour", "buttons", "inputs", "record-form", "badges", "tabs", "overlays", "alerts", "states", "skeletons", "save", "selection"]) expect(html).toContain(`id="g-${id}" data-gallery="${id}"`);
   });
 });
