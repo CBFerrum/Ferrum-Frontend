@@ -369,6 +369,7 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
             owner={d.name}
             inButton
             lines={meta.children}
+            earlier={d.effects.slice(0, i)}
             onChange={(p) => patchEffect(a.key, p)}
             onMove={(by) => set({ ...d, effects: move(d.effects, i, by) })}
             onRemove={() => set({ ...d, effects: d.effects.filter((x) => x.key !== a.key) })}

@@ -30,6 +30,12 @@ describe("which buttons a record shows", () => {
     const [b] = actionButtons([a], ctx());
     expect(b.refusal).toBeNull();
   });
+  it("leaves a refusal to the server when its message has a placeholder", () => {
+    const a = act({ refuse_if: [{ when: "true", message: "{{ doc.title }} is waiting" }, { when: "true", message: "{% if doc.a %}x{% endif %}" }] });
+    expect(actionButtons([a], ctx())[0].refusal).toBeNull();
+    const b = act({ refuse_if: [{ when: "true", message: "{{ doc.title }}" }, { when: "true", message: "plain" }] });
+    expect(actionButtons([b], ctx())[0].refusal).toBe("plain");
+  });
 });
 
 describe("which workflow steps are offered", () => {

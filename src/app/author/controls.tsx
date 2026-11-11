@@ -2,7 +2,7 @@
 // list item, and the rows of list filters (field, comparison, value in the list API's `[field, op, value]` form).
 
 import { t as tr, isolate } from "@ferrum/client";
-import { filterText, filterValue, MAX_FILTERS, newFilter, opsFor, type FilterRow } from "../../lib/automationDraft";
+import { filterText, filterValue, MAX_FILTERS, newFilter, newKey, opsFor, type FilterRow, type Row } from "../../lib/automationDraft";
 import type { Field as MetaField } from "../../lib/meta";
 import { Button } from "../../ui/kit";
 
@@ -86,6 +86,31 @@ export function FilterRows({ rows, fields, onChange }: { rows: FilterRow[]; fiel
       <div>
         <Button size="sm" icon="plus" disabled={rows.length >= MAX_FILTERS} onClick={() => onChange([...rows, newFilter()])}>{tr("Add a filter")}</Button>
         {rows.length >= MAX_FILTERS && <span className="faint"> {tr("At most {n} filters.", { n: MAX_FILTERS })}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Rows of field → expression. */
+export function Rows({ rows, fields, onChange, what, typed }: { /** Names are typed: the fields are not known. */ typed?: boolean; rows: Row[]; fields: Pick<MetaField, "name" | "label">[]; onChange: (r: Row[]) => void; what: string }) {
+  const edit = (key: string, patch: Partial<Row>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  return (
+    <div className="stack">
+      {rows.map((r, i) => (
+        <div key={r.key} className="row" style={wrap}>
+          <div style={grow}>
+            {typed ? (
+              <input className="input mono" aria-label={tr("Field of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.field} onChange={(e) => edit(r.key, { field: e.target.value })} />
+            ) : (
+              <Pick label={tr("Field of {what} {n}", { what, n: i + 1 })} value={r.field} onChange={(v) => edit(r.key, { field: v })} options={optionsOf(fields, r.field)} />
+            )}
+          </div>
+          <input className="input mono" style={{ ...grow, flexBasis: 240 }} aria-label={tr("Value of {what} {n}", { what, n: i + 1 })} spellCheck={false} autoCapitalize="none" value={r.expr} onChange={(e) => edit(r.key, { expr: e.target.value })} />
+          <Button size="sm" icon="trash" aria-label={tr("Remove {what} {n}", { what, n: i + 1 })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))} />
+        </div>
+      ))}
+      <div>
+        <Button size="sm" icon="plus" onClick={() => onChange([...rows, { key: newKey(), field: "", expr: "" }])}>{tr("Add a field")}</Button>
       </div>
     </div>
   );
