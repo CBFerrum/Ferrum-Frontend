@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCheck, buildRow, checkable, checkProblems, newCheckRow, numberLiteral, openAs, opsForType, parseCheck, quote, type CheckDraft, type CheckOp } from "./checkBuilder";
+import { addRuleOp, buildCheck, buildRow, checkable, checkProblems, newCheckRow, numberLiteral, openAs, opsForType, parseCheck, quote, type CheckDraft, type CheckOp } from "./checkBuilder";
 
 const fields = [
   { name: "title", type: "data" },
@@ -117,5 +117,13 @@ describe("the fields a check can be about", () => {
   it("leaves out lines, secrets, what the viewer may not read and what is hidden", () => {
     const all = [{ name: "a", type: "data", can_read: true }, { name: "b", type: "table", can_read: true }, { name: "c", type: "secret", can_read: true }, { name: "d", type: "data" }, { name: "e", type: "data", can_read: true, hidden: true }, { name: "f", type: "check", can_read: true }];
     expect(checkable(all as never).map((x) => x.name)).toEqual(["a", "f"]);
+  });
+});
+
+describe("addRuleOp", () => {
+  it("sends field only when one is chosen", () => {
+    const r = { name: " r ", message: " {{ doc.qty }} too many ", on: "save" };
+    expect(addRuleOp(r, "doc.qty < 5").rule).toEqual({ name: "r", check: "doc.qty < 5", message: "{{ doc.qty }} too many", on: "save" });
+    expect(addRuleOp({ ...r, field: "qty" }, "doc.qty < 5").rule.field).toBe("qty");
   });
 });

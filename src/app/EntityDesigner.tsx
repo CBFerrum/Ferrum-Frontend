@@ -285,9 +285,9 @@ function Saved({ name, label, created, kind }: { name: string; label: string; cr
       <div className="stack" role="status">
         <strong>{created ? tr("{entity} is created.", { entity: isolate(label) }) : tr("The changes to {entity} are saved.", { entity: isolate(label) })}</strong>
         <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-          <Link className="btn" to={`/e/${e}`}>{tr("Open its records")}</Link>
+          <Link className="btn" to={`/e/${e}`}>{kind === "settings" ? tr("Open the settings") : tr("Open its records")}</Link>
           <Link className="btn" to={formDesignerLink(name)}>{tr("Design form")}</Link>
-          {kind !== "master" && <Link className="btn" to={workflowDesignerLink(name)}>{tr("Design workflow")}</Link>}
+          {kind !== "master" && kind !== "settings" && <Link className="btn" to={workflowDesignerLink(name)}>{tr("Design workflow")}</Link>}
         </div>
         <p>
           {tr("People see {entity} only once a role is given access to it:", { entity: isolate(label) })} <Link to="/admin?tab=roles">{tr("give one access under Administration → Roles")}</Link>.
@@ -320,6 +320,7 @@ function Basics({ draft, onChange, onEntity, problems }: { draft: Draft; onChang
   const kinds: { value: DraftEntity["kind"]; label: string }[] = [
     { value: "master", label: tr("A list of things") },
     { value: "document", label: tr("A document that is submitted, and can be cancelled") },
+    { value: "settings", label: tr("Settings: one record for the workspace") },
     ...(e.kind === "plain-document" ? [{ value: "plain-document" as const, label: tr("A document that is saved but never submitted") }] : []),
   ];
   return (
@@ -351,11 +352,12 @@ function Basics({ draft, onChange, onEntity, problems }: { draft: Draft; onChang
             {k.label}
           </label>
         ))}
+        {e.kind === "settings" && <p className="field-hint">{tr("One record for the workspace; rules read it as")} <code className="mono" dir="ltr">settings.{e.name || "<Name>"}.&lt;field&gt;</code></p>}
       </fieldset>
       <Field label={tr("Description")} hint={tr("What this kind of record is for.")}>
         <textarea className="textarea" rows={2} value={e.description} onChange={(ev) => set({ description: ev.target.value })} />
       </Field>
-      <div className="stack">
+      {e.kind !== "settings" && <div className="stack">
         {e.numberingRaw ? (
           <p className="muted">{tr("This entity numbers its records with a pattern the designer keeps as it is: {template}", { template: isolate(template) })}</p>
         ) : (
@@ -379,7 +381,7 @@ function Basics({ draft, onChange, onEntity, problems }: { draft: Draft; onChang
             {tr("The next number would be")} <strong className="mono">{isolate(nextNumber(template))}</strong>
           </p>
         )}
-      </div>
+      </div>}
     </Card>
   );
 }

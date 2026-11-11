@@ -1,5 +1,6 @@
 import { useId, useRef } from "react";
 import { t as tr, isolate } from "@ferrum/client";
+import { FunctionsHint } from "./FunctionsHint";
 
 /** The link fields of a record as chips that insert `links.<field>`: the records an expression may read. */
 export const linkChips = (fields: { name: string; label?: string; type?: string }[]) =>
@@ -8,7 +9,7 @@ export const linkChips = (fields: { name: string; label?: string; type?: string 
 /** A condition in the server's expression language: the entity's fields as chips that insert `doc.name` (or
  *  the chip's own `insert` text, as `aggregates.unpaid`) where the cursor is, and the server's own words under it when it refused the condition. The browser
  *  does not read the expression: the server is the judge. */
-export function ExprInput({ label, value, onChange, fields, links, error, hint, id: given, rows = 2 }: { links?: { name: string; label?: string; insert?: string }[]; label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string; insert?: string }[]; error?: string | null; hint?: string; id?: string; rows?: number }) {
+export function ExprInput({ label, value, onChange, fields, links, error, hint, id: given, rows = 2, functions }: { /** Lists the functions an expression may call under the box. */ functions?: boolean; links?: { name: string; label?: string; insert?: string }[]; label: string; value: string; onChange: (v: string) => void; fields: { name: string; label?: string; insert?: string }[]; error?: string | null; hint?: string; id?: string; rows?: number }) {
   const auto = useId();
   const id = given ?? auto;
   const area = useRef<HTMLTextAreaElement>(null);
@@ -50,6 +51,7 @@ export function ExprInput({ label, value, onChange, fields, links, error, hint, 
           {hint}
         </p>
       ) : null}
+      {functions && <FunctionsHint />}
     </div>
   );
 }

@@ -250,3 +250,32 @@ describe("lines", () => {
     expect(say({ ...change, where: " " })).toHaveLength(1);
   });
 });
+
+describe("effects that branch, find and loop", () => {
+  const find = { type: "find", entity: "XParty", by: { code: "doc.code" }, create: { name: "doc.title" }, update: { note: "linked.note + 'x'" }, mark: 1 };
+  const loop = { type: "for_each", entity: "XTask", link: "case", where: "item.status != 'Done'", effects: [{ type: "find", entity: "XTask", by: { id: "item.id" }, update: { status: "'Done'" }, when: "item.id != null" }], unknown: true };
+  const copy = { type: "copy_lines", table: "checklist", result: 0, from_table: "steps", values: { due: "addDays(doc.start, item.offset_days)" }, mode: "replace", more: [1] };
+  it("round-trips each, with when on any kind, and keeps what it does not know", () => {
+    for (const a of [find, loop, copy, { ...find, when: "doc.code != ''" }, { type: "set_fields", values: { a: "1" }, when: "doc.x > 1" }, { type: "notify", to: "owner", title: "'t'", when: "true" }, { ...copy, link: undefined, when: "isEmpty(doc.x)" }]) {
+      expect(actionJson(fromAction(a)), JSON.stringify(a)).toEqual(JSON.parse(JSON.stringify(a)));
+    }
+    expect(fromAction(find).kind).toBe("find");
+    expect(fromAction({ ...copy, link: "template", result: undefined }).kind).toBe("copy_lines");
+    expect(fromAction({ type: "set_fields", values: { a: "1" }, when: 5 }).kind).toBe("raw");
+    expect(actionJson(fromAction({ type: "find", entity: "XParty", by: {}, create: {} }))).toEqual({ type: "find", entity: "XParty", by: {}, create: {} });
+  });
+  it("sends no when once it is emptied", () => {
+    const d = { ...fromAction({ type: "set_fields", values: { a: "1" }, when: "x" }), when: "  " };
+    expect(actionJson(d)).toEqual({ type: "set_fields", values: { a: "1" } });
+  });
+  it("says what is missing, and that a loop holds no loop", () => {
+    const say = (list: unknown[]) => checkActions(list.map(fromAction), 5).map((p) => p.message);
+    expect(say([find, loop, copy].slice(0, 1))).toEqual([]);
+    expect(say([{ type: "find", entity: "XParty", by: {} }])).toHaveLength(1);
+    expect(say([find, copy])).toEqual([]);
+    expect(say([copy])).toHaveLength(1);
+    expect(say([{ type: "for_each", table: "checklist", effects: [] }])).toHaveLength(1);
+    expect(say([{ type: "for_each", table: "checklist", effects: [{ type: "for_each", table: "checklist", effects: [{ type: "notify", to: "owner", title: "'t'" }] }] }])).toHaveLength(1);
+    expect(say([{ ...loop, effects: [{ type: "set_fields", values: { a: "" } }] }]).join()).toContain("in the loop");
+  });
+});

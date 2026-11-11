@@ -193,3 +193,6 @@ export const openAs = (expr: string, fields: Typed[]): { mode: "builder"; draft:
   const draft = parseCheck(expr, fields);
   return draft ? { mode: "builder", draft } : { mode: "advanced" };
 };
+
+/** The `add_rule` customization for a rule form: `field` (where the refusal shows) is sent only when one is chosen. */
+export const addRuleOp = (r: { name: string; message: string; on: string; field?: string }, check: string) => ({ op: "add_rule" as const, rule: { name: r.name.trim(), check, message: r.message.trim(), on: r.on, ...(r.field ? { field: r.field } : {}) } });

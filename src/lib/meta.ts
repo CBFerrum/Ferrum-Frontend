@@ -143,7 +143,7 @@ export interface EntityMeta {
   list: { columns: string[]; sort?: string | null };
   form: Section[];
   search_fields: string[];
-  rules: { name: string; check: string; message: string; on: string }[];
+  rules: { name: string; check: string; message: string; on: string; field?: string | null }[];
   actions: ActionDef[];
   workflow?: Workflow | null;
   /** Service targets: "this must happen within so much working time". */

@@ -122,4 +122,23 @@ describe("the mail preview dialog", () => {
   it("puts a Preview button on the Send mail card", () => {
     expect(text(page(event))).toContain("Preview");
   });
+
+  it("draws the Find, For each and Copy lines cards with Only when and the functions, and passes axe", async () => {
+    const flow: Automation = {
+      name: "Flow", entity: "Contract", event: "updated", is_active: true,
+      actions: [
+        { type: "find", entity: "Project", by: { project_name: "doc.status" }, create: {}, when: "doc.total > 1.0" },
+        { type: "for_each", entity: "Project", link: "contract", effects: [{ type: "notify", to: "owner", title: "'t'" }] },
+        { type: "copy_lines", table: "items", result: 0, from_table: "steps", values: { due: "item.due" }, mode: "replace" },
+      ],
+    };
+    const html = page(flow);
+    const t = text(html);
+    for (const w of ["Action 1: Find", "Action 2: For each", "Action 3: Copy lines", "Create it when none is found", "Go through", "The lines come from the record", "Only when (optional)", "Functions"]) expect(t).toContain(w);
+    expect(html).toContain("addDays");
+    expect(html).toContain("Effects of the loop");
+    expect((html.match(/Only when \(optional\)/g) ?? []).length).toBe(4);
+    expect((html.match(/<summary>Functions/g) ?? []).length).toBe(5);
+    expect(await violations(html)).toEqual([]);
+  });
 });
