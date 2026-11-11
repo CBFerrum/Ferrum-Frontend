@@ -1,13 +1,51 @@
 /* Record screens on phones and touch devices: list cards, the form action bar, child-table cards. */
 
 /* The list's bar: search, filters as chips, then views and columns. Nothing takes room until used. */
+/* The page header: title and count as one unit, the view switcher, quiet secondary actions, one primary. */
+.list-head {
+  align-items: center;
+  margin-bottom: 12px;
+}
+.list-actions {
+  gap: 12px;
+}
+.list-card {
+  overflow: clip; /* the bar and the table follow the card's corners */
+}
+.list-bars {
+  position: relative;
+}
 .list-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+}
+/* The selection bar sits in the filter bar's place, not above the table (positioned by SelectionToolbar's own classes inside .list-bars). Phones keep it as the bottom bar. */
+/* The table scrolls inside its card, so the header stays in view over a long list. Phones show cards and scroll the page. */
+@media (min-width: 721px) {
+  .list-card .table-wrap {
+    max-height: calc(100dvh - var(--topbar-h, 48px) - 190px);
+    overflow: auto;
+  }
+}
+.bulk-sep {
+  align-self: center;
+  width: 1px;
+  height: 16px;
+  background: var(--border-strong);
+}
+.view-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.view-by .select {
+  width: auto;
 }
 .list-bar-end {
   display: flex;
@@ -17,7 +55,7 @@
 }
 .list-search {
   position: relative;
-  flex: 0 1 220px;
+  flex: 0 1 260px;
   min-width: 140px;
 }
 .list-search .icon {
@@ -37,9 +75,9 @@
   align-items: stretch;
   height: var(--control-h);
   max-width: 280px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--primary-soft);
+  background: var(--surface);
   font-size: var(--text-sm);
 }
 .chip[data-empty] {
@@ -66,9 +104,12 @@
   color: var(--muted-foreground);
   white-space: nowrap;
 }
+.chip-label:has(+ .chip-value)::after {
+  content: ":";
+}
 .chip-value {
   overflow: hidden;
-  font-weight: 550;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -76,11 +117,14 @@
   display: inline-flex;
   align-items: center;
   padding-block: 0 0;
-  padding-inline: 3px 7px;
+  padding-inline: 4px 8px;
   color: var(--muted-foreground);
 }
 .chip-x:hover {
   color: var(--text);
+}
+.chip:hover {
+  background: var(--surface-2);
 }
 .chip-add,
 .chip-clear {
@@ -405,11 +449,12 @@ button.peek-value:hover {
   }
   .list-bar-end {
     flex: 1 1 100%;
+    flex-wrap: wrap;
     margin-inline-start: 0;
   }
   .list-bar .list-sort {
     display: block;
-    flex: 1 1 auto; /* the rest of the line beside the views, so long column names fit */
+    flex: 1 1 100%; /* a line of its own, so long column names fit */
     min-width: 0;
     height: 32px;
   }
