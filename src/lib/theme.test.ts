@@ -15,7 +15,7 @@ describe("accentTokens", () => {
     for (const accent of ["#2f5bea", "#ffeb3b", "#00ffff", "#111111", "#ff0000", "#0f766e", "#ffffff"]) {
       const [light, dark] = pair(accentTokens(accent)!["--primary"]);
       expect(contrastRatio(light, "#ffffff"), `${accent} light`).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(dark, "#0b1020"), `${accent} dark`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(dark, "#111827"), `${accent} dark`).toBeGreaterThanOrEqual(4.5);
     }
   });
 

@@ -13,6 +13,7 @@ import { recordTitle, type Doc, type EntityMeta, type Field, type ListResponse, 
 import { Alert, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, toast } from "../../ui/kit";
 import { usePeople } from "../Collab";
 import { FieldControl } from "../widgets";
+import { SelectionToolbar } from "../../ui/patterns";
 import { MergeDialog } from "./MergeDialog";
 import { bulkActions, chunk, countOf, describeOp, MAX_BULK, mergeResults, parseTags, retryIds, rowErrorText, type BulkOp, type BulkResponse } from "./bulk";
 import { t as tr, isolate } from "@ferrum/client";
@@ -174,33 +175,27 @@ export function BulkBar({
 
   return (
     <>
-      {/* Phones (≤720px, as records.css): a bar along the bottom of the screen (.doc-actions, like the form's actions). */}
-      <div
-        role="group"
-        aria-label={tr("Actions for the {what} selected", { what })}
-        className="doc-actions flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2"
-        onKeyDown={(e) => {
-          if (e.key === "Escape") clear();
-        }}
+      <SelectionToolbar
+        label={tr("Actions for the {what} selected", { what })}
+        count={n}
+        scope={allMatching && total != null ? "matching" : "shown"}
+        of={total}
+        onClear={clear}
+        extend={
+          <>
+            {!pageAll && pageIds.length > 1 && (
+              <Button size="sm" variant="ghost" onClick={() => onSelect(new Set([...selected, ...pageIds]))}>
+                {tr("Select all {length} shown", { length: pageIds.length })}
+              </Button>
+            )}
+            {pageAll && beyond && !allMatching && (
+              <Button size="sm" variant="ghost" loading={selecting} onClick={() => void selectMatching()}>
+                {total == null ? tr("Select all matching (up to {MAX_BULK})", { MAX_BULK }) : total > MAX_BULK ? tr("Select the first {MAX_BULK} of {total}", { MAX_BULK, total: total.toLocaleString() }) : tr("Select all {total} matching", { total: total.toLocaleString() })}
+              </Button>
+            )}
+          </>
+        }
       >
-        <span className="font-semibold whitespace-nowrap tabular-nums" role="status">
-          {tr("{n} selected", { n: n.toLocaleString() })}
-        </span>
-        {!pageAll && pageIds.length > 1 && (
-          <Button size="sm" variant="ghost" onClick={() => onSelect(new Set([...selected, ...pageIds]))}>
-            {tr("Select all {length} shown", { length: pageIds.length })}
-          </Button>
-        )}
-        {pageAll && beyond && !allMatching && (
-          <Button size="sm" variant="ghost" loading={selecting} onClick={() => void selectMatching()}>
-            {total == null ? tr("Select all matching (up to {MAX_BULK})", { MAX_BULK }) : total > MAX_BULK ? tr("Select the first {MAX_BULK} of {total}", { MAX_BULK, total: total.toLocaleString() }) : tr("Select all {total} matching", { total: total.toLocaleString() })}
-          </Button>
-        )}
-        {allMatching && total != null && total > n && <span className="text-[13px] whitespace-nowrap text-muted-foreground">{tr("of {total} matching", { total: total.toLocaleString() })}</span>}
-        <Button size="sm" variant="ghost" icon="x" onClick={clear}>
-          {tr("Clear")}
-        </Button>
-        <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />
         {run?.result && !runOpen && failed > 0 && (
           <Button size="sm" variant="ghost" icon="alert" onClick={() => showRun(true)}>
             {tr("{failed} not done · details", { failed: failed.toLocaleString() })}
@@ -235,25 +230,6 @@ export function BulkBar({
             {tr("Submit")}
           </Button>
         )}
-        {actions.cancel && (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              void confirmed(
-                { op: "cancel" },
-                {
-                  title: tr("Cancel {what}?", { what }),
-                  message: tr("Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards."),
-                  confirmLabel: tr("Cancel them"),
-                  danger: true,
-                },
-              )
-            }
-          >
-            {tr("Cancel")}
-          </Button>
-        )}
         {actions.workflow.map((action) => (
           <Button
             key={action}
@@ -277,6 +253,26 @@ export function BulkBar({
             {tr("Merge")}
           </Button>
         )}
+        {(actions.cancel || actions.delete) && <span className="bulk-sep" aria-hidden="true" />}
+        {actions.cancel && (
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() =>
+              void confirmed(
+                { op: "cancel" },
+                {
+                  title: tr("Cancel {what}?", { what }),
+                  message: tr("Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards."),
+                  confirmLabel: tr("Cancel them"),
+                  danger: true,
+                },
+              )
+            }
+          >
+            {tr("Cancel")}
+          </Button>
+        )}
         {actions.delete && (
           <Button
             size="sm"
@@ -297,7 +293,7 @@ export function BulkBar({
             {tr("Delete")}
           </Button>
         )}
-      </div>
+      </SelectionToolbar>
 
       {merging && n === 2 && (
         <MergeDialog
@@ -367,7 +363,7 @@ function RunDialog({
             {isolate(text.running(countOf(meta, run.ids.length)))}
             {run.ids.length > MAX_BULK && tr(" {value} of {value2} done.", { value: run.sent.toLocaleString(), value2: run.ids.length.toLocaleString() })}
           </span>
-          <span className="w-full text-[13px] text-muted-foreground">{tr("You can close this window: the action carries on and its results stay available from the bar.")}</span>
+          <span className="w-full text-sm text-muted-foreground">{tr("You can close this window: the action carries on and its results stay available from the bar.")}</span>
         </div>
       ) : (
         <div className="stack" style={{ gap: 12 }}>
@@ -388,12 +384,12 @@ function RunDialog({
                   <Link to={`/e/${meta.name}/${f.id}`} className="font-medium">
                     {isolate(title(String(f.id)))}
                   </Link>
-                  <span className="text-[13px] text-muted-foreground">{isolate(rowErrorText(meta, f.error))}</span>
+                  <span className="text-sm text-muted-foreground">{isolate(rowErrorText(meta, f.error))}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[13px] text-muted-foreground">{left.length > 0 && tr("The records not done stay selected.")}</p>
+          <p className="text-sm text-muted-foreground">{left.length > 0 && tr("The records not done stay selected.")}</p>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={onClose}>{tr("Close")}</Button>
             {left.length > 0 && (

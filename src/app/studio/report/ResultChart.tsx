@@ -5,7 +5,8 @@
 
 import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine, ChartPie, ChartScatter, Donut, Funnel as FunnelIcon, Hash, LayoutGrid, Percent, type LucideIcon } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Funnel, FunnelChart, LabelList, Line, LineChart, Pie, PieChart, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
+import { smallSeries } from "../dashboard/charts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Funnel, FunnelChart, LabelList, Line, LineChart, Pie, PieChart, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -219,11 +220,17 @@ export function ResultChart({ result, settings, options, title, className }: Res
   } else if (type === "heatmap") chart = <Heatmap model={model} title={title} />;
   else {
     const stacked = type === "stacked_bar" || !!settings.stacked;
+    // A measure under 2% of another would be invisible on one axis: it gets its own, on the right (bars draw it as a line).
+    const small = stacked ? new Set<string>() : smallSeries(model);
+    const smallOnes = model.series.filter((s) => small.has(s.key));
+    const split = smallOnes.length > 0;
+    const axisOf = (key: string) => (split ? (small.has(key) ? "small" : "main") : undefined);
     const common = (
       <>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} minTickGap={16} tickFormatter={(v) => clip(String(v))} />
-        <YAxis tickFormatter={(v) => compact(v, options.locale)} tickLine={false} axisLine={false} width={56} />
+        <YAxis yAxisId={split ? "main" : undefined} tickFormatter={(v) => compact(v, options.locale)} tickLine={false} axisLine={false} width={56} />
+        {split && <YAxis yAxisId="small" orientation="right" tickFormatter={(v) => compact(v, options.locale)} tickLine={false} axisLine={false} width={52} label={{ value: smallOnes.map((s) => model.config[s.key]?.label ?? s.key).join(", "), angle: 90, position: "insideRight", offset: 4, className: "fill-muted-foreground", fontSize: 12 }} />}
         {tooltip}
         {legend && <ChartLegend content={<ChartLegendContent />} />}
       </>
@@ -236,7 +243,7 @@ export function ResultChart({ result, settings, options, title, className }: Res
           <LineChart data={model.rows} accessibilityLayer margin={{ top: 16, right: 12, left: 4 }}>
             {common}
             {model.series.map((s) => (
-              <Line key={s.key} dataKey={s.key} type="monotone" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={model.rows.length <= 31} isAnimationActive={anim}>
+              <Line key={s.key} yAxisId={axisOf(s.key)} dataKey={s.key} type="monotone" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={model.rows.length <= 31} isAnimationActive={anim}>
                 {values(s.key)}
               </Line>
             ))}
@@ -245,11 +252,25 @@ export function ResultChart({ result, settings, options, title, className }: Res
           <AreaChart data={model.rows} accessibilityLayer margin={{ top: 16, right: 12, left: 4 }}>
             {common}
             {model.series.map((s) => (
-              <Area key={s.key} dataKey={s.key} type="monotone" stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.25} stackId={stacked ? "a" : undefined} isAnimationActive={anim}>
+              <Area key={s.key} yAxisId={axisOf(s.key)} dataKey={s.key} type="monotone" stroke={`var(--color-${s.key})`} fill={`var(--color-${s.key})`} fillOpacity={0.25} stackId={stacked ? "a" : undefined} isAnimationActive={anim}>
                 {values(s.key)}
               </Area>
             ))}
           </AreaChart>
+        ) : split ? (
+          <ComposedChart data={model.rows} accessibilityLayer margin={{ top: 16, right: 12, left: 4 }}>
+            {common}
+            {model.series.filter((s) => !small.has(s.key)).map((s) => (
+              <Bar key={s.key} yAxisId="main" dataKey={s.key} fill={`var(--color-${s.key})`} radius={[4, 4, 0, 0]} isAnimationActive={anim} maxBarSize={56}>
+                {values(s.key)}
+              </Bar>
+            ))}
+            {smallOnes.map((s) => (
+              <Line key={s.key} yAxisId="small" dataKey={s.key} type="linear" stroke={`var(--color-${s.key})`} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={anim}>
+                {values(s.key)}
+              </Line>
+            ))}
+          </ComposedChart>
         ) : (
           <BarChart data={model.rows} accessibilityLayer margin={{ top: 16, right: 12, left: 4 }}>
             {common}
@@ -305,7 +326,7 @@ function Heatmap({ model, title }: { model: ChartModel; title: string }) {
   };
   return (
     <div className="overflow-x-auto py-2">
-      <div className="inline-grid grid-flow-col gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={tr("{title}: {label} by day, {length} days; the table lists every value", { title, label: s.label, length: days.length })}>
+      <div className="inline-grid grid-flow-col gap-[3px] text-xs text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={tr("{title}: {label} by day, {length} days; the table lists every value", { title, label: s.label, length: days.length })}>
         {WEEKDAYS.map((d, i) => (
           <span key={i} className="pe-1 leading-[14px]" aria-hidden="true">
             {isolate(d)}

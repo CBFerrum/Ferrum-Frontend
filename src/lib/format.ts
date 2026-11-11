@@ -41,9 +41,12 @@ function compareAbs(a: { int: string; frac: string }, b: { int: string; frac: st
 /** The locale numbers and dates are written in when a caller names none: the one the person or the
  *  workspace chose (lib/i18n.ts applyLocale), else the browser's. */
 let defaultLocale: string | undefined;
+/** The page's language, whether or not a formatting locale was chosen: the words of "2 hours ago" follow it. */
+let pageLanguage: string | undefined;
 
-export function setFormatLocale(tag: string | undefined): void {
+export function setFormatLocale(tag: string | undefined, language?: string): void {
   defaultLocale = tag;
+  pageLanguage = language;
 }
 
 const formatters = new Map<string, Intl.NumberFormat>();
@@ -141,17 +144,22 @@ export function formatMoment(value: string | number | Date | null | undefined, s
   return zone ? `${shown} ${zone}` : shown;
 }
 
-export function relativeTime(value: string, now = Date.now()): string {
+/** "2 hours ago" in the page's language (Intl, never glued together). On a page that reads right to left the phrase is
+ *  isolated (U+2068 … U+2069), so an English phrase there does not reorder to "hours ago 2". */
+export function relativeTime(value: string, now = Date.now(), locale?: string): string {
   const t = new Date(value).getTime();
   if (Number.isNaN(t)) return value;
   const s = Math.round((t - now) / 1000);
-  const rtf = new Intl.RelativeTimeFormat(defaultLocale, { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat(locale ?? pageLanguage ?? defaultLocale, { numeric: "auto" });
   const abs = Math.abs(s);
-  if (abs < 60) return rtf.format(s, "second");
-  if (abs < 3600) return rtf.format(Math.round(s / 60), "minute");
-  if (abs < 86400) return rtf.format(Math.round(s / 3600), "hour");
-  if (abs < 86400 * 30) return rtf.format(Math.round(s / 86400), "day");
-  return formatDateTime(value);
+  const words =
+    abs < 60 ? rtf.format(s, "second")
+    : abs < 3600 ? rtf.format(Math.round(s / 60), "minute")
+    : abs < 86400 ? rtf.format(Math.round(s / 3600), "hour")
+    : abs < 86400 * 30 ? rtf.format(Math.round(s / 86400), "day")
+    : "";
+  if (!words) return formatDateTime(value);
+  return globalThis.document?.documentElement?.dir === "rtl" ? `\u2068${words}\u2069` : words;
 }
 
 /** `x_gst_number` → `Gst Number` (mirrors the server's label fallback). */

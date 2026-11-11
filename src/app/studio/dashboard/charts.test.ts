@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toChart, type QueryResult } from "@/lib/studio";
-import { bucketEnd, compactTick, describeChart, formatPeriod, formatShare, toHeat, toScatter, toSingle, toSlices } from "./charts";
+import { bucketEnd, compactTick, describeChart, formatPeriod, formatShare, smallSeries, toHeat, toScatter, toSingle, toSlices } from "./charts";
 import { listParams, pointFilters, zonedMidnight } from "./drill";
 import { parseInline, parseMarkdown, safeHref } from "./markdown";
 
@@ -166,5 +166,18 @@ describe("markdown", () => {
       null,
       "mailto:a@b.c",
     ]);
+  });
+});
+
+describe("smallSeries", () => {
+  const rows = (a: number[], b: number[]) => a.map((v, i) => ({ a: v, b: b[i] }));
+  const series = [{ key: "a" }, { key: "b" }];
+  it("names a measure under 2% of the other so it can have its own axis", () => {
+    expect([...smallSeries({ series, rows: rows([1, 3, 2], [7000, 22000, 9000]) })]).toEqual(["a"]);
+  });
+  it("leaves comparable measures, a single series and empty series alone", () => {
+    expect(smallSeries({ series, rows: rows([100, 300], [700, 2200]) }).size).toBe(0);
+    expect(smallSeries({ series: [{ key: "a" }], rows: rows([1, 2], [0, 0]) }).size).toBe(0);
+    expect(smallSeries({ series, rows: rows([0, 0], [5, 9]) }).size).toBe(0);
   });
 });

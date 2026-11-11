@@ -221,6 +221,20 @@ export function compactTick(n: unknown, locale?: string): string {
   return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: Math.abs(v) < 1000 ? 2 : 1 }).format(v);
 }
 
+/**
+ * The series that would be invisible on a shared value axis: the largest value of each is under `ratio` of the
+ * largest value of the series that dominate (a count of 3 beside a sum of 22,000). The chart gives these their own
+ * right-hand axis; nothing is dropped or rescaled in the data. Empty when the series are comparable or there is only one.
+ */
+export function smallSeries(model: { series: readonly { key: string }[]; rows: readonly Record<string, unknown>[] }, ratio = 0.02): Set<string> {
+  if (model.series.length < 2) return new Set();
+  const peak = (key: string) => model.rows.reduce((m, r) => (typeof r[key] === "number" && Number.isFinite(r[key] as number) ? Math.max(m, Math.abs(r[key] as number)) : m), 0);
+  const peaks = model.series.map((s) => [s.key, peak(s.key)] as const);
+  const top = Math.max(...peaks.map(([, p]) => p));
+  const small = peaks.filter(([, p]) => p > 0 && p < top * ratio).map(([k]) => k);
+  return small.length < model.series.length ? new Set(small) : new Set();
+}
+
 /** A category label shortened for an axis (the tooltip shows it whole). */
 export const shortLabel = (s: string, max = 14) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
 

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   addSection,
   checkLayout,
+  FOLD_EMPTY_MIN,
+  isEmptyValue,
+  runLength,
   layoutOf,
   layoutOp,
   moveField,
@@ -103,5 +106,17 @@ describe("checks and saving", () => {
     expect(layoutOp(l)).toEqual({ op: "set_entity_property", property: "form", value: toForm(l) });
     expect(sameLayout(l, [l[0]])).toBe(true);
     expect(sameLayout(l, moveField(l, "title", "s1", 0))).toBe(false);
+  });
+});
+
+describe("folding empty read-only fields", () => {
+  it("counts only nothing as empty: false, 0 and text are values", () => {
+    expect([null, undefined, "", []].map(isEmptyValue)).toEqual([true, true, true, true]);
+    expect([false, 0, "0", " ", ["a"]].map(isEmptyValue)).toEqual([false, false, false, false, false]);
+  });
+  it("measures an unbroken run, and folds from three", () => {
+    const quiet = [true, true, true, false, true, true];
+    expect([0, 3, 4].map((i) => runLength(quiet, i, Boolean))).toEqual([3, 0, 2]);
+    expect(FOLD_EMPTY_MIN).toBe(3);
   });
 });

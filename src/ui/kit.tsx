@@ -17,8 +17,11 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
+import { cn } from "../lib/utils";
+import { knownStatusTone } from "../lib/statusTones";
 
 // ── icons ──
 
@@ -48,6 +51,7 @@ const ICONS: Record<string, string> = {
   doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8",
   expand: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
   check: "M20 6 9 17l-5-5",
+  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 16v-4M12 8h.01",
   alert: "M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
   copy: "M9 9h11v11H9zM5 15H4V4h11v1",
   list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
@@ -113,17 +117,22 @@ export function Badge({ tone = "neutral", children, title }: { tone?: Tone; chil
   );
 }
 
-const TONES: [RegExp, Tone][] = [
-  [/^(draft|open|pending|not started|to bill|to deliver)/i, "neutral"],
-  [/(cancel|reject|overdue|dead|fail|lost|disabled|inactive|locked)/i, "red"],
-  [/(unpaid|partly|partial|hold|return|waiting|due)/i, "amber"],
-  [/(paid|submitted|completed|closed|delivered|received|approved|active|done|verified)/i, "green"],
-];
-
-/** Picks a badge tone for a status-like value. */
-export function statusTone(value: unknown): Tone {
+/** The badge tone of a state. `tones` maps exact stored state ids to a tone (the owner of the tone: the field's own
+ *  declaration); a value it has wins. Otherwise only well-known whole state ids get a tone (lib/statusTones.ts); any other
+ *  value, a negated phrase or translated text is neutral. Never guessed from the words. */
+export function statusTone(value: unknown, tones?: Readonly<Record<string, Tone>>): Tone {
   const s = String(value ?? "");
-  return TONES.find(([re]) => re.test(s))?.[1] ?? "blue";
+  if (tones && Object.prototype.hasOwnProperty.call(tones, s)) return tones[s];
+  return knownStatusTone(s) ?? "neutral";
+}
+
+/** A state as a badge: the tone from its state id (`value`, never the label), the words from `label` (default: the value). */
+export function StatusBadge({ value, tones, label, title }: { value: unknown; tones?: Readonly<Record<string, Tone>>; label?: ReactNode; title?: string }) {
+  return (
+    <Badge tone={statusTone(value, tones)} title={title}>
+      {label ?? isolate(String(value ?? ""))}
+    </Badge>
+  );
 }
 
 // ── form field wrapper ──
@@ -195,6 +204,7 @@ export function Dialog({
   children,
   footer,
   wide,
+  description,
 }: {
   open: boolean;
   onClose: () => void;
@@ -202,24 +212,34 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  /** One quiet line under the title: what this is about or what happens next. */
+  description?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const descId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (open && !d.open) {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       d.showModal();
       // showModal() would focus the header's close button; prefer the marked or first field instead.
       const first = d.querySelector<HTMLElement>("[data-autofocus]") ?? d.querySelector<HTMLElement>(".dialog-body :is(input, select, textarea):not([disabled])");
       first?.focus();
-    } else if (!open && d.open) d.close();
+    } else if (!open && d.open) {
+      d.close();
+      // The browser returns focus to what had it when the dialog opened; where that is gone (a menu that closed) or it is lost, to the opener.
+      if (opener.current?.isConnected && document.activeElement !== opener.current) opener.current.focus();
+    }
   }, [open]);
   return (
     <dialog
       ref={ref}
       className={`dialog ${wide ? "dialog-wide" : ""}`}
       aria-labelledby={titleId}
+      aria-describedby={description ? descId : undefined}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -231,7 +251,14 @@ export function Dialog({
       {open && (
         <div className="dialog-inner">
           <header className="dialog-header">
-            <h2 id={titleId}>{title}</h2>
+            <div className="dialog-heading">
+              <h2 id={titleId}>{title}</h2>
+              {description && (
+                <p id={descId} className="dialog-description">
+                  {description}
+                </p>
+              )}
+            </div>
             <button type="button" className="icon-btn" aria-label={t("Close")} onClick={onClose}>
               <Icon name="x" />
             </button>
@@ -241,6 +268,30 @@ export function Dialog({
         </div>
       )}
     </dialog>
+  );
+}
+
+// ── a frame that scrolls sideways ──
+
+/** A table's frame (`.table-wrap`): a table wider than it scrolls inside it, and only then does the frame take the
+ *  keyboard (a focusable region with a name, so the arrow keys reach what is cut off). */
+export function ScrollRegion({ label, className, children }: { label?: string; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => setWide(el.scrollWidth > el.clientWidth + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={cn("table-wrap", className)} {...(wide ? { role: "region", tabIndex: 0, "aria-label": label ?? t("Table") } : {})}>
+      {children}
+    </div>
   );
 }
 
@@ -307,20 +358,35 @@ export function TabPanel({ id, tab, children }: { id: string; tab: string; child
 
 // ── states ──
 
+/** A route's fallback: the shape of a page (a title, a line under it, a few rows) in quiet skeletons, named for assistive technology. */
 export function PageLoading({ label = t("Loading…") }: { label?: string }) {
   return (
-    <div className="state">
-      <Spinner label={label} />
-      <span className="muted">{label}</span>
+    <div role="status" aria-busy="true" className="grid gap-4 motion-reduce:[&_[data-slot=skeleton]]:animate-none">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="grid gap-4">
+        <div className="grid gap-2">
+          <Skeleton className="h-7 w-56 max-w-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 bg-card px-4 py-3">
+              <Skeleton className={cn("h-4", ["w-1/4", "w-1/3", "w-1/5", "w-2/5", "w-1/4"][i])} />
+              <Skeleton className="ms-auto h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
+/** The states share one language: a soft rounded square with the icon, a title, one line of help, one action. */
 export function EmptyState({ title, children, icon = "file" }: { title: string; children?: ReactNode; icon?: string }) {
   return (
     <div className="state">
       <span className="state-icon">
-        <Icon name={icon} size={28} />
+        <Icon name={icon} size={20} />
       </span>
       <p className="state-title">{title}</p>
       {children}
@@ -332,7 +398,7 @@ export function ErrorState({ error, onRetry, title = t("Something went wrong") }
   return (
     <div className="state" role="alert">
       <span className="state-icon state-icon-error">
-        <Icon name="alert" size={28} />
+        <Icon name="alert" size={20} />
       </span>
       <p className="state-title">{title}</p>
       <p className="muted">{errorMessage(error)}</p>
@@ -348,6 +414,7 @@ export function ErrorState({ error, onRetry, title = t("Something went wrong") }
 export function Alert({ tone = "info", children, action }: { tone?: "info" | "warning" | "error" | "success"; children: ReactNode; action?: ReactNode }) {
   return (
     <div className={`alert alert-${tone}`} role={tone === "error" ? "alert" : "status"}>
+      <Icon name={tone === "success" ? "check" : tone === "info" ? "info" : "alert"} size={16} />
       <div className="alert-body">{children}</div>
       {action}
     </div>
@@ -403,14 +470,19 @@ function dismissToast(id: number) {
   toasts.set(toasts.get().filter((t) => t.id !== id));
 }
 
+const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
+
 export function Toaster() {
-  const list = useSyncExternalStore(toasts.subscribe, toasts.get);
+  const list = useSyncExternalStore(toasts.subscribe, toasts.get, toasts.get);
   return (
     <div className="toaster" role="status" aria-live="polite">
       {list.map((n) => (
         <div key={n.id} className={`toast toast-${n.tone}`}>
-          <span>{n.message}</span>
-          <button type="button" className="icon-btn" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
+          <span className="toast-icon">
+            <Icon name={TOAST_ICON[n.tone]} size={16} />
+          </span>
+          <span className="toast-message">{n.message}</span>
+          <button type="button" className="icon-btn icon-btn-sm" aria-label={t("Dismiss notification")} onClick={() => dismissToast(n.id)}>
             <Icon name="x" size={14} />
           </button>
         </div>
@@ -438,7 +510,7 @@ export function confirmDialog(o: Omit<ConfirmRequest, "resolve">): Promise<boole
 }
 
 export function ConfirmHost() {
-  const req = useSyncExternalStore(confirmStore.subscribe, confirmStore.get);
+  const req = useSyncExternalStore(confirmStore.subscribe, confirmStore.get, confirmStore.get);
   const close = (ok: boolean) => {
     req?.resolve(ok);
     confirmStore.set(null);
@@ -518,9 +590,21 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   useDismiss(ref, open, () => setOpen(false));
+  // Closing from inside the menu (Escape, choosing an item) hands focus back to the button that opened it, so the keyboard keeps its place
+  // and a dialog an item opens returns there when it closes.
+  const closeFromInside = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape" && open) {
+      e.stopPropagation();
+      closeFromInside();
+      return;
+    }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     const items = Array.from(ref.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
     if (!items.length) return;
@@ -531,6 +615,7 @@ export function Menu({
   return (
     <div className="menu" ref={ref} onKeyDown={onKeyDown}>
       <button
+        ref={trigger}
         type="button"
         className={buttonClass}
         aria-label={ariaLabel}
@@ -544,7 +629,7 @@ export function Menu({
       </button>
       {open && (
         <div className={`menu-list menu-${align}`} role="menu" id={menuId}>
-          {children(() => setOpen(false))}
+          {children(closeFromInside)}
         </div>
       )}
     </div>
@@ -554,9 +639,9 @@ export function Menu({
 /** `refusal`: why it cannot be chosen now. It stays in the menu, reachable by keyboard, says so in words, and does nothing. */
 export function MenuItem({ onSelect, children, danger, refusal }: { onSelect: () => void; children: ReactNode; danger?: boolean; refusal?: string | null }) {
   return (
-    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} aria-disabled={refusal ? true : undefined} title={refusal ?? undefined} onClick={refusal ? undefined : onSelect}>
+    <button type="button" role="menuitem" className={`menu-item ${danger ? "menu-item-danger" : ""}`} aria-disabled={refusal ? true : undefined} onClick={refusal ? undefined : onSelect}>
       {children}
-      {refusal && <span className="sr-only">{`: ${refusal}`}</span>}
+      {refusal && <span className="menu-item-why">{refusal}</span>}
     </button>
   );
 }

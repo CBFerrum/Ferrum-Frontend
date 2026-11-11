@@ -83,7 +83,7 @@ export function FilterBar({ defs, chosen, effective, onChange, onReset, classNam
   if (!defs.length) return null;
   const changed = Object.keys(chosen).length > 0;
   return (
-    <section aria-label={t("Dashboard filters")} className={cn("mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3", className)}>
+    <section aria-label={t("Dashboard filters")} className={cn("mb-4 flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3", className)}>
       {defs.map((d) => {
         const fid = `${id}-${d.name}`;
         return (

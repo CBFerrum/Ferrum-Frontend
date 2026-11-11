@@ -203,10 +203,10 @@ function EditorSkeleton() {
       <div className="flex gap-6">
         <div className="grid flex-1 grid-cols-12 gap-4">
           {[3, 3, 3, 3, 6, 6].map((w, i) => (
-            <Skeleton key={i} className={cn(spanClass(w), w <= 3 ? "h-28" : "h-64", "rounded-xl")} />
+            <Skeleton key={i} className={cn(spanClass(w), w <= 3 ? "h-28" : "h-64", "rounded-lg")} />
           ))}
         </div>
-        <Skeleton className="hidden h-96 w-[22rem] rounded-xl lg:block" />
+        <Skeleton className="hidden h-96 w-[22rem] rounded-lg lg:block" />
       </div>
     </div>
   );
@@ -519,7 +519,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
           </Link>
         </Button>
         <div className="min-w-0 flex-1 basis-48">
-          <h1 className="truncate text-xl font-semibold tracking-tight">{saved.id ? draft.label.trim() ? tr("Edit {value}", { value: draft.label.trim() }) : tr("Edit space") : tr("New space")}</h1>
+          <h1 className="page-title truncate">{saved.id ? draft.label.trim() ? tr("Edit {value}", { value: draft.label.trim() }) : tr("Edit space") : tr("New space")}</h1>
           <p className="text-xs text-muted-foreground" aria-live="polite">
             {save.isPending ? tr("Saving…") : dirty ? tr("Unsaved changes") : saved.id ? updated ? (by ? tr("Saved {when} by {by}", { when: relativeTime(updated), by }) : tr("Saved {when}", { when: relativeTime(updated) })) : by ? tr("Saved by {by}", { by }) : tr("Saved") : tr("Not saved yet")}
           </p>
@@ -658,7 +658,7 @@ function Editor({ id, record, initial, canDelete, canCreate }: { id?: string; re
         </section>
         {wide && (
           <aside aria-label={tr("Settings")} className="sticky top-[calc(var(--topbar-h)+1rem)] w-[22rem] shrink-0">
-            <div className="max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto rounded-xl border bg-card p-4 shadow-xs">{panel}</div>
+            <div className="max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto rounded-lg border bg-card p-4">{panel}</div>
           </aside>
         )}
       </div>
@@ -716,7 +716,7 @@ function SortableBlock({
         role="group"
         aria-label={tr("{title}, block {value} of {count}", { title, value: index + 1, count })}
         className={cn(
-          "flex h-full flex-col rounded-xl ring-offset-2 ring-offset-background",
+          "flex h-full flex-col rounded-lg ring-offset-2 ring-offset-background",
           selected ? "ring-2 ring-primary" : issues.length ? "ring-2 ring-destructive" : "",
           isDragging && "opacity-90 shadow-lg",
         )}

@@ -1,13 +1,50 @@
 /* Record screens on phones and touch devices: list cards, the form action bar, child-table cards. */
 
 /* The list's bar: search, filters as chips, then views and columns. Nothing takes room until used. */
+/* The page header: title and count as one unit, the view switcher, quiet secondary actions, one primary. */
+.list-head {
+  align-items: flex-start;
+}
+.list-actions {
+  gap: 12px;
+}
+.list-card {
+  overflow: clip; /* the bar and the table follow the card's corners */
+}
+.list-bars {
+  position: relative;
+}
 .list-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+}
+/* The selection bar sits in the filter bar's place, not above the table (positioned by SelectionToolbar's own classes inside .list-bars). Phones keep it as the bottom bar. */
+/* The table scrolls inside its card, so the header stays in view over a long list. Phones show cards and scroll the page. */
+@media (min-width: 721px) {
+  .list-card .table-wrap {
+    max-height: calc(100dvh - var(--topbar-h, 48px) - 190px);
+    overflow: auto;
+  }
+}
+.bulk-sep {
+  align-self: center;
+  width: 1px;
+  height: 16px;
+  background: var(--border-strong);
+}
+.view-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.view-by .select {
+  width: auto;
 }
 .list-bar-end {
   display: flex;
@@ -17,7 +54,7 @@
 }
 .list-search {
   position: relative;
-  flex: 0 1 220px;
+  flex: 0 1 260px;
   min-width: 140px;
 }
 .list-search .icon {
@@ -29,20 +66,26 @@
   pointer-events: none;
 }
 .list-search .input {
-  height: 30px;
+  height: var(--control-h); /* one row, one height: the buttons beside it are --control-h */
   padding-inline-start: 29px;
 }
-.chip {
+/* The list filter's own token (field: value, and a button to remove it): a bordered, control-high box whose two buttons share it. */
+.chip.chip-field {
   display: inline-flex;
   align-items: stretch;
-  height: 30px;
+  justify-content: flex-start;
+  gap: 0;
+  height: var(--control-h);
+  min-height: 0;
   max-width: 280px;
-  border: 1px solid var(--border);
+  padding: 0;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--primary-soft);
-  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
 }
-.chip[data-empty] {
+.chip.chip-field[data-empty] {
   background: var(--surface);
   border-style: dashed;
 }
@@ -66,9 +109,12 @@
   color: var(--muted-foreground);
   white-space: nowrap;
 }
+.chip-label:has(+ .chip-value)::after {
+  content: ":";
+}
 .chip-value {
   overflow: hidden;
-  font-weight: 550;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -76,10 +122,14 @@
   display: inline-flex;
   align-items: center;
   padding-block: 0 0;
-  padding-inline: 3px 7px;
+  padding-inline: 4px 8px;
   color: var(--muted-foreground);
 }
 .chip-x:hover {
+  color: var(--text);
+}
+.chip.chip-field:hover {
+  background: var(--surface-2);
   color: var(--text);
 }
 .chip-add,
@@ -87,14 +137,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 30px;
+  height: var(--control-h);
   padding: 0 9px;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
   color: var(--muted-foreground);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .chip-add:hover,
@@ -180,12 +230,12 @@
   gap: 8px;
 }
 .connection-head h3 {
-  font-size: 15px;
+  font-size: var(--text-lg);
   font-weight: 650;
 }
 .connection-title {
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: var(--text-base);
   font-weight: 650;
 }
 .connection-facts {
@@ -201,11 +251,11 @@
 }
 .connection-facts dt {
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .connection-facts dd {
   margin: 1px 0 0;
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   font-weight: 550;
 }
 .connection-facts [data-tone="green"] dd {
@@ -297,8 +347,8 @@
   min-width: 0;
 }
 .peek-title h2 {
-  font-size: 15px;
-  font-weight: 650;
+  font-size: var(--text-lg);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .peek-tabs {
@@ -308,18 +358,21 @@
   border-bottom: 1px solid var(--border);
 }
 .peek-tabs button {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
   color: var(--muted-foreground);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .peek-tabs button[aria-selected="true"] {
   border-bottom-color: var(--primary);
   color: var(--text);
+}
+.peek-tabs button {
+  font-weight: 500;
 }
 .peek-body {
   flex: 1;
@@ -331,12 +384,10 @@
   margin-top: 10px;
 }
 .peek-section h3 {
-  margin: 4px 6px;
-  color: var(--muted-foreground);
-  font-size: 11.5px;
+  margin: 8px 6px 4px;
+  color: var(--text);
+  font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 .peek-section dl {
   margin: 0;
@@ -344,16 +395,14 @@
 .peek-row {
   display: grid;
   grid-template-columns: 38% minmax(0, 1fr);
-  align-items: center;
-  min-height: 30px;
+  align-items: start;
+  min-height: var(--control-h-sm);
 }
 .peek-row dt {
-  overflow: hidden;
-  padding: 0 6px;
+  padding: 3px 6px;
   color: var(--muted-foreground);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere; /* a label is never cut: a long one wraps onto a second line */
 }
 .peek-row dd {
   min-width: 0;
@@ -362,15 +411,15 @@
 .peek-value {
   display: block;
   width: 100%;
-  min-height: 26px;
+  min-height: calc(var(--control-h-sm) - 2px);
   padding: 3px 6px;
   overflow-wrap: anywhere;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
-  color: inherit;
+  color: var(--text);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   text-align: start;
 }
 button.peek-value {
@@ -381,8 +430,8 @@ button.peek-value:hover {
 }
 .peek-row dd .input,
 .peek-row dd .select {
-  height: 28px;
-  font-size: 13.5px;
+  height: var(--control-h-sm);
+  font-size: var(--text-sm);
 }
 .table .row-link[data-peeked] td {
   background: var(--primary-soft);
@@ -405,11 +454,12 @@ button.peek-value:hover {
   }
   .list-bar-end {
     flex: 1 1 100%;
+    flex-wrap: wrap;
     margin-inline-start: 0;
   }
   .list-bar .list-sort {
     display: block;
-    flex: 1 1 auto; /* the rest of the line beside the views, so long column names fit */
+    flex: 1 1 100%; /* a line of its own, so long column names fit */
     min-width: 0;
     height: 32px;
   }
@@ -451,14 +501,17 @@ button.peek-value:hover {
     flex: none;
     max-width: 45%;
     color: var(--muted-foreground);
-    font-size: 12.5px;
+    font-size: var(--text-xs);
     text-align: start;
+  }
+  .list-table td.card-lead {
+    padding-bottom: 12px; /* the title and what names it stand apart from the label/value lines below */
   }
   .list-table td:empty {
     display: none;
   }
   .list-table .cell-title {
-    font-size: 15px;
+    font-size: var(--text-lg);
     white-space: normal;
   }
   .list-table .skeleton {
@@ -499,67 +552,66 @@ button.peek-value:hover {
 
   /* ── child tables (TableGrid renders these cards instead of the grid on phones) ── */
 
-  .grid-cards {
+  .line-grid-cards {
     margin: 0;
     padding: 0;
     list-style: none;
   }
-  .grid-card {
+  .line-grid-card {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 6px 10px;
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
   }
-  .grid-card:last-child {
+  .line-grid-card:last-child {
     border-bottom: 0;
   }
-  .grid-card > :not(.grid-card-idx) {
+  .line-grid-card > :not(.line-grid-card-idx) {
     grid-column: 2;
   }
-  .grid-card-idx {
+  .line-grid-card-idx {
     min-width: 16px;
     color: var(--faint);
     font-variant-numeric: tabular-nums;
     text-align: end;
   }
-  .grid-card dl {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 16px;
+  .line-grid-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* every visible column: a line without its rate and amount is not usable */
+    gap: 6px 16px;
     margin: 0;
     overflow-wrap: anywhere;
   }
-  .grid-card dt {
-    font-size: 12px;
+  .line-grid-card dt {
+    font-size: var(--text-xs);
     color: var(--muted-foreground);
   }
-  .grid-card dd {
+  .line-grid-card dl > .num {
+    text-align: end; /* money and quantities end-aligned, as in the table */
+  }
+  .line-grid-card dd {
     margin: 0;
     display: -webkit-box; /* long text (descriptions) clamped to keep cards compact */
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
   }
-  .grid-card dd:empty::before {
+  .line-grid-card dd:empty::before {
     content: "—";
     color: var(--faint);
   }
-  .grid-card-actions {
+  .line-grid-card-actions {
     display: flex;
     gap: 4px;
   }
-  .grid-card-actions .btn {
+  .line-grid-card-actions .btn {
     margin-inline-end: auto; /* Edit apart from move/remove */
   }
 }
 
 @media (pointer: coarse) {
-  /* Link fields: room in the input for both 44px clear/open buttons. */
-  .combo .input {
-    padding-inline-end: 94px;
-  }
-  .grid td:has(> .combo) {
+  .line-grid td:has(> .combo) {
     min-width: 200px; /* the dense grid (tablets) keeps some room for the text */
   }
 }
@@ -576,7 +628,7 @@ button.peek-value:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .filter-word:hover {
   color: var(--foreground);
@@ -606,8 +658,10 @@ button.peek-value:hover {
 .related-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 8px 10px;
+  min-height: var(--control-h);
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   color: var(--foreground);
   text-decoration: none;
@@ -732,6 +786,360 @@ button.peek-value:hover {
   min-width: 0;
 }
 .zoned-name {
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+/* ── record workspace: header, read-only values, totals, activity, discussion ── */
+
+/* The title carries the record's identity and its state on one line; the bar stays in view while a long form scrolls. */
+.record-head {
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+.record-id {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.record-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.record-sub {
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+  overflow-wrap: anywhere;
+}
+.record-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.record-head .page-actions {
+  flex: 0 1 auto;
+  gap: 8px;
+}
+/* An action with an icon and no words (Print, PDF, Email): quiet until pointed at; its name is its aria-label and tooltip. */
+.btn-icon {
+  width: var(--control-h);
+  padding: 0;
+  color: var(--muted-foreground);
+}
+.btn-icon:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.record-head .page-actions .btn-default {
+  border-color: var(--border-control);
+}
+.crumbs + .record-head {
+  margin-top: 0;
+}
+@media (min-width: 721px) {
+  .record-head {
+    position: sticky;
+    top: var(--ferrum-bar-height, 0px);
+    z-index: 15;
+    container-type: scroll-state;
+    margin-inline: -24px;
+    padding: 8px 24px;
+    background: var(--bg);
+    scroll-margin-top: calc(var(--ferrum-bar-height, 0px) + 72px);
+  }
+  /* The hairline appears only once the bar is stuck. */
+  @supports (container-type: scroll-state) {
+    .record-head::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      bottom: 0;
+      height: 1px;
+      background: var(--border);
+      opacity: 0;
+    }
+    @container scroll-state(stuck: top) {
+      .record-head::after {
+        opacity: 1;
+      }
+    }
+  }
+  /* Fields that take focus under the stuck bar are scrolled clear of it. */
+  .form-card :is(input, select, textarea, button, a, [tabindex]) {
+    scroll-margin-top: calc(var(--ferrum-bar-height, 0px) + 88px);
+  }
+}
+
+/* A value that cannot be edited here: text in the field's own place. A box means "type here". */
+.input.read-value,
+.textarea.read-value {
+  height: 24px;
+  padding: 2px 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  cursor: text;
+  text-overflow: ellipsis;
+}
+.textarea.read-value {
+  height: auto;
+  min-height: 24px;
+  field-sizing: content;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.45;
+}
+.input.read-value.num {
+  font-variant-numeric: tabular-nums;
+}
+/* A lone figure in the form's grid stays under its label; figures align to the end only in tables and totals. */
+.form-grid > .field > .input.read-value.num {
+  text-align: start;
+}
+.input.read-value::placeholder,
+.textarea.read-value::placeholder {
+  color: var(--faint);
+  -webkit-text-fill-color: var(--faint);
+}
+.input.read-value:focus-visible,
+.textarea.read-value:focus-visible {
+  border-color: transparent;
+  outline-offset: 0;
+}
+/* A read-only boolean is a word: "Yes" in the text colour, "No" quieter. */
+.read-text {
+  display: block;
+  min-height: 24px;
+  padding: 2px 0;
+  color: var(--text);
+}
+.read-text-off {
+  color: var(--muted-foreground);
+}
+/* A read-only field with nothing in it recedes: the label stays, the dash is fainter and the row tighter. */
+.field-empty {
+  gap: 0;
+}
+.field-empty .input.read-value::placeholder,
+.field-empty .textarea.read-value::placeholder {
+  opacity: 0.55;
+}
+.field-empty .input.read-value,
+.field-empty .textarea.read-value {
+  height: 20px;
+  min-height: 20px;
+  padding-block: 0;
+}
+/* Three or more such fields in a row fold into one line that opens to them. */
+.empty-run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+.empty-run:hover {
+  color: var(--text);
+}
+.empty-run svg {
+  flex: none;
+}
+.empty-run-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A read-only link keeps its open button, right after the text it opens. */
+.combo:has(.read-value) {
+  gap: 4px;
+  justify-content: flex-start;
+}
+.combo:has(.read-value) .combo-actions {
+  position: static;
+}
+.combo:has(.read-value) .input.read-value {
+  width: auto;
+  min-width: 2ch;
+  max-width: calc(100% - var(--combo-btn) - 4px);
+  padding-inline-end: 0;
+  field-sizing: content;
+}
+.line-grid .combo:has(.read-value) .input.read-value {
+  padding-inline-end: 0;
+}
+/* In a line grid the text sits where the neighbouring editable cells' text does. */
+.line-grid .input.read-value,
+.line-grid .textarea.read-value {
+  height: var(--cell-h);
+  padding: 0 11px;
+}
+.line-grid .textarea.read-value {
+  height: auto;
+  min-height: var(--cell-h);
+  padding-block: 7px;
+}
+/* Checkbox rows sit on the control line of the fields beside them. */
+.form-grid > .field > .check-field:first-child {
+  margin-top: 26px; /* label line (20px) and its gap (6px) */
+}
+.form-grid > .field > .check-field:first-child:only-child {
+  margin-top: 26px;
+}
+
+/* A run of read-only money fields: labels and figures in one column, in their own order, ending at the grid's edge. */
+.totals {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  margin-inline-start: auto;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.totals .field {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 4px;
+}
+.totals .field-label {
+  flex: 1;
+  min-width: 0;
+}
+.totals .input.read-value {
+  flex: 0 0 45%;
+  width: 45%;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.totals .field-error,
+.totals .field-hint {
+  flex-basis: 100%;
+}
+.totals .field {
+  flex-wrap: wrap;
+}
+
+/* Activity: who, what, when; the changes beneath, from then to. */
+.timeline.audit {
+  max-width: 760px;
+}
+.timeline.audit > li {
+  padding-block: 0 20px;
+  border-inline-start: 1px solid var(--border);
+}
+.timeline.audit > li::before {
+  inset-inline-start: -5px;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  border-width: 1.5px;
+  border-color: var(--border-strong);
+}
+.audit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.audit-time {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.timeline.audit .diff {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+.timeline.audit .diff td {
+  padding: 2px 12px 2px 0;
+}
+.timeline.audit .diff-label {
+  width: 30%;
+  color: var(--muted-foreground);
+}
+.timeline.audit .diff .old {
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.timeline.audit .diff .new {
+  color: var(--text);
+}
+.timeline.audit .diff-arrow {
+  width: 1%;
+  padding-inline: 0 12px;
+  color: var(--faint);
+}
+.diff-more {
+  margin-top: 4px;
+  font-size: var(--text-sm);
+}
+
+/* Discussion: author and time, then the words; edit and delete wait until the comment is pointed at. */
+.comment-body {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+}
+.comment-meta .spacer {
+  flex: 1;
+}
+.comment-meta strong {
+  font-weight: 600;
+}
+.comment-meta .faint {
+  font-size: var(--text-xs);
+}
+.comment-meta .link-btn {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  opacity: 0;
+}
+.comment-meta .link-btn.danger {
+  color: var(--danger);
+}
+.comment:hover .comment-meta .link-btn,
+.comment:focus-within .comment-meta .link-btn {
+  opacity: 1;
+}
+@media (hover: none) {
+  .comment-meta .link-btn {
+    opacity: 1;
+  }
+}
+.comments {
+  gap: 16px;
+}
+.composer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  /* A line as a card: each column a quiet label above its value, figures at the end. */
+  .line-grid-card dd {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .line-grid-card dt {
+    margin-bottom: 1px;
+  }
+  .totals {
+    max-width: none;
+  }
 }
