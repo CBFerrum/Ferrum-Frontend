@@ -9,7 +9,7 @@ import { api, docPath, errorMessage, isStale } from "../../lib/api";
 import { evaluate } from "../../lib/expr";
 import { formSections } from "../../lib/formTabs";
 import { can, fieldState, recordTitle, useCurrencyPrecision, useMe, userScope, type Doc, type EntityMeta, type Field } from "../../lib/meta";
-import { Badge, ErrorState, Icon, Spinner, statusTone, toast } from "../../ui/kit";
+import { ErrorState, Icon, Spinner, StatusBadge, toast } from "../../ui/kit";
 import { CollabPanel } from "../Collab";
 import { CellValue, FieldControl } from "../widgets";
 import { Related } from "./Related";
@@ -176,7 +176,7 @@ export function RecordPeek({ meta, id, onClose }: { meta: EntityMeta; id: string
       <header className="peek-head">
         <div className="peek-title">
           <h2>{doc ? recordTitle(meta, doc) : "…"}</h2>
-          {typeof doc?.status === "string" && <Badge tone={statusTone(doc.status)}>{isolate(doc.status)}</Badge>}
+          {typeof doc?.status === "string" && <StatusBadge value={doc.status} />}
         </div>
         <Link className="icon-btn" to={`/e/${E}/${id}`} aria-label={tr("Open the full record")} title={tr("Open the full record")}>
           <Icon name="expand" size={15} />

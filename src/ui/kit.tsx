@@ -19,6 +19,7 @@ import {
 } from "react";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
+import { knownStatusTone } from "../lib/statusTones";
 
 // ── icons ──
 
@@ -113,17 +114,22 @@ export function Badge({ tone = "neutral", children, title }: { tone?: Tone; chil
   );
 }
 
-const TONES: [RegExp, Tone][] = [
-  [/^(draft|open|pending|not started|to bill|to deliver)/i, "neutral"],
-  [/(cancel|reject|overdue|dead|fail|lost|disabled|inactive|locked)/i, "red"],
-  [/(unpaid|partly|partial|hold|return|waiting|due)/i, "amber"],
-  [/(paid|submitted|completed|closed|delivered|received|approved|active|done|verified)/i, "green"],
-];
-
-/** Picks a badge tone for a status-like value. */
-export function statusTone(value: unknown): Tone {
+/** The badge tone of a state. `tones` maps exact stored state ids to a tone (the owner of the tone: the field's own
+ *  declaration); a value it has wins. Otherwise only well-known whole state ids get a tone (lib/statusTones.ts); any other
+ *  value, a negated phrase or translated text is neutral. Never guessed from the words. */
+export function statusTone(value: unknown, tones?: Readonly<Record<string, Tone>>): Tone {
   const s = String(value ?? "");
-  return TONES.find(([re]) => re.test(s))?.[1] ?? "blue";
+  if (tones && Object.prototype.hasOwnProperty.call(tones, s)) return tones[s];
+  return knownStatusTone(s) ?? "neutral";
+}
+
+/** A state as a badge: the tone from its state id (`value`, never the label), the words from `label` (default: the value). */
+export function StatusBadge({ value, tones, label, title }: { value: unknown; tones?: Readonly<Record<string, Tone>>; label?: ReactNode; title?: string }) {
+  return (
+    <Badge tone={statusTone(value, tones)} title={title}>
+      {label ?? isolate(String(value ?? ""))}
+    </Badge>
+  );
 }
 
 // ── form field wrapper ──

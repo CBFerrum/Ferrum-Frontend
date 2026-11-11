@@ -8,7 +8,8 @@ import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, 
 import { FirstRun } from "./FirstRun";
 import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
-import { Badge, EmptyState, Icon, statusTone } from "../ui/kit";
+import { Badge, EmptyState, Icon } from "../ui/kit";
+import { docstatusTone } from "../lib/statusTones";
 import { moduleLinks, ownModule, reportItems, STUDIO } from "./Shell";
 import { PATHS } from "./studio/space/model";
 import { t, isolate } from "@ferrum/client";
@@ -142,7 +143,7 @@ function RecentDocs({ entity }: { entity: EntitySummary }) {
                   {isolate(title)}
                 </Link>
                 {r.number && r.number !== title ? <span className="faint nowrap">{isolate(String(r.number))}</span> : null}
-                {entity.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[ds])}>{DOCSTATUS_LABEL[ds] ?? ds}</Badge>}
+                {entity.submittable && <Badge tone={docstatusTone(ds)}>{DOCSTATUS_LABEL[ds] ?? ds}</Badge>}
                 {typeof r.updated_at === "string" && <span className="faint nowrap">{isolate(relativeTime(r.updated_at))}</span>}
               </li>
             );

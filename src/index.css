@@ -69,9 +69,10 @@
   --chart-8: light-dark(#5b6b80, #94a3b8);
 
   /* Geometry, in px at the default root (14px) and rem so it follows the root: control height 36px
-     comfortable, 32px compact, 44px on touch screens whatever the density; --control-h-sm is the small control. */
+     comfortable, 32px compact, 44px on touch screens whatever the density; --control-h-sm is the small control (32px, 36px on touch).
+   Tailwind's spacing unit is 4px at the default root (it is 0.25rem, 3.5px under the 87.5% root): h-9 is 36px, h-11 is 44px. */
   --control-h: calc(36 / 14 * 1rem);
-  --control-h-sm: calc(28 / 14 * 1rem);
+  --control-h-sm: calc(32 / 14 * 1rem);
   --cell-py: calc(8 / 14 * 1rem);
 
   /* Motion: a state change (hover, press), an overlay opening, a panel sliding. Zero for reduced motion. */
@@ -146,6 +147,7 @@
    xs caption 12/16, sm compact UI 13/18, base standard UI 14/20, lg reading 16/24, xl section heading 18/24,
    2xl page heading 24/32. Larger steps stay at Tailwind's defaults. `static` emits them for the hand-written CSS too. */
 @theme static {
+  --spacing: calc(4 / 14 * 1rem);
   --text-xs: calc(12 / 14 * 1rem);
   --text-xs--line-height: calc(16 / 14 * 1rem);
   --text-sm: calc(13 / 14 * 1rem);
@@ -220,7 +222,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
