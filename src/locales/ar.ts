@@ -4078,6 +4078,9 @@ const words: Record<string, string> = {
   "Fields to fix": "الحقول المطلوب تصحيحها",
   "Nothing matches your search or filters.": "لا شيء يطابق بحثك أو عوامل التصفية.",
   "{table}: {message}": "{table}: {message}",
+  "Show all": "اعرض الكل",
+  "Show less": "اعرض أقل",
+  "Show all {n} changes": "اعرض كل التغييرات ({n})",
 };
 
 export default words;

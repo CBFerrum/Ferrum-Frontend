@@ -9,7 +9,7 @@ import { Link } from "react-router";
 import { api, docPath } from "../../lib/api";
 import type { EntityMeta, LinkedFrom, ListResponse } from "../../lib/meta";
 import { useRunsAbout } from "../../lib/solutions";
-import { Spinner } from "../../ui/kit";
+import { Spinner, StatusBadge } from "../../ui/kit";
 import { t, isolate } from "@ferrum/client";
 
 /** A run's state in words (the catalogs hold each). */
@@ -64,7 +64,7 @@ export function Related({ meta, id }: { meta: EntityMeta; id: string }) {
             {runs.data.map((r) => (
               <li key={r.id} className="related-row">
                 <span>
-                  {isolate(r.process)} <span className="faint">· {t(PROCESS_STATE[r.status] ?? r.status)}</span>
+                  {isolate(r.process)} <StatusBadge value={r.status} label={t(PROCESS_STATE[r.status] ?? r.status)} />
                   {r.waiting.map((w, i) => (
                     <span key={i} className="block text-xs text-muted-foreground">
                       {t("Waiting on {role}: {task}", { role: w.role || t("a person"), task: w.label })}

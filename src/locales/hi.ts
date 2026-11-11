@@ -4078,6 +4078,9 @@ const words: Record<string, string> = {
   "Fields to fix": "ठीक करने वाले फ़ील्ड",
   "Nothing matches your search or filters.": "आपकी खोज या फ़िल्टर से कुछ मेल नहीं खाता।",
   "{table}: {message}": "{table}: {message}",
+  "Show all": "सभी दिखाएँ",
+  "Show less": "कम दिखाएँ",
+  "Show all {n} changes": "सभी {n} बदलाव दिखाएँ",
 };
 
 export default words;
