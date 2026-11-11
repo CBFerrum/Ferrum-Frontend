@@ -22,6 +22,7 @@ The roles are Tailwind's `text-*` scale, redefined once in `src/index.css` (`@th
 | `text-lg` | reading, message body | 16 / 24 |
 | `text-xl` | section heading | 18 / 24 |
 | `text-2xl` | page heading | 24 / 32 |
+| `text-3xl`, `text-4xl` | display figure: the one number a screen is about (an amount due, an audience size); never a heading | 30 / 36, 36 / 40 |
 
 Larger steps stay at Tailwind's defaults. Do not write `text-[Npx]`; pick a role.
 
