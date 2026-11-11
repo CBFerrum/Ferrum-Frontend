@@ -27,6 +27,7 @@ export interface Automation {
 export const EVENTS = ["created", "updated", "submitted", "cancelled", "deleted"] as const;
 export const MAX_FILTERS = 8;
 export const MAX_ACTIONS = 20;
+export const MAX_LOOP_EFFECTS = 10;
 
 export type Unit = "days" | "hours" | "minutes";
 export interface Row { key: string; field: string; expr: string }
@@ -41,7 +42,7 @@ export type Trigger =
   | { kind: "raw"; event: string; schedule?: unknown };
 
 export type NotifyTo = "owner" | "role" | "user" | "field";
-export type DraftAction =
+export type DraftAction = (
   | { key: string; kind: "set_fields"; rows: Row[] }
   | { key: string; kind: "create_document"; entity: string; rows: Row[] }
   /** Writes the record that link field `link` of the triggering record names (a button's or an automation's). */
@@ -54,7 +55,17 @@ export type DraftAction =
   | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string }
   /** A step of another app through the capability catalog; `once` gives it its own `key` expression. `extra`: what the editor has no control for. */
   | { key: string; kind: "invoke"; capability: string; rows: Row[]; once: boolean; onceKey: string; extra: Record<string, unknown> }
-  | { key: string; kind: "raw"; json: unknown };
+  /** The one record of `entity` whose `by` fields hold those values; `create` (made when none) and `update` (changed when found) are null when absent. */
+  | { key: string; kind: "find"; entity: string; by: Row[]; create: Row[] | null; update: Row[] | null; extra: Record<string, unknown> }
+  /** Once per line of `table`, or per record of `entity` whose link field `link` names this one; the item is `item`. One level: `effects` hold no loop. */
+  | { key: string; kind: "for_each"; over: "table" | "entity"; table: string; entity: string; link: string; where: string; effects: DraftAction[]; extra: Record<string, unknown> }
+  /** The lines of `from_table` of the record `link` names (or the earlier effect `result` found) into `table`, each value an expression over `item`. `mode` "" is absent (append). */
+  | { key: string; kind: "copy_lines"; table: string; source: "link" | "result"; link: string; result: string; from_table: string; rows: Row[]; mode: "" | "append" | "replace"; extra: Record<string, unknown> }
+  | { key: string; kind: "raw"; json: unknown }
+) & {
+  /** "Only when": the effect runs when this holds (absent: always). */
+  when?: string;
+};
 
 /** One entry of `GET /api/admin/capabilities`. */
 export interface Capability {
@@ -110,6 +121,7 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 const onlyKeys = (o: Obj, allowed: string[]) => Object.keys(o).every((k) => allowed.includes(k));
 const isStr = (v: unknown): v is string => typeof v === "string";
+const rest = (o: Obj, drop: string[]): Obj => Object.fromEntries(Object.entries(o).filter(([k]) => !drop.includes(k)));
 
 // ── offsets ──
 
@@ -161,7 +173,15 @@ function fromSchedule(event: string, s: unknown): Trigger {
 const rowsOf = (v: unknown): Row[] | null =>
   isObj(v) && Object.values(v).every(isStr) ? Object.entries(v).map(([field, expr]) => ({ key: newKey(), field, expr: expr as string })) : null;
 
+/** An action as JSON → draft. `when` is read off first, so that every kind takes it; one that is not text stays raw. */
 export function fromAction(a: unknown): DraftAction {
+  if (!isObj(a) || !("when" in a)) return fromKnown(a);
+  const { when, ...rest } = a;
+  const d = isStr(when) ? fromKnown(rest) : null;
+  return d && d.kind !== "raw" ? { ...d, when: when as string } : { key: newKey(), kind: "raw", json: a };
+}
+
+function fromKnown(a: unknown): DraftAction {
   const raw: DraftAction = { key: newKey(), kind: "raw", json: a };
   if (!isObj(a)) return raw;
   switch (a.type) {
@@ -203,6 +223,30 @@ export function fromAction(a: unknown): DraftAction {
       const extra = Object.fromEntries(Object.entries(a).filter(([k]) => !["type", "capability", "input", "key"].includes(k)));
       return { key: newKey(), kind: "invoke", capability: a.capability, rows, once: a.key !== undefined, onceKey: (a.key as string) ?? "", extra };
     }
+    case "find": {
+      const rows = isStr(a.entity) ? rowsOf(a.by) : null;
+      const create = a.create === undefined ? null : rowsOf(a.create);
+      const update = a.update === undefined ? null : rowsOf(a.update);
+      if (!rows || (a.create !== undefined && !create) || (a.update !== undefined && !update)) return raw;
+      return { key: newKey(), kind: "find", entity: a.entity as string, by: rows, create, update, extra: rest(a, ["type", "entity", "by", "create", "update"]) };
+    }
+    case "for_each": {
+      const over = isStr(a.table) ? "table" : isStr(a.entity) && isStr(a.link) ? "entity" : null;
+      if (!over || !Array.isArray(a.effects) || !(a.where === undefined || isStr(a.where))) return raw;
+      return {
+        key: newKey(), kind: "for_each", over, table: isStr(a.table) ? a.table : "", entity: isStr(a.entity) ? a.entity : "", link: isStr(a.link) ? a.link : "", where: (a.where as string) ?? "",
+        effects: a.effects.map(fromAction), extra: rest(a, ["type", "table", "entity", "link", "where", "effects"]),
+      };
+    }
+    case "copy_lines": {
+      const rows = isStr(a.table) && isStr(a.from_table) ? rowsOf(a.values) : null;
+      const source = isStr(a.link) ? "link" : typeof a.result === "number" ? "result" : null;
+      if (!rows || !source || (a.link !== undefined && a.result !== undefined) || !(a.mode === undefined || a.mode === "append" || a.mode === "replace")) return raw;
+      return {
+        key: newKey(), kind: "copy_lines", table: a.table as string, source, link: isStr(a.link) ? a.link : "", result: typeof a.result === "number" ? String(a.result) : "", from_table: a.from_table as string,
+        rows, mode: (a.mode as "append" | "replace" | undefined) ?? "", extra: rest(a, ["type", "table", "link", "result", "from_table", "values", "mode"]),
+      };
+    }
     default:
       return raw;
   }
@@ -230,6 +274,11 @@ export function fromAutomation(a: Partial<Automation>): Draft {
 const values = (rows: Row[]) => Object.fromEntries(rows.map((r) => [r.field.trim(), r.expr]));
 
 export function actionJson(a: DraftAction): unknown {
+  const j = actionBody(a);
+  return a.kind !== "raw" && a.when?.trim() ? { ...(j as Obj), when: a.when.trim() } : j;
+}
+
+function actionBody(a: DraftAction): unknown {
   switch (a.kind) {
     case "raw":
       return a.json;
@@ -245,6 +294,12 @@ export function actionJson(a: DraftAction): unknown {
       return { ...a.extra, type: "set_line", table: a.table, where: a.where, values: values(a.rows) };
     case "notify":
       return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, title: a.title, ...(a.body.trim() ? { body: a.body } : {}) };
+    case "find":
+      return { ...a.extra, type: "find", entity: a.entity, by: values(a.by), ...(a.create ? { create: values(a.create) } : {}), ...(a.update ? { update: values(a.update) } : {}) };
+    case "for_each":
+      return { ...a.extra, type: "for_each", ...(a.over === "table" ? { table: a.table } : { entity: a.entity, link: a.link }), ...(a.where.trim() ? { where: a.where.trim() } : {}), effects: a.effects.map(actionJson) };
+    case "copy_lines":
+      return { ...a.extra, type: "copy_lines", table: a.table, ...(a.source === "link" ? { link: a.link } : { result: Number(a.result) }), from_table: a.from_table, values: values(a.rows), ...(a.mode ? { mode: a.mode } : {}) };
     case "invoke":
       return { ...a.extra, type: "invoke", capability: a.capability, ...(a.rows.length ? { input: values(a.rows) } : {}), ...(a.once ? { key: a.onceKey } : {}) };
     case "email":
@@ -348,6 +403,24 @@ export function checkActions(actions: DraftAction[], max: number, catalog?: Capa
     } else if (a.kind === "append_line" || a.kind === "set_line") {
       if (!a.table) at(tr("choose the table field that holds the lines."));
       if (a.kind === "set_line" && !a.where.trim()) at(tr("say which line to change."));
+      if (!a.rows.length) at(tr("add at least one line field to fill in."));
+      if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
+    } else if (a.kind === "find") {
+      const filled = (rows: Row[]) => rows.every((r) => r.field.trim() && r.expr.trim());
+      if (!a.entity) at(tr("choose the kind of record to find."));
+      if (!a.by.length) at(tr("say which fields to match, with a value each."));
+      if (!filled(a.by) || (a.create && !filled(a.create)) || (a.update && !filled(a.update))) at(tr("every row needs a field and a value."));
+    } else if (a.kind === "for_each") {
+      if (a.over === "table" ? !a.table : !a.entity || !a.link) at(a.over === "table" ? tr("choose the table whose lines to go through.") : tr("choose the kind of record and the link field that names this one."));
+      if (!a.effects.length) at(tr("add at least one effect to the loop."));
+      if (a.effects.length > MAX_LOOP_EFFECTS) at(tr("use at most {n} effects in a loop.", { n: MAX_LOOP_EFFECTS }));
+      if (a.effects.some((x) => x.kind === "for_each")) at(tr("a loop cannot hold another loop."));
+      for (const p of checkActions(a.effects, MAX_LOOP_EFFECTS, catalog)) if (p.message !== tr("Add at least one action.")) say(tr("Action {n}, in the loop: {message}", { n: i + 1, message: p.message }), a.key);
+    } else if (a.kind === "copy_lines") {
+      if (!a.table) at(tr("choose the table to copy lines into."));
+      if (a.source === "link" ? !a.link : !/^\d+$/.test(a.result)) at(tr("choose where the lines come from: a link field or an earlier Find."));
+      else if (a.source === "result" && !(Number(a.result) < i && ["find", "create_document"].includes(actions[Number(a.result)]?.kind))) at(tr("the lines must come from an earlier Find or Create a record."));
+      if (!a.from_table.trim()) at(tr("choose the table to copy lines from."));
       if (!a.rows.length) at(tr("add at least one line field to fill in."));
       if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
     } else if (a.kind === "notify") {

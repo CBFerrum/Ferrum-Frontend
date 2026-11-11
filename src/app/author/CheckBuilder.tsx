@@ -76,7 +76,7 @@ export function CheckInput({ fields, state, onChange, words, optional }: { field
       </label>
       {notice && <p className="field-hint" role="status">{notice}</p>}
       {state.advanced ? (
-        <ExprInput label={w.advancedLabel} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} links={linkChips(fields)} hint={w.hint} />
+        <ExprInput label={w.advancedLabel} value={state.text} onChange={(text) => onChange({ ...state, text })} fields={usable} links={linkChips(fields)} hint={w.hint} functions />
       ) : (
         <div className="stack" role="group" aria-labelledby={`${id}-head`}>
           <div className="row" style={{ flexWrap: "wrap", alignItems: "center", gap: 8 }}>

@@ -28,6 +28,10 @@ describe("a configured button as a draft", () => {
     const odd = { ...doc, group: "More", docstatus: [0], effects: [{ type: "webhook", url: "x" }, ...doc.effects], params: [{ name: "q", label: "Q", type: "data", mask: true }], refuse_if: [{ when: "true", message: "no", code: 7 }] };
     expect(toButton(fromButton(odd))).toEqual(odd);
   });
+  it("leaves out package too, and keeps effects with when and the new kinds as they were", () => {
+    const effects = [{ type: "find", entity: "XParty", by: { code: "doc.code" }, create: { name: "doc.title" }, when: "doc.code != ''" }, { type: "for_each", table: "lines", effects: [{ type: "notify", to: "owner", title: "'t'" }] }];
+    expect(toButton(fromButton({ ...doc, effects, package: "gov", may_run: true }))).toEqual({ ...doc, effects });
+  });
   it("leaves out may_run, which the description adds for whoever asked and the server refuses back", () => {
     expect(toButton(fromButton({ ...doc, may_run: true, docstatus: [], permission: "write" }))).toEqual({ ...doc, docstatus: [], permission: "write" });
   });
