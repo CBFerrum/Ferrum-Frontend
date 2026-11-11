@@ -11,6 +11,7 @@
 //              (/api/shell/names)
 //   check      fails unless dist/ was built from the sources as they are now (run in CI): the
 //              app's crate carries dist/, so a source change without a build would ship stale files;
+//              and unless its built CSS carries the kit's base (packages/build/basecss.mjs: an app that forgets the @import of index.css ships unstyled);
 //              and unless its own catalogs (src/locales/*.json) hold only words it asks for,
 //              each keeping its {places}, as its names (src/locales/names/*.json) keep theirs; and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
 //              compressed, CSS ≤ 50 KB); and runs `lint` below: against ui-lint-baseline.json when
@@ -32,6 +33,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { baseCssProblem } from "./basecss.mjs";
 import { measure } from "./budgets.mjs";
 import { runLint } from "./uilint.mjs";
 import { catalogIssues, namesIssues, wordsOf } from "./words.mjs";
@@ -114,6 +116,8 @@ switch (process.argv[2]) {
     console.log(`ferrum-ui: dist/ matches its sources (${now.slice(0, 12)})`);
     const issues = existsSync(join(ui, "src")) ? [...catalogIssues(join(ui, "src")), ...namesIssues(join(ui, "src"))] : [];
     if (issues.length) fail(`its catalogs:\n  ${issues.join("\n  ")}`);
+    const noBase = baseCssProblem(join(ui, "dist"));
+    if (noBase) fail(noBase);
     const size = measure(join(ui, "dist"), "ferrum-ui: dist/");
     console.log(size.line);
     if (size.over) fail("over the size budget (docs/plan/apps-ui.md §12.9): load pages when they are opened (lazy routes)");
