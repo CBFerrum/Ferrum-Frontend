@@ -305,7 +305,7 @@ function Heatmap({ model, title }: { model: ChartModel; title: string }) {
   };
   return (
     <div className="overflow-x-auto py-2">
-      <div className="inline-grid grid-flow-col gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={tr("{title}: {label} by day, {length} days; the table lists every value", { title, label: s.label, length: days.length })}>
+      <div className="inline-grid grid-flow-col gap-[3px] text-xs text-muted-foreground" style={{ gridTemplateRows: "repeat(7, 14px)" }} role="img" aria-label={tr("{title}: {label} by day, {length} days; the table lists every value", { title, label: s.label, length: days.length })}>
         {WEEKDAYS.map((d, i) => (
           <span key={i} className="pe-1 leading-[14px]" aria-hidden="true">
             {isolate(d)}

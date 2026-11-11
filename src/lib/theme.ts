@@ -94,8 +94,8 @@ const ACCENT_TOKENS = ["--primary", "--primary-hover", "--primary-soft", "--prim
 type AccentTokens = Record<(typeof ACCENT_TOKENS)[number], string>;
 
 const LIGHT_SURFACE = "#ffffff";
-const DARK_SURFACE = "#161a21";
-const DARK_TEXT = "#0b1020";
+const DARK_SURFACE = "#191c22";
+const DARK_TEXT = "#111827";
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -152,7 +152,7 @@ export function accentTokens(accent: string | null): AccentTokens | null {
     "--primary-hover": `light-dark(${mix(light, "#000000", 0.15)}, ${mix(dark, "#ffffff", 0.15)})`,
     "--primary-soft": `light-dark(${mix(light, LIGHT_SURFACE, 0.88)}, ${mix(dark, DARK_SURFACE, 0.78)})`,
     "--primary-text": `light-dark(#ffffff, ${DARK_TEXT})`,
-    "--focus-ring": `0 0 0 3px light-dark(rgb(${lr} ${lg} ${lb} / 0.35), rgb(${dr} ${dg} ${db} / 0.45))`,
+    "--focus-ring": `0 0 0 3px light-dark(rgb(${lr} ${lg} ${lb} / 0.75), rgb(${dr} ${dg} ${db} / 0.8))`,
     "--chart-1": `light-dark(${light}, ${dark})`,
   };
 }

@@ -8,14 +8,18 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 87.5%; /* 14px at the browser's default, and it follows the user's font-size setting */
+  -webkit-text-size-adjust: 100%; /* iOS would enlarge the text in landscape */
+}
+
 html,
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.45 var(--font);
+  font: 1rem/calc(20 / 14) var(--font);
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%; /* iOS would enlarge the text in landscape */
 }
 
 body {
@@ -63,7 +67,7 @@ a:hover {
 }
 .mono {
   font-family: var(--mono);
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .num {
   text-align: end;
@@ -167,7 +171,7 @@ html[data-ferrum-host] .topbar {
   gap: 10px;
   padding: 6px 8px 14px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--text-lg);
   color: var(--text);
 }
 .brand:hover {
@@ -181,7 +185,7 @@ html[data-ferrum-host] .topbar {
   border-radius: 7px;
   background: var(--primary);
   color: var(--primary-text);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .nav-group {
@@ -195,7 +199,7 @@ html[data-ferrum-host] .topbar {
   gap: 6px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -217,7 +221,7 @@ html[data-ferrum-host] .topbar {
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 13.5px;
+  font-size: var(--text-sm);
 }
 .nav-link:hover {
   background: var(--surface-2);
@@ -275,7 +279,7 @@ html[data-ferrum-host] .topbar {
   padding: 8px max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
   background: var(--warning-soft);
   color: var(--warning);
-  font-size: 13px;
+  font-size: var(--text-sm);
   border-bottom: 1px solid var(--border);
 }
 .update-banner {
@@ -371,7 +375,7 @@ main:focus {
   align-items: center;
 }
 .crumbs {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   margin-bottom: 4px;
   display: flex;
@@ -407,13 +411,13 @@ main:focus {
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 .btn-md {
-  height: 34px;
+  height: var(--control-h);
   padding: 0 12px;
 }
 .btn-sm {
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 9px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 .btn:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-2);
@@ -453,8 +457,8 @@ main:focus {
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-h);
+  height: var(--control-h);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -472,8 +476,8 @@ main:focus {
   cursor: not-allowed;
 }
 .icon-btn-sm {
-  width: 26px;
-  height: 26px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
 }
 .link-btn {
   border: 0;
@@ -495,7 +499,7 @@ main:focus {
 .textarea {
   width: 100%;
   min-width: 0;
-  height: 34px;
+  height: var(--control-h);
   padding: 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -511,7 +515,7 @@ main:focus {
   line-height: 1.45;
 }
 .textarea.mono {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .select {
   padding-inline-end: 6px;
@@ -549,7 +553,7 @@ input[type="checkbox"] {
 }
 input[type="color"] {
   width: 40px;
-  height: 34px;
+  height: var(--control-h);
   padding: 2px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -563,7 +567,7 @@ input[type="color"] {
   min-width: 0;
 }
 .field-label {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--muted-foreground);
 }
@@ -572,21 +576,21 @@ input[type="color"] {
   margin-inline-start: 2px;
 }
 .field-hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--faint);
 }
 .field-error {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--danger);
 }
 .check-field {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 34px;
+  min-height: var(--control-h);
 }
 .check-field label {
-  font-size: 13.5px;
+  font-size: var(--text-sm);
   color: var(--text);
   font-weight: 500;
 }
@@ -664,7 +668,7 @@ input[type="color"] {
 }
 .card-head h2,
 .card-head h3 {
-  font-size: 14.5px;
+  font-size: var(--text-base);
   font-weight: 650;
 }
 .card-head .check-field {
@@ -692,7 +696,7 @@ input[type="color"] {
   gap: 6px;
   padding: 12px 16px;
   font-weight: 650;
-  font-size: 14px;
+  font-size: var(--text-base);
   list-style: none;
 }
 .section > summary {
@@ -735,7 +739,7 @@ input[type="color"] {
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13.5px;
+  font-size: var(--text-sm);
 }
 .table th,
 .table td {
@@ -748,7 +752,7 @@ input[type="color"] {
   position: sticky;
   top: 0;
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--muted-foreground);
   white-space: nowrap;
@@ -810,7 +814,7 @@ input[type="color"] {
 .grid {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 .grid th,
 .grid td {
@@ -821,7 +825,7 @@ input[type="color"] {
 }
 .grid th {
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--muted-foreground);
   white-space: nowrap;
@@ -852,13 +856,13 @@ input[type="color"] {
   height: 32px;
 }
 .grid .cell-error {
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--danger);
   margin-top: 3px;
 }
 .grid tr.row-errors td {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--danger-soft);
 }
 .grid tbody tr:focus-within td {
@@ -886,7 +890,7 @@ input[type="color"] {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;
   background: var(--surface-3);
@@ -922,7 +926,7 @@ input[type="color"] {
   border-radius: 999px;
   background: var(--danger);
   color: #fff;
-  font-size: 10.5px;
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 17px;
   text-align: center;
@@ -989,7 +993,7 @@ input[type="color"] {
 }
 .state-title {
   font-weight: 650;
-  font-size: 15px;
+  font-size: var(--text-lg);
 }
 
 .spinner {
@@ -1059,7 +1063,7 @@ input[type="color"] {
 }
 .dialog-header h2 {
   flex: 1;
-  font-size: 16px;
+  font-size: var(--text-lg);
   font-weight: 650;
 }
 .dialog-body {
@@ -1147,7 +1151,7 @@ input[type="color"] {
   border-radius: 9px;
   background: var(--danger);
   color: var(--surface);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 650;
 }
 
@@ -1273,7 +1277,7 @@ input[type="color"] {
   border-bottom-width: 2px;
   border-radius: 4px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   background: var(--surface);
 }
@@ -1348,7 +1352,7 @@ input[type="color"] {
   padding-inline-start: 10px;
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 /* Label/value pairs (plugin access, record summaries); stacks on narrow screens. */
 .kv {
@@ -1383,7 +1387,7 @@ input[type="color"] {
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 .chip:hover {
   background: var(--primary-soft);
@@ -1447,7 +1451,7 @@ input[type="color"] {
 }
 .diff {
   margin-top: 8px;
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .diff td {
   padding: 4px 8px;
@@ -1475,7 +1479,7 @@ input[type="color"] {
   border-bottom: 1px solid var(--border);
 }
 .summary dt {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
 }
 .summary dd {
@@ -1541,7 +1545,7 @@ input[type="color"] {
   align-items: center;
   gap: 10px;
   color: var(--faint);
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .login-or::before,
 .login-or::after {
@@ -1618,7 +1622,7 @@ pre.code {
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 260px;
@@ -1681,12 +1685,12 @@ pre.code {
   flex-wrap: wrap;
 }
 .view-title {
-  font-size: 16px;
+  font-size: var(--text-lg);
   min-width: 10ch;
   text-align: center;
 }
 .card-field {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1749,7 +1753,7 @@ pre.code {
 .board-move {
   margin-top: 4px;
   height: 32px;
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 /* With a mouse, cards are dragged; the menu is for touch screens and keyboards. */
 @media (hover: hover) and (pointer: fine) {
@@ -1779,7 +1783,7 @@ pre.code {
 }
 .cal-weekday {
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
 }
@@ -1811,7 +1815,7 @@ pre.code {
   background: none;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .cal-day[data-today="true"] .cal-date {
@@ -1820,7 +1824,7 @@ pre.code {
 }
 .cal-count {
   display: none;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--primary);
 }
 .cal-item,
@@ -1829,7 +1833,7 @@ pre.code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 2px 6px;
   margin-top: 2px;
   border-radius: 4px;
@@ -1840,7 +1844,7 @@ pre.code {
   background: none;
   border: 0;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
   color: var(--muted-foreground);
 }
@@ -1907,7 +1911,7 @@ pre.code {
   min-height: 36px;
 }
 .tl-head {
-  font-size: 12px;
+  font-size: var(--text-xs);
   min-height: 30px;
 }
 .tl-label {
@@ -2049,7 +2053,7 @@ pre.code {
   display: block; /* under the name: touch screens show no title tooltips */
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .avatar {
   flex: none;
@@ -2060,7 +2064,7 @@ pre.code {
   border-radius: 50%;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 .comments {
@@ -2083,7 +2087,7 @@ pre.code {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   margin-bottom: 4px;
 }
 .comment-text {
@@ -2130,7 +2134,7 @@ pre.code {
   width: 110px;
   height: 28px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 .attachment {
   min-width: 0;
@@ -2194,7 +2198,7 @@ pre.code {
   text-transform: uppercase;
 }
 .app-name {
-  font-size: 15px;
+  font-size: var(--text-lg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2203,7 +2207,7 @@ pre.code {
   font: inherit;
 }
 .app-meta {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
 }
 .app-summary {
   display: -webkit-box;
@@ -2217,7 +2221,7 @@ pre.code {
 }
 .app-installed {
   width: 100%;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .chip[aria-pressed="true"] {
   background: var(--primary);
@@ -2265,7 +2269,7 @@ pre.code {
   .select,
   .textarea,
   .textarea.mono {
-    font-size: 16px;
+    font-size: var(--text-lg);
   }
   .toast span {
     padding-top: 12px;

@@ -31,11 +31,11 @@
 }
 .shell-app-title {
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: var(--text-sm);
 }
 .shell-app-note {
   margin-top: -6px;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 .shell-account {
   display: grid;
@@ -70,7 +70,7 @@
 }
 .shell-work-head h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 650;
   letter-spacing: -0.01em;
 }
@@ -83,7 +83,7 @@
   margin-left: 2px;
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 .shell-work-list {
   border: 1px solid var(--border);
@@ -159,7 +159,7 @@ a.shell-work-link:focus-visible {
 .shell-work-note {
   margin: 0;
   color: var(--muted-foreground);
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
 }
 .shell-link {
   padding: 0;
@@ -202,7 +202,7 @@ a.shell-work-link:focus-visible {
   align-items: center;
   gap: 10px;
   color: inherit;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 700;
   letter-spacing: -0.01em;
   text-decoration: none;
@@ -221,7 +221,7 @@ a.shell-work-link:focus-visible {
   height: 32px;
   border-radius: 999px;
   background: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 650;
 }
 .acct-who-text {
@@ -238,7 +238,7 @@ a.shell-work-link:focus-visible {
 .acct-who-text > span,
 .acct-row-text > span {
   color: var(--muted-foreground);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
 }
 .acct-main {
   box-sizing: border-box;
@@ -278,13 +278,13 @@ a.shell-work-link:focus-visible {
 }
 .acct-card-head h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 .acct-sub {
   margin: 10px 0 0;
-  font-size: 0.92rem;
+  font-size: var(--text-sm);
   font-weight: 650;
 }
 .acct-list {
@@ -328,7 +328,7 @@ a.shell-work-link:focus-visible {
 }
 .acct-line > div > span {
   color: var(--muted-foreground);
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
 }
 .acct-mono {
   display: inline-grid;
@@ -366,7 +366,7 @@ a.shell-work-link:focus-visible {
 }
 .acct-step-head h1 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.25;
@@ -375,7 +375,7 @@ a.shell-work-link:focus-visible {
   margin: 0 0 2px;
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -392,7 +392,7 @@ a.shell-work-link:focus-visible {
   background: none;
   color: var(--primary);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 .acct-link:hover {
@@ -409,10 +409,10 @@ a.shell-work-link:focus-visible {
 .help { max-width: 860px; }
 .help-search { display: flex; align-items: center; gap: 8px; margin: 12px 0 20px; padding: 8px 12px; border: 1px solid var(--border, #d1d5db); border-radius: 8px; }
 .help-search input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; }
-.help-module h2 { font-size: 1rem; margin: 20px 0 8px; }
+.help-module h2 { font-size: var(--text-base); margin: 20px 0 8px; }
 .help-module ul { list-style: none; padding: 0; margin: 0; }
 .help-module li { padding: 4px 0; }
 .help-article { max-width: 860px; }
-.help-article h2 { font-size: 1.05rem; margin: 24px 0 8px; }
-.help-lead { font-size: 1.05rem; }
+.help-article h2 { font-size: var(--text-base); margin: 24px 0 8px; }
+.help-lead { font-size: var(--text-base); }
 .help-fields td { vertical-align: top; }
