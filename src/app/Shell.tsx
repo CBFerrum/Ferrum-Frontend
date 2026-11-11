@@ -29,6 +29,7 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
+import { FormSkeleton, ListSkeleton, TableSkeleton } from "../ui/patterns";
 import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
 
 // The person's menu's dialogs load when one is opened: every interface's first script holds this
@@ -817,21 +818,21 @@ function UserMenu() {
       <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
       <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title={tr("Two-factor sign-in")}>
         {dialog === "2fa" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<FormSkeleton fields={2} />}>
             <TwoFactorSettings />
           </Suspense>
         )}
       </Dialog>
       <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title={tr("Your API keys")} wide>
         {dialog === "keys" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<TableSkeleton columns={4} rows={4} />}>
             <ApiKeys />
           </Suspense>
         )}
       </Dialog>
       <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title={tr("Calendar and contacts apps")} wide>
         {dialog === "cal" && (
-          <Suspense fallback={<Spinner label={tr("Loading…")} />}>
+          <Suspense fallback={<ListSkeleton rows={3} />}>
             <CalendarApps email={me?.user.email ?? ""} />
           </Suspense>
         )}

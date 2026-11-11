@@ -4066,6 +4066,15 @@ const words: Record<string, string> = {
   "At most {n} lists in a workspace.": "एक कार्यक्षेत्र में अधिकतम {n} सूचियाँ।",
   "Published list: {label}": "प्रकाशित सूची: {label}",
   "Take down list {name}": "सूची {name} हटाएँ",
+  "You don't have access to this": "आपके पास इसकी पहुँच नहीं है",
+  "Ask an administrator or its owner to give you access.": "किसी व्यवस्थापक या इसके स्वामी से पहुँच देने को कहें।",
+  "You're offline": "आप ऑफ़लाइन हैं",
+  "Kept on this device, not saved yet": "केवल इस डिवाइस पर रखा है, अभी सहेजा नहीं गया",
+  "Someone else changed this; yours is not saved": "किसी और ने इसे बदल दिया है; आपका बदलाव सहेजा नहीं गया",
+  "Could not save": "सहेजा नहीं जा सका",
+  "Could not confirm it was saved": "यह पुष्टि नहीं हो सकी कि सहेजा गया",
+  "All {n} matching selected": "सभी {n} मेल खाने वाले चुने गए",
+  "Clear selection": "चयन हटाएँ",
 };
 
 export default words;

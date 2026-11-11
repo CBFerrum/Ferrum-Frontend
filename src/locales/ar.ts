@@ -4066,6 +4066,15 @@ const words: Record<string, string> = {
   "At most {n} lists in a workspace.": "{n} قائمة على الأكثر في مساحة العمل.",
   "Published list: {label}": "قائمة منشورة: {label}",
   "Take down list {name}": "إزالة القائمة {name}",
+  "You don't have access to this": "ليس لديك صلاحية الوصول إلى هذا",
+  "Ask an administrator or its owner to give you access.": "اطلب من مسؤول أو من مالكه أن يمنحك حق الوصول.",
+  "You're offline": "أنت غير متصل بالإنترنت",
+  "Kept on this device, not saved yet": "محفوظ على هذا الجهاز فقط، لم يُحفظ بعد",
+  "Someone else changed this; yours is not saved": "غيّر شخص آخر هذا؛ تعديلك لم يُحفظ",
+  "Could not save": "تعذّر الحفظ",
+  "Could not confirm it was saved": "تعذّر التأكد من أنه حُفظ",
+  "All {n} matching selected": "تم تحديد كل العناصر المطابقة ({n})",
+  "Clear selection": "إلغاء التحديد",
 };
 
 export default words;
