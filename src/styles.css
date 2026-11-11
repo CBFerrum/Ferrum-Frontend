@@ -524,6 +524,7 @@ main:focus {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  unicode-bidi: plaintext; /* a label takes its direction from its own first strong letter: an untranslated "What is in a bin?" keeps its "?" at the end in a right-to-left page */
   transition: background-color var(--duration-state), border-color var(--duration-state), color var(--duration-state);
 }
 .btn-md {
@@ -1122,14 +1123,19 @@ input[type="color"] {
     --edge-e: 0;
   }
 }
+/* The same cue for the kit's own scrolling rows: tab lists, segmented controls, and the family navigation (.scroll-cue).
+   While one of their items has the keyboard the fade steps aside, so a focus ring at the edge is never dimmed. */
 @supports (animation-timeline: scroll()) {
-  .table-wrap {
+  :is(.table-wrap, .tabs, .segmented, .scroll-cue) {
     animation: edge-cue linear both;
     animation-timeline: scroll(self inline);
     mask-image: linear-gradient(to right, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
   }
-  .table-wrap:dir(rtl) {
+  :is(.table-wrap, .tabs, .segmented, .scroll-cue):dir(rtl) {
     mask-image: linear-gradient(to left, transparent, var(--text) calc(var(--edge-s) * 28px), var(--text) calc(100% - var(--edge-e) * 28px), transparent);
+  }
+  :is(.tabs, .segmented, .scroll-cue):has(:focus-visible) {
+    mask-image: none;
   }
 }
 .table-wrap:focus-visible {
@@ -3886,6 +3892,11 @@ a.queue-name:focus-visible::after {
   .line-grid-actions,
   .report-params,
   .empty-run,
+  .alert:not(.alert-error),
+  .combo-actions,
+  .menu,
+  details.section:not([open]),
+  .field:has(.line-grid-empty),
   [role="tablist"],
   .pager,
   .crumbs {
@@ -3937,10 +3948,20 @@ a.queue-name:focus-visible::after {
     box-shadow: none;
   }
   .card,
-  .form-card,
   .list-card {
     border-color: var(--border);
     background: none;
+  }
+  /* A record prints as a document, not as a card on a page: no frame, no padding (the page margin is @page's), and a
+     section's heading without its chevron. */
+  .form-card {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: none;
+  }
+  .section > summary .icon {
+    display: none;
   }
   .table-wrap > .table {
     min-width: 0;

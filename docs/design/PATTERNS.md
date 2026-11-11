@@ -51,7 +51,7 @@ Menus, popovers, dialogs, sheets and toasts are one family: `--surface`, 1px `--
 
 ## Printing
 
-`@media print` (end of `src/styles.css`) prints a page as its content: the sidebar, bar offset, banners, toasts, tab lists, toolbars, filters, parameters, peek panel, row actions and "Add row" controls are hidden; `main` is the full page width; nothing is sticky or clipped (tables print whole, every row unbroken, headers and footers repeat); the colour scheme is forced to light whatever the theme, so text is dark on white; links are not underlined or coloured; controls print as plain boxes without arrows. The platform's own bar is hidden by the platform; the kit reserves no space for it. Checked by `page.pdf()` on a record, a list, a report and a long ledger (`evidence/integration-after/print-*.pdf`).
+`@media print` (end of `src/styles.css`) prints a page as its content: the sidebar, bar offset, banners, toasts, tab lists, toolbars, filters, parameters, peek panel, row actions and "Add row" controls are hidden; `main` is the full page width; nothing is sticky or clipped (tables print whole, every row unbroken, headers and footers repeat); the colour scheme is forced to light whatever the theme, so text is dark on white; links are not underlined or coloured; controls print as plain boxes without arrows. The platform's own bar is hidden by the platform; the kit reserves no space for it. A record prints as a document: `@page` margin 14mm (only a real print or `page.pdf()` shows it; `emulateMedia` screenshots do not), the form card has no frame or padding, advisory alerts (not errors), collapsed sections (header included), link-out icons (`.combo-actions`), menus and empty child tables with their label are hidden, and an open section prints its heading without a chevron. Checked by `page.pdf()` on a record, a list, a report and a long ledger (`evidence/integration-after/print-*.pdf`).
 
 ## Charts with two scales
 
@@ -248,3 +248,11 @@ No kit implementation exists; each waits for the screen that should drive it.
 - **TransferTray**: uploads and downloads in flight, with retry. Drive it from Drive's upload flow.
 - **AppHeader / ViewToolbar** as distinct components: today `PageHeader` and each app's own toolbar. Drive them from the ERP list header and Mail's toolbar.
 - **StaleBanner**: no real consumer found; use `Alert` with a refresh action until one appears.
+
+## Scrolling rows
+
+A row that scrolls sideways inside its frame (`.tabs`, `.segmented`, the family navigation, anything given `.scroll-cue`) shows the same end-edge fade as `.table-wrap`: the edge with more beyond fades while there is more to scroll, mirrored in right-to-left, drawn by the one scroll-timeline mechanism (`edge-cue`) and no script. The fade steps aside while an item inside has keyboard focus, so a focus ring is never dimmed. A new scrolling row adds `scroll-cue`; an app that sets `animation: none` under reduced motion switches the cue off for its own pages, so use `animation-duration` there.
+
+## Labels and direction
+
+`.btn` sets `unicode-bidi: plaintext`: each label takes its direction from its own first strong letter, so an untranslated Latin label ending in punctuation ("What is in a bin?") reads correctly in a right-to-left page, while the button's own layout (icon on the start side) still follows the page direction.
