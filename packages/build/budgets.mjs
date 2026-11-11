@@ -15,7 +15,7 @@ function startFiles(html) {
   for (const tag of html.match(/<(script|link)\b[^>]*>/gi) ?? []) {
     const attr = (name) => tag.match(new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, "i"))?.[1];
     if (/^<script/i.test(tag) && attr("src")) out.push([attr("src"), "js"]);
-    else if (attr("rel") === "modulepreload" && attr("href")) out.push([attr("href"), "js"]);
+    else if (attr("rel") === "modulepreload" && attr("href") && attr("data-budget") !== "lazy") out.push([attr("href"), "js"]); // data-budget="lazy": fetched early but not needed to start (the menu's icons)
     else if (attr("rel") === "stylesheet" && attr("href")) out.push([attr("href"), "css"]);
   }
   return out;
