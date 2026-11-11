@@ -2428,8 +2428,8 @@ pre.code {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: calc(var(--control-h-sm) - 6px);
-  padding: 0 8px;
+  height: calc(var(--control-h) - 6px); /* the frame is one control tall, so it lines up with the inputs and buttons beside it */
+  padding: 0 10px;
   border: 0;
   border-radius: 4px;
   background: none;

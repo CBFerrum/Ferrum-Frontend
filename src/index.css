@@ -160,6 +160,11 @@
   --text-xl--line-height: calc(24 / 14 * 1rem);
   --text-2xl: calc(24 / 14 * 1rem);
   --text-2xl--line-height: calc(32 / 14 * 1rem);
+  /* Display figures: the one number a screen is about (an amount due, an audience size). Never for headings. */
+  --text-3xl: calc(30 / 14 * 1rem);
+  --text-3xl--line-height: calc(36 / 14 * 1rem);
+  --text-4xl: calc(36 / 14 * 1rem);
+  --text-4xl--line-height: calc(40 / 14 * 1rem);
 }
 
 @theme inline {
