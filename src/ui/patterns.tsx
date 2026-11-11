@@ -2,16 +2,18 @@
 // here, and why" (StatePanel), loading shaped like what is coming (the skeletons), where a change
 // stands (SaveStatus) and the bar shown while rows are selected (SelectionToolbar).
 
-import { CheckIcon, CircleHelpIcon, HardDriveIcon, InboxIcon, Loader2Icon, LockIcon, PencilIcon, SearchXIcon, TriangleAlertIcon, WifiOffIcon, XCircleIcon, type LucideIcon } from "lucide-react";
-import { Children, useEffect, useId, useRef, type ReactNode } from "react";
+import { CheckIcon, CircleHelpIcon, HardDriveIcon, InboxIcon, Loader2Icon, LockIcon, MoreHorizontalIcon, PencilIcon, SearchXIcon, TriangleAlertIcon, WifiOffIcon, XCircleIcon, type LucideIcon } from "lucide-react";
+import { Children, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { formatMoment } from "../lib/format";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { Button, Icon } from "./kit";
+import { foldActions } from "./selectionFold";
 
 // ── StatePanel ──
 
@@ -275,8 +277,10 @@ export function SaveStatus({ state, at, className }: { state: SaveState; at?: st
  * The bar shown while rows are selected. `count` says how many, `scope` what that is: the rows
  * shown, or everything the filter matches (then `of` is how many it matches; "All 240 matching
  * selected", or "500 selected of 1,200 matching" when the run is capped). `extend` holds the buttons
- * that widen the selection, `children` the actions. Escape clears. On phones it sits along the
- * bottom of the screen, as the form's actions do.
+ * that widen the selection, `children` the actions (drawn as given, never folded). `actions` are the actions the bar
+ * folds: it keeps the count, Clear and as many of them as fit the width, in the order given (the caller may mark one or two
+ * `priority`: the last to fold), and puts the rest in one "More" menu, by measured width, so nothing is pushed off a phone's
+ * screen. Escape clears. On phones it sits along the bottom of the screen, as the form's actions do.
  */
 export function SelectionToolbar({
   label,
@@ -285,6 +289,7 @@ export function SelectionToolbar({
   of,
   onClear,
   extend,
+  actions,
   children,
 }: {
   /** The toolbar's accessible name, e.g. "Actions for the 3 Customers selected". */
@@ -294,6 +299,8 @@ export function SelectionToolbar({
   of?: number | null;
   onClear: () => void;
   extend?: ReactNode;
+  /** Actions that fold into "More" when the bar is too narrow for them. */
+  actions?: SelectionAction[];
   children?: ReactNode;
 }) {
   const all = scope === "matching" && (of == null || of <= count);
@@ -313,10 +320,95 @@ export function SelectionToolbar({
       {scope === "matching" && of != null && of > count && <span className="text-sm whitespace-nowrap text-muted-foreground">{t("of {total} matching", { total: of.toLocaleString() })}</span>}
       {extend}
       <Button size="sm" variant="ghost" icon="x" onClick={onClear}>
-        {t("Clear selection")}
+        {/* With folding actions the phone's bar keeps the count, Clear and what fits: Clear is its icon there, its words for readers. */}
+        {actions?.length ? <span className="sr-only [@media(width>720px)]:not-sr-only">{t("Clear selection")}</span> : t("Clear selection")}
       </Button>
-      <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />
+      {actions?.length ? <FoldingActions actions={actions} /> : <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />}
       {children}
+    </div>
+  );
+}
+
+/** An action of `SelectionToolbar` that may fold into its "More" menu. */
+export interface SelectionAction {
+  id: string;
+  label: string;
+  /** A kit icon name; shown on the button and not in the menu. */
+  icon?: string;
+  onSelect: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+  title?: string;
+  /** The last to fold (at most two count). */
+  priority?: boolean;
+}
+
+/**
+ * The bar's actions, folded by width. A hidden copy of every action and of the More button (not shown, not read, not focusable, out of
+ * the layout and, being fixed, out of the bar's own scrolling) is measured before the browser paints and again whenever the room or the actions change (ResizeObserver), so the bar is
+ * drawn right the first time and nothing jumps while measuring. Folded actions are menu items: arrow keys, Home/End, type-ahead.
+ */
+function FoldingActions({ actions }: { actions: SelectionAction[] }) {
+  const box = useRef<HTMLDivElement>(null);
+  const gauge = useRef<HTMLDivElement>(null);
+  const [folded, setFolded] = useState<string[]>([]);
+  const key = actions.map((a) => `${a.id}\u0000${a.label}\u0000${a.icon ?? ""}\u0000${a.priority ? 1 : 0}`).join("\u0001");
+  const latest = useRef(actions);
+  latest.current = actions;
+  useLayoutEffect(() => {
+    const b = box.current;
+    const g = gauge.current;
+    if (!b || !g) return;
+    const measure = () => {
+      const kids = [...g.children] as HTMLElement[];
+      const gap = parseFloat(getComputedStyle(g).columnGap) || 0;
+      const list = latest.current;
+      const r = foldActions(
+        kids.slice(0, -1).map((k) => k.getBoundingClientRect().width),
+        b.clientWidth,
+        { gap, more: kids[kids.length - 1].getBoundingClientRect().width, priority: list.map((a) => !!a.priority) },
+      );
+      const next = r.folded.map((i) => list[i].id);
+      setFolded((was) => (was.length === next.length && was.every((id, i) => id === next[i]) ? was : next));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(b);
+    ro.observe(g);
+    return () => ro.disconnect();
+  }, [key]);
+  const shown = actions.filter((a) => !folded.includes(a.id));
+  const menu = actions.filter((a) => folded.includes(a.id));
+  const button = (a: SelectionAction) => (
+    <Button key={a.id} size="sm" variant={a.danger ? "danger" : "default"} icon={a.icon} disabled={a.disabled} title={a.title} onClick={a.onSelect}>
+      {a.label}
+    </Button>
+  );
+  const moreButton = (
+    <Button size="sm" aria-label={t("More actions")}>
+      <MoreHorizontalIcon size={16} aria-hidden="true" /> {t("More")}
+    </Button>
+  );
+  return (
+    <div ref={box} className="relative flex min-w-0 flex-1 items-center justify-end gap-2">
+      {shown.map(button)}
+      {menu.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>{moreButton}</DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {menu.map((a) => (
+              <DropdownMenuItem key={a.id} variant={a.danger ? "destructive" : "default"} disabled={a.disabled} title={a.title} onSelect={a.onSelect}>
+                {a.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <div ref={gauge} aria-hidden="true" inert className="pointer-events-none invisible fixed top-0 flex w-max items-center gap-2 whitespace-nowrap [&>*]:shrink-0" style={{ insetInlineStart: 0 }}>
+        {actions.map(button)}
+        {moreButton}
+      </div>
     </div>
   );
 }
