@@ -4094,6 +4094,8 @@ const words: Record<string, string> = {
   "Showing {n} of {total}": "عرض {n} من {total}",
   "Not set: {labels}": "غير معيّن: {labels}",
   "Hide empty fields": "إخفاء الحقول الفارغة",
+  "Nothing waiting": "لا شيء في الانتظار",
+  "and {n} more": "و{n} آخر",
 };
 
 export default words;

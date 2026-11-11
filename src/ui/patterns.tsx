@@ -3,14 +3,15 @@
 // stands (SaveStatus) and the bar shown while rows are selected (SelectionToolbar).
 
 import { CheckIcon, CircleHelpIcon, HardDriveIcon, InboxIcon, Loader2Icon, LockIcon, PencilIcon, SearchXIcon, TriangleAlertIcon, WifiOffIcon, XCircleIcon, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { Children, useId, type ReactNode } from "react";
+import { Link } from "react-router";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { formatMoment } from "../lib/format";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { Button } from "./kit";
+import { Button, Icon } from "./kit";
 
 // ── StatePanel ──
 
@@ -317,5 +318,154 @@ export function SelectionToolbar({
       <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />
       {children}
     </div>
+  );
+}
+
+// ── work home: queues and tiles ──
+
+/** A link that looks like a button: the way a page head offers an action that opens a page ("New contract", with
+ *  `icon="plus"`). A bare text link is never an action. */
+export function ButtonLink({ to, variant = "default", icon, children }: { to: string; variant?: "default" | "primary" | "ghost"; icon?: string; children: ReactNode }) {
+  return (
+    <Link className={`btn btn-${variant} btn-md`} to={to}>
+      {icon && <Icon name={icon} />}
+      {children}
+    </Link>
+  );
+}
+
+/** Queues side by side where there is room (three or four at 1440), one per row on a phone; their tops align and
+ *  each is as tall as its rows, so an empty queue is one row high. */
+export function QueueGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("queue-grid", className)}>{children}</div>;
+}
+
+/**
+ * One list of what needs a person: a surface named by its heading (the section's name), the count as a quiet counter
+ * beside it (outside the heading, so the name is read once), the rows (`QueueItem`s) as a list, and one line when
+ * there are none. `tone="attention"` is for what is overdue or blocking. `link` is a header link ("All incidents");
+ * `more` ("and 4 more") follows a capped list: the caller passes at most its limit of rows and the rest as a number.
+ */
+export function Queue({
+  title,
+  count,
+  tone = "default",
+  link,
+  empty,
+  more,
+  children,
+}: {
+  title: string;
+  count?: number;
+  tone?: "default" | "attention";
+  link?: { to: string; label: string };
+  empty?: string;
+  more?: { to: string; count: number };
+  children?: ReactNode;
+}) {
+  const id = useId();
+  const rows = Children.toArray(children);
+  return (
+    <section className="queue" data-tone={tone === "attention" ? "attention" : undefined} aria-labelledby={id}>
+      <header className="queue-head">
+        <h2 id={id} className="queue-title">
+          {title}
+        </h2>
+        {count !== undefined && <span className="queue-count">{count}</span>}
+        {link && (
+          <Link className="queue-link-all" to={link.to}>
+            {link.label}
+          </Link>
+        )}
+      </header>
+      {rows.length ? (
+        <ul className="queue-list">{rows}</ul>
+      ) : (
+        <p className="queue-empty">{empty ?? t("Nothing waiting")}</p>
+      )}
+      {more && more.count > 0 && (
+        <Link className="queue-more" to={more.to}>
+          {t("and {n} more", { n: more.count })}
+        </Link>
+      )}
+    </section>
+  );
+}
+
+/** A row of a queue: the record's name is the link and the whole row is its target; `meta` is one quiet line under it
+ *  (number, counterparty, due date) and `trailing` a status badge or mark at its natural width (not interactive). */
+export function QueueItem({ to, title, meta, trailing }: { to: string; title: string; meta?: ReactNode; trailing?: ReactNode }) {
+  return (
+    <li className="queue-item">
+      <div className="queue-text">
+        <Link className="queue-name" to={to} title={title}>
+          {title}
+        </Link>
+        {meta && <span className="queue-meta">{meta}</span>}
+      </div>
+      {trailing && <span className="queue-trailing">{trailing}</span>}
+    </li>
+  );
+}
+
+/** Things with a live state (tables, rooms, units, trips, sites), as tiles of equal height. */
+export function TileGrid({ children, label, className }: { children: ReactNode; label?: string; className?: string }) {
+  return (
+    <ul className={cn("tile-grid", className)} aria-label={label}>
+      {children}
+    </ul>
+  );
+}
+
+/** One tile: the title (the link when `to` is given, and then the whole tile opens it), up to two quiet `meta` lines and
+ *  the `status` at its natural width at the foot. */
+export function Tile({ to, title, meta, status }: { to?: string; title: string; meta?: ReactNode; status?: ReactNode }) {
+  return (
+    <li className="tile" data-link={to ? "" : undefined}>
+      <span className="tile-title">
+        {to ? (
+          <Link className="tile-name" to={to} title={title}>
+            {title}
+          </Link>
+        ) : (
+          <span title={title}>{title}</span>
+        )}
+      </span>
+      {meta && <span className="tile-meta">{meta}</span>}
+      {status && <span className="tile-status">{status}</span>}
+    </li>
+  );
+}
+
+/** A home while it loads: the head's shape and `queues` queues of three rows. */
+export function HomeSkeleton({ queues = 3, className }: { queues?: number; className?: string }) {
+  return (
+    <Loading className={className}>
+      <div className="home-skeleton">
+        <div className="flex items-center justify-between gap-3 py-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-(--control-h) w-32" />
+        </div>
+        <div className="queue-grid">
+          {Array.from({ length: queues }, (_, q) => (
+            <div key={q} className="queue">
+              <div className="queue-head">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-6" />
+              </div>
+              {[0, 1, 2].map((r) => (
+                <div key={r} className="queue-item">
+                  <div className="queue-text">
+                    <Skeleton className={cn("h-3.5", width(q + r))} />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-5 w-14" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Loading>
   );
 }

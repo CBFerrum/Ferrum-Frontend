@@ -26,6 +26,10 @@ Kit components (`src/ui/kit.tsx`), the legacy class names (`src/styles.css`) and
 
 One rule for both implementations: text is `text-base` (14px), `text-sm` (13px) for `sm`; weight 500; radius 6px; gap 6px; side padding 12px (10px for `sm`, 8px for `xs`); hover `--surface-2`, pressed `--surface-3` (filled accent: `--primary-hover`); disabled opacity 0.5; transition `var(--duration-state)`; focus a 2px `--ring` outline with 2px offset (an outline, so forced-colors mode keeps it). On touch screens both are at least 44px.
 
+## A home copied from the `np-page` template
+
+If an app's home is `<div className="np-page">` with `<header className="row">`, an `h2`, a text `Link` for the main action, `section.card.card-pad` with `<h3>Title (N)</h3>` and `<ul className="stack">` rows with a `Badge` after each link: replace it with `PageHead` (title as the `h1`, the action as a primary `ButtonLink icon="plus"`), a `QueueGrid` of `Queue`s (`count={list.length}`, no "(N)" in the title) and `QueueItem`s (the link's text as `title`, the counterparty and date as `meta`, the badge as `trailing`), `HomeSkeleton` for `ListSkeleton className="np-page"`, and delete `.np-page` and `.np-columns` from the app's `styles.css`. Queries, filters and routes stay as they are. See "Work home" in PATTERNS.md.
+
 ## Geometry, old to new (px at the default root)
 
 "Old" is before the tokens slice (`git show HEAD~3:src/styles.css`, and Tailwind's 3.5px unit for the primitives); the legacy classes were then raised to `--control-h` 36 by the tokens slice. Standard density.

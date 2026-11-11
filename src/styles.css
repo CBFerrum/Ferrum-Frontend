@@ -3280,6 +3280,239 @@ main:has(> [data-fullbleed]) {
   background: var(--surface-2);
 }
 
+/* ── work home (PageHead, QueueGrid, Queue, QueueItem, TileGrid, Tile): docs/design/PATTERNS.md ── */
+
+.page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 24px;
+  margin-inline-start: -4px;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+.page-back:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.page-back:dir(rtl) > svg {
+  transform: scaleX(-1);
+}
+.queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  align-items: start;
+  gap: 16px;
+}
+.queue {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.queue[data-tone="attention"] {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+.queue[data-tone="attention"]:dir(rtl) {
+  box-shadow: inset -3px 0 0 var(--warning);
+}
+.queue-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+.queue-title {
+  min-width: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.queue-count {
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.queue[data-tone="attention"] .queue-count {
+  color: var(--warning);
+  font-weight: 600;
+}
+.queue-link-all {
+  margin-inline-start: auto;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.queue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.queue-item {
+  position: relative; /* the row's one link stretches over it */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+}
+.queue-item:hover {
+  background: var(--surface-2);
+}
+.queue-item:last-child {
+  border-end-start-radius: calc(var(--radius) - 1px);
+  border-end-end-radius: calc(var(--radius) - 1px);
+}
+.queue-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.queue-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-name:hover {
+  text-decoration: none;
+}
+.queue-name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.queue-name:focus-visible {
+  outline: none;
+}
+.queue-name:focus-visible::after {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+.queue-meta,
+.tile-meta {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-trailing {
+  display: inline-flex;
+  flex: none;
+  pointer-events: none; /* a badge or a mark: the row's link takes the click */
+}
+.queue-empty {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+.queue-more {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.tile[data-link]:hover {
+  background: var(--surface-2);
+}
+.tile-title {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-name {
+  color: var(--text);
+}
+.tile-name:hover {
+  text-decoration: none;
+}
+.tile-name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.tile-name:focus-visible {
+  outline: none;
+}
+.tile-name:focus-visible::after {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+.tile-meta {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+.tile-status {
+  margin-top: auto;
+  padding-top: 8px;
+  pointer-events: none;
+}
+.home-skeleton {
+  display: grid;
+  gap: 16px;
+}
+:root[data-density="compact"] .queue-item,
+:root[data-density="compact"] .queue-empty {
+  min-height: 44px;
+}
+@media (max-width: 480px) {
+  .queue-item {
+    padding-inline: 12px;
+  }
+}
+@media (pointer: coarse) {
+  .queue-link-all,
+  .queue-more,
+  .page-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .queue-more {
+    display: flex;
+  }
+}
+
 /* ── print ──
    A page prints as its content: no frame, no controls, no scroll containers, no sticky positioning; black on white
    whatever the theme; tables print in full, rows whole, headers repeated. Records and reports are the main targets. */
