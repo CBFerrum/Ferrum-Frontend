@@ -1,0 +1,952 @@
+[
+  {
+    "id": "UX-001",
+    "area": "Baseline",
+    "title": "Capture exact installed artifacts",
+    "exercise": "Record core, frontend, kit, app UI, editor versions; capture actual routes with synthetic fixtures and ordinary roles.",
+    "expected": "Source pins are not mislabeled deployed versions; each image records environment and state.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "release"
+    ]
+  },
+  {
+    "id": "UX-002",
+    "area": "Tokens",
+    "title": "Measure root and component geometry",
+    "exercise": "Measure computed sizes on representative legacy and new controls at default and changed user text size.",
+    "expected": "Token dimensions match the approved scale; density changes do not create accidental tiny labels or clipped controls.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-003",
+    "area": "Tokens",
+    "title": "Meaningful text contrast",
+    "exercise": "Measure all meaningful labels on actual normal, selected, hover and disabled-policy backgrounds.",
+    "expected": "Applicable contrast targets pass; decorative/disabled exceptions are documented rather than applied to useful metadata.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-004",
+    "area": "Tokens",
+    "title": "User accents and dark mode",
+    "exercise": "Apply adversarial bright/dark accents, system theme switching and high contrast.",
+    "expected": "Text, controls, focus and chart roles remain distinguishable; stored preferences are retained.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-005",
+    "area": "Tokens",
+    "title": "Semantic status mapping",
+    "exercise": "Render positive, negative, unknown and translated domain states.",
+    "expected": "Tone follows stable state IDs; Not approved is not classified by substring; text/icon remains available.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens",
+      "kit:StatePanel"
+    ]
+  },
+  {
+    "id": "UX-006",
+    "area": "Tokens",
+    "title": "Font failure and scripts",
+    "exercise": "Block primary font downloads and test English, Arabic, Hindi and mixed-script content.",
+    "expected": "Content remains usable with fallback; marks, numerals and controls are not clipped; no external font dependency is required for offline use.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-007",
+    "area": "Tokens",
+    "title": "Rem-scale migration",
+    "exercise": "Enable candidate typography across all dependent reference apps and embedded frames.",
+    "expected": "No unexpected geometry explosion; intentional changes are reviewed; authored documents are not restyled.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens",
+      "release"
+    ]
+  },
+  {
+    "id": "UX-008",
+    "area": "Primitives",
+    "title": "Button semantic compatibility",
+    "exercise": "Exercise legacy/default/primary/destructive/loading variants through adapters.",
+    "expected": "Action emphasis and disabled/loading meaning are preserved; labels remain stable while busy.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives"
+    ]
+  },
+  {
+    "id": "UX-009",
+    "area": "Primitives",
+    "title": "Overlay focus",
+    "exercise": "Open nested menu/dialog/popover from keyboard and pointer, then dismiss or submit.",
+    "expected": "Focus is trapped only where appropriate, Escape semantics are clear, and focus returns to the initiating control.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives"
+    ]
+  },
+  {
+    "id": "UX-010",
+    "area": "Primitives",
+    "title": "Toolbar keyboard model",
+    "exercise": "Navigate editor controls using keyboard without tabbing through unrelated UI repeatedly.",
+    "expected": "Selection remains valid; roving focus and embedded input behavior follow the documented toolbar contract.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives"
+    ]
+  },
+  {
+    "id": "UX-011",
+    "area": "Primitives",
+    "title": "Touch hit areas",
+    "exercise": "Test coarse-pointer controls, dense lists and adjacent icon actions.",
+    "expected": "Product touch targets and required spacing are met without invisible overlapping hit zones.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives"
+    ]
+  },
+  {
+    "id": "UX-012",
+    "area": "Shell",
+    "title": "Navigation hierarchy",
+    "exercise": "Complete a cross-app task and return using browser history.",
+    "expected": "Tenant/app/location are unambiguous; no redundant chrome; prior selection and task context survive.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-013",
+    "area": "Shell",
+    "title": "Restricted and empty navigation",
+    "exercise": "Use ordinary, portal, read-only and newly deprovisioned roles.",
+    "expected": "Only appropriate navigation is presented; refusal is not disguised as empty business data; server policy remains authoritative.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-014",
+    "area": "Shell",
+    "title": "Narrow and short viewport",
+    "exercise": "Resize to small width, short height, large text and embedded panel sizes.",
+    "expected": "No fixed-height assumption hides primary actions; ordinary forms reflow; complex canvases provide supported navigation.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-015",
+    "area": "Shell",
+    "title": "Loading and stale state",
+    "exercise": "Delay route and data loads independently, then fail them.",
+    "expected": "No blank meaningful route; skeleton matches composition; existing data is visibly stale rather than fabricated current data.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell",
+      "kit:StatePanel"
+    ]
+  },
+  {
+    "id": "UX-016",
+    "area": "Mail",
+    "title": "Triage and reading",
+    "exercise": "Process a realistically populated inbox with keyboard and pointer.",
+    "expected": "Sender/subject/preview/time hierarchy is scannable; selected, unread and focus states remain distinct.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-017",
+    "area": "Mail",
+    "title": "Pane resize",
+    "exercise": "Resize mailbox/list/reading panes across laptop and tablet sizes.",
+    "expected": "Minima preserve usability; mode changes before content becomes unusable; preferences are scoped and clamped.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-018",
+    "area": "Mail",
+    "title": "Draft preservation",
+    "exercise": "Edit recipients, body and attachments; navigate, reload and interrupt synchronization.",
+    "expected": "Draft survives according to declared durability; unsent and unsynchronized states are accurately labeled.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-019",
+    "area": "Mail",
+    "title": "Send ambiguity",
+    "exercise": "Lose the response after mail submission and retry through supported recovery.",
+    "expected": "No false delivery claim; no unsupported duplicate send; user sees a recoverable or unresolved state.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-020",
+    "area": "Mail",
+    "title": "Shortcut/input coexistence",
+    "exercise": "Type letters used as shortcuts in search, compose, IME and dialogs.",
+    "expected": "Typing never triggers destructive actions; navigation shortcuts remain discoverable outside inputs.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-021",
+    "area": "Mail",
+    "title": "Untrusted email",
+    "exercise": "Open hostile HTML, blocked remote images and suspicious attachments.",
+    "expected": "Sanitization/isolation stay intact; safe content remains readable; labels do not falsely certify the sender.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-022",
+    "area": "Mail",
+    "title": "Mobile compose",
+    "exercise": "Compose/reply with virtual keyboard, long recipients and attachment errors.",
+    "expected": "Primary controls remain reachable; text is readable; no accidental context loss.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:comms/mail"
+    ]
+  },
+  {
+    "id": "UX-023",
+    "area": "Drive",
+    "title": "Find and preview",
+    "exercise": "Find a file by scoped search, sort and filter; preview then return.",
+    "expected": "Query, selection and scroll are retained; metadata communicates location and sharing.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:drive"
+    ]
+  },
+  {
+    "id": "UX-024",
+    "area": "Drive",
+    "title": "Bulk selection",
+    "exercise": "Select across pages and apply an allowed operation with mixed item permissions.",
+    "expected": "The selected scope is explicit; per-item failures are visible; successful work is not falsely undone.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:drive"
+    ]
+  },
+  {
+    "id": "UX-025",
+    "area": "Drive",
+    "title": "Upload failure",
+    "exercise": "Upload a folder containing duplicates, oversized and rejected files, then interrupt connection.",
+    "expected": "Progress distinguishes transferring/processing/available; recovery preserves eligible work and explains exclusions.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:drive"
+    ]
+  },
+  {
+    "id": "UX-026",
+    "area": "Drive",
+    "title": "Sharing lifecycle",
+    "exercise": "Create, revoke and expire a share; change owner/access while a dialog remains open.",
+    "expected": "Effective audience and expiry are visible; current server authority governs completion.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:drive"
+    ]
+  },
+  {
+    "id": "UX-027",
+    "area": "Drive",
+    "title": "Long content",
+    "exercise": "Render long names, mixed scripts, missing thumbnails and large folders.",
+    "expected": "Important extensions/actions remain reachable; no misleading previews or silent truncation of critical identity.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:drive"
+    ]
+  },
+  {
+    "id": "UX-028",
+    "area": "Docs",
+    "title": "Writing focus",
+    "exercise": "Write and format a long document with outline and comments toggled.",
+    "expected": "Document is dominant; toolbar does not steal selection; line length and typography match the approved view.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:docs"
+    ]
+  },
+  {
+    "id": "UX-029",
+    "area": "Docs",
+    "title": "Collaborative change",
+    "exercise": "Edit from two users, anchor comments, suggest edits and change permissions.",
+    "expected": "Existing collaboration and native permission semantics survive; cursors/comments remain meaningful.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:docs"
+    ]
+  },
+  {
+    "id": "UX-030",
+    "area": "Docs",
+    "title": "Offline/save boundary",
+    "exercise": "Disconnect during edits and attempt tab close, recovery and reconnect.",
+    "expected": "Browser-only state is not called server-saved; unsaved data has a supported recovery path.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:docs"
+    ]
+  },
+  {
+    "id": "UX-031",
+    "area": "Docs",
+    "title": "IME and undo",
+    "exercise": "Use composed-script input, paste, multiple formatting operations and undo/redo.",
+    "expected": "No shortcut interference, lost composition or unexpected undo jumps caused by new toolbar state.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:docs",
+      "editors"
+    ]
+  },
+  {
+    "id": "UX-032",
+    "area": "Docs",
+    "title": "Document formatting contract",
+    "exercise": "Import documents with explicit fonts/styles and export after UI theme changes.",
+    "expected": "UI typography/theme does not silently modify authored formatting or export semantics.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:docs",
+      "editors"
+    ]
+  },
+  {
+    "id": "UX-033",
+    "area": "Editors",
+    "title": "Engine and file readiness",
+    "exercise": "Launch supported, unavailable and unsupported-file sessions.",
+    "expected": "Engine-ready is not confused with file-ready; failure has a recovery/open-with path.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors"
+    ]
+  },
+  {
+    "id": "UX-034",
+    "area": "Editors",
+    "title": "External appearance bridge",
+    "exercise": "Change theme, locale and host size using each supported editor adapter.",
+    "expected": "Only supported settings are sent; no DOM/security bypass; unsupported customization is disclosed.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors",
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-035",
+    "area": "Sheets",
+    "title": "Grid workflow",
+    "exercise": "Edit formulas/ranges, freeze panes, use protected cells and keyboard navigation.",
+    "expected": "Correct selection, numeric precision and workbook behavior are retained; spreadsheet is not replaced by a generic table.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors",
+      "app:sheets"
+    ]
+  },
+  {
+    "id": "UX-036",
+    "area": "Sheets",
+    "title": "Large and complex workbook",
+    "exercise": "Open the agreed large-file and formula/fidelity corpus.",
+    "expected": "Performance is measured; unsupported features are disclosed; progress/cancellation and save states are truthful.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors",
+      "app:sheets"
+    ]
+  },
+  {
+    "id": "UX-037",
+    "area": "Slides",
+    "title": "Object workflow",
+    "exercise": "Edit text/objects, reorder slides, present and export.",
+    "expected": "Selection/properties/zoom remain coherent; keyboard equivalents and export fidelity are checked.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors",
+      "app:slides"
+    ]
+  },
+  {
+    "id": "UX-038",
+    "area": "PDF",
+    "title": "Form and annotation",
+    "exercise": "Search, annotate, fill a supported form and save/export.",
+    "expected": "Document appearance is preserved; no false saved state; restrictions and unsupported actions are clear.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "editors",
+      "app:pdf"
+    ]
+  },
+  {
+    "id": "UX-039",
+    "area": "Records",
+    "title": "Validation and conflict",
+    "exercise": "Edit a consequential record, trigger several validation errors and a version conflict.",
+    "expected": "Input is preserved; errors are associated; correction/rebase does not bypass business checks.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:erp"
+    ]
+  },
+  {
+    "id": "UX-040",
+    "area": "Records",
+    "title": "Financial values",
+    "exercise": "Display large, negative, multi-currency and fractional values and totals.",
+    "expected": "Alignment is clear and rounding is intentional; stored precision and business semantics do not change.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:erp"
+    ]
+  },
+  {
+    "id": "UX-041",
+    "area": "Records",
+    "title": "Destructive operation",
+    "exercise": "Attempt cancellation/delete/refund under valid and revoked authority.",
+    "expected": "Confirmation identifies scope and reversibility; pending/unresolved is not displayed as completed.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:erp",
+      "kit:StatePanel"
+    ]
+  },
+  {
+    "id": "UX-042",
+    "area": "Administration",
+    "title": "Scope clarity",
+    "exercise": "Change an access policy while another role is reviewing the same data.",
+    "expected": "Requested versus effective state is clear; hierarchy does not disguise permissions; audit remains available.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell",
+      "app:erp"
+    ]
+  },
+  {
+    "id": "UX-043",
+    "area": "Studio",
+    "title": "Accessible graph editing",
+    "exercise": "Build and inspect a branching process using canvas and keyboard/outline.",
+    "expected": "Essential functions work without dragging; invalid ports and source-only constructs are explicit.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "studio"
+    ]
+  },
+  {
+    "id": "UX-044",
+    "area": "Studio",
+    "title": "Draft versus deployment",
+    "exercise": "Save a draft, simulate it, review changes, and activate a permitted release.",
+    "expected": "Draft/simulation/production are distinguishable; autosave does not imply deployment.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "studio"
+    ]
+  },
+  {
+    "id": "UX-045",
+    "area": "Analytics",
+    "title": "Data semantics",
+    "exercise": "Render absent, zero, stale, partial and denied metric results.",
+    "expected": "No invented trend/number; unit, period, scope, freshness and drill-down are explicit.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:metrics"
+    ]
+  },
+  {
+    "id": "UX-046",
+    "area": "AI",
+    "title": "Proposed versus executed",
+    "exercise": "Render advice, proposed action, approval, running action and uncertain result.",
+    "expected": "Model prose never substitutes for authoritative operation state; evidence and material effect preview are visible.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "app:ai",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-047",
+    "area": "Accessibility",
+    "title": "Keyboard only",
+    "exercise": "Complete reference journeys without pointer input.",
+    "expected": "All actions reachable, focus visible, dialogs return focus, no keyboard trap.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-048",
+    "area": "Accessibility",
+    "title": "Assistive technology",
+    "exercise": "Complete representative tasks with a human screen-reader user.",
+    "expected": "Control names, state changes, grids/toolbars and errors are understandable; issues are recorded.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:primitives",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-049",
+    "area": "Accessibility",
+    "title": "Zoom and reflow",
+    "exercise": "Test 200% text/zoom and required narrow reflow conditions.",
+    "expected": "Ordinary task content remains usable; justified two-dimensional exceptions retain navigation alternatives.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell",
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-050",
+    "area": "Accessibility",
+    "title": "Reduced and forced display modes",
+    "exercise": "Enable reduced motion and forced/high contrast.",
+    "expected": "Meaning and focus survive; no unnecessary motion remains; selected/error states do not depend only on color.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens",
+      "kit:primitives"
+    ]
+  },
+  {
+    "id": "UX-051",
+    "area": "Localization",
+    "title": "RTL complete journey",
+    "exercise": "Complete Mail, Drive, record edit and editor-host navigation in Arabic.",
+    "expected": "Logical layout, menus, focus and content direction are intentional; Latin identifiers/numbers are not corrupted.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "kit:tokens",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-052",
+    "area": "Localization",
+    "title": "Text expansion",
+    "exercise": "Use long translated strings, varied date/currency formats and bidi names.",
+    "expected": "Labels remain understandable; key actions do not disappear; formatting is consistent.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell",
+      "kit:tokens"
+    ]
+  },
+  {
+    "id": "UX-053",
+    "area": "Performance",
+    "title": "Realistic frontend interaction",
+    "exercise": "Measure representative data sets on declared ordinary hardware/network.",
+    "expected": "Typing, selection and scrolling remain responsive; bundle/load budgets are recorded, not invented.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell",
+      "release"
+    ]
+  },
+  {
+    "id": "UX-054",
+    "area": "Performance",
+    "title": "Background activity",
+    "exercise": "Receive updates while scrolling, editing and reviewing a panel.",
+    "expected": "No layout jump, lost input or focus caused by refresh; heavy work remains bounded.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-055",
+    "area": "Release",
+    "title": "Mixed artifact versions",
+    "exercise": "Load the declared supported combination of old/new shell, kit and app UI artifacts.",
+    "expected": "Compatibility is proven or incompatible artifacts are refused; no duplicate shortcut handlers.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "release"
+    ]
+  },
+  {
+    "id": "UX-056",
+    "area": "Release",
+    "title": "Preference migration",
+    "exercise": "Upgrade and roll back layout while preserving density, panes, filters and drafts.",
+    "expected": "Personal state migrates or resets with explanation; business/draft data is not lost.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "release",
+      "shell"
+    ]
+  },
+  {
+    "id": "UX-057",
+    "area": "Release",
+    "title": "Visual regression review",
+    "exercise": "Run deterministic screenshots for reference states and review changes.",
+    "expected": "Differences are approved by design/engineering; baselines are not auto-updated to hide defects.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "release"
+    ]
+  },
+  {
+    "id": "UX-058",
+    "area": "Release",
+    "title": "Independent task evaluation",
+    "exercise": "Ask representative staff to complete reference tasks without author guidance.",
+    "expected": "Errors, time, comprehension and perceived quality are compared to the baseline; failed tasks are not masked by cosmetic scores.",
+    "state": "not_run",
+    "evidence_required": [
+      "exact app/kit artifact",
+      "role/fixture/viewport/theme/locale",
+      "actual result and retained evidence"
+    ],
+    "maps_to": [
+      "release"
+    ]
+  }
+]
