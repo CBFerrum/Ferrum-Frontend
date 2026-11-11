@@ -1842,6 +1842,8 @@ const words: Record<string, string> = {
   "Up": "ऊपर",
   "Up to 12. Without a choice, the list’s usual columns show.": "12 तक। बिना चुने, सूची के सामान्य कॉलम दिखते हैं।",
   "Update to {version}": "{version} पर अपडेट करें",
+  "Bring up to date": "नवीनतम पर लाएँ",
+  "Brings: {value}": "इसमें शामिल: {value}",
   "Updated": "अपडेट किया गया",
   "Updated {value}": "{value} अपडेट हुआ",
   "Updating the preview": "पूर्वावलोकन अपडेट हो रहा है",

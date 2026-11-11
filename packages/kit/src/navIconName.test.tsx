@@ -2,8 +2,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import entities from "./navIconName.entities.json";
-import { NavIcon, NAV_ICONS } from "./NavIcon";
-import { conceptIcon, DICTIONARY, nameWords, NAV_ICON_NAMES, navIcon } from "./navIconName";
+import { NavIcon, navIconsReady } from "./NavIcon";
+import { NAV_ICONS } from "./NavIconTable";
+import { CONCEPTS, conceptIcon, DICTIONARY, nameWords, NAV_ICON_NAMES, navIcon } from "./navIconName";
 
 describe("navIcon", () => {
   it("takes the declared icon first, including the shell's older names", () => {
@@ -27,7 +28,8 @@ describe("navIcon", () => {
   it("takes the longest run of words, the last when equal", () => {
     expect(conceptIcon("JournalEntry")).toBe("notebook"); // not history (entry)
     expect(conceptIcon("PriceList")).toBe("tag");
-    expect(conceptIcon("PosClosingEntry")).toBe("store");
+    expect(conceptIcon("PosClosingEntry")).toBe("lock");
+    expect(conceptIcon("PosOpeningEntry")).toBe("store");
     expect(conceptIcon("ItemPrice")).toBe("tag"); // item (package) then price: the head noun
     expect(conceptIcon("TaxRate")).toBe("percent");
   });
@@ -45,11 +47,45 @@ describe("navIcon", () => {
   it("reads the entity from a /e/ address", () => {
     expect(navIcon({ to: "/e/Patient" })).toBe("heart-pulse");
   });
-  it("gives a concrete icon to every entity the installed apps define (the checked-in list)", () => {
-    const fell = (entities as string[]).filter((n) => !conceptIcon(n));
-    expect(fell).toEqual([]);
-    expect(entities.length).toBeGreaterThan(400);
+  it("lets a qualifier (type, group, category) take the icon of the thing it qualifies", () => {
+    expect(conceptIcon("CustomerGroup")).toBe(conceptIcon("Customer"));
+    expect(conceptIcon("ItemGroup")).toBe(conceptIcon("Item"));
+    expect(conceptIcon("LeaveType")).toBe(conceptIcon("Leave"));
+    expect(conceptIcon("Zzz Type")).toBe("tags"); // nothing to inherit
   });
+  it("tells time and the second word of a family apart", () => {
+    expect(conceptIcon("FiscalYear")).toBe("calendar-range");
+    expect(conceptIcon("PeriodClosingVoucher")).toBe("lock");
+    expect(conceptIcon("Stay")).not.toBe(conceptIcon("Folio"));
+    expect(conceptIcon("Lead")).not.toBe(conceptIcon("Opportunity"));
+    expect(conceptIcon("SalarySlip")).not.toBe(conceptIcon("ExpenseClaim"));
+  });
+  it("lists every concept once", () => {
+    const all = CONCEPTS.flatMap(([, l]) => l.split(",").map((c) => c.trim()));
+    expect(all.filter((c, i) => all.indexOf(c) !== i)).toEqual([]);
+  });
+});
+
+// Entity names are the menu's rows, listed by app (scripts/nav-icon-entities.py regenerates the file). Reports are not entities.
+const byApp = entities as Record<string, string[]>;
+/** An app may use one icon on more rows than the limit only when the rows are the same kind of thing. Declare it here: app, icon, why. */
+const MAX_PER_ICON = 3;
+const EXCEPTIONS: Record<string, Record<string, number>> = {};
+
+describe("every entity of every app", () => {
+  it("resolves through a concept, never the fallback", () => {
+    const names = Object.values(byApp).flat();
+    expect(names.filter((n) => !conceptIcon(n))).toEqual([]);
+    expect(names.length).toBeGreaterThan(400);
+    expect(Object.keys(byApp).length).toBeGreaterThan(35);
+  });
+  for (const [app, names] of Object.entries(byApp))
+    it(`${app}: no icon on more than ${MAX_PER_ICON} rows unless declared`, () => {
+      const rows: Record<string, string[]> = {};
+      for (const n of names) (rows[conceptIcon(n) ?? "?"] ??= []).push(n);
+      const tooMany = Object.entries(rows).filter(([icon, r]) => r.length > (EXCEPTIONS[app]?.[icon] ?? MAX_PER_ICON));
+      expect(tooMany).toEqual([]);
+    });
 });
 
 describe("the drawing", () => {
@@ -57,10 +93,17 @@ describe("the drawing", () => {
     expect(Object.keys(NAV_ICONS).sort()).toEqual([...NAV_ICON_NAMES].sort());
     for (const icon of DICTIONARY.values()) expect(NAV_ICONS[icon], icon).toBeTruthy();
   });
-  it("is a decorative 16px stroke", () => {
+  it("holds a 16px slot until the table arrives, then draws a decorative 16px stroke", async () => {
+    const slot = renderToStaticMarkup(<NavIcon entity="Customer" />);
+    expect(slot).toContain('aria-hidden="true"');
+    expect(slot).toContain("width:16px");
+    expect(slot).not.toContain("<svg");
+    await navIconsReady();
     const html = renderToStaticMarkup(<NavIcon entity="Customer" />);
     expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('width="16"');
+    expect(html).toContain("<svg");
     expect(html).toContain("nav-icon");
+    expect(await navIconsReady()).toBeUndefined(); // one promise, asked again at no cost
   });
 });
