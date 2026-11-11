@@ -230,25 +230,6 @@ export function BulkBar({
             {tr("Submit")}
           </Button>
         )}
-        {actions.cancel && (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              void confirmed(
-                { op: "cancel" },
-                {
-                  title: tr("Cancel {what}?", { what }),
-                  message: tr("Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards."),
-                  confirmLabel: tr("Cancel them"),
-                  danger: true,
-                },
-              )
-            }
-          >
-            {tr("Cancel")}
-          </Button>
-        )}
         {actions.workflow.map((action) => (
           <Button
             key={action}
@@ -270,6 +251,26 @@ export function BulkBar({
         {n === 2 && meta.mergeable && actions.delete && (
           <Button size="sm" onClick={() => setMerging(true)}>
             {tr("Merge")}
+          </Button>
+        )}
+        {(actions.cancel || actions.delete) && <span className="bulk-sep" aria-hidden="true" />}
+        {actions.cancel && (
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() =>
+              void confirmed(
+                { op: "cancel" },
+                {
+                  title: tr("Cancel {what}?", { what }),
+                  message: tr("Cancelling reverses their postings and cannot be undone; you can amend each into a new draft. Records that cannot be cancelled are listed afterwards."),
+                  confirmLabel: tr("Cancel them"),
+                  danger: true,
+                },
+              )
+            }
+          >
+            {tr("Cancel")}
           </Button>
         )}
         {actions.delete && (

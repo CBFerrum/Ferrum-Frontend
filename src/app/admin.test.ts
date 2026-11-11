@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conditionValues, exportGone, size } from "./Admin";
+import { conditionValues, exportGone, GROUPS, size, TABS } from "./Admin";
 
 describe("permission conditions", () => {
   it("types the values typed for a field", () => {
@@ -29,5 +29,13 @@ describe("a workspace export", () => {
   it("is gone once an erasure deleted it, and only a finished one is", () => {
     expect(exportGone({ ...done, result: { ...done.result, deleted: "erasure" } }, at("2026-11-01T11:00:00Z"))).toBe(true);
     expect(exportGone({ ...done, status: "running" }, at("2026-12-01T00:00:00Z"))).toBe(false);
+  });
+});
+
+describe("the administration navigation", () => {
+  it("lists every section once, under a group", () => {
+    const grouped = GROUPS.flatMap((g) => g.ids);
+    expect([...grouped].sort()).toEqual(TABS.map((t) => t.id).sort());
+    expect(new Set(grouped).size).toBe(grouped.length);
   });
 });

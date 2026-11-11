@@ -104,7 +104,7 @@ function GridSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" role="status" aria-label={tr("Loading the dashboard")}>
       {[3, 3, 3, 3, 6, 6].map((w, i) => (
-        <Skeleton key={i} className={cn("h-32 rounded-xl", w === 6 ? "col-span-2 h-72" : "")} />
+        <Skeleton key={i} className={cn("h-32 rounded-lg", w === 6 ? "col-span-2 h-72" : "")} />
       ))}
     </div>
   );
@@ -569,7 +569,7 @@ function DashboardEditor({ record, view, onExit }: { record: DashboardRecord; vi
       />
     );
     return (
-      <div className={cn("relative h-full", errs.length && "rounded-xl ring-2 ring-destructive")}>
+      <div className={cn("relative h-full", errs.length && "rounded-lg ring-2 ring-destructive")}>
         {body}
         {errs.length > 0 && (
           <p className="absolute inset-x-2 bottom-2 z-10 rounded bg-destructive px-2 py-1 text-xs text-white" role="alert">

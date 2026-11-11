@@ -3,7 +3,10 @@
 
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { Ellipsis } from "lucide-react";
+import { Button as UiButton } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
 import { formatDate, formatDateTime, relativeTime } from "../lib/format";
@@ -26,7 +29,6 @@ import {
   Icon,
   PageLoading,
   TabPanel,
-  Tabs,
   toast,
 } from "../ui/kit";
 import { FormSkeleton, ListSkeleton } from "../ui/patterns";
@@ -34,7 +36,7 @@ import { t as tr, isolate } from "@ferrum/client";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
 
-const TABS = [
+export const TABS = [
   { id: "users", get label() { return tr("Users"); } },
   { id: "roles", get label() { return tr("Roles & permissions"); } },
   { id: "packages", get label() { return tr("Packages"); } },
@@ -51,6 +53,73 @@ const TABS = [
   { id: "words", get label() { return tr("Interface words"); } },
   { id: "exceptions", get label() { return tr("Needs a person"); } },
 ];
+
+/** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
+function RowMenu({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <UiButton variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={label}>
+          <Ellipsis />
+        </UiButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** The sections, grouped for the side navigation. Ids are the `?tab=` values and the tab/panel ids: they do not change. */
+export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
+  { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
+  { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "webhooks", "automations", "plugins"] },
+  { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
+  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions"] },
+];
+
+/** Section navigation that scales: a column of groups beside the page, a scrolling strip on narrow screens. One tablist per group, arrow keys move across all. */
+function AdminNav({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const order = GROUPS.flatMap((g) => g.ids);
+  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const i = order.indexOf(value);
+    const next = e.key === "ArrowDown" || e.key === "ArrowRight" ? i + 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? order.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    const id = order[(next + order.length) % order.length]!;
+    onChange(id);
+    document.getElementById(`admin-tab-${id}`)?.focus();
+  };
+  return (
+    <nav className="admin-nav" aria-label={tr("Administration sections")} onKeyDown={onKeyDown}>
+      {GROUPS.map((g) => (
+        <div key={g.id} className="admin-nav-group">
+          <div className="admin-nav-label" id={`admin-group-${g.id}`}>
+            {g.label()}
+          </div>
+          <div role="tablist" aria-orientation="vertical" aria-labelledby={`admin-group-${g.id}`}>
+            {g.ids.map((id) => {
+              const tab = TABS.find((x) => x.id === id)!;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`admin-tab-${id}`}
+                  aria-selected={id === value}
+                  aria-controls={`admin-panel-${id}`}
+                  tabIndex={id === value ? 0 : -1}
+                  className="admin-tab"
+                  onClick={() => onChange(id)}
+                >
+                  {isolate(tab.label)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
 export function AdminPage() {
   const me = useMe();
@@ -69,7 +138,8 @@ export function AdminPage() {
       <div className="page-head">
         <h1 className="page-title">{tr("Administration")}</h1>
       </div>
-      <Tabs id="admin" tabs={TABS} value={tab} onChange={(t) => setSp({ tab: t }, { replace: true })} />
+      <div className="admin-layout">
+      <AdminNav value={tab} onChange={(t) => setSp({ tab: t }, { replace: true })} />
       <TabPanel id="admin" tab={tab}>
         {tab === "users" && <Users />}
         {tab === "roles" && <Roles />}
@@ -91,6 +161,7 @@ export function AdminPage() {
         {tab === "words" && <InterfaceWords />}
         {tab === "exceptions" && <Exceptions />}
       </TabPanel>
+      </div>
     </div>
   );
 }
@@ -1238,31 +1309,27 @@ function Users() {
                     </td>
                     <td className="nowrap">{u.last_login_at ? relativeTime(u.last_login_at) : <span className="faint">{tr("never")}</span>}</td>
                     <td>
-                      <div className="row">
+                      <div className="row-actions">
                         <Button size="sm" onClick={() => setEditRoles(u)}>
                           {tr("Roles")}
                         </Button>
-                        <Button size="sm" onClick={() => setResetting(u)}>
-                          {tr("Reset password")}
-                        </Button>
-                        {u.two_factor && (
-                          <Button size="sm" onClick={() => void resetTwoFactor(u)}>
-                            {tr("Reset 2FA")}
-                          </Button>
-                        )}
-                        {u.sso && (
-                          <Button size="sm" onClick={() => void unlinkSso(u)}>
-                            {tr("Unlink SSO")}
-                          </Button>
-                        )}
-                        {u.id !== me?.user.id && (u.kind ?? "member") !== "service" && (
-                          <Button size="sm" onClick={() => void changeKind(u)}>
-                            {(u.kind ?? "member") === "member" ? tr("Make portal person") : tr("Make member")}
-                          </Button>
-                        )}
-                        <Button size="sm" variant={u.is_active ? "danger" : "default"} disabled={u.id === me?.user.id} onClick={() => void toggleActive(u)}>
-                          {u.is_active ? tr("Deactivate") : tr("Activate")}
-                        </Button>
+                        <RowMenu label={tr("Actions for {name}", { name: u.full_name })}>
+                            <DropdownMenuItem onSelect={() => setResetting(u)}>{tr("Reset password")}</DropdownMenuItem>
+                            {u.two_factor && <DropdownMenuItem onSelect={() => void resetTwoFactor(u)}>{tr("Reset 2FA")}</DropdownMenuItem>}
+                            {u.sso && <DropdownMenuItem onSelect={() => void unlinkSso(u)}>{tr("Unlink SSO")}</DropdownMenuItem>}
+                            {u.id !== me?.user.id && (u.kind ?? "member") !== "service" && (
+                              <DropdownMenuItem onSelect={() => void changeKind(u)}>{(u.kind ?? "member") === "member" ? tr("Make portal person") : tr("Make member")}</DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant={u.is_active ? "destructive" : "default"}
+                              disabled={u.id === me?.user.id}
+                              title={u.id === me?.user.id ? tr("You cannot deactivate your own account") : undefined}
+                              onSelect={() => void toggleActive(u)}
+                            >
+                              {u.is_active ? tr("Deactivate") : tr("Activate")}
+                            </DropdownMenuItem>
+                        </RowMenu>
                       </div>
                     </td>
                   </tr>
@@ -1634,7 +1701,7 @@ function Roles() {
     <Loaded q={roles}>
       {() => (
         <div className="stack">
-          <div className="card card-pad row">
+          <div className="card card-pad row" style={{ alignItems: "flex-start" }}>
             <FieldWrap label={tr("Role")} htmlFor="role-pick">
               <select id="role-pick" className="select" style={{ minWidth: 240 }} value={current} onChange={(e) => setSelected(e.target.value)}>
                 {names.map((n) => (
@@ -1646,7 +1713,7 @@ function Roles() {
             </FieldWrap>
             <form
               className="row"
-              style={{ alignItems: "flex-end" }}
+              style={{ alignItems: "flex-start" }}
               onSubmit={(e) => {
                 e.preventDefault();
                 const n = newRole.trim();
@@ -1659,7 +1726,9 @@ function Roles() {
               <FieldWrap label={tr("New role")} htmlFor="role-new" hint={tr("Created when you grant its first permission.")}>
                 <input id="role-new" className="input" value={newRole} onChange={(e) => setNewRole(e.target.value)} maxLength={100} />
               </FieldWrap>
-              <Button type="submit">{tr("Add role")}</Button>
+              <Button type="submit" style={{ marginTop: 21 }}>
+                {tr("Add role")}
+              </Button>
             </form>
           </div>
           {role?.description && <p className="muted">{isolate(role.description)}</p>}
@@ -2373,15 +2442,18 @@ function Domains() {
                                 {tr("Check now")}
                               </Button>
                             )}
-                            {d.status === "verified" && !d.is_primary && !d.released_at && (
-                              <Button size="sm" onClick={() => void primary(d)}>
-                                {tr("Make main")}
-                              </Button>
-                            )}
-                            {d.kind === "custom" && !d.released_at && (
-                              <Button size="sm" variant="ghost" onClick={() => void remove(d)}>
-                                {tr("Remove")}
-                              </Button>
+                            {((d.status === "verified" && !d.is_primary && !d.released_at) || (d.kind === "custom" && !d.released_at)) && (
+                              <RowMenu label={tr("Actions for {name}", { name: d.host })}>
+                                {d.status === "verified" && !d.is_primary && !d.released_at && <DropdownMenuItem onSelect={() => void primary(d)}>{tr("Make main")}</DropdownMenuItem>}
+                                {d.kind === "custom" && !d.released_at && (
+                                  <>
+                                    {d.status === "verified" && !d.is_primary && <DropdownMenuSeparator />}
+                                    <DropdownMenuItem variant="destructive" onSelect={() => void remove(d)}>
+                                      {tr("Remove")}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </RowMenu>
                             )}
                           </div>
                         </td>

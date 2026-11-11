@@ -197,7 +197,7 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
     return (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label={tr("Loading")}>
         {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="h-28 rounded-xl" />
+          <Skeleton key={i} className="h-28 rounded-lg" />
         ))}
       </div>
     );
@@ -237,13 +237,12 @@ function RecordList({ tab, q, onNew }: { tab: Tab; q: string; onNew: () => void 
           const entity = tab !== "dashboards" ? p.entityLabel((r as StudioListRow<"charts">).base_entity) : "";
           const canEdit = p.write(tab) && !r.is_standard;
           return (
-            <li key={r.id} className="group relative flex min-w-0 flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm transition-colors focus-within:ring-2 focus-within:ring-ring hover:border-border-strong">
+            <li key={r.id} className="group relative flex min-w-0 flex-col gap-2 rounded-lg border bg-card p-4 transition-colors focus-within:ring-2 focus-within:ring-ring hover:border-border-strong">
               <div className="flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary" aria-hidden="true">
-                  <Icon className="size-4" />
-                </span>
+                {/* The icon only where it says something (a chart's type); the same mark on every dashboard or card would not. */}
+                {type && <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                 <div className="min-w-0 flex-1">
-                  <Link to={hrefOf(tab, r.id)} className={cn(plainLink, "block truncate font-medium after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none")}>
+                  <Link to={hrefOf(tab, r.id)} className={cn(plainLink, "block truncate font-medium after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none")}>
                     {isolate(r.label)}
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
