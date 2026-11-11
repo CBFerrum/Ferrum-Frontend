@@ -2496,7 +2496,7 @@ input[type="color"] {
 }
 /* The action reads as something to press, not as more of the sentence. */
 .toast-action {
-  color: var(--primary-text);
+  color: var(--primary);
   font-weight: 600;
 }
 @keyframes toast-in {
