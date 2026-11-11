@@ -850,6 +850,10 @@ button.peek-value:hover {
 .input.read-value.num {
   font-variant-numeric: tabular-nums;
 }
+/* A lone figure in the form's grid stays under its label; figures align to the end only in tables and totals. */
+.form-grid > .field > .input.read-value.num {
+  text-align: start;
+}
 .input.read-value::placeholder,
 .textarea.read-value::placeholder {
   color: var(--faint);
