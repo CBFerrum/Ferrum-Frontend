@@ -113,7 +113,7 @@ export function SpaceSkeleton() {
     <SpaceGrid>
       {widths.map((w, i) => (
         <div key={i} className={spanClass(w)}>
-          <Skeleton className={cn("w-full rounded-xl", w <= 3 ? "h-24" : "h-64")} />
+          <Skeleton className={cn("w-full rounded-lg", w <= 3 ? "h-24" : "h-64")} />
         </div>
       ))}
     </SpaceGrid>
@@ -121,7 +121,7 @@ export function SpaceSkeleton() {
 }
 
 export function BlockSkeleton({ type }: { type: BlockType }) {
-  return <Skeleton className={cn("w-full rounded-xl", type === "shortcut" || type === "card" ? "h-24" : type === "heading" ? "h-8" : "h-56")} />;
+  return <Skeleton className={cn("w-full rounded-lg", type === "shortcut" || type === "card" ? "h-24" : type === "heading" ? "h-8" : "h-56")} />;
 }
 
 /** `pending`: the editor is still counting (the tile shows a placeholder for the number). */
@@ -182,7 +182,7 @@ function BlockCard({ title, description, action, children }: { title?: ReactNode
 
 export function BlockError({ title, error }: { title?: string; error: WidgetError }) {
   return (
-    <div className="flex h-full min-h-24 flex-col gap-1 rounded-xl border border-dashed bg-card p-4 text-sm">
+    <div className="flex h-full min-h-24 flex-col gap-1 rounded-lg border border-dashed bg-card p-4 text-sm">
       <span className="flex items-center gap-2 font-medium">
         <TriangleAlert className="size-4 shrink-0 text-warning" aria-hidden="true" />
         {title || t("This block can’t be shown")}
@@ -214,7 +214,7 @@ function ShortcutTile({ w, pending }: { w: ShortcutWidget; pending?: boolean }) 
       target={target}
       aria-label={[w.label, count && t("{count} records", { count }), sub].filter(Boolean).join(", ")}
       className={cn(
-        "group flex h-full min-h-24 flex-col justify-between gap-3 rounded-xl border bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent hover:no-underline",
+        "group flex h-full min-h-24 flex-col justify-between gap-3 rounded-lg border bg-card p-4 text-card-foreground transition-colors hover:bg-accent hover:no-underline",
         FOCUS,
         accent && "border-s-[3px]",
       )}
@@ -286,7 +286,7 @@ function NumberCard({ w }: { w: Extract<ResolvedWidget, { type: "card"; error?: 
     <SmartLink
       target={target}
       aria-label={t("{label}: {value}{value2}. Open the records.", { label: card.label, value, value2: change ? `, ${change} ${vs}` : "" })}
-      className={cn("flex h-full min-h-24 flex-col gap-1.5 rounded-xl border bg-card p-4 text-card-foreground shadow-xs transition-colors hover:bg-accent/60 hover:no-underline", FOCUS, accent && "border-t-[3px]")}
+      className={cn("flex h-full min-h-24 flex-col gap-1.5 rounded-lg border bg-card p-4 text-card-foreground transition-colors hover:bg-accent/60 hover:no-underline", FOCUS, accent && "border-t-[3px]")}
       style={accent ? { borderTopColor: accent } : undefined}
     >
       <span className="text-sm font-medium text-muted-foreground">{isolate(card.label)}</span>

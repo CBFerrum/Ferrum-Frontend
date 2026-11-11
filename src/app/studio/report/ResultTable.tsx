@@ -179,7 +179,7 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
                   data-index={v.index}
                   ref={virtual.measureElement}
                   aria-rowindex={v.index + 2}
-                  className={cn("group/row", d.kind === "subtotal" ? "bg-muted font-medium" : "hover:bg-muted/50")}
+                  className={cn("group/row", d.kind === "subtotal" ? "font-semibold [&>td]:border-t [&>td]:border-t-border-strong" : "hover:bg-muted/50")}
                 >
                   <td className="border-b border-border px-2 py-[var(--cell-py)] text-end text-xs text-muted-foreground tabular-nums">
                     {d.kind === "row" && entity && d.row._id ? (
@@ -212,9 +212,9 @@ export function ResultTable({ columns, rows, totals, sort, onSort, editor, subto
           {totalsShown && (
             <tfoot>
               <tr aria-rowindex={display.length + 2}>
-                <td className="sticky bottom-0 z-10 border-t border-border bg-muted px-2 py-2" />
+                <td className="sticky bottom-0 z-10 border-t border-border-strong bg-card px-2 py-2" />
                 {columns.map((c, i) => (
-                  <td key={c.name} className={cn("sticky bottom-0 z-10 truncate border-t border-border bg-muted px-3 py-2 font-semibold", isNumericColumn(c) && "text-end tabular-nums")}>
+                  <td key={c.name} className={cn("sticky bottom-0 z-10 truncate border-t border-border-strong bg-card px-3 py-2 font-semibold", isNumericColumn(c) && "text-end tabular-nums")}>
                     {c.name in totals ? formatCell(c, totals[c.name], undefined, options) : i === 0 ? t("Total") : ""}
                   </td>
                 ))}

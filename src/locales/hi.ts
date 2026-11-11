@@ -4081,6 +4081,17 @@ const words: Record<string, string> = {
   "Show all": "सभी दिखाएँ",
   "Show less": "कम दिखाएँ",
   "Show all {n} changes": "सभी {n} बदलाव दिखाएँ",
+  "Search this list…": "इस सूची में खोजें…",
+  "People and access": "लोग और पहुँच",
+  "Apps and integrations": "ऐप और इंटीग्रेशन",
+  "Setup": "सेटअप",
+  "Data and review": "डेटा और समीक्षा",
+  "Administration sections": "प्रशासन के अनुभाग",
+  "Actions for {name}": "{name} के लिए कार्रवाइयाँ",
+  "You cannot deactivate your own account": "आप अपना खाता निष्क्रिय नहीं कर सकते",
+  "More in Studio": "Studio में और",
+  "Run {when}": "चलाया गया {when}",
+  "Showing {n} of {total}": "{total} में से {n} दिखाए गए",
 };
 
 export default words;

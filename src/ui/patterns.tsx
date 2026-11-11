@@ -284,7 +284,7 @@ export function SelectionToolbar({
     <div
       role="toolbar"
       aria-label={label}
-      className="doc-actions flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2"
+      className="doc-actions flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2 [@media(width>720px)]:[.list-bars_&]:absolute [@media(width>720px)]:[.list-bars_&]:inset-x-0 [@media(width>720px)]:[.list-bars_&]:top-0 [@media(width>720px)]:[.list-bars_&]:min-h-full"
       onKeyDown={(e) => {
         if (e.key === "Escape") onClear();
       }}

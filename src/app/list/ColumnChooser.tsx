@@ -308,7 +308,7 @@ export function ColumnResizer({
   return (
     <span
       aria-hidden="true"
-      className="absolute inset-y-0 end-0 z-[1] w-2.5 cursor-col-resize touch-none select-none after:absolute after:inset-y-2 after:end-0 after:w-px after:bg-border hover:after:w-0.5 hover:after:bg-primary"
+      className="absolute inset-y-0 end-0 z-[1] w-2.5 cursor-col-resize touch-none select-none after:absolute after:inset-y-2 after:end-0 after:w-px after:bg-transparent [th:hover>&]:after:bg-border hover:after:w-0.5 hover:after:bg-primary"
       onPointerDown={down}
       onDoubleClick={() => onCommit(name, undefined)}
     />

@@ -240,7 +240,7 @@ function CardEditor({
       <div className="grid gap-4 sm:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]" aria-live="polite">
         {/* The card at two dashboard sizes: a quarter and half of the grid's width. */}
         {(["h-36 max-w-72", "h-40 max-w-md"] as const).map((size, n) => (
-          <div key={n} className={cn("flex w-full flex-col rounded-xl border bg-card p-3 shadow-sm", size, n === 1 && "hidden sm:flex")} style={isSafeColor(rec.color) ? { borderTop: `3px solid ${rec.color}` } : undefined}>
+          <div key={n} className={cn("flex w-full flex-col rounded-lg border bg-card p-3", size, n === 1 && "hidden sm:flex")} style={isSafeColor(rec.color) ? { borderTop: `3px solid ${rec.color}` } : undefined}>
             <p className="truncate text-sm font-medium">{rec.label || t("Untitled")}</p>
             <div className="min-h-0 flex-1 pt-1">
               {local.length ? (

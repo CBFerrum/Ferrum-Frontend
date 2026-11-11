@@ -25,7 +25,8 @@ import {
   type EntityMeta,
   type ListResponse,
 } from "../lib/meta";
-import { Button, ErrorState, Field as FieldWrap, Icon, PageLoading, toast, useDebounced } from "../ui/kit";
+import { Ellipsis } from "lucide-react";
+import { Button, ErrorState, Icon, Menu, MenuItem, PageLoading, toast, useDebounced } from "../ui/kit";
 import { StatePanel } from "../ui/patterns";
 import { pageState, togglePage, toggleRow } from "./list/bulk";
 import { BulkBar, SelectBox } from "./list/BulkBar";
@@ -427,13 +428,13 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   return (
     <div className="list-page" data-peek={!!peek || undefined}>
       <div className="list-main">
-      <div className="page-head">
-        <div>
+      <div className="page-head list-head">
+        <div className="page-titles">
           <h1 className="page-title">
             {isolate(meta.label_plural)}
             <HelpLink meta={meta} />
           </h1>
-          <p className="page-sub" aria-live="polite">
+          <p className={view === "list" ? "page-sub" : "page-sub sr-only"} aria-live="polite">
             {view === "board"
               ? t("Board by {field}", { field: boardField!.label.toLowerCase() })
               : view === "calendar"
@@ -470,21 +471,32 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
               ))}
             </div>
           )}
-          {me?.user.is_admin && (
-            <Link className="btn btn-ghost btn-md" to={`/customize/${E}`}>
-              <Icon name="edit" />
-              {t("Customize")}
-            </Link>
-          )}
-          {can(meta.permissions, "export") && (
-            <Button icon="download" onClick={() => void exportCsv()}>
-              {t("Export CSV")}
-            </Button>
-          )}
-          {can(meta.permissions, "import") && canCreate && (
-            <Button icon="upload" onClick={() => setImporting(true)}>
-              {t("Import")}
-            </Button>
+          {/* Secondary actions live in one overflow menu, so the header carries a view switcher and one primary action. */}
+          {(me?.user.is_admin || can(meta.permissions, "export") || (can(meta.permissions, "import") && canCreate)) && (
+            <Menu ariaLabel={t("More actions")} label={<Ellipsis size={16} aria-hidden="true" />} buttonClass="btn btn-ghost btn-md icon-btn">
+              {(close) => (
+                <>
+                  {can(meta.permissions, "export") && (
+                    <MenuItem onSelect={() => (close(), void exportCsv())}>
+                      <Icon name="download" />
+                      {t("Export CSV")}
+                    </MenuItem>
+                  )}
+                  {can(meta.permissions, "import") && canCreate && (
+                    <MenuItem onSelect={() => (close(), setImporting(true))}>
+                      <Icon name="upload" />
+                      {t("Import")}
+                    </MenuItem>
+                  )}
+                  {me?.user.is_admin && (
+                    <MenuItem onSelect={() => (close(), navigate(`/customize/${E}`))}>
+                      <Icon name="edit" />
+                      {t("Customize")}
+                    </MenuItem>
+                  )}
+                </>
+              )}
+            </Menu>
           )}
           {canCreate && (
             <Link className="btn btn-primary btn-md" to={newHref}>
@@ -495,7 +507,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         </div>
       </div>
 
-      <div className="card">
+      <div className="card list-card">
+        <div className="list-bars">
         <div className="list-bar" role="search" aria-label={t("Filter {labels}", { labels: meta.label_plural })}>
           <div className="list-search">
             <Icon name="search" size={14} />
@@ -504,7 +517,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
               className="input"
               type="search"
               aria-label={t("Search {labels}", { labels: meta.label_plural.toLowerCase() })}
-              placeholder={t("Search…")}
+              placeholder={t("Search this list…")}
               value={search}
               autoComplete="off"
               onChange={(e) => setSearch(e.target.value)}
@@ -521,7 +534,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           )}
           {filtered && (
             <button type="button" className="chip-clear" onClick={clearFilters}>
-              {tr("Clear")}
+              {tr("Clear filters")}
             </button>
           )}
           <div className="list-bar-end">
@@ -572,9 +585,11 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
           </div>
         </div>
 
+        {/* The bar takes the filter bar's place (same box), so the table does not move when rows are selected. */}
         {view === "list" && selected.size > 0 && (
           <BulkBar meta={meta} me={me} selected={selected} rows={rows} total={total} hasMore={!!list.hasNextPage} filters={filters} q={q} sort={sort} onSelect={setSelected} />
         )}
+        </div>
 
         {view === "board" ? (
           <BoardView meta={meta} field={boardField!} filters={filters} q={q} onOpen={phone ? undefined : setPeek} open={peek} />
@@ -699,7 +714,8 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
         )}
         {view === "list" && list.hasNextPage && (
           <div className="load-more">
-            <Button onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
+            {total != null && <span className="muted">{tr("Showing {n} of {total}", { n: rows.length.toLocaleString(), total: total.toLocaleString() })}</span>}
+            <Button size="sm" onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
               {tr("Load more")}
             </Button>
           </div>
@@ -722,7 +738,8 @@ function ViewFieldPicker({ view, opts, value, onChange }: { view: ViewKind; opts
         : opts.timeline.map(([s, e]) => [`${s.name}..${e.name}`, `${s.label} – ${e.label}`]);
   if (choices.length < 2) return null;
   return (
-    <FieldWrap label={view === "board" ? tr("Group by") : view === "calendar" ? tr("Date") : tr("Dates")} htmlFor="view-by">
+    <div className="view-by">
+      <label htmlFor="view-by">{view === "board" ? tr("Group by") : view === "calendar" ? tr("Date") : tr("Dates")}</label>
       <select id="view-by" className="select" value={value} onChange={(e) => onChange(e.target.value)}>
         {choices.map(([v, l]) => (
           <option key={v} value={v}>
@@ -730,6 +747,6 @@ function ViewFieldPicker({ view, opts, value, onChange }: { view: ViewKind; opts
           </option>
         ))}
       </select>
-    </FieldWrap>
+    </div>
   );
 }
