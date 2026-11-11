@@ -3,6 +3,7 @@
 // apps' interfaces leave the web app (phase U4), without changing this entry point. The shadcn
 // primitives (Button, Dialog… as plain building blocks) are `@ferrum/kit/primitives`.
 export * from "../../../src/ui/kit";
+export { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type SaveState, type StateKind } from "../../../src/ui/patterns";
 export { cn, insideNativeDialog } from "../../../src/lib/utils";
 export { placed } from "../../../src/lib/placed";
 export { Markdown } from "../../../src/app/studio/dashboard/MarkdownView";

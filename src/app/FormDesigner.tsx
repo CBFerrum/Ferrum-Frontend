@@ -19,6 +19,7 @@ import { formatDateTime } from "../lib/format";
 import { checkLayout, layoutOf, layoutOp, sameLayout, toForm, type LayoutSection } from "../lib/formLayout";
 import { useEntityMeta, useMe, type EntityMeta } from "../lib/meta";
 import { confirmDialog, ErrorState, PageLoading, toast } from "../ui/kit";
+import { SaveStatus } from "../ui/patterns";
 import { Canvas, useMedia } from "./designer/Canvas";
 import { LayoutHistory, ORIGINAL } from "./designer/History";
 import { SectionInspector } from "./designer/Inspector";
@@ -274,7 +275,7 @@ function Designer({ meta }: { meta: EntityMeta }) {
               ) : (
                 <Badge variant="outline">{tr("Original layout")}</Badge>
               ))}
-            {dirty && <Badge className="bg-warning-soft text-warning">{tr("Unsaved changes")}</Badge>}
+            {saving ? <SaveStatus state="saving" /> : dirty && <SaveStatus state="draft" />}
           </div>
         </div>
         <div className="page-actions">
