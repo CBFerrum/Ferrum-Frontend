@@ -3743,7 +3743,8 @@ a.queue-name:focus-visible::after {
 .stat-value[data-tone="danger"] {
   color: var(--danger);
 }
-.stat .queue-progress {
+.stat-bar {
+  display: block;
   padding: 4px 0;
 }
 /* The rhythm of a page: head, then sections 16px apart (24 with data-gap="lg"); the head stays 16px above the first. */

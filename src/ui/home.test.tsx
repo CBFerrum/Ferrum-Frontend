@@ -199,6 +199,9 @@ describe("Stat", () => {
   it("carries a slim named bar", () => {
     const h = draw(<Stat label="Depreciated" value="16%" progress={{ value: 16, label: "Depreciated" }} />);
     expect(h.querySelector("[role=progressbar]")!.getAttribute("aria-label")).toBe("Depreciated");
+    expect(h.querySelector("[role=progressbar]")!.getAttribute("aria-valuenow")).toBe("16");
+    expect(h.textContent).toBe("Depreciated16%"); // the value is the figure: the bar prints no percentage of its own
+    expect(draw(<Stat label="Cost" value="1" progress={{ value: 5 }} />).querySelector("[role=progressbar]")!.getAttribute("aria-label")).toBe("Cost");
   });
 });
 

@@ -660,7 +660,11 @@ export function Stat({
       <span ref={fit} className="stat-value" data-quiet={nothing(value) ? "" : undefined} data-tone={tone}>
         {nothing(value) && (value == null || value === "" || value === false) ? "—" : value}
       </span>
-      {progress && <QueueProgress {...progress} />}
+      {progress && (
+        <span className="stat-bar">
+          <Progress value={progress.value} max={progress.max} label={progress.label ?? label} tone={progress.tone} />
+        </span>
+      )}
       {hint && <span className="stat-hint">{hint}</span>}
     </>
   );
