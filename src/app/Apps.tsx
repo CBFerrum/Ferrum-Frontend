@@ -41,10 +41,20 @@ export function byParent<T extends { id: string; parent?: string | null }>(apps:
   walk(null, 0);
   return out;
 }
+/** What the server says a built-in app can be brought to: the build's version (which may equal the installed one, when only
+ *  its packages are older) and, when it knows, each package's step ("crm 0.2.0 → 0.4.0"). */
+export interface AppUpdate {
+  version: string;
+  packages?: string[];
+}
+/** The button's words: the same version means the app's packages are older than the build, not that a newer app exists. */
+export const updateLabel = (installed: string, u: AppUpdate): string => (u.version === installed ? tr("Bring up to date") : tr("Update to {version}", { version: u.version }));
+/** The quiet line saying what an update brings, or nothing when the server did not say. */
+export const updateBrings = (u?: AppUpdate | null): string | null => (u?.packages?.length ? tr("Brings: {value}", { value: u.packages.join(", ") }) : null);
 interface Installed extends AppSummary {
   enabled: boolean;
   installed_at: string;
-  update?: { version: string } | null;
+  update?: AppUpdate | null;
   settings_url?: string | null;
 }
 export interface AppsResponse {
@@ -245,7 +255,7 @@ export function AppsPage() {
   const [sp, setSp] = useSearchParams();
   const tab = ["installed", "store", "upload"].includes(sp.get("tab") ?? "") ? (sp.get("tab") as string) : "installed";
   const q = useQuery({ queryKey: ["apps"], queryFn: ({ signal }) => api.get<AppsResponse>("/api/admin/apps", undefined, signal) });
-  const [planFor, setPlanFor] = useState<{ id: string; version?: string; upgrade?: boolean } | null>(null);
+  const [planFor, setPlanFor] = useState<{ id: string; version?: string; upgrade?: boolean; packages?: string[] } | null>(null);
 
   if (me.isLoading) return <PageLoading />;
   if (!me.data?.user.is_admin) {
@@ -287,7 +297,7 @@ export function AppsPage() {
   );
 }
 
-function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string; upgrade?: boolean }) => void }) {
+function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string; upgrade?: boolean; packages?: string[] }) => void }) {
   const qc = useQueryClient();
   // Sold apps whose store no longer says their licence is live: what is installed stays, not upgraded.
   const licences = useQuery({
@@ -382,11 +392,12 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
             </Link>
           )}
           {a.update && (
-            <Button size="sm" variant="primary" icon="upload" onClick={() => onInstall({ id: a.id, version: a.update!.version, upgrade: true })}>
-              {tr("Update to {version}", { version: a.update.version })}
+            <Button size="sm" variant="primary" icon="upload" onClick={() => onInstall({ id: a.id, version: a.update!.version, upgrade: true, packages: a.update!.packages })}>
+              {updateLabel(a.version, a.update)}
             </Button>
           )}
           <Button size="sm" variant="danger" icon="trash" aria-label={tr("Remove {name}", { name: a.name })} disabled={busy === a.id} onClick={() => void uninstall(a)} />
+          {updateBrings(a.update) && <span className="faint app-installed">{isolate(updateBrings(a.update)!)}</span>}
           <span className="faint app-installed">{tr("Installed {value}", { value: formatDateTime(a.installed_at) })}</span>
         </AppCard>
       ))}
@@ -526,7 +537,7 @@ export function InstallDialog({
   onClose,
   onInstalled,
 }: {
-  request: { id: string; version?: string; upgrade?: boolean } | null;
+  request: { id: string; version?: string; upgrade?: boolean; packages?: string[] } | null;
   onClose: () => void;
   onInstalled?: () => void;
 }) {
@@ -597,6 +608,7 @@ export function InstallDialog({
               ))}
             </div>
           )}
+          {request?.upgrade && updateBrings({ version: p.app.version, packages: request.packages }) && <p className="muted">{isolate(updateBrings({ version: p.app.version, packages: request.packages })!)}</p>}
           {p.app.description && <p className="comment-text">{isolate(p.app.description)}</p>}
           {p.app.equipment && (
             <div>
