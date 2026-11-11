@@ -16,6 +16,7 @@ import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Fi
 import { t as tr, isolate } from "@ferrum/client";
 import { useApply } from "./author/apply";
 import { CheckInput, checkText, startCheck } from "./author/CheckBuilder";
+import { addRuleOp } from "../lib/checkBuilder";
 import { FormCard } from "./author/FormCard";
 
 interface Customization {
@@ -536,7 +537,7 @@ function AddFieldCard({ meta }: { meta: EntityMeta }) {
 
 function AddRuleCard({ meta }: { meta: EntityMeta }) {
   const apply = useApply(meta.name);
-  const empty = { name: "", message: "", on: "save", note: "" };
+  const empty = { name: "", message: "", on: "save", note: "", field: "" };
   const [r, setR] = useState(empty);
   const [check, setCheck] = useState(startCheck);
   const [busy, setBusy] = useState(false);
@@ -548,7 +549,7 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
     setBusy(true);
     setError(null);
     try {
-      await apply({ op: "add_rule", rule: { name: r.name.trim(), check: expr, message: r.message.trim(), on: r.on } }, r.note);
+      await apply(addRuleOp(r, expr), r.note);
       toast(tr("Rule {name} added", { name: r.name }));
       setR(empty);
       setCheck(startCheck());
@@ -566,7 +567,7 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
           <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
             {meta.rules.map((x) => (
               <li key={x.name}>
-                <span className="mono">{isolate(x.name)}</span> <span className="faint">({isolate(x.on)})</span>: {isolate(x.message)}
+                <span className="mono">{isolate(x.name)}</span> <span className="faint">({isolate(x.on)}{x.field ? ` · ${x.field}` : ""})</span>: {isolate(x.message)}
               </li>
             ))}
           </ul>
@@ -580,7 +581,16 @@ function AddRuleCard({ meta }: { meta: EntityMeta }) {
         {tr("Need to look at other records?")} <Link to="/studio/solutions">{tr("Use a rule in Studio")}</Link>
       </p>
       <FieldWrap label={tr("Message")} htmlFor="ar-message" required>
-        <input id="ar-message" className="input" value={r.message} onChange={(e) => set("message", e.target.value)} required />
+        <input id="ar-message" className="input" value={r.message} onChange={(e) => set("message", e.target.value)} required aria-describedby="ar-message-hint" />
+        <p className="field-hint" id="ar-message-hint">{tr("Values from the record can be shown with")} <code className="mono" dir="ltr">{"{{ doc.<field> }}"}</code></p>
+      </FieldWrap>
+      <FieldWrap label={tr("Show the refusal on field")} htmlFor="ar-field">
+        <select id="ar-field" className="select" value={r.field} onChange={(e) => set("field", e.target.value)}>
+          <option value="">{tr("The rule's name (default)")}</option>
+          {meta.fields.filter((f) => !f.hidden).map((f) => (
+            <option key={f.name} value={f.name}>{isolate(f.label || f.name)}</option>
+          ))}
+        </select>
       </FieldWrap>
       <div className="form-grid">
         <FieldWrap label={tr("Checked on")} htmlFor="ar-on">

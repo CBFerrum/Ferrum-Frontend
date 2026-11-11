@@ -4109,6 +4109,9 @@ const words: Record<string, string> = {
   "Hide empty fields": "खाली फ़ील्ड छिपाएँ",
   "Nothing waiting": "कुछ प्रतीक्षा में नहीं",
   "and {n} more": "और {n}",
+  "Values from the record can be shown with": "रिकॉर्ड के मान इससे दिखाए जा सकते हैं",
+  "Show the refusal on field": "इनकार इस फ़ील्ड पर दिखाएँ",
+  "The rule's name (default)": "नियम का नाम (डिफ़ॉल्ट)",
 };
 
 export default words;
