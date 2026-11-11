@@ -258,7 +258,7 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
                 )}
                 <ItemActions className="shell-work-actions">
                   {item.priority === "High" && <Badge tone="red">{t("High")}</Badge>}
-                  {due && <Badge tone={due.tone}>{isolate(due.text)}</Badge>}
+                  {due && (due.tone === "neutral" ? <span className="shell-work-due">{isolate(due.text)}</span> : <Badge tone={due.tone}>{isolate(due.text)}</Badge>)}
                   {item.assignment && (
                     <Button variant="ghost" size="sm" className="shell-work-done" aria-label={t("Mark “{title}” done", { title: item.title })} title={t("Mark done")} onClick={() => void markDone(item)}>
                       <Check aria-hidden size={16} />

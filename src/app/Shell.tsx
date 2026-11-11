@@ -8,7 +8,7 @@ import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "r
 import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
-import { humanize, relativeTime } from "../lib/format";
+import { humanize, initials, relativeTime } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
@@ -29,6 +29,7 @@ import {
   toast,
   useDismiss,
 } from "../ui/kit";
+import { Kbd } from "@/components/ui/kbd";
 import { FormSkeleton, ListSkeleton, TableSkeleton } from "../ui/patterns";
 import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
 
@@ -239,7 +240,7 @@ function Shell() {
       <aside className="sidebar" aria-label={tr("Sidebar")} onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            {frameMode === "app" ? appName().slice(0, 2) : tr("Fe")}
+            {frameMode === "app" ? Array.from(appName())[0] : tr("Fe")}
           </span>
           {frameMode === "app" ? isolate(appName()) : tr("Ferrum")}
         </NavLink>
@@ -347,35 +348,43 @@ function Sidebar() {
       .filter((g) => g.items.length);
   }, [meta, reports, meet, me]);
 
+  // The page's own entry is in view when the page opens, and after a move to a page whose entry is not.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".sidebar > nav");
+    const here = scroller?.querySelector<HTMLElement>(".nav-link.active");
+    if (!scroller || !here) return;
+    const box = scroller.getBoundingClientRect();
+    const at = here.getBoundingClientRect();
+    if (at.top < box.top || at.bottom > box.bottom) scroller.scrollTop += at.top - box.top - box.height / 3;
+  }, [pathname, groups.length]);
+
   return (
     <nav aria-label={tr("Main")}>
       <NavLink to="/" end className="nav-link">
-        <Icon name="home" />
-        {tr("Home")}
+        <span className="nav-label">{tr("Home")}</span>
       </NavLink>
       {/* Under the platform's bar, other apps are in its launcher. */}
       {frameMode === "classic" && comms && (
         <NavLink to="/mail" className="nav-link">
-          <Icon name="mail" />
-          {tr("Mail")}
+          <span className="nav-label">{tr("Mail")}</span>
         </NavLink>
       )}
       {frameMode === "classic" && meta?.packages.includes("drive") && (
         <NavLink to="/drive" className="nav-link">
-          <Icon name="file" />
-          {tr("Files")}
+          <span className="nav-label">{tr("Files")}</span>
         </NavLink>
       )}
       {groups.map((g) => (
         <details key={g.name} className="nav-group" open>
           <summary>
+            <span>{isolate(g.label)}</span>
             <Icon name="chevronRight" size={12} />
-            {isolate(g.label)}
           </summary>
           {g.items.map((i) => (
             <NavLink key={i.to} to={i.to} className="nav-link">
-              <Icon name={i.icon} />
-              {isolate(i.label)}
+              <span className="nav-label">{isolate(i.label)}</span>
+              <NavGlyph icon={i.icon} />
             </NavLink>
           ))}
         </details>
@@ -383,13 +392,13 @@ function Sidebar() {
       {pages.length > 0 && (
         <details className="nav-group" open>
           <summary>
+            <span>{tr("Add-ons")}</span>
             <Icon name="chevronRight" size={12} />
-            {tr("Add-ons")}
           </summary>
           {pages.map((p) => (
             <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
-              <Icon name={p.icon ?? "apps"} />
-              {isolate(p.title ?? "")}
+              <span className="nav-label">{isolate(p.title ?? "")}</span>
+              <NavGlyph icon={p.icon ?? "apps"} />
             </NavLink>
           ))}
         </details>
@@ -397,48 +406,52 @@ function Sidebar() {
       {me?.user.is_admin && (
         <details className="nav-group" open>
           <summary>
+            <span>{tr("Administration")}</span>
             <Icon name="chevronRight" size={12} />
-            {tr("Administration")}
           </summary>
           {frameMode === "classic" ? (
             <>
               <NavLink to="/apps" className="nav-link">
-                <Icon name="apps" />
-                {tr("Apps")}
+                <span className="nav-label">{tr("Apps")}</span>
               </NavLink>
               <NavLink to="/admin" className="nav-link">
-                <Icon name="settings" />
-                {tr("Admin")}
+                <span className="nav-label">{tr("Admin")}</span>
               </NavLink>
             </>
           ) : (
             <>
               {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
               <a href="/store/" className="nav-link">
-                <Icon name="apps" />
-                {tr("Apps")}
+                <span className="nav-label">{tr("Apps")}</span>
+                <NavGlyph external />
               </a>
               <a href="/admin/" className="nav-link">
-                <Icon name="settings" />
-                {tr("Admin")}
+                <span className="nav-label">{tr("Admin")}</span>
+                <NavGlyph external />
               </a>
             </>
           )}
           {frameHasPages ? (
             <NavLink to="/customize" className="nav-link">
-              <Icon name="edit" />
-              {tr("Customize")}
+              <span className="nav-label">{tr("Customize")}</span>
             </NavLink>
           ) : (
             <a href="/data/customize/" className="nav-link">
-              <Icon name="edit" />
-              {tr("Customize")}
+              <span className="nav-label">{tr("Customize")}</span>
+              <NavGlyph external />
             </a>
           )}
         </details>
       )}
     </nav>
   );
+}
+
+/** The mark at the end of a sidebar entry, only where it differs from a list of records (a report, a page
+ *  of its own, a page outside this app): a records list, most of the sidebar, carries none. */
+function NavGlyph({ icon, external }: { icon?: string; external?: boolean }) {
+  const name = external ? "external" : icon && icon !== "file" ? icon : null;
+  return name ? <Icon name={name} size={14} /> : null;
 }
 
 // ── search / command palette ──
@@ -567,11 +580,7 @@ function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onD
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
       />
-      {mode === "inline" && !q && (
-        <span className="kbd" aria-hidden="true">
-          /
-        </span>
-      )}
+      {mode === "inline" && !q && <Kbd className="search-kbd" aria-hidden="true">/</Kbd>}
       {showList && (
         <ul className="listbox" role="listbox" id={listId}>
           {items.map((t, i) => (
@@ -683,7 +692,7 @@ function Notifications() {
               <button key={n.id} type="button" className={`notif ${n.read_at ? "" : "notif-unread"}`} onClick={() => openOne(n)}>
                 <strong>{isolate(n.title)}</strong>
                 {n.body && <div className="muted">{isolate(n.body)}</div>}
-                <div className="faint" style={{ fontSize: 12 }}>
+                <div className="faint text-xs">
                   {isolate(relativeTime(n.created_at))}
                 </div>
               </button>
@@ -731,15 +740,15 @@ function UserMenu() {
 
   return (
     <>
-      <Menu ariaLabel={tr("Account menu")} icon="user" buttonClass="icon-btn">
+      <Menu ariaLabel={tr("Account menu")} label={<span className="avatar-initial">{initials(me?.user.full_name ?? "")}</span>} buttonClass="icon-btn avatar-btn">
         {(close) => (
           <>
             <div className="menu-head">
               <strong>{me?.user.full_name ?? "…"}</strong>
-              <div className="muted" style={{ fontSize: 12.5 }}>
+              <div className="muted text-xs">
                 {isolate(me?.user.email ?? "")}
               </div>
-              <div className="faint" style={{ fontSize: 12 }}>
+              <div className="faint text-xs">
                 {tr("Workspace: {tenant}", { tenant: getSession()?.tenant ?? "" })}
               </div>
             </div>

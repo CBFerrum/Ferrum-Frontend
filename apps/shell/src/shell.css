@@ -5,36 +5,70 @@
   margin: 0 auto;
   padding: 24px clamp(12px, 3vw, 32px) 48px;
 }
+/* The greeting: who, where, when, in type alone. */
+.shell-greet {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+.shell-greet h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.shell-greet p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin: 0;
+  color: var(--muted-foreground);
+}
+.shell-greet p > * + *::before {
+  content: "·";
+  margin-inline-end: 8px;
+  color: var(--faint);
+}
+/* The apps: one tile size, one label weight, one rhythm. The tile is AppIcon's (the app's colour, softened). */
 .shell-apps {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 8px;
-  margin: 8px 0 24px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px;
+  margin: 0 -8px 40px;
 }
 .shell-app {
   display: grid;
   justify-items: center;
+  align-content: start;
   gap: 8px;
-  padding: 14px 6px;
+  min-height: 96px;
+  padding: 12px 8px;
   border-radius: var(--radius);
   color: var(--text);
   text-align: center;
   text-decoration: none;
+  transition: background-color var(--duration-state) ease-out;
 }
-.shell-app:hover,
-.shell-app:focus-visible {
+.shell-app:hover {
   background: var(--surface-2);
-  outline: none;
+  text-decoration: none;
 }
-.shell-app:focus-visible {
-  box-shadow: var(--focus-ring);
+.shell-app:active {
+  background: var(--surface-3);
 }
 .shell-app-title {
-  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
   font-size: var(--text-sm);
+  line-height: 16px;
 }
 .shell-app-note {
   margin-top: -6px;
+  color: var(--muted-foreground);
   font-size: var(--text-xs);
 }
 .shell-account {
@@ -59,7 +93,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  margin: 8px 0 28px;
+  margin: 0 0 32px;
 }
 .shell-work-head {
   display: flex;
@@ -71,7 +105,7 @@
 .shell-work-head h2 {
   margin: 0;
   font-size: var(--text-base);
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .shell-work-head [data-slot="toggle-group"] {
@@ -80,20 +114,21 @@
   max-width: 100%;
 }
 .shell-work-count {
-  margin-left: 2px;
+  margin-inline-start: 2px;
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);
 }
 .shell-work-list {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card, var(--surface));
+  border-radius: var(--radius);
+  background: var(--surface);
   overflow: hidden;
 }
 .shell-work-item {
   gap: 4px;
   padding: 0;
+  border: 0;
   border-radius: 0;
   flex-wrap: nowrap;
 }
@@ -106,20 +141,28 @@
   min-width: 0;
   align-items: center;
   gap: 12px;
-  padding: 10px 6px 10px 14px;
+  padding: 12px 8px 12px 16px;
   color: inherit;
   text-decoration: none;
   outline: none;
 }
 .shell-work-item:has(> a.shell-work-link:hover) {
-  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--surface-2);
+}
+.shell-work-item > a.shell-work-link:hover {
+  text-decoration: none;
 }
 a.shell-work-link:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ring);
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
+/* The kind of thing (an app's tile, or a quiet glyph for assigned, approvals, mentions). */
 .shell-work-media {
-  border-radius: 999px;
-  background: var(--muted);
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--muted-foreground);
 }
 .shell-work-media:has(> span) {
@@ -130,23 +173,34 @@ a.shell-work-link:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 550;
+  font-weight: 500;
 }
 .shell-work-sub {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
 }
 .shell-work-actions {
   flex: none;
-  gap: 6px;
-  padding-right: 10px;
+  gap: 8px;
+  padding-inline-end: 8px;
+}
+/* A due date that is neither late nor today is quiet text, in a column of its own so dates line up. */
+.shell-work-due {
+  min-width: 56px;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
 }
 .shell-work-done {
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
   padding: 0;
   color: var(--muted-foreground);
 }
