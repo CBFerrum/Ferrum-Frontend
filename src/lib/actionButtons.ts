@@ -28,7 +28,8 @@ export function actionButtons(actions: ActionDef[], c: ButtonContext): ButtonSta
     if (a.docstatus?.length && !a.docstatus.includes(c.docstatus)) continue;
     if (a.may_run === false || !c.permitted(a)) continue;
     if (a.condition && evaluate(a.condition, { doc: c.doc, user: c.user }) === false) continue;
-    const refused = (a.refuse_if ?? []).find((r) => r.when && evaluate(r.when, { doc: c.doc, user: c.user, params: {} }) === true);
+    // A message with {{ }} or {% %} is filled in by the server (MiniJinja), so the browser does not decide that refusal.
+    const refused = (a.refuse_if ?? []).find((r) => r.when && !/\{[{%]/.test(r.message) && evaluate(r.when, { doc: c.doc, user: c.user, params: {} }) === true);
     out.push({ action: a, refusal: refused ? refused.message : null });
   }
   return out;

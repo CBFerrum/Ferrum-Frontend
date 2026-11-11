@@ -121,3 +121,13 @@ describe("names the browser cannot read", () => {
     expect(evaluate("doc.type == 't1' && links.type.ok", scope)).toBeUndefined();
   });
 });
+
+describe("functions and settings the browser does not know", () => {
+  it("is undecided, never a wrong value", () => {
+    const scope = { doc: { due: "2026-11-12", qty: null, name: " a " } };
+    for (const src of ["addDays(doc.due, 3) > today", "isEmpty(doc.qty)", "coalesce(doc.qty, 1) == 1", "doc.name.trim() == 'a'", "doc.qty == null || isEmpty(doc.qty)", "settings.Policy.limit > 5", "!(settings.Policy.limit > 5)", "doc.qty > 0 ? true : false"]) {
+      expect(evaluate(src, scope), src).toBeUndefined();
+      expect(evaluateValue(src, scope), src).toBeUndefined();
+    }
+  });
+});
