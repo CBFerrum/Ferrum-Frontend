@@ -43,7 +43,7 @@ export function FamilyNav({ className }: { className?: string }) {
   }, [family, here?.url]);
   if (!family || family.entries.length < 2) return null;
   return (
-    <nav ref={strip} aria-label={isolate(family.title)} className={cn("-mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}>
+    <nav ref={strip} aria-label={isolate(family.title)} className={cn("scroll-cue -mx-1 flex items-center gap-0.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", className)}>
       {family.entries.map((e) => (
         <a
           key={`${e.app}.${e.id}`}
