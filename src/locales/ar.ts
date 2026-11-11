@@ -4109,6 +4109,9 @@ const words: Record<string, string> = {
   "Hide empty fields": "إخفاء الحقول الفارغة",
   "Nothing waiting": "لا شيء في الانتظار",
   "and {n} more": "و{n} آخر",
+  "Values from the record can be shown with": "يمكن عرض قيم السجل باستخدام",
+  "Show the refusal on field": "إظهار الرفض على الحقل",
+  "The rule's name (default)": "اسم القاعدة (الافتراضي)",
 };
 
 export default words;
