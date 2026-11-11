@@ -63,6 +63,29 @@ const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 const QueryInput = lazy(() => import("./QueryInput"));
 const orNull = (s: string) => (s === "" ? null : s);
 
+/** Kinds that keep their own read-only form: a tick, a link with its open button, a preview, a picker, a secret. */
+const NOT_AS_TEXT = new Set(["check", "link", "json", "attach", "color", "secret", "table"]);
+const MULTILINE = new Set(["text", "markdown", "code"]);
+
+/** What a field the person cannot edit looks like: its value as text, in the field's own grid cell (numbers end-aligned). Not tabbable, so Tab skips the figures; a click selects and copies. */
+function ReadOnlyValue({ field: f, value, id, invalid, describedBy, compact, label, currencyPrecision }: ControlProps) {
+  const common = {
+    id,
+    readOnly: true,
+    tabIndex: -1,
+    placeholder: "—",
+    value: formatValue(f, value, { currencyPrecision }),
+    "aria-invalid": invalid || undefined,
+    "aria-describedby": describedBy,
+    "aria-label": compact ? label : undefined,
+  };
+  return MULTILINE.has(f.type) ? (
+    <textarea className={`textarea read-value ${f.type === "code" ? "mono" : ""}`} rows={1} {...common} />
+  ) : (
+    <input className={`input read-value ${NUMERIC_TYPES.has(f.type) ? "num" : ""}`} {...common} />
+  );
+}
+
 export function FieldControl(p: ControlProps) {
   const { field: f, value, onChange, disabled } = p;
   const common = {
@@ -78,6 +101,8 @@ export function FieldControl(p: ControlProps) {
     const v = text(value);
     return <output id={p.id} aria-describedby={p.describedBy}>{v && <Badge tone={stateTone(v)}>{isolate(stateWords()[v] ?? v)}</Badge>}</output>;
   }
+  // A value the person cannot edit is shown as text (an input that is readOnly, so it stays selectable and named by its label), not as a greyed box.
+  if (disabled && !NOT_AS_TEXT.has(f.type)) return <ReadOnlyValue {...p} />;
   switch (f.type) {
     case "check":
       return <input type="checkbox" {...common} checked={value === true} onChange={(e) => onChange(e.target.checked)} />;
@@ -394,7 +419,7 @@ export function LinkInput({
       <input
         ref={input}
         id={id}
-        className="input"
+        className={disabled ? "input read-value" : "input"}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={open}
@@ -404,9 +429,10 @@ export function LinkInput({
         aria-describedby={describedBy}
         aria-label={label}
         aria-required={required || undefined}
-        disabled={disabled}
+        readOnly={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
         autoComplete="off"
-        placeholder={disabled ? "" : (placeholder ?? t("Search {name}…", { name }))}
+        placeholder={disabled ? "—" : (placeholder ?? t("Search {name}…", { name }))}
         value={typed ?? resolved ?? (value ? "…" : "")}
         onChange={(e) => {
           setTyped(e.target.value);

@@ -298,7 +298,7 @@
 }
 .peek-title h2 {
   font-size: var(--text-lg);
-  font-weight: 650;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .peek-tabs {
@@ -308,7 +308,7 @@
   border-bottom: 1px solid var(--border);
 }
 .peek-tabs button {
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
@@ -321,6 +321,9 @@
   border-bottom-color: var(--primary);
   color: var(--text);
 }
+.peek-tabs button {
+  font-weight: 500;
+}
 .peek-body {
   flex: 1;
   min-height: 120px;
@@ -331,12 +334,10 @@
   margin-top: 10px;
 }
 .peek-section h3 {
-  margin: 4px 6px;
-  color: var(--muted-foreground);
-  font-size: var(--text-xs);
+  margin: 8px 6px 4px;
+  color: var(--text);
+  font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 .peek-section dl {
   margin: 0;
@@ -344,12 +345,12 @@
 .peek-row {
   display: grid;
   grid-template-columns: 38% minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   min-height: var(--control-h-sm);
 }
 .peek-row dt {
   overflow: hidden;
-  padding: 0 6px;
+  padding: 3px 6px;
   color: var(--muted-foreground);
   font-size: var(--text-sm);
   text-overflow: ellipsis;
@@ -368,7 +369,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
-  color: inherit;
+  color: var(--text);
   font: inherit;
   font-size: var(--text-sm);
   text-align: start;
@@ -605,8 +606,10 @@ button.peek-value:hover {
 .related-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 8px 10px;
+  min-height: var(--control-h);
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   color: var(--foreground);
   text-decoration: none;
@@ -733,4 +736,308 @@ button.peek-value:hover {
 .zoned-name {
   font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+/* ── record workspace: header, read-only values, totals, activity, discussion ── */
+
+/* The title carries the record's identity and its state on one line; the bar stays in view while a long form scrolls. */
+.record-head {
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+.record-id {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.record-title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.record-head .page-title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.record-sub {
+  color: var(--muted-foreground);
+  font-size: var(--text-base);
+  overflow-wrap: anywhere;
+}
+.record-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.record-head .page-actions {
+  flex: 0 1 auto;
+  gap: 8px;
+}
+/* An action with an icon and no words (Print, PDF, Email): quiet until pointed at; its name is its aria-label and tooltip. */
+.btn-icon {
+  width: var(--control-h);
+  padding: 0;
+  color: var(--muted-foreground);
+}
+.btn-icon:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.record-head .page-actions .btn-default {
+  border-color: var(--border-control);
+}
+.crumbs + .record-head {
+  margin-top: 0;
+}
+@media (min-width: 721px) {
+  .record-head {
+    position: sticky;
+    top: var(--ferrum-bar-height, 0px);
+    z-index: 15;
+    container-type: scroll-state;
+    margin-inline: -24px;
+    padding: 8px 24px;
+    background: var(--bg);
+    scroll-margin-top: calc(var(--ferrum-bar-height, 0px) + 72px);
+  }
+  /* The hairline appears only once the bar is stuck. */
+  @supports (container-type: scroll-state) {
+    .record-head::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      bottom: 0;
+      height: 1px;
+      background: var(--border);
+      opacity: 0;
+    }
+    @container scroll-state(stuck: top) {
+      .record-head::after {
+        opacity: 1;
+      }
+    }
+  }
+  /* Fields that take focus under the stuck bar are scrolled clear of it. */
+  .form-card :is(input, select, textarea, button, a, [tabindex]) {
+    scroll-margin-top: calc(var(--ferrum-bar-height, 0px) + 88px);
+  }
+}
+
+/* A value that cannot be edited here: text in the field's own place. A box means "type here". */
+.input.read-value,
+.textarea.read-value {
+  height: 24px;
+  padding: 2px 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  cursor: text;
+  text-overflow: ellipsis;
+}
+.textarea.read-value {
+  height: auto;
+  min-height: 24px;
+  field-sizing: content;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.45;
+}
+.input.read-value.num {
+  font-variant-numeric: tabular-nums;
+}
+.input.read-value::placeholder,
+.textarea.read-value::placeholder {
+  color: var(--faint);
+  -webkit-text-fill-color: var(--faint);
+}
+.input.read-value:focus-visible,
+.textarea.read-value:focus-visible {
+  border-color: transparent;
+  outline-offset: 0;
+}
+/* A read-only link keeps its open button, right after the text it opens. */
+.combo:has(.read-value) {
+  gap: 4px;
+  justify-content: flex-start;
+}
+.combo:has(.read-value) .combo-actions {
+  position: static;
+}
+.combo:has(.read-value) .input.read-value {
+  width: auto;
+  min-width: 2ch;
+  max-width: calc(100% - var(--combo-btn) - 4px);
+  padding-inline-end: 0;
+  field-sizing: content;
+}
+.line-grid .combo:has(.read-value) .input.read-value {
+  padding-inline-end: 0;
+}
+/* In a line grid the text sits where the neighbouring editable cells' text does. */
+.line-grid .input.read-value,
+.line-grid .textarea.read-value {
+  height: var(--cell-h);
+  padding: 0 11px;
+}
+.line-grid .textarea.read-value {
+  height: auto;
+  min-height: var(--cell-h);
+  padding-block: 7px;
+}
+/* Checkbox rows sit on the control line of the fields beside them. */
+.form-grid > .field > .check-field:first-child {
+  margin-top: 26px; /* label line (20px) and its gap (6px) */
+}
+.form-grid > .field > .check-field:first-child:only-child {
+  margin-top: 26px;
+}
+
+/* A run of read-only money fields: labels and figures in one column, in their own order, ending at the grid's edge. */
+.totals {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  margin-inline-start: auto;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.totals .field {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 4px;
+}
+.totals .field-label {
+  flex: 1;
+  min-width: 0;
+}
+.totals .input.read-value {
+  flex: 0 0 45%;
+  width: 45%;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.totals .field-error,
+.totals .field-hint {
+  flex-basis: 100%;
+}
+.totals .field {
+  flex-wrap: wrap;
+}
+
+/* Activity: who, what, when; the changes beneath, from then to. */
+.timeline.audit {
+  max-width: 760px;
+}
+.timeline.audit > li {
+  padding-block: 0 20px;
+  border-inline-start: 1px solid var(--border);
+}
+.timeline.audit > li::before {
+  inset-inline-start: -5px;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  border-width: 1.5px;
+  border-color: var(--border-strong);
+}
+.audit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.audit-time {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.timeline.audit .diff {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+.timeline.audit .diff td {
+  padding: 2px 12px 2px 0;
+}
+.timeline.audit .diff-label {
+  width: 30%;
+  color: var(--muted-foreground);
+}
+.timeline.audit .diff .old {
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.timeline.audit .diff .new {
+  color: var(--text);
+}
+.timeline.audit .diff-arrow {
+  width: 1%;
+  padding-inline: 0 12px;
+  color: var(--faint);
+}
+.diff-more {
+  margin-top: 4px;
+  font-size: var(--text-sm);
+}
+
+/* Discussion: author and time, then the words; edit and delete wait until the comment is pointed at. */
+.comment-body {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0;
+}
+.comment-meta .spacer {
+  flex: 1;
+}
+.comment-meta strong {
+  font-weight: 600;
+}
+.comment-meta .faint {
+  font-size: var(--text-xs);
+}
+.comment-meta .link-btn {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  opacity: 0;
+}
+.comment-meta .link-btn.danger {
+  color: var(--danger);
+}
+.comment:hover .comment-meta .link-btn,
+.comment:focus-within .comment-meta .link-btn {
+  opacity: 1;
+}
+@media (hover: none) {
+  .comment-meta .link-btn {
+    opacity: 1;
+  }
+}
+.comments {
+  gap: 16px;
+}
+.composer {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  /* A line as a card: each column a quiet label above its value, figures at the end. */
+  .line-grid-card dd {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .line-grid-card dt {
+    margin-bottom: 1px;
+  }
+  .totals {
+    max-width: none;
+  }
 }
