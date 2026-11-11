@@ -404,11 +404,11 @@ main:focus {
   background: var(--surface);
   color: var(--text);
   border-radius: var(--radius-sm);
-  font: inherit;
-  font-weight: 550;
+  font: inherit; /* text-base; .btn-sm is text-sm, as the shadcn Button (docs/design/MIGRATION.md) */
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background-color var(--duration-state), border-color var(--duration-state), color var(--duration-state);
 }
 .btn-md {
   height: var(--control-h);
@@ -416,16 +416,19 @@ main:focus {
 }
 .btn-sm {
   height: var(--control-h-sm);
-  padding: 0 9px;
+  padding: 0 10px;
   font-size: var(--text-sm);
 }
 .btn:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-2);
 }
+.btn:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--surface-3);
+}
 /* aria-disabled: a button that says why it cannot be pressed stays reachable by keyboard. */
 .btn:disabled,
 .btn[aria-disabled="true"] {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 /* A label styled as a button around a visually hidden input (Attach file) shows the input's focus. */
@@ -438,7 +441,8 @@ main:focus {
   border-color: var(--primary);
   color: var(--primary-text);
 }
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled),
+.btn-primary:active:not(:disabled) {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
 }
@@ -447,12 +451,16 @@ main:focus {
   border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
   color: var(--danger);
 }
-.btn-danger:hover:not(:disabled) {
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) {
   background: var(--danger-soft);
 }
 .btn-ghost {
   border-color: transparent;
   background: transparent;
+}
+.btn-ghost:active:not(:disabled) {
+  background: var(--surface-3);
 }
 .icon-btn {
   display: inline-grid;
@@ -466,13 +474,17 @@ main:focus {
   cursor: pointer;
   position: relative;
   flex: none;
+  transition: background-color var(--duration-state), color var(--duration-state);
 }
 .icon-btn:hover:not(:disabled) {
   background: var(--surface-2);
   color: var(--text);
 }
+.icon-btn:active:not(:disabled) {
+  background: var(--surface-3);
+}
 .icon-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 .icon-btn-sm {
@@ -501,7 +513,7 @@ main:focus {
   min-width: 0;
   height: var(--control-h);
   padding: 0 10px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
@@ -509,7 +521,7 @@ main:focus {
 }
 .textarea {
   height: auto;
-  min-height: 72px;
+  min-height: 72px; /* min-h-18 on the shadcn Textarea */
   padding: 8px 10px;
   resize: vertical;
   line-height: 1.45;
@@ -520,12 +532,17 @@ main:focus {
 .select {
   padding-inline-end: 6px;
 }
-.input:focus,
-.select:focus,
-.textarea:focus {
-  outline: none;
+/* The focus indicator is the global 2px outline (:focus-visible above), as on the shadcn controls; an outline, so forced-colors mode keeps it. */
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
   border-color: var(--primary);
-  box-shadow: var(--focus-ring);
+}
+.input[aria-invalid="true"]:focus-visible,
+.select[aria-invalid="true"]:focus-visible,
+.textarea[aria-invalid="true"]:focus-visible {
+  outline-color: var(--danger);
+  border-color: var(--danger);
 }
 .input:disabled,
 .select:disabled,
@@ -555,7 +572,7 @@ input[type="color"] {
   width: 40px;
   height: var(--control-h);
   padding: 2px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--surface);
 }
@@ -887,7 +904,7 @@ input[type="color"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
+  height: 22px; /* h-5.5 on the shadcn Badge */
   padding: 0 8px;
   border-radius: 999px;
   font-size: var(--text-xs);
@@ -1059,12 +1076,13 @@ input[type="color"] {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px 10px;
+  padding: 16px 16px 8px;
 }
 .dialog-header h2 {
   flex: 1;
-  font-size: var(--text-lg);
-  font-weight: 650;
+  font-size: var(--text-xl);
+  line-height: 24px;
+  font-weight: 600;
 }
 .dialog-body {
   padding: 4px 16px 16px;

@@ -22,6 +22,7 @@ import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError
 import { asRows } from "../lib/doc";
 import { t } from "../lib/i18n";
 import { stateTone, stateWords } from "../lib/targetDraft";
+import { docstatusTone } from "../lib/statusTones";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
 import {
@@ -34,7 +35,7 @@ import {
   type Field,
   type ListResponse,
 } from "../lib/meta";
-import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, statusTone, toast, useDebounced, useDismiss } from "../ui/kit";
+import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, StatusBadge, toast, useDebounced, useDismiss } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
 export interface ControlProps {
@@ -612,10 +613,10 @@ export function CellValue({
   if (value === null || value === undefined || value === "") return null;
   if (field.name === "docstatus" && typeof value === "number") {
     const label = DOCSTATUS_LABEL[value] ?? String(value);
-    return <Badge tone={statusTone(label)}>{isolate(label)}</Badge>;
+    return <Badge tone={docstatusTone(value)}>{isolate(label)}</Badge>;
   }
   if (field.kept_by_target && field.type !== "datetime") return <Badge tone={stateTone(String(value))}>{isolate(stateWords()[String(value)] ?? String(value))}</Badge>;
-  if (field.name === "status" || field.name === "workflow_state") return <Badge tone={statusTone(value)}>{isolate(String(value))}</Badge>;
+  if (field.name === "status" || field.name === "workflow_state") return <StatusBadge value={value} />;
   switch (field.type) {
     case "link":
       return <>{title ?? shortId(value)}</>;

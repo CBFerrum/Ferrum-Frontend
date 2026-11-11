@@ -29,7 +29,7 @@ import {
   MenuItem,
   PageLoading,
   Spinner,
-  statusTone,
+  StatusBadge,
   TabPanel,
   Tabs,
   toast,
@@ -42,6 +42,7 @@ import { ActionDialog } from "./ActionDialog";
 import { EmailDocDialog } from "./EmailDoc";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
+import { docstatusTone } from "@/lib/statusTones";
 import { bootstrap, t as tr, isolate } from "@ferrum/client";
 
 /** A record's action as a button. One that would be refused says why: it stays focusable (aria-disabled, not disabled) and the reason is read out and shown as a tooltip. */
@@ -726,8 +727,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
           </h1>
           {sub && <p className="page-sub">{isolate(sub)}</p>}
           <div className="row" style={{ marginTop: 8 }}>
-            {meta.submittable && <Badge tone={statusTone(DOCSTATUS_LABEL[docstatus])}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}
-            {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <Badge tone={statusTone(status)}>{isolate(status)}</Badge>}
+            {meta.submittable && <Badge tone={docstatusTone(docstatus)}>{DOCSTATUS_LABEL[docstatus] ?? docstatus}</Badge>}
+            {typeof status === "string" && status && status !== DOCSTATUS_LABEL[docstatus] && <StatusBadge value={status} />}
             {wfState && <Badge tone="purple">{isolate(wfState)}</Badge>}
             {dirty && <Badge tone="amber">{tr("Not saved")}</Badge>}
             {calc.pending ? (

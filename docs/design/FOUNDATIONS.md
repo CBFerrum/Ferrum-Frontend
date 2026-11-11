@@ -74,8 +74,10 @@ Before this change `--faint` was 3.11:1 on white (2.87:1 on the page) and the co
 | Token | Standard | Compact | Coarse pointer |
 |---|---|---|---|
 | `--control-h` | 36px | 32px | 44px |
-| `--control-h-sm` | 28px | 28px | 36px |
+| `--control-h-sm` | 32px | 32px | 36px |
 | `--cell-py` | 8px | 6px | unchanged |
+
+**Spacing is a true 4px.** `--spacing` is set to `calc(4 / 14 * 1rem)` in `src/index.css`, so under the 87.5% root every Tailwind spacing utility is N x 4px at the default font size (`h-8` 32, `h-9` 36, `h-10` 40, `h-11` 44, `p-4` 16, `gap-2` 8). Tailwind's own `0.25rem` would be 3.5px here and make every primitive 12.5% smaller than designed. Controls (`Button`, `Input`, `Select`, `Textarea`, `Toggle`, `InputGroup`, tab list) take `h-(--control-h)` and `h-(--control-h-sm)` for `sm`, so density and touch reach them as they reach the legacy `.btn`/`.input` classes. `Button` `xs` (24px) and `lg` (40px, 44px on touch) are fixed. Fixed widths written in `rem` (sidebar, panels) are unaffected by the unit.
 
 Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's mapping gives `rounded-sm` 4, `rounded-md` 6, `rounded-lg` 8, `rounded-xl` 12 (large dialogs). Density is `data-density="compact"` on `<html>`; touch targets are 44px whatever the density.
 
@@ -85,7 +87,7 @@ Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's map
 
 ## Focus
 
-Keyboard focus is always visible: `:focus-visible` draws a 2px `--primary` outline, and components that use `--focus-ring` draw its 3px ring. Never remove focus styling without replacing it.
+Keyboard focus is always visible and is one indicator everywhere: a 2px solid outline in `--ring` (the accent) with a 2px offset. The legacy layer draws it with the global `:focus-visible` rule; the shadcn primitives with `focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring` (the former `ring-[3px] ring-ring/50` blended to under 3:1). It is an outline, not a box-shadow, so forced-colors mode keeps it. An invalid control keeps its destructive border and its focus outline turns destructive. `--focus-ring` (the old 3px box-shadow) is no longer used by the controls. Never remove focus styling without replacing it.
 
 ## Theming
 
@@ -102,6 +104,6 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
-- `src/ui/kit.tsx`, `src/components/ui/*` and `packages/build/*` still use their own sizes and heights (for example `text-[0.8rem]` in `components/ui/calendar.tsx`); moving them to the roles and `--control-h` is the next step.
+- `packages/build/*` and a few primitives (`command.tsx` input at `h-10`, `calendar.tsx` text) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
 - Legacy CSS that keeps px sizes on purpose: `.page-title` at 20px (between the section and page heading roles), the fluid `clamp()` heading in `apps/shell/src/shell.css`, grid cell controls at 32px, and the 44px touch overrides in the narrow-screen block of `src/styles.css`.
 - Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.
