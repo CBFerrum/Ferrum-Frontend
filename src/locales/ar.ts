@@ -1842,6 +1842,8 @@ const words: Record<string, string> = {
   "Up": "للأعلى",
   "Up to 12. Without a choice, the list’s usual columns show.": "حتى 12. ودون اختيار، تظهر الأعمدة المعتادة للقائمة.",
   "Update to {version}": "حدّث إلى {version}",
+  "Bring up to date": "حدّث إلى الأحدث",
+  "Brings: {value}": "يتضمّن: {value}",
   "Updated": "مُحدَّث",
   "Updated {value}": "حُدّث {value}",
   "Updating the preview": "جارٍ تحديث المعاينة",
