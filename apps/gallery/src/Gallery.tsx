@@ -14,6 +14,9 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { SwatchPalette, rememberColor, type Swatch } from "@/ui/swatches";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSeparator } from "@/ui/toolbar";
+import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, Redo2Icon, StrikethroughIcon, UnderlineIcon, Undo2Icon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
@@ -473,6 +476,10 @@ export function Sections() {
         <MenusAndPopups />
       </Section>
 
+      <Section id="toolbar" title="Toolbar and swatch palette">
+        <ToolbarExamples />
+      </Section>
+
       <Section id="toast" title="Toast and confirm">
         <Row label="raise">
           <Button onClick={() => toast("Invoice INV-2026-00418 approved")}>Show toast</Button>
@@ -600,6 +607,55 @@ function PlacementDemo() {
         <span className="text-sm text-muted-foreground">Phones keep notices at the top.</span>
       </Row>
       {at && <ComposeStack placement={at} />}
+    </div>
+  );
+}
+
+const HUES = [0, 30, 55, 140, 175, 200, 230, 255, 285, 330];
+// Swatches are data a caller owns (a document's colours), not tokens: ten hues in three shades, from the hue angle.
+// ui-lint-allow colour: a palette's swatches are the caller's data
+const SWATCHES: Swatch[] = [90, 70, 45].flatMap((l, s) => HUES.map((h, i) => ({ color: `hsl(${h} ${s === 0 ? 60 : 75}% ${l}%)`, label: `Hue ${i + 1}, shade ${s + 1}` })));
+
+function ToolbarExamples() {
+  const [on, setOn] = useState<Record<string, boolean>>({ bold: true });
+  const flip = (k: string) => () => setOn({ ...on, [k]: !on[k] });
+  const [colour, setColour] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
+  const bar = (
+    <Toolbar label="Formatting">
+      <ToolbarGroup id="history">
+        <ToolbarButton label="Undo" shortcut="Mod-z" icon={<Undo2Icon />} onPress={() => {}} />
+        <ToolbarButton label="Redo" shortcut="Mod-Shift-z" icon={<Redo2Icon />} disabled onPress={() => {}} />
+      </ToolbarGroup>
+      <ToolbarGroup id="marks" keep>
+        <ToolbarButton label="Bold" shortcut="Mod-b" icon={<BoldIcon />} pressed={!!on.bold} onPress={flip("bold")} />
+        <ToolbarButton label="Italic" shortcut="Mod-i" icon={<ItalicIcon />} pressed={!!on.italic} onPress={flip("italic")} />
+        <ToolbarButton label="Underline" shortcut="Mod-u" icon={<UnderlineIcon />} pressed={!!on.underline} onPress={flip("underline")} />
+        <ToolbarButton label="Strikethrough" icon={<StrikethroughIcon />} pressed={!!on.strike} onPress={flip("strike")} />
+      </ToolbarGroup>
+      <ToolbarGroup id="align">
+        <ToolbarButton label="Align left" icon={<AlignLeftIcon />} pressed onPress={() => {}} />
+        <ToolbarButton label="Align centre" icon={<AlignCenterIcon />} onPress={() => {}} />
+        <ToolbarButton label="Align right" icon={<AlignRightIcon />} onPress={() => {}} />
+      </ToolbarGroup>
+      <ToolbarGroup id="lists">
+        <ToolbarButton label="Bullet list" icon={<ListIcon />} onPress={() => {}} />
+        <ToolbarButton label="Numbered list" icon={<ListOrderedIcon />} onPress={() => {}} />
+        <ToolbarSeparator />
+        <ToolbarButton label="Link" shortcut="Mod-k" icon={<LinkIcon />} onPress={() => {}} />
+      </ToolbarGroup>
+    </Toolbar>
+  );
+  return (
+    <div data-gallery="toolbar" className="flex flex-col gap-4">
+      {[720, 420, 260].map((w) => (
+        <div key={w} data-gallery={`toolbar-${w}`} className="rounded-lg border border-border bg-surface" style={{ width: w, maxWidth: "100%" }}>
+          {bar}
+        </div>
+      ))}
+      <div data-gallery="swatch-palette" className="w-fit rounded-lg border border-border bg-popover p-3">
+        <SwatchPalette label="Text colour" swatches={SWATCHES} value={colour} noneLabel="Automatic" recent={recent} onChange={(c) => { setColour(c); if (c) setRecent(rememberColor(recent, c)); }} />
+      </div>
     </div>
   );
 }
