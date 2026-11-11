@@ -11,7 +11,7 @@ const rows = (services: ServiceFinding[]) => body({ data: { services } });
 
 describe("the services card", () => {
   it("takes each badge's tone from the level id", () => {
-    expect([levelTone("ok"), levelTone("warning"), levelTone("blocker"), levelTone("degraded"), levelTone("toString")]).toEqual(["green", "amber", "red", "neutral", "neutral"]);
+    expect([levelTone("ok"), levelTone("warning"), levelTone("blocker"), levelTone("off"), levelTone("degraded"), levelTone("toString")]).toEqual(["green", "amber", "red", "neutral", "neutral", "neutral"]);
     const html = rows([
       { check: "office", level: "ok", detail: "the online editor answers" },
       { check: "office.proof", level: "warning", detail: "all fine, no problem, working" },
@@ -36,6 +36,14 @@ describe("the services card", () => {
     ]);
     expect(html.match(/What to do/g)).toHaveLength(1);
     expect(html).toContain("Set FERRUM_PDF_URL.");
+  });
+
+  it("says a service switched off on purpose in its own word, quietly, with no \"What to do\" emphasis", () => {
+    const html = rows([{ check: "pdf", level: "off", detail: "the PDF renderer is switched off", fix: "Set FERRUM_PDF_URL to turn it on." }]);
+    expect(html).toMatch(/badge-neutral[^>]*>Switched off/);
+    expect(html).toContain("text-muted-foreground");
+    expect(html).not.toContain("What to do");
+    expect(html).not.toMatch(/badge-(amber|red)/);
   });
 
   it("says quietly that a server without the endpoint does not report yet, and does not fail", () => {
