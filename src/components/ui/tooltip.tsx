@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { usePortalContainer } from "@/lib/portal"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
 function TooltipProvider({
@@ -33,10 +34,15 @@ function TooltipContent({
   className,
   sideOffset = 4,
   children,
+  container,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> & {
+  /** Where it is drawn; by default the open dialog around it, else the page's overlay root (lib/portal). */
+  container?: HTMLElement | null
+}) {
+  const around = usePortalContainer()
   return (
-    <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Portal container={container ?? around}>
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}

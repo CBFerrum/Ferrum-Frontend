@@ -2461,6 +2461,7 @@ const words: Record<string, string> = {
   "Day": "दिन",
   "Deleting": "हटाया जा रहा है",
   "Dismiss notification": "सूचना हटाएँ",
+  "Menus and pop-ups": "मेनू और पॉप-अप",
   "Distinct count": "विशिष्ट गिनती",
   "Document Status": "दस्तावेज़ स्थिति",
   "Domain removed": "डोमेन हटाया गया",

@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { usePortalContainer } from "@/lib/portal"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 
@@ -92,10 +93,15 @@ function ContextMenuSubContent({
 
 function ContextMenuContent({
   className,
+  container,
   ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+}: React.ComponentProps<typeof ContextMenuPrimitive.Content> & {
+  /** Where it is drawn; by default the open dialog around it, else the page's overlay root (lib/portal). */
+  container?: HTMLElement | null
+}) {
+  const around = usePortalContainer()
   return (
-    <ContextMenuPrimitive.Portal>
+    <ContextMenuPrimitive.Portal container={container ?? around}>
       <ContextMenuPrimitive.Content
         data-slot="context-menu-content"
         className={cn(
