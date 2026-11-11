@@ -15,7 +15,7 @@ import { EmptyRun } from "@/app/EmptyRun";
 import { Alert, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
 import { MemoryRouter } from "react-router";
 import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
-import { ButtonLink, FormSkeleton, HomeSkeleton, ListSkeleton, Queue, QueueGrid, QueueItem, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
+import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
 
 const FILE = "Q3-consolidated-statement-of-financial-position-final-reviewed-v12 (copy).xlsx";
 const PEOPLE = ["Aarav Sharma", "فاطمة المنصوري", "李明", "Zoë Kowalski", "Дмитрий Орлов", "प्रिया नायर"];
@@ -175,6 +175,69 @@ function WorkHomes() {
           <Tile to="/t/3" title="Window table with the long name" meta={<><span>6 covers</span><span>Bill requested</span></>} status={<Badge tone="amber">Billing</Badge>} />
           <Tile title="Terrace" meta={<span>Closed today</span>} />
         </TileGrid>
+      </div>
+      <div data-gallery="home2-schedule" className={frame}>
+        <PageStack>
+          <PageHead title="Front desk" description="Today · 4 arrivals" actions={<ButtonLink href="/crm/" icon="plus">Open guest list</ButtonLink>} />
+          <StatGrid>
+            <Stat label="Arrivals waiting" value={4} to="/a" hint="until 18:00" />
+            <Stat label="Rooms ready" value="12 of 20" to="/r" progress={{ value: 60, label: "Rooms ready" }} />
+            <Stat label="Overdue checkouts" value={0} />
+            <Stat label="Net book value" value="₹172,702.10" hint="3 assets" />
+          </StatGrid>
+          <QueueGrid>
+            <Queue title="Arrivals" count={3} link={{ to: "/a", label: "All arrivals" }}>
+              <QueueItem to="/g/1" lead="09:30" title="Ana Silva" meta="Room 204 · 2 nights" action={<Button size="sm">Check in</Button>} />
+              <QueueItem to="/g/2" lead="11:00" title="Bea Rossi and party of six, corporate offsite booking" meta="Rooms 301 to 306 · arriving from the airport transfer, late checkout requested" trailing={<Badge tone="amber">Deposit due</Badge>} action={<Button size="sm">Check in</Button>} />
+              <QueueItem lead="14:15" title="Walk-in" meta="No booking yet" action={<Button size="sm" variant="primary">Find a room</Button>} />
+            </Queue>
+            <Queue title="Launch the new site" count={5} progress={{ value: 62, label: "Key results done" }}>
+              <QueueItem to="/k/1" lead={<span className="inline-block size-10 rounded-(--radius-sm) bg-muted" />} title="Redesign pricing page" trailing={<Badge tone="green">On track</Badge>} />
+              <QueueItem to="/k/2" lead={<span className="inline-block size-10 rounded-(--radius-sm) bg-muted" />} title="Cut page weight to 1 MB" trailing={<Badge tone="amber">At risk</Badge>} />
+            </Queue>
+          </QueueGrid>
+        </PageStack>
+      </div>
+      <div data-gallery="home2-single" className={frame}>
+        <PageHead title="Objectives" />
+        <QueueGrid>
+          <Queue title="Only queue" count={1}>{contract(1, "Cleaning services 2027", "Acme Facilities", "ends 3 Mar 2027", "Active", "green")}</Queue>
+        </QueueGrid>
+        <div className="h-4" />
+        <QueueGrid columns={1}>
+          <Queue title="Single column" count={1} progress={{ value: 30 }}>{contract(2, "Rent", "Meridian", "ends 30 Jun 2028", "Active", "green")}</Queue>
+        </QueueGrid>
+        <div className="h-4" />
+        <QueueGrid>
+          <Queue title="One" count={0} />
+          <Queue title="Two" count={0} />
+          <Queue title="Three" count={0} />
+          <Queue title="Four" count={0} />
+        </QueueGrid>
+      </div>
+      <div data-gallery="home2-tiles" className={frame}>
+        <HomeSection title="Maple Heights" count={3} link={{ to: "/p/1", label: "Open property" }}>
+          <TileGrid min="md" label="Units">
+            <Tile to="/u/1" title="Block A, ground floor, the unit with the long descriptive name" meta={<span>3 tenants</span>} figures={[{ label: "Worth", value: "₹1,20,000" }, { label: "Certified", value: "₹90,000" }, { label: "Held", value: "₹0" }]} progress={{ value: 75, label: "Certified" }} status={<><Badge tone="green">Let</Badge><Badge tone="amber">Notice served, leaves 1 March</Badge></>} />
+            <Tile to="/u/2" title="Block B" meta={<span>Vacant</span>} figures={[{ label: "Worth", value: "₹80,000" }, { label: "Certified", value: "₹0" }]} progress={{ value: 0, label: "Certified" }} status={<Badge>Free</Badge>} />
+            <Tile title="Block C" meta={<span>Under repair</span>} progress={{ value: 4, max: 8, label: "Repairs done", }} status={<Badge tone="red">Closed</Badge>} />
+          </TileGrid>
+        </HomeSection>
+        <div className="h-4" />
+        <HomeSection title="What posts did" actions={<><Button size="sm">This week</Button><Button size="sm">Export</Button></>} empty="No posts yet" />
+        <div className="h-4" />
+        <div className="grid max-w-sm gap-3">
+          <Progress value={40} label="Plain meter" />
+          <Progress value={70} label="Good" tone="good" />
+          <Progress value={90} label="Attention" tone="attention" />
+          <Progress value={100} label="Danger" tone="danger" />
+        </div>
+      </div>
+      <div data-gallery="home2-file" className={frame}>
+        <div className="grid max-w-md gap-4">
+          <Field label="Attachment" htmlFor="g-file"><input id="g-file" type="file" className="input" /></Field>
+          <Field label="Disabled" htmlFor="g-file2"><input id="g-file2" type="file" className="input" disabled /></Field>
+        </div>
       </div>
       <div data-gallery="home-loading" className={frame}>
         <HomeSkeleton queues={3} />

@@ -696,6 +696,53 @@ main:focus {
 .input.num {
   text-align: end;
 }
+/* A native file input: the control's frame, its selector drawn as the default small button. */
+input[type="file"].input,
+.field > input[type="file"] {
+  inline-size: 100%;
+  block-size: var(--control-h);
+  padding: 0 4px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: calc(var(--control-h) - 2px);
+  cursor: pointer;
+}
+input[type="file"].input::file-selector-button,
+.field > input[type="file"]::file-selector-button {
+  block-size: var(--control-h-sm);
+  margin-inline-end: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+input[type="file"].input:hover::file-selector-button,
+.field > input[type="file"]:hover::file-selector-button {
+  background: var(--surface-2);
+}
+input[type="file"].input:focus-visible,
+.field > input[type="file"]:focus-visible {
+  border-color: var(--primary);
+}
+input[type="file"].input:disabled,
+.field > input[type="file"]:disabled {
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+input[type="file"].input:disabled::file-selector-button,
+.field > input[type="file"]:disabled::file-selector-button {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 input[type="checkbox"] {
   width: 16px;
   height: 16px;
@@ -3298,9 +3345,15 @@ main:has(> [data-fullbleed]) {
 .page-back:dir(rtl) > svg {
   transform: scaleX(-1);
 }
+.queue-grid:has(> :nth-child(4):last-child) {
+  --queue-min: 400px; /* four sit 2x2 where three and one would otherwise */
+}
+.queue-grid[data-columns="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
 .queue-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--queue-min, 300px)), 1fr)); /* auto-fill: a lone queue keeps one track's width */
   align-items: start;
   gap: 16px;
 }
@@ -3353,14 +3406,40 @@ main:has(> [data-fullbleed]) {
 .queue-item {
   position: relative; /* the row's one link stretches over it */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-height: 52px;
   padding: 8px 16px;
   border-top: 1px solid var(--border);
 }
-.queue-item:hover {
+.queue-item:not([data-plain]):hover {
   background: var(--surface-2);
+}
+/* A leading column: a time, a room, a thumbnail; fixed, so leads line up down the queue. */
+.queue-lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  inline-size: 3rem;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.queue-lead img {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+/* A control at the row's end: above the stretched link, so it takes the click. */
+.queue-action {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
 }
 .queue-item:last-child {
   border-end-start-radius: calc(var(--radius) - 1px);
@@ -3368,7 +3447,7 @@ main:has(> [data-fullbleed]) {
 }
 .queue-text {
   display: flex;
-  flex: 1;
+  flex: 1 1 6rem; /* a trailing mark or an action that does not fit wraps under, never squeezes the name away */
   flex-direction: column;
   min-width: 0;
 }
@@ -3383,15 +3462,15 @@ main:has(> [data-fullbleed]) {
 .queue-name:hover {
   text-decoration: none;
 }
-.queue-name::after {
+a.queue-name::after {
   content: "";
   position: absolute;
   inset: 0;
 }
-.queue-name:focus-visible {
+a.queue-name:focus-visible {
   outline: none;
 }
-.queue-name:focus-visible::after {
+a.queue-name:focus-visible::after {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
   border-radius: var(--radius-sm);
@@ -3403,6 +3482,46 @@ main:has(> [data-fullbleed]) {
   font-size: var(--text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.queue-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 10px;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.queue-progress .meter {
+  flex: 1;
+}
+/* The slim meter (Progress): as wide as its container, filling from the reading start. */
+.meter {
+  display: block;
+  inline-size: 100%;
+  block-size: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.meter-fill {
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.meter[data-tone="good"] > .meter-fill {
+  background: var(--success);
+}
+.meter[data-tone="attention"] > .meter-fill {
+  background: var(--warning);
+}
+.meter[data-tone="danger"] > .meter-fill {
+  background: var(--danger);
+}
+.tile-progress {
+  display: block;
+  inline-size: 100%;
+  padding-block: 4px;
 }
 .queue-trailing {
   display: inline-flex;
@@ -3428,12 +3547,19 @@ main:has(> [data-fullbleed]) {
   font-size: var(--text-sm);
 }
 .tile-grid {
+  --tile-min: 200px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--tile-min)), 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.tile-grid[data-min="md"] {
+  --tile-min: 280px;
+}
+.tile-grid[data-min="lg"] {
+  --tile-min: 360px;
 }
 .tile {
   position: relative;
@@ -3451,12 +3577,37 @@ main:has(> [data-fullbleed]) {
   background: var(--surface-2);
 }
 .tile-title {
+  display: -webkit-box;
   max-width: 100%;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   font-size: var(--text-base);
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+.tile-figures {
+  display: grid;
+  gap: 2px;
+  inline-size: 100%;
+  margin: 4px 0 0;
+}
+.tile-figures > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-sm);
+}
+.tile-figures dt {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.tile-figures dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 .tile-name {
   color: var(--text);
@@ -3483,9 +3634,114 @@ main:has(> [data-fullbleed]) {
   max-width: 100%;
 }
 .tile-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-inline-size: 100%;
   margin-top: auto;
   padding-top: 8px;
   pointer-events: none;
+}
+.tile-status .badge {
+  block-size: auto;
+  padding-block: 2px;
+  border-radius: 11px;
+  min-block-size: 22px;
+  white-space: normal;
+}
+.home-section {
+  min-width: 0;
+}
+.home-section-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 32px;
+  margin-bottom: 8px;
+}
+.home-section-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.home-section-end {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-inline-start: auto;
+  font-size: var(--text-sm);
+}
+.home-section-empty {
+  margin: 0;
+  padding-block: 8px;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 12px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+.stat[data-link]:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.stat-label,
+.stat-hint {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.stat-value {
+  color: var(--text);
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .stat-value {
+    font-size: var(--text-xl); /* two to a row: a money figure keeps to one line */
+  }
+}
+.stat-value[data-quiet] {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.stat-value[data-tone="attention"] {
+  color: var(--warning);
+}
+.stat-value[data-tone="danger"] {
+  color: var(--danger);
+}
+.stat .queue-progress {
+  padding: 4px 0;
+}
+/* The rhythm of a page: head, then sections 16px apart (24 with data-gap="lg"); the head stays 16px above the first. */
+.page-stack {
+  --stack-gap: 16px;
+  display: grid;
+  gap: var(--stack-gap);
+}
+.page-stack[data-gap="lg"] {
+  --stack-gap: 24px;
+}
+.page-stack > .page-head {
+  margin-bottom: calc(16px - var(--stack-gap)); /* its own 16px, so the head never stacks a second gap */
 }
 .home-skeleton {
   display: grid;
@@ -3498,6 +3754,13 @@ main:has(> [data-fullbleed]) {
 @media (max-width: 480px) {
   .queue-item {
     padding-inline: 12px;
+  }
+  .queue-meta {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
   }
 }
 @media (pointer: coarse) {
