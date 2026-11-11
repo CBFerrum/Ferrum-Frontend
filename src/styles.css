@@ -3870,6 +3870,11 @@ a.queue-name:focus-visible::after {
 @page {
   margin: 14mm;
 }
+/* A date's text for the printed page (widgets.tsx, PrintValue): shown only there. */
+.print-value {
+  display: none;
+}
+
 @media print {
   :root,
   :root[data-theme],
@@ -3906,6 +3911,9 @@ a.queue-name:focus-visible::after {
   .menu,
   details.section:not([open]),
   .field:has(.line-grid-empty),
+  .print-blank, /* an optional field with nothing in it is left out of the document (a required one stays, so the gap is seen) */
+  .field-empty,
+  main input:has(+ .print-value),
   [role="tablist"],
   .pager,
   .crumbs {
@@ -4024,6 +4032,9 @@ a.queue-name:focus-visible::after {
     overflow: visible;
     color: CanvasText;
   }
+  .print-value {
+    display: inline;
+  }
   main :is(input, textarea)::placeholder {
     color: transparent;
   }
@@ -4049,5 +4060,47 @@ a.queue-name:focus-visible::after {
   main .link-btn {
     color: inherit;
     text-decoration: none;
+  }
+  /* A document's scale and rhythm, not the screen's: 11pt body, tighter section gaps, field rows and cells, so a record with a
+     line item or two fits a page with its totals. A section with nothing to print (every field blank) is left out. */
+  main {
+    font-size: 11pt;
+  }
+  .form-grid {
+    gap: 8px 24px;
+  }
+  .field {
+    gap: 2px;
+  }
+  .field-label {
+    line-height: 16px;
+  }
+  .form-card .section + .section {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .form-card .section-title,
+  .form-card .section[open] > summary {
+    margin-bottom: 8px;
+  }
+  .totals .field {
+    padding-block: 1px;
+  }
+  .line-grid th,
+  .line-grid td,
+  .table th,
+  .table td {
+    padding-block: 3px;
+  }
+  .form-card .section:not(:has(.field:not(.print-blank, .field-empty))) {
+    display: none !important;
+  }
+  /* When the totals do not fit under the items they move together with the table's last rows, never alone. */
+  .form-card .section:has(.totals) {
+    break-before: avoid;
+  }
+  .line-grid tbody tr:last-child,
+  .table tbody tr:last-child {
+    break-after: avoid;
   }
 }
