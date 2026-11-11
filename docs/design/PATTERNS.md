@@ -249,7 +249,7 @@ No kit implementation exists; each waits for the screen that should drive it.
 
 - **ContextInspector**: a side panel for the selected thing. Drive it from `src/app/list/RecordPeek.tsx` and Mail's reader.
 - **ApprovalPreview**: what an approval will do, before it is done. Drive it from `src/app/ActionDialog.tsx` and the bulk submit/cancel confirmations in `BulkBar`.
-- **TransferTray**: uploads and downloads in flight, with retry. Drive it from Drive's upload flow.
+- **TransferTray**: uploads and downloads in flight, with retry. Drive it from Drive's upload flow. A transfer an app runs itself goes in the bar's tray through `shell().uploads.track({ label, size, cancel?, retry? })` (the handle reports `progress`, `retrying`, `sending`, `done`, `fail`; calls after `done` or `fail` do nothing); an app does not draw its own upload panel. Where the bar cannot track (no shell, a server older than the call) `uploads.canTrack` is false and `track` resolves to a handle that does nothing, so the app keeps its own panel on those servers only.
 - **AppHeader / ViewToolbar** as distinct components: today `PageHeader` and each app's own toolbar. Drive them from the ERP list header and Mail's toolbar.
 - **StaleBanner**: no real consumer found; use `Alert` with a refresh action until one appears.
 
