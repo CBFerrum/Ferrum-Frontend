@@ -151,7 +151,7 @@ export function Sections() {
                 <ShButton key={s} variant={v} size={s}>{s}</ShButton>
               ))}
               <ShButton variant={v} disabled>disabled</ShButton>
-              <ShButton variant={v} className="border-ring ring-[3px] ring-ring/50" data-forced="focus-visible">focus (forced)</ShButton>
+              <ShButton variant={v} className="outline-2 outline-solid outline-offset-2 outline-ring" data-forced="focus-visible">focus (forced)</ShButton>
             </Row>
           ))}
         </div>
