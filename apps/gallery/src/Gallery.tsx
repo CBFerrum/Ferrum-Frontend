@@ -646,7 +646,7 @@ function MenusAndPopups() {
               <SheetTitle>Filters</SheetTitle>
               <SheetDescription>A pop-up opened from a sheet.</SheetDescription>
             </SheetHeader>
-            <div className="flex gap-2 p-4">{menu("Menu in a sheet")}{pop("Popover in a sheet")}</div>
+            <div className="flex gap-2 p-4">{menu("Menu in a sheet")}{pop("Popover in a sheet")}<Button variant="danger" onClick={() => void confirmDialog({ title: "Clear the filters?", confirmLabel: "Clear", danger: true })}>Confirm in a sheet</Button></div>
           </SheetContent>
         </Sheet>
       </Row>

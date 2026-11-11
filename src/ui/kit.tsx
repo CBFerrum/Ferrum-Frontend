@@ -236,6 +236,25 @@ export function Dialog({
       if (opener.current?.isConnected && document.activeElement !== opener.current) opener.current.focus();
     }
   }, [open]);
+  // Opened over a Radix sheet or dialog (a confirmation from inside one): that layer marks every sibling of itself aria-hidden, this <dialog>
+  // included, so the question was hidden from assistive technology (and from role locators) although it is the one thing in reach. And its
+  // Escape handler, on the document, would close the sheet below, not this. Both are put right while this dialog is open.
+  useEffect(() => {
+    const d = ref.current;
+    if (!open || !d) return;
+    const visible = () => d.removeAttribute("aria-hidden");
+    visible();
+    const watch = new MutationObserver(visible);
+    watch.observe(d, { attributes: true, attributeFilter: ["aria-hidden"] });
+    const escape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && e.target instanceof Node && d.contains(e.target) && document.querySelector("[role=dialog][data-state=open]")) e.stopPropagation();
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => {
+      watch.disconnect();
+      window.removeEventListener("keydown", escape, true);
+    };
+  }, [open]);
   return (
     <dialog
       ref={(el) => {
