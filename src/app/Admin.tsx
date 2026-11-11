@@ -29,6 +29,7 @@ import {
   Tabs,
   toast,
 } from "../ui/kit";
+import { FormSkeleton, ListSkeleton } from "../ui/patterns";
 import { t as tr, isolate } from "@ferrum/client";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
@@ -83,7 +84,7 @@ export function AdminPage() {
         {tab === "privacy" && <PersonalData />}
         {tab === "workspace" && <Workspace />}
         {tab === "calendars" && (
-          <Suspense fallback={<PageLoading />}>
+          <Suspense fallback={<ListSkeleton rows={4} />}>
             <Calendars />
           </Suspense>
         )}
@@ -2975,7 +2976,7 @@ function Automations() {
         }
       </Loaded>
       {editing && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<Dialog open onClose={() => setEditing(null)} title={tr("Loading…")} wide><FormSkeleton fields={5} /></Dialog>}>
           <AutomationDialog value={editing} onClose={() => setEditing(null)} onDone={refresh} />
         </Suspense>
       )}
