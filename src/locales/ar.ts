@@ -4112,6 +4112,9 @@ const words: Record<string, string> = {
   "Values from the record can be shown with": "يمكن عرض قيم السجل باستخدام",
   "Show the refusal on field": "إظهار الرفض على الحقل",
   "The rule's name (default)": "اسم القاعدة (الافتراضي)",
+  "Settings: one record for the workspace": "الإعدادات: سجل واحد لمساحة العمل",
+  "One record for the workspace; rules read it as": "سجل واحد لمساحة العمل؛ تقرؤه القواعد على أنه",
+  "Open the settings of {entity}": "فتح إعدادات {entity}",
 };
 
 export default words;

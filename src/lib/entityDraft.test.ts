@@ -416,3 +416,15 @@ describe("lines within lines", () => {
     expect(messages(t)).toContain("The total Spent needs a lines table to add up.");
   });
 });
+
+describe("a settings entity", () => {
+  it("round-trips as kind settings, keeps unknown keys and writes no numbering", () => {
+    const def: Raw = { name: "XPolicy", label: "Claim Policy", kind: "settings", mark: 1, fields: [{ name: "limit", label: "Limit", type: "int", default: 100 }] };
+    const d = fromDef(def, {}, ["XPolicy"]);
+    expect(d.entity.kind).toBe("settings");
+    expect(defsOf(d)[0]).toMatchObject({ name: "XPolicy", kind: "settings", mark: 1 });
+    d.entity.numbering = { prefix: "P-", digits: 3 };
+    expect(defsOf(d)[0].numbering).toBeUndefined();
+    expect(messages(d)).toEqual([]);
+  });
+});
