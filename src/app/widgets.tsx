@@ -87,6 +87,12 @@ function ReadOnlyValue({ field: f, value, id, invalid, describedBy, compact, lab
   );
 }
 
+/** A date or moment as the person's locale writes it, for the printed page only: the browser's own date box prints in its own
+ *  format and mask, so a draft and a submitted record (which shows this same text as a value) would print two styles. */
+function PrintValue({ field, value }: { field: Field; value: unknown }) {
+  return <span className="print-value" aria-hidden="true">{formatValue(field, value)}</span>;
+}
+
 export function FieldControl(p: ControlProps) {
   const { field: f, value, onChange, disabled } = p;
   const common = {
@@ -143,19 +149,27 @@ export function FieldControl(p: ControlProps) {
         />
       );
     case "date":
-      return <input type="date" className="input" {...common} value={text(value)} onChange={(e) => onChange(orNull(e.target.value))} />;
+      return (
+        <>
+          <input type="date" className="input" {...common} value={text(value)} onChange={(e) => onChange(orNull(e.target.value))} />
+          <PrintValue field={f} value={value} />
+        </>
+      );
     case "datetime": {
       // On the workspace's clock; its zone is named beside the box when the browser's is another.
       const zone = zoneLabel();
       const input = (
-        <input
-          type="datetime-local"
-          className="input"
-          {...common}
-          title={zone ? tr("On the workspace's clock ({zone})", { zone }) : undefined}
-          value={toZonedInput(value)}
-          onChange={(e) => onChange(fromZonedInput(e.target.value))}
-        />
+        <>
+          <input
+            type="datetime-local"
+            className="input"
+            {...common}
+            title={zone ? tr("On the workspace's clock ({zone})", { zone }) : undefined}
+            value={toZonedInput(value)}
+            onChange={(e) => onChange(fromZonedInput(e.target.value))}
+          />
+          <PrintValue field={f} value={value} />
+        </>
       );
       return zone && !p.compact ? (
         <span className="zoned">

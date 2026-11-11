@@ -3,6 +3,7 @@
 // (with fallbacks where no shell runs, as in a test or a page opened outside one), and requests to
 // the API with the browser's session, with the platform's errors and version checks handled.
 
+import { watchEdges } from "./edgeCue";
 import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
@@ -736,4 +737,7 @@ export async function uploadInParts(
 // they are in: `void wordsReady().then(() => createRoot(…).render(…))`. (A top-level await here would
 // wait for every app, but Rollup then splits whatever an app's lazy pages share with its entry into
 // chunks of their own, all of them loaded at the start.)
-if (typeof document !== "undefined") bootstrap();
+if (typeof document !== "undefined") {
+  bootstrap();
+  watchEdges();
+}

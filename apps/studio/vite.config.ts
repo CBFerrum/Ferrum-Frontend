@@ -1,6 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { preloadNavIcons } from "../../packages/build/vite.mjs";
 
 // Studio's interface (docs/plan/apps-ui.md): an interface release the server serves with the shell
 // put in. Built with a relative base; the server names the files by their digest.
@@ -9,7 +10,7 @@ const web = fileURLToPath(new URL("../..", import.meta.url));
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   base: "./",
-  plugins: [tailwindcss()],
+  plugins: [tailwindcss(), preloadNavIcons()],
   resolve: {
     alias: [
       { find: /^@ferrum\/(.*)$/, replacement: `${web}packages/$1/src/index.ts` },

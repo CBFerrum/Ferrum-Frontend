@@ -40,4 +40,10 @@ describe("a field that cannot be edited", () => {
     expect(html).not.toContain("read-value");
     expect(html).not.toContain("readOnly");
   });
+  it("prints an editable date in the same style as a read-only one (the browser's own date box prints in its own format)", () => {
+    const editable = render("date", "2026-11-11", false);
+    expect(editable).toContain('type="date"');
+    expect(editable).toMatch(/<span class="print-value" aria-hidden="true">Nov 11, 2026<\/span>/);
+    expect(render("date", "2026-11-11")).toContain('value="Nov 11, 2026"');
+  });
 });

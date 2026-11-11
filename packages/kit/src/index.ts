@@ -13,5 +13,5 @@ export { AppIcon, APP_ICON_NAMES } from "./AppIcon";
 export { FamilyNav } from "./FamilyNav";
 export { useLiveEntity, useLivePush, type LiveEvent } from "./live";
 export { useCanIntent, useShellTitle } from "./hooks";
-export { NavIcon, NAV_ICONS } from "./NavIcon";
+export { NavIcon, navIconsReady } from "./NavIcon";
 export { navIcon, conceptIcon, NAV_ICON_NAMES, type NavIconInput } from "./navIconName";
