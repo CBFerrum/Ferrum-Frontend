@@ -8,7 +8,7 @@ import { api } from "../lib/api";
 import { Badge, Button, type Tone } from "../ui/kit";
 import { ListSkeleton, LoadFailed, StatePanel } from "../ui/patterns";
 
-/** One finding as the server sends it (server/src/doctor.rs). `level` is `ok`, `warning` or `blocker`; `fix` only when there is something to do. */
+/** One finding as the server sends it (server/src/doctor.rs). `level` is `ok`, `warning`, `blocker` or `off` (switched off on purpose); `fix` only when there is something to do. */
 export interface ServiceFinding {
   check: string;
   level: string;
@@ -17,8 +17,8 @@ export interface ServiceFinding {
 }
 
 /** The badge's tone comes from the level id, never from the text. A level a newer server adds is neutral. */
-const LEVEL_TONE: Record<string, Tone> = { ok: "green", warning: "amber", blocker: "red" };
-const LEVEL_LABEL: Record<string, () => string> = { ok: () => tr("Working"), warning: () => tr("Needs attention"), blocker: () => tr("Not working") };
+const LEVEL_TONE: Record<string, Tone> = { ok: "green", warning: "amber", blocker: "red", off: "neutral" };
+const LEVEL_LABEL: Record<string, () => string> = { ok: () => tr("Working"), warning: () => tr("Needs attention"), blocker: () => tr("Not working"), off: () => tr("Switched off") };
 const CHECK_NAME: Record<string, () => string> = { office: () => tr("Office editor"), "office.proof": () => tr("Editor request signing"), pdf: () => tr("PDF renderer") };
 
 /** A check id this version does not know ("pdf.fonts"), humanized: "Pdf fonts". */
@@ -54,10 +54,10 @@ export function ServicesBody({ q }: { q: Q }) {
             <Badge tone={levelTone(s.level)}>{levelLabel(s.level)}</Badge>
           </span>
           <div className="min-w-0 break-words">
-            <p className="m-0">{isolate(s.detail)}</p>
+            <p className={s.level === "off" ? "m-0 text-muted-foreground" : "m-0"}>{isolate(s.detail)}</p>
             {s.fix && (
               <p className="m-0 mt-1 text-muted-foreground">
-                <span className="font-medium">{tr("What to do")}: </span>
+                {s.level !== "off" && <span className="font-medium">{tr("What to do")}: </span>}
                 {isolate(s.fix)}
               </p>
             )}
@@ -74,11 +74,10 @@ export function Services() {
     <section className="card">
       <div className="card-head">
         <h2>{tr("Services")}</h2>
-        <span className="ms-auto">
-          <Button icon="refresh" size="sm" loading={q.isFetching && !q.isLoading} onClick={() => void q.refetch()}>
-            {tr("Check again")}
-          </Button>
-        </span>
+        <span className="spacer" />
+        <Button icon="refresh" size="sm" loading={q.isFetching && !q.isLoading} onClick={() => void q.refetch()}>
+          {tr("Check again")}
+        </Button>
       </div>
       <div className="card-body">
         <p className="muted">{tr("The office editor opens Word, Excel and PowerPoint files in Drive; the PDF renderer prints documents to PDF.")}</p>

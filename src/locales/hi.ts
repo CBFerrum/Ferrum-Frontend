@@ -3144,6 +3144,7 @@ const words: Record<string, string> = {
   "Needs a person": "किसी व्यक्ति की ज़रूरत",
   "Services": "सेवाएँ",
   "Not working": "काम नहीं कर रही",
+  "Switched off": "जानबूझकर बंद",
   "Office editor": "ऑफ़िस एडिटर",
   "Editor request signing": "एडिटर के अनुरोधों पर हस्ताक्षर",
   "PDF renderer": "PDF रेंडरर",

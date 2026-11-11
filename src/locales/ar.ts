@@ -3144,6 +3144,7 @@ const words: Record<string, string> = {
   "Needs a person": "يحتاج إلى شخص",
   "Services": "الخدمات",
   "Not working": "لا تعمل",
+  "Switched off": "متوقفة عمدًا",
   "Office editor": "محرر المستندات",
   "Editor request signing": "توقيع طلبات المحرر",
   "PDF renderer": "مُحوِّل PDF",
