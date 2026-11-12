@@ -100,12 +100,54 @@ export interface ActionParam {
   description?: string | null;
 }
 
+/** An approver set: exactly one of a role, a field of the record holding a user, or an expression. */
+export type Approvers = { role: string } | { field: string } | { expr: string };
+
+export interface ApprovalStepDef {
+  label?: string;
+  approvers: Approvers;
+  /** A number, `all` or `any` (the default). */
+  need?: number | "all" | "any";
+  when?: string;
+  with_next?: boolean;
+  not_earlier_deciders?: boolean;
+  not_who_took?: string[];
+  calendar?: string;
+  remind_after?: string;
+  escalate_after?: string;
+  escalate_to?: Approvers;
+}
+
+/** Who must agree before a transition is taken (BD-19). */
+export interface ApprovalPolicy {
+  steps: ApprovalStepDef[];
+  allow_requester?: boolean;
+  reset_on?: string[];
+  on_reject?: string;
+}
+
+/** `GET /api/v1/{E}/{id}/approval`. */
+export interface ApprovalRequest {
+  id: string;
+  entity: string;
+  record: string;
+  action: string;
+  from: string;
+  to: string;
+  requester: string;
+  requested_at: string;
+  status: "pending" | "approved" | "rejected" | "recalled" | "cancelled";
+  params?: Record<string, unknown>;
+  steps: { label?: string; state: "waiting" | "open" | "skipped" | "approved" | "rejected"; need: number | string; approvers: string[]; escalated?: string[]; opened_at?: string | null; remind_at?: string | null; escalate_at?: string | null }[];
+  decisions: { step: number; decider: string; on_behalf_of?: string | null; outcome: "approve" | "reject"; comment?: string | null; at: string; void?: boolean }[];
+}
+
 export interface Workflow {
   name?: string;
   initial_state: string;
   /** `editable`: the only fields a person may change in the state; `required`: what it needs. */
   states: { name: string; docstatus: number; edit_roles: string[]; editable?: string[]; required?: string[] }[];
-  transitions: { action: string; from: string; to: string; roles: string[]; may_take?: boolean; condition?: string | null; not_creator?: boolean; not_creator_of?: string[] }[];
+  transitions: { action: string; from: string; to: string; roles: string[]; may_take?: boolean; condition?: string | null; not_creator?: boolean; not_creator_of?: string[]; params?: ActionParam[]; effects?: Record<string, unknown>[]; approval?: ApprovalPolicy }[];
 }
 
 export interface ChildTable {

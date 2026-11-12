@@ -17,7 +17,7 @@ import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { ScreenFrame } from "./Screen";
 import { FOLD_EMPTY_MIN, formDesignerLink, isEmptyValue, runLength } from "../lib/formLayout";
-import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, useServerInfo } from "../lib/meta";
+import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, type Workflow, useServerInfo } from "../lib/meta";
 import {
   Alert,
   Badge,
@@ -40,6 +40,7 @@ import { MergeDialog } from "./list/MergeDialog";
 import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
+import { ApprovalPanel, useApproval } from "./ApprovalPanel";
 import { EmailDocDialog } from "./EmailDoc";
 import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
@@ -492,6 +493,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     }
   };
 
+  const approvalQ = useApproval(E, isNew ? null : String(id), !!wf?.transitions.some((t) => t.approval));
+  const pending = approvalQ.data?.status === "pending" ? approvalQ.data : null;
   const transitions =
     wf && !isNew
       ? wf.transitions.filter(
@@ -503,7 +506,15 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         )
       : [];
 
-  const transition = async (action: string) => {
+  const [asked, setAsked] = useState<Workflow["transitions"][number] | null>(null);
+  const transition = async (step: Workflow["transitions"][number]) => {
+    const action = step.action;
+    // One that asks for something has its own dialog, which is also the confirmation.
+    if (step.params?.length) {
+      if (dirty && !(await save())) return;
+      setAsked(step);
+      return;
+    }
     const ok = await confirmDialog({ title: `${action}?`, message: tr("Apply “{action}” to this {label}.", { action, label: meta.label }), confirmLabel: action });
     if (!ok) return;
     await operate(`wf:${action}`, async (version) => {
@@ -511,6 +522,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       load(d, docRef.current);
       toast(tr("{action}: done", { action }));
       void invalidateLists();
+      void qc.invalidateQueries({ queryKey: ["approval", E, String(id)] });
     });
   };
 
@@ -873,11 +885,33 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               {tr("Amend")}
             </Button>
           )}
-          {transitions.map((t) => (
-            <Button key={`${t.action}->${t.to}`} variant="primary" onClick={() => void transition(t.action)} loading={busy === `wf:${t.action}`} disabled={busyAny}>
-              {isolate(t.action)}
-            </Button>
-          ))}
+          {transitions.map((t) =>
+            pending?.action === t.action ? (
+              <Button key={`${t.action}->${t.to}`} disabled title={tr("Waiting for approval")}>
+                {tr("{action}: awaiting approval", { action: t.action })}
+              </Button>
+            ) : (
+              <Button key={`${t.action}->${t.to}`} variant="primary" onClick={() => void transition(t)} loading={busy === `wf:${t.action}`} disabled={busyAny}>
+                {isolate(t.action)}
+              </Button>
+            ),
+          )}
+          {asked && (
+            <ActionDialog
+              action={{ name: asked.action, label: asked.action, docstatus: [], permission: "write", params: asked.params }}
+              doc={{}}
+              path={docPath(E, String(id), "workflow", asked.action)}
+              ifMatch={typeof base?.version === "number" ? base.version : undefined}
+              onClose={() => setAsked(null)}
+              onDone={() => {
+                setAsked(null);
+                void reload().then((fresh) => fresh && load(fresh, docRef.current));
+                toast(tr("{action}: done", { action: asked.action }));
+                void invalidateLists();
+                void qc.invalidateQueries({ queryKey: ["approval", E, String(id)] });
+              }}
+            />
+          )}
           {inline.map((b) => (
             <ActionButton key={b.action.name} state={b} loading={busy === `action:${b.action.name}`} disabled={busyAny} onRun={() => void runAction(b.action)} />
           ))}
@@ -1024,6 +1058,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       )}
       {!isNew && docstatus === 2 && <Alert tone="warning">{(canAmend ? tr("This document is cancelled. Amend it to create a corrected draft.") : tr("This document is cancelled."))}</Alert>}
       {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">{tr("You cannot edit documents in the “{wfState}” state.", { wfState: wfState ?? "" })}</Alert>}
+
+      {approvalQ.data && <ApprovalPanel entity={E} id={String(id)} request={approvalQ.data} me={me} onChanged={() => void reload().then((fresh) => fresh && load(fresh, docRef.current))} />}
 
       {tabs.length > 1 ? (
         <>

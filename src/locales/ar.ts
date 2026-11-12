@@ -4161,6 +4161,23 @@ const words: Record<string, string> = {
   "the lines of a table": "أسطر جدول",
   "the records that link here": "السجلات المرتبطة بهذا السجل",
   "use at most {n} effects in a loop.": "استخدم {n} تأثيرات على الأكثر في الحلقة.",
+  "is needed": "مطلوب",
+  "Waiting for approval": "بانتظار الموافقة",
+  "Recalled": "تم سحبه",
+  "Waiting": "بانتظار",
+  "Skipped": "تم تخطيه",
+  "Say why when you reject": "اذكر السبب عند الرفض",
+  "Approval of “{action}”": "الموافقة على «{action}»",
+  "Asked by {person} on {at}: {from} to {to}.": "طلب {person} في {at}: من {from} إلى {to}.",
+  "{voided} earlier decision(s) were cancelled when a field that matters changed, and the steps opened again.": "أُلغي {voided} من القرارات السابقة عند تغيير حقل مهم، وفُتحت الخطوات من جديد.",
+  "Step {n}": "الخطوة {n}",
+  "needs {need} of": "يحتاج {need} من",
+  "{person} for {other}": "{person} نيابةً عن {other}",
+  "Escalated to": "صُعّد إلى",
+  "Reminder due {at}": "التذكير في {at}",
+  "Escalates {at}": "يُصعَّد في {at}",
+  "Recall this request": "سحب هذا الطلب",
+  "{action}: awaiting approval": "{action}: بانتظار الموافقة",
 };
 
 export default words;
