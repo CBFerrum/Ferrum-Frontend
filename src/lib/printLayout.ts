@@ -518,6 +518,8 @@ export function nodeName(n: Section | Column | Block | TableColumn, c?: Catalogu
 export interface Problem { id: Id | null; message: string }
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+/** System fields every record has (§4.3). */
+export const SYSTEM_FIELDS = ["number", "docstatus", "status", "created_at", "updated_at", "created_by"];
 const FILE = /^\/files\/[0-9a-fA-F-]{36}$/;
 const TOKEN = /\{((?:doc|links|company|settings|print)\.[A-Za-z0-9_.]+)(?:\|([a-z]+))?\}/g;
 export const MAX_LAYOUT_BYTES = 256 * 1024;
@@ -564,7 +566,11 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
     if (row && p.startsWith("doc.") === false && !/^(links|company|settings|print)\./.test(p)) return add(id, tr("{name}: “{path}” is not a field.", { name: what, path: p }));
     if ((p === "print.page" || p === "print.pages") && !o.letterhead) return add(id, tr("{name}: page numbers print only in a letter head.", { name: what }));
     if (o.letterhead && !/^(company|settings|print)\./.test(p)) return add(id, tr("{name}: a letter head prints only the company's, the settings' and the print's values.", { name: what }));
-    if (index && !index.has(p) && !(o.letterhead && (p === "print.page" || p === "print.pages"))) add(id, tr("{name}: there is no field “{path}”.", { name: what, path: p }));
+    // An unknown path is the server's to refuse (it names the block, and the designer selects it): the catalogue leaves out
+    // fields a package's own layout prints (india.gst_invoice's doc.in_signed_qr_code), so refusing here would block a save the
+    // server accepts. Only a linked record's path is checked here, against the links the catalogue has.
+    const link = /^links\.([A-Za-z0-9_]+)\./.exec(p);
+    if (index && link && !c!.links.some((l) => l.field === link[1])) add(id, tr("{name}: there is no field “{path}”.", { name: what, path: p }));
   };
   const value = (id: Id, what: string, v: Value, row?: { table: Path }) => {
     const ps = pathsOf(v);
@@ -652,7 +658,6 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
             for (const x of b.totals ?? []) if (!ids.has(x)) add(b.id, tr("{name}: the totals row names a column it does not have.", { name: bn }));
             len(b.id, bn, b.totals_label, 80, tr("totals label"));
             if (b.hide_zero_rows) path(b.id, bn, b.hide_zero_rows, { table: b.value });
-            let pct = 0;
             for (const tc of b.columns) {
               const tn = name(tc);
               checkId(tc, tc);
@@ -660,11 +665,9 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
               if (tc.secondary !== undefined) value(tc.id, tn, tc.secondary, { table: b.value });
               len(tc.id, tn, tc.label, 80, tr("label"));
               range(tc.id, tn, tc.width_pct, 3, 100, tr("width"));
-              pct += tc.width_pct ?? 0;
               format(tc.id, tn, tc.format);
               cel(tc.id, tn, tc.when);
             }
-            if (pct > 100) add(b.id, tr("{name}: the columns' widths add up to more than 100%.", { name: bn }));
             break;
           }
           case "totals":

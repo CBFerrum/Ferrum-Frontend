@@ -458,14 +458,15 @@ function Canvas({ html, loading, error, page, zoom, layout, selected, onSelect, 
     for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-b]"))) {
       const id = el.dataset.b!;
       const w = locate(l, id);
-      if (!w) continue;
+      // A table column's id marks its heading and may mark its cells; a block repeats in every copy: the first one is the place.
+      if (!w || boxes.some((x) => x.id === id)) continue;
       const r = el.getBoundingClientRect();
       boxes.push({ id, kind: w.kind, x: r.left, y: r.top, w: r.width, h: r.height });
     }
     const slots: SlotBox[] = [];
     for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-slot]"))) {
       const s = parseSlot(el.dataset.slot!);
-      if (!s) continue;
+      if (!s || slots.some((x) => x.slot === el.dataset.slot)) continue;
       const r = el.getBoundingClientRect();
       slots.push({ slot: el.dataset.slot!, column: s.column, index: s.index, x: r.left, y: r.top, w: r.width, h: r.height });
     }
