@@ -45,10 +45,10 @@ describe("a workspace's own menu's page", () => {
 });
 
 describe("the sidebar's rows carry what their icon is chosen from", () => {
-  it("gives every row an icon: an entity by its stable name and kind, a report as a report, Studio's pages as declared", () => {
+  it("gives every row an icon: an entity by its stable name and kind, a report by what it is about, Studio's pages as declared", () => {
     const readable = new Map([["SalesInvoice", { name: "SalesInvoice", label_plural: "Sales invoices", kind: "document", submittable: true }], ["Setup", { name: "Setup", label_plural: "Setups", kind: "settings", submittable: false }]] as unknown as [string, EntitySummary][]);
     const rows = moduleLinks(mod("selling", ["SalesInvoice", "Setup", "report:aging"]), readable, new Map([["aging", "Aging"]]));
-    expect(rows.map((r) => navIcon(r))).toEqual(["receipt", "settings", "chart-column"]);
+    expect(rows.map((r) => navIcon(r))).toEqual(["receipt", "settings", "hourglass"]);
     expect(studioLinks(null).map((r) => navIcon(r))).toEqual(["chart-column", "layout-dashboard", "panel-top", "square-check", "play"]);
     expect(rows.concat(studioLinks(null)).every((r) => navIcon(r).length > 0)).toBe(true);
   });
