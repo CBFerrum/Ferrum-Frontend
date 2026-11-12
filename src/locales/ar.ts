@@ -5002,6 +5002,7 @@ const words: Record<string, string> = {
   "A layout has at most 100 conditions.": "في التخطيط 100 شرط على الأكثر.",
   "A layout has at most 20 images.": "في التخطيط 20 صورة على الأكثر.",
   "The text blocks hold more than 10,000 characters in all.": "تحمل كتل النص أكثر من 10,000 حرف إجمالًا.",
+  "A letter head's header or footer has at most 20 sections.": "في رأس الترويسة أو تذييلها 20 قسمًا على الأكثر.",
 };
 
 export default words;

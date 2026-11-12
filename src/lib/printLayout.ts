@@ -587,8 +587,9 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
   };
 
   if (JSON.stringify(l).length > MAX_LAYOUT_BYTES) add(null, tr("The layout is larger than 256 KB."));
-  if (!l.sections.length) add(null, tr("A layout needs at least one section."));
-  if (l.sections.length > 100) add(null, tr("A layout has at most 100 sections."));
+  // A letter head's header or footer holds 0 to 20 sections (the platform's deviation 3); a format 1 to 100.
+  if (!l.sections.length && !o.letterhead) add(null, tr("A layout needs at least one section."));
+  if (l.sections.length > (o.letterhead ? 20 : 100)) add(null, o.letterhead ? tr("A letter head's header or footer has at most 20 sections.") : tr("A layout has at most 100 sections."));
   color("page", tr("The page"), l.style?.color);
   color("page", tr("The page"), l.style?.accent);
   if (l.watermark) {
@@ -702,7 +703,8 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
 }
 
 /** The node a server's field error names: `layout.<id>` or `layout`. */
-export const refusedNode = (field: string): Id | null => (field.startsWith("layout.") ? field.slice(7) : null);
+export const refusedNode = (field: string, message = ""): Id | null =>
+  field.startsWith("layout.") ? field.slice(7) : field === "layout" ? (/^block ([a-z][a-z0-9_-]{0,39}):/.exec(message)?.[1] ?? null) : null;
 
 // ── conditions (§4.4): the three shapes the builder writes ──
 

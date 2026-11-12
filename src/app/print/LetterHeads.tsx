@@ -162,7 +162,7 @@ function Editor({ doc }: { doc: Doc | null }) {
   const save = async () => {
     const found = [
       ...(!name.trim() ? [tr("Give the letter head a name.")] : []),
-      ...[...validate({ version: 1, sections: blocks.header.sections }, null, { letterhead: true }), ...validate({ version: 1, sections: blocks.footer.sections.length ? blocks.footer.sections : [{ id: "x", columns: [{ id: "y", blocks: [] }] }] }, null, { letterhead: true })].map((p) => p.message),
+      ...[...validate({ version: 1, sections: blocks.header.sections }, null, { letterhead: true }), ...validate({ version: 1, sections: blocks.footer.sections }, null, { letterhead: true })].map((p) => p.message),
     ];
     if (found.length) return setProblems(found);
     setState("saving");

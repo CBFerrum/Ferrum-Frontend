@@ -200,6 +200,22 @@ describe("the checks before save (§4.2), naming the block", () => {
   });
 });
 
+describe("the server's layout refusals (§6, deviation 8)", () => {
+  it("name the node", async () => {
+    const { refusedNode } = await import("./printLayout");
+    expect(refusedNode("layout.due", "x")).toBe("due");
+    expect(refusedNode("layout", "block items: unknown field `colour`, expected one of …")).toBe("items");
+    expect(refusedNode("layout", "unknown field `x`")).toBeNull();
+    expect(refusedNode("template", "en body, line 1: x")).toBeNull();
+  });
+  it("let a letter head's footer be empty, and hold it to 20 sections", () => {
+    expect(validate({ version: 1, sections: [] }, null, { letterhead: true })).toEqual([]);
+    expect(validate({ version: 1, sections: [] }).map((p) => p.message)).toEqual(["A layout needs at least one section."]);
+    const many = Array.from({ length: 21 }, (_, i) => ({ id: `s${i}`, columns: [{ id: `c${i}`, blocks: [] }] }));
+    expect(validate({ version: 1, sections: many }, null, { letterhead: true }).map((p) => p.message)).toEqual(["A letter head's header or footer has at most 20 sections."]);
+  });
+});
+
 describe("conditions, text, paper and slots", () => {
   it("reads and writes the three shapes the builder offers, and leaves anything else as CEL", () => {
     expect(parseCondition('doc.in_irn != ""')).toEqual({ path: "doc.in_irn", op: "set" });

@@ -188,7 +188,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
       if (e instanceof ApiError && e.status === 409) return (setState("conflict"), setConflict(true));
       setState("failed");
       const fields = e instanceof ApiError ? e.fields : [];
-      const problems = fields.length ? fields.map((f) => ({ id: refusedNode(f.field), message: f.message })) : [{ id: null, message: errorMessage(e) }];
+      const problems = fields.length ? fields.map((f) => ({ id: refusedNode(f.field, f.message), message: f.message })) : [{ id: null, message: errorMessage(e) }];
       setRefused(problems);
       const first = problems.find((p) => p.id && locate(layout, p.id));
       if (first?.id) (setSelected(first.id), setTab("selected"));
