@@ -11,7 +11,7 @@ import { TwoFactorSettings } from "@/app/TwoFactor";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { useMe, useMetaIndex } from "@/lib/meta";
-import { Badge, Button, confirmDialog, Dialog, Field, Spinner, toast } from "@/ui/kit";
+import { Alert, Badge, Button, confirmDialog, Dialog, Field, Spinner, toast } from "@/ui/kit";
 import "./shell.css";
 
 interface Device {
@@ -410,6 +410,57 @@ function TimeZone() {
   );
 }
 
+/** Who decides in the person's place between two days (approvals and process tasks go to them meanwhile). The server
+ *  keeps the period and ends it on its last day; it offers no way to read or withdraw it, so none is shown here. */
+export function Away() {
+  const [v, setV] = useState({ starts_on: "", ends_on: "", substitute: "", reason: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof v) => (e: { target: { value: string } }) => (setV((c) => ({ ...c, [k]: e.target.value })), setSaved(false));
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const missing = Object.entries(v).filter(([, x]) => !x.trim());
+    if (missing.length) return setErrors(Object.fromEntries(missing.map(([k]) => [k, t("is needed")])));
+    setBusy(true);
+    setErrors({});
+    setError(null);
+    try {
+      await api.post("/api/app/studio/away", Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x.trim()])));
+      setSaved(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.fields.length) setErrors(Object.fromEntries(err.fields.map((f) => [f.field, f.message])));
+      else setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form className="stack" onSubmit={(e) => void submit(e)}>
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      {saved && <Alert tone="success">{t("Saved. Decisions that would come to you go to them on those days.")}</Alert>}
+      <Field label={t("From")} htmlFor="away-from" required error={errors.starts_on}>
+        <input id="away-from" className="input" type="date" value={v.starts_on} onChange={set("starts_on")} />
+      </Field>
+      <Field label={t("To")} htmlFor="away-to" required error={errors.ends_on}>
+        <input id="away-to" className="input" type="date" value={v.ends_on} onChange={set("ends_on")} />
+      </Field>
+      <Field label={t("Who decides for you")} htmlFor="away-who" required error={errors.substitute} hint={t("Their e-mail address")}>
+        <input id="away-who" className="input" type="email" value={v.substitute} onChange={set("substitute")} />
+      </Field>
+      <Field label={t("Why")} htmlFor="away-why" required error={errors.reason}>
+        <input id="away-why" className="input" maxLength={500} value={v.reason} onChange={set("reason")} />
+      </Field>
+      <div>
+        <Button type="submit" variant="primary" loading={busy}>
+          {t("Save")}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section className="card" aria-labelledby={id}>
@@ -466,6 +517,10 @@ export function AccountPage() {
       <Section id="acct-time-zone" title={t("Time zone")}>
         <p className="muted">{t("The clock your pages show times on. Due dates and what counts as today stay the workspace's.")}</p>
         <TimeZone />
+      </Section>
+      <Section id="acct-away" title={t("Away")}>
+        <p className="muted">{t("While you are away, decisions that would come to you go to someone else, in their own name on your behalf. It ends on its last day.")}</p>
+        <Away />
       </Section>
       <Section id="acct-devices" title={t("Signed-in browsers")}>
         <Devices />
