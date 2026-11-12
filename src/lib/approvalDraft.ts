@@ -50,6 +50,12 @@ export interface DraftPolicy {
   reset_on: string[];
   /** Key of a state of the workflow ("" none: the record stays). */
   on_reject: string;
+  /** While it is pending the record is not edited but for `reset_on` fields. */
+  lock: boolean;
+  /** On a document's submit or cancel: the system goes ahead without asking. */
+  system_bypass: boolean;
+  /** Fields an approver sees though a field group hides them. */
+  show: string[];
   extra: Raw;
 }
 
@@ -58,7 +64,7 @@ export const newStep = (): DraftStep => ({
   key: newKey(), label: "", who: newWho(), need: "any", count: "2", when: "", with_next: false, not_earlier_deciders: false, not_who_took: [], calendar: "",
   remind_after: "", escalate_after: "", escalate_to: null, extra: {},
 });
-export const newPolicy = (): DraftPolicy => ({ steps: [newStep()], allow_requester: false, reset_on: [], on_reject: "", extra: {} });
+export const newPolicy = (): DraftPolicy => ({ steps: [newStep()], allow_requester: false, reset_on: [], on_reject: "", lock: false, system_bypass: false, show: [], extra: {} });
 
 function fromWho(v: unknown): DraftWho {
   const o = isObj(v) ? v : {};
@@ -97,7 +103,10 @@ export function fromPolicy(raw: unknown, keyOf: (name: string) => string): Draft
     allow_requester: raw.allow_requester === true,
     reset_on: strings(raw.reset_on),
     on_reject: raw.on_reject ? keyOf(str(raw.on_reject)) : "",
-    extra: rest(raw, ["steps", "allow_requester", "reset_on", "on_reject"]),
+    lock: raw.lock === true,
+    system_bypass: raw.system_bypass === true,
+    show: strings(raw.show),
+    extra: rest(raw, ["steps", "allow_requester", "reset_on", "on_reject", "lock", "system_bypass", "show"]),
   };
 }
 
@@ -125,6 +134,9 @@ export function toPolicy(d: DraftPolicy, name: (key: string) => string): Raw {
   if (d.allow_requester) out.allow_requester = true;
   if (d.reset_on.length) out.reset_on = d.reset_on;
   if (d.on_reject) out.on_reject = name(d.on_reject);
+  if (d.lock) out.lock = true;
+  if (d.system_bypass) out.system_bypass = true;
+  if (d.show.length) out.show = d.show;
   return out;
 }
 
@@ -154,3 +166,21 @@ export function stepAt(message: string, action: string, d: DraftPolicy): string 
   const m = /transition (.+?), approval step (\d+)/i.exec(message);
   return m && m[1].trim() === action.trim() ? d.steps[Number(m[2]) - 1]?.key : undefined;
 }
+
+/** What `set_approval` takes for a document's submit or cancel: the policy as a draft makes it, with no state to reject to and
+ *  no transition to name (the server refuses both there); `null` takes the policy away. Unknown properties stay. */
+export const documentOp = (on: "submit" | "cancel", d: DraftPolicy | null): Raw => ({
+  op: "set_approval",
+  on,
+  approval: d ? toPolicy({ ...d, on_reject: "", steps: d.steps.map((s) => ({ ...s, not_who_took: [] })) }, (k) => k) : null,
+});
+
+/** The policy now on a document's submit or cancel, from the customizations list (`GET /api/customize`): the latest active
+ *  `set_approval` of the entity for that action that nothing replaced; `null` when none (or it was taken away). A policy a
+ *  package itself declares is not in that list. */
+export function currentDocumentPolicy(list: { entity: string; op: Raw; is_active: boolean; seq: number; superseded_by?: string | null }[], entity: string, on: "submit" | "cancel"): Raw | null {
+  const mine = list.filter((c) => c.entity === entity && c.is_active && !c.superseded_by && c.op.op === "set_approval" && c.op.on === on).sort((a, b) => b.seq - a.seq);
+  return isObj(mine[0]?.op.approval) ? (mine[0].op.approval as Raw) : null;
+}
+
+export const documentApprovalsLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/approvals`;

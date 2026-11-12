@@ -18,6 +18,7 @@ import { ExprInput, linkChips } from "./author/ExprInput";
 import { FilterRows, grow, optionsOf, Pick, Rows, Tools, wrap } from "./author/controls";
 import { useRoleNames } from "./author/RoleSelect";
 import { InvokeCard, useCapabilities } from "./author/InvokeCard";
+import { MessageCard, TemplatePick } from "./author/MessageCard";
 import { CopyLinesBody, FindBody, ForEachHead, WhenBox } from "./author/FlowCards";
 
 /** The mail's formatted message, with the record's fields as chips that insert `{{ doc.field }}`. */
@@ -85,7 +86,7 @@ export function MailPreviewDialog({ state, entity, onClose, onRetry }: { state: 
   );
 }
 
-export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), append_line: tr("Add a line"), set_line: tr("Change one line"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), invoke: tr("Do a step of another app"), find: tr("Find"), for_each: tr("For each"), copy_lines: tr("Copy lines"), raw: tr("Other action") });
+export const ACTION_NAMES = (): Record<DraftAction["kind"], string> => ({ set_fields: tr("Set fields"), append_line: tr("Add a line"), set_line: tr("Change one line"), create_document: tr("Create a record"), update_linked: tr("Change the record a link names"), notify: tr("Notify"), email: tr("Send mail"), message: tr("Send a message"), invoke: tr("Do a step of another app"), find: tr("Find"), for_each: tr("For each"), copy_lines: tr("Copy lines"), raw: tr("Other action") });
 
 export function ActionCard({ a, index, count, entities, chips, fields, onChange, onMove, onRemove, flagged, error, entity, owner = "", inButton = false, lines, earlier, nested = false }: {
   /** The effects before this one (a Copy lines may take its lines from a Find among them); none inside a loop. */
@@ -223,12 +224,17 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
             </div>
             {a.to === "role" && roles.error && <ErrorState error={roles.error} onRetry={() => roles.refetch()} title={tr("Could not load the roles")} />}
             {a.to === "user" && users.error && <ErrorState error={users.error} onRetry={() => users.refetch()} title={tr("Could not load the users")} />}
-            <Field label={tr("Title")} hint={tr("An expression: put literal text in quotes, like 'Needs a look: ' + doc.name")}>
-              <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.title} onChange={(e) => patch({ title: e.target.value })} />
-            </Field>
-            <Field label={tr("Message (optional)")}>
-              <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.body} onChange={(e) => patch({ body: e.target.value })} />
-            </Field>
+            <TemplatePick id={`nt-${a.key}`} label={tr("Use a message template instead of the title and message (optional)")} value={a.message ?? ""} onChange={(k) => patch({ message: k || undefined })} entity={entity} />
+            {!a.message && (
+              <>
+                <Field label={tr("Title")} hint={tr("An expression: put literal text in quotes, like 'Needs a look: ' + doc.name")}>
+                  <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.title} onChange={(e) => patch({ title: e.target.value })} />
+                </Field>
+                <Field label={tr("Message (optional)")}>
+                  <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.body} onChange={(e) => patch({ body: e.target.value })} />
+                </Field>
+              </>
+            )}
           </>
         )}
         {a.kind === "email" && (
@@ -239,11 +245,13 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
                   <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.to} onChange={(e) => patch({ to: e.target.value })} />
                 </Field>
               </div>
-              <div style={{ ...grow, flexBasis: 240 }}>
-                <Field label={tr("Subject")}>
-                  <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.subject} onChange={(e) => patch({ subject: e.target.value })} />
-                </Field>
-              </div>
+              {!a.message && (
+                <div style={{ ...grow, flexBasis: 240 }}>
+                  <Field label={tr("Subject")}>
+                    <input className="input mono" spellCheck={false} autoCapitalize="none" value={a.subject} onChange={(e) => patch({ subject: e.target.value })} />
+                  </Field>
+                </div>
+              )}
               <div style={grow}>
                 <Field label={tr("Kind of mail")}>
                   <select className="select" value={a.purpose ?? "transactional"} onChange={(e) => patch({ purpose: e.target.value })}>
@@ -253,28 +261,34 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
                 </Field>
               </div>
             </div>
-            <fieldset className="row" style={{ border: 0, padding: 0, margin: 0, columnGap: 16, flexWrap: "wrap" }}>
-              <legend className="field-label">{tr("The message is")}</legend>
-              <label className="check-field">
-                <input type="radio" name={`mode-${a.key}`} checked={!a.formatted} onChange={() => patch({ formatted: false })} />
-                {tr("Plain text")}
-              </label>
-              <label className="check-field">
-                <input type="radio" name={`mode-${a.key}`} checked={a.formatted} onChange={() => patch({ formatted: true })} />
-                {tr("Formatted")}
-              </label>
-            </fieldset>
-            {a.formatted ? (
-              <TemplateInput value={a.template} onChange={(v) => edited({ template: v })} fields={chips} error={pvError ?? undefined} />
-            ) : (
-              <ExprInput label={tr("Message")} value={a.body} onChange={(v) => edited({ body: v })} fields={chips} links={linkChips(fields)} error={pvError} hint={tr("An expression that gives the text: put literal text in quotes.")} />
+            <TemplatePick id={`em-${a.key}`} label={tr("Use a message template instead of the subject and message (optional)")} value={a.message ?? ""} onChange={(k) => patch({ message: k || undefined })} entity={entity} />
+            {!a.message && (
+              <>
+              <fieldset className="row" style={{ border: 0, padding: 0, margin: 0, columnGap: 16, flexWrap: "wrap" }}>
+                <legend className="field-label">{tr("The message is")}</legend>
+                <label className="check-field">
+                  <input type="radio" name={`mode-${a.key}`} checked={!a.formatted} onChange={() => patch({ formatted: false })} />
+                  {tr("Plain text")}
+                </label>
+                <label className="check-field">
+                  <input type="radio" name={`mode-${a.key}`} checked={a.formatted} onChange={() => patch({ formatted: true })} />
+                  {tr("Formatted")}
+                </label>
+              </fieldset>
+              {a.formatted ? (
+                <TemplateInput value={a.template} onChange={(v) => edited({ template: v })} fields={chips} error={pvError ?? undefined} />
+              ) : (
+                <ExprInput label={tr("Message")} value={a.body} onChange={(v) => edited({ body: v })} fields={chips} links={linkChips(fields)} error={pvError} hint={tr("An expression that gives the text: put literal text in quotes.")} />
+              )}
+              <div>
+                <Button size="sm" disabled={!entity} onClick={() => void preview()}>{tr("Preview")}</Button>
+              </div>
+              <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
+              </>
             )}
-            <div>
-              <Button size="sm" disabled={!entity} onClick={() => void preview()}>{tr("Preview")}</Button>
-            </div>
-            <MailPreviewDialog state={pv} entity={entity} onClose={closePreview} onRetry={() => void preview()} />
           </>
         )}
+        {a.kind === "message" && <MessageCard a={a} entity={entity} chips={chips} links={linkChips(fields)} onChange={patch} />}
         {a.kind === "find" && <FindBody a={a} fields={fields} chips={chips} entities={entities} patch={patch} />}
         {a.kind === "copy_lines" && <CopyLinesBody a={a} fields={fields} chips={chips} entities={entities} patch={patch} lines={lines} earlier={earlier} />}
         {a.kind === "for_each" && (
@@ -478,6 +492,7 @@ export function AddActions({ count, max, onAdd, hasTable, nested }: { /** Inside
     [tr("Notify"), () => ({ key: newKey(), kind: "notify", to: "owner", target: "", title: "", body: "" })],
     [tr("Do a step of another app"), () => ({ key: newKey(), kind: "invoke", capability: "", rows: [], once: false, onceKey: "", extra: {} })],
     [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
+    [tr("Send a message"), () => ({ key: newKey(), kind: "message", template: "", to: [{ key: newKey(), kind: "owner", value: "" }], channels: [], all: false, values: [], extra: {} })],
     [tr("Find"), () => ({ key: newKey(), kind: "find", entity: "", by: row(), create: null, update: null, extra: {} })],
     ...(nested ? [] : ([[tr("For each"), () => ({ key: newKey(), kind: "for_each", over: "table", table: "", entity: "", link: "", where: "", effects: [], extra: {} })]] as [string, () => DraftAction][])),
     ...(hasTable ? ([[tr("Copy lines"), () => ({ key: newKey(), kind: "copy_lines", table: "", source: "link", link: "", result: "", from_table: "", rows: row(), mode: "", extra: {} })]] as [string, () => DraftAction][]) : []),

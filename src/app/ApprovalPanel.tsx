@@ -21,7 +21,10 @@ export interface ApprovalItem {
   action: string;
   from: string;
   requester: string;
+  requester_name?: string | null;
   requested_at: string;
+  /** The open step awaiting the person (`to_decide`) or the first open one (`awaiting_others`). */
+  step?: { index: number; label?: string | null; opened_at?: string | null } | null;
 }
 export interface MyApprovals {
   to_decide: ApprovalItem[];
@@ -63,6 +66,7 @@ const STATUS: Record<ApprovalRequest["status"], { tone: Tone; get label(): strin
   rejected: { tone: "red", get label() { return t("Rejected"); } },
   recalled: { tone: "neutral", get label() { return t("Recalled"); } },
   cancelled: { tone: "neutral", get label() { return t("Cancelled"); } },
+  failed: { tone: "red", get label() { return t("Not done"); } },
 };
 const STEP: Record<ApprovalRequest["steps"][number]["state"], { tone: Tone; get label(): string }> = {
   waiting: { tone: "neutral", get label() { return t("Not yet"); } },
@@ -138,6 +142,16 @@ export function ApprovalPanel({ entity, id, request, me, onChanged }: { entity: 
       <p className="muted">
         {placed(t("Asked by {person} on {at}: {from} to {to}."), { person: <Who id={request.requester} />, at: isolate(formatDateTime(request.requested_at)), from: isolate(request.from), to: isolate(request.to) })}
       </p>
+      {request.status === "failed" && (
+        <Alert tone="error">
+          {t("Everyone agreed, but it could not be done: {reason}", { reason: isolate(request.failure || t("no reason was given")) })}{" "}
+          {request.requester === me.user.id
+            ? request.document
+              ? t("Fix what it names and press {action} on the record again to ask again.", { action: request.action })
+              : t("Fix what it names and take “{action}” again to ask again.", { action: request.action })
+            : t("The person who asked can ask again.")}
+        </Alert>
+      )}
       {voided > 0 && <p className="muted">{t("{voided} earlier decision(s) were cancelled when a field that matters changed, and the steps opened again.", { voided })}</p>}
       {error && <Alert tone="error">{isolate(error)}</Alert>}
       <ol className="stack" aria-label={t("Steps")}>
@@ -164,8 +178,18 @@ export function ApprovalPanel({ entity, id, request, me, onChanged }: { entity: 
                   {t("Escalated to")} <People ids={s.escalated} />
                 </p>
               )}
-              {s.state === "open" && s.remind_at && <p className="faint">{t("Reminder due {at}", { at: formatDateTime(s.remind_at) })}</p>}
-              {s.state === "open" && s.escalate_at && !s.escalated?.length && <p className="faint">{t("Escalates {at}", { at: formatDateTime(s.escalate_at) })}</p>}
+              {s.reminded_at && (
+                <p className="muted">
+                  {t("Reminded")} <time dateTime={s.reminded_at}>{isolate(formatDateTime(s.reminded_at))}</time>
+                </p>
+              )}
+              {s.escalated_at && (
+                <p className="muted">
+                  {t("Escalated")} <time dateTime={s.escalated_at}>{isolate(formatDateTime(s.escalated_at))}</time>
+                </p>
+              )}
+              {s.state === "open" && s.remind_at && !s.reminded_at && <p className="faint">{t("Reminder due {at}", { at: formatDateTime(s.remind_at) })}</p>}
+              {s.state === "open" && s.escalate_at && !s.escalated_at && !s.escalated?.length && <p className="faint">{t("Escalates {at}", { at: formatDateTime(s.escalate_at) })}</p>}
             </li>
           );
         })}

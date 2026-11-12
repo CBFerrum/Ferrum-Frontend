@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addHolidays, checkCalendar, copyDay, fromCalendar, parseDates, seedHours, toCalendar, type Calendar } from "./calendarDraft";
+import { addHolidays, checkCalendar, copyDay, fromCalendar, newException, parseDates, seedHours, toCalendar, type Calendar } from "./calendarDraft";
 
 const plain: Calendar = { name: "india", zone: "Asia/Kolkata", weekends: ["sat", "sun"], holidays: ["2026-01-26", "2026-08-15"] };
 const timed: Calendar = { ...plain, hours: { mon: [["09:00", "13:00"], ["14:00", "18:00"]], tue: [["22:00", "24:00"]], fri: [["00:00", "06:00"]] } };
@@ -60,5 +60,30 @@ describe("holidays", () => {
   });
   it("stay sorted and without repeats", () => {
     expect(addHolidays(["2026-08-15"], ["2026-01-26", "2026-08-15"])).toEqual(["2026-01-26", "2026-08-15"]);
+  });
+});
+
+describe("exceptions", () => {
+  const base = { name: "office", zone: "Europe/Berlin", weekends: ["sat", "sun"], holidays: [] };
+  const exceptions = { "2026-12-24": { open: false, hours: [["12:00", "24:00"]] as [string, string][] }, "2026-12-27": { open: true, hours: [["10:00", "14:00"]] as [string, string][], note: "kept" }, "2026-12-31": { open: false } };
+  it("come back as they went, unknown properties included, and none are sent when there are none", () => {
+    const c = toCalendar(fromCalendar({ ...base, exceptions } as never));
+    expect(c.exceptions).toEqual(exceptions);
+    expect(toCalendar(fromCalendar(base as never)).exceptions).toBeUndefined();
+  });
+  it("are listed by date", () => {
+    expect(fromCalendar({ ...base, exceptions } as never).exceptions.map((e) => e.date)).toEqual(["2026-12-24", "2026-12-27", "2026-12-31"]);
+  });
+  it("are checked: a real date once, windows with both times, in order, not overlapping", () => {
+    const d = fromCalendar({ ...base, exceptions } as never);
+    expect(checkCalendar(d, false)).toEqual([]);
+    d.exceptions.push({ ...newException("2026-12-24"), windows: [{ from: "10:00", to: "09:00" }, { from: "", to: "" }] });
+    d.exceptions.push({ ...newException("2026-13-40"), windows: [{ from: "09:00", to: "12:00" }, { from: "11:00", to: "13:00" }] });
+    const said = checkCalendar(d, false).map((p) => p.message).join("|");
+    expect(said).toContain("2026-12-24: it is listed twice.");
+    expect(said).toContain("window 1: the start must be before the end.");
+    expect(said).toContain("window 2: enter both times.");
+    expect(said).toContain("2026-13-40: not a date");
+    expect(said).toContain("windows may not overlap.");
   });
 });
