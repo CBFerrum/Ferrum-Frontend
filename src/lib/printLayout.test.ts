@@ -306,6 +306,7 @@ describe("a format as saved", () => {
   it("leaves out what the server derives or defaults", () => {
     expect(toSave({ key: "k", entity: "E", output: "page", kind: "layout", layout: L, languages: {}, letterhead: "default", enabled: true, roles: [], copies: [] })).toEqual({ key: "k", entity: "E", output: "page", layout: L });
     expect(toSave({ key: "k", entity: "E", output: "page", languages: { en: { body: "x" } }, enabled: false })).toEqual({ key: "k", entity: "E", output: "page", languages: { en: { body: "x" } }, enabled: false });
+    expect(toSave({ key: "selling.x", entity: "E", output: "page", layout: L, default: true }).default).toBeUndefined();
   });
 });
 

@@ -89,6 +89,8 @@ export const useCatalogue = (entity: string | undefined) =>
     queryFn: ({ signal }) => api.get<Catalogue>(`/api/admin/documents/fields/${encodeURIComponent(entity ?? "")}`, undefined, signal),
     enabled: !!entity,
     staleTime: 60_000,
+    // An entity with a field of its own named like a system field (status) lists it twice: once is enough.
+    select: (c: Catalogue) => ({ ...c, system: c.system.filter((x) => !c.fields.some((f) => f.path === x.path)) }),
   });
 
 export const SOURCE_NAMES = (): Record<FormatRow["source"], string> => ({ package: tr("From the package"), edited: tr("Edited"), workspace: tr("Your own") });
