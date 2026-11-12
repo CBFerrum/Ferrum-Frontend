@@ -316,6 +316,23 @@ export function NotInstalled({ entity }: { entity: string }) {
   );
 }
 
+const reported = new Set<string>();
+
+/** A records page mounted on an address with no entity in it: its route lacks `:entity`. Said plainly, and once in the console,
+ *  rather than left on "Loading…" for ever (the first browser walk found CRM's forms so). */
+export function MissingEntity({ page }: { page: string }) {
+  useEffect(() => {
+    if (reported.has(page)) return;
+    reported.add(page);
+    console.error(`${page} was mounted without an entity in its address: its route needs ":entity" in its path (for example "e/:entity/:id").`);
+  }, [page]);
+  return (
+    <EmptyState title={t("This page was not given a record type")} icon="alert">
+      <p className="muted">{t("The address has no record type in it, so there is nothing to show. This is a fault in the app's page, not in your data.")}</p>
+    </EmptyState>
+  );
+}
+
 /** Whether a failed entity lookup means the workspace does not have the entity. */
 export const notInstalled = (error: unknown) => error instanceof ApiError && error.status === 404;
 

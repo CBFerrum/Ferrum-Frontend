@@ -15,12 +15,15 @@ import { recordsRoutes } from "@/app/recordsRoutes";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
-import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
+import { ConfirmHost, EmptyState, ErrorState, PageLoading, Toaster } from "@/ui/kit";
 
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } },
 });
+
+/** What a page shows while its code and first answers come: the router warns when a route that loads lazily has none to draw. */
+const Loading = () => <PageLoading />;
 
 function RouteError() {
   return <ErrorState error={useRouteError()} onRetry={() => window.location.reload()} />;
@@ -122,14 +125,14 @@ const scope = entry === "data" ? bootstrap()?.app?.scope : null;
 if (scope) setFrameMode("app", scope.packages, { pages: true, modules: scope.modules });
 // The accounts host (shapes B and C): its own page, without the bar, for every address there.
 const router = entry === "accounts"
-  ? createBrowserRouter([{ path: "*", lazy: () => import("./Accounts").then((m) => ({ Component: m.AccountsPage })), errorElement: <RouteError /> }])
+  ? createBrowserRouter([{ path: "*", HydrateFallback: Loading, lazy: () => import("./Accounts").then((m) => ({ Component: m.AccountsPage })), errorElement: <RouteError /> }])
   : scope
   ? createBrowserRouter(
-      [{ path: "/", element: <Records />, errorElement: <RouteError />, children: [{ index: true, lazy: () => import("@/app/Home").then((m) => ({ Component: m.Home })) }, ...recordsRoutes, { path: "*", element: <NotFound /> }] }],
+      [{ path: "/", HydrateFallback: Loading, element: <Records />, errorElement: <RouteError />, children: [{ index: true, lazy: () => import("@/app/Home").then((m) => ({ Component: m.Home })) }, ...recordsRoutes, { path: "*", element: <NotFound /> }] }],
       { basename: `${routeBase("data")}${scope.app}` },
     )
   : createBrowserRouter(
-      [{ path: "/", element: <Page />, errorElement: <Page><RouteError /></Page>, children: [...(pages[entry] ?? pages[""]), { path: "*", element: <NotFound /> }] }],
+      [{ path: "/", HydrateFallback: Loading, element: <Page />, errorElement: <Page><RouteError /></Page>, children: [...(pages[entry] ?? pages[""]), { path: "*", element: <NotFound /> }] }],
       { basename: routeBase(entry) },
     );
 
