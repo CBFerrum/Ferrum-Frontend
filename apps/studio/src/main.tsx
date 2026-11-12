@@ -14,7 +14,7 @@ import { bootstrap, routeBase, shell, t, wordsReady } from "@ferrum/client";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
 import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
-import { ConfirmHost, EmptyState, ErrorState, Toaster } from "@/ui/kit";
+import { ConfirmHost, EmptyState, ErrorState, PageLoading, Toaster } from "@/ui/kit";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false, staleTime: 30_000 } },
@@ -95,9 +95,13 @@ function Bare() {
   return <Outlet />;
 }
 
+/** What a page shows while its code and first answers come: the router warns when a lazily loaded route has none to draw. */
+const Loading = () => <PageLoading />;
+
 const portalRoutes: RouteObject[] = [
   {
     path: "/",
+    HydrateFallback: Loading,
     element: (
       <main>
         <Bare />
@@ -119,6 +123,7 @@ const portalRoutes: RouteObject[] = [
 const studioRouter = () => createBrowserRouter([
   {
     path: "/",
+    HydrateFallback: Loading,
     element: (
       <>
         <Started />

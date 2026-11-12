@@ -14,13 +14,14 @@ import { ErrorState, toast } from "@/ui/kit";
 import { Field } from "./field";
 import { useQueryClient } from "@tanstack/react-query";
 import { t as tr, isolate } from "@ferrum/client";
+import { canonicalZones, deviceZone } from "../../../lib/zone";
 
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const DAY_LABEL: Record<(typeof DAYS)[number], string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 
 function zones(): string[] {
   try {
-    return (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+    return canonicalZones((Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? []);
   } catch {
     return [];
   }
@@ -40,7 +41,7 @@ export function CalendarsPage() {
         title={tr("Calendars")}
         description={tr("Which days count as business days for deadlines, and in which time zone.")}
         actions={
-          <Button size="sm" onClick={() => setEditing({ name: "", zone: Intl.DateTimeFormat().resolvedOptions().timeZone, weekends: ["sat", "sun"], holidays: [] })}>
+          <Button size="sm" onClick={() => setEditing({ name: "", zone: deviceZone(), weekends: ["sat", "sun"], holidays: [] })}>
             <Plus aria-hidden /> {tr("New calendar")}
           </Button>
         }

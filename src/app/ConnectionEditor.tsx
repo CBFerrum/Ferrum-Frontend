@@ -240,20 +240,25 @@ function Operation({ name, op, onChange, onRemove }: { name: string; op: Desc; o
   );
 }
 
+/** What is wrong with a name being typed, or nothing: the rule is a hint until an entry breaks it (never red before anything is typed). */
+const nameProblem = (name: string, taken: boolean): string | undefined =>
+  name === "" ? undefined : !NAME.test(name) ? t("A name has lower case letters, digits and _, and starts with a letter") : taken ? t("Already used: choose another name") : undefined;
+const NAME_HINT = () => t("Lower case letters, digits and _, not used yet");
+
 function Operations({ d, set }: { d: Desc; set: Set }) {
   const [name, setName] = useState("");
   const ops: Desc = d.operations ?? {};
-  const bad = name !== "" && (!NAME.test(name) || name in ops);
+  const bad = nameProblem(name, name in ops);
   return (
     <div className="stack">
       {Object.entries(ops).map(([n, op]) => (
         <Operation key={n} name={n} op={op} onChange={(o) => set(["operations", n], o)} onRemove={() => set(["operations"], Object.fromEntries(Object.entries(ops).filter(([k]) => k !== n)))} />
       ))}
       <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
-        <Field label={t("New operation")} htmlFor="op-new" error={bad ? t("Lower case letters, digits and _, not used yet") : undefined}>
+        <Field label={t("New operation")} htmlFor="op-new" hint={NAME_HINT()} error={bad}>
           <input id="op-new" className="input mono" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Button disabled={!name || bad} onClick={() => { set(["operations"], { ...ops, [name]: {} }); setName(""); }}>{t("Add operation")}</Button>
+        <Button disabled={!name || !!bad} onClick={() => { set(["operations"], { ...ops, [name]: {} }); setName(""); }}>{t("Add operation")}</Button>
       </div>
     </div>
   );
@@ -400,7 +405,7 @@ export function SecretsPanel({ row, referenced }: { row: ConnectionRow; referenc
   const [error, setError] = useState<string | null>(null);
   const boxes = useRef<Record<string, HTMLInputElement | null>>({});
   const names = [...new globalThis.Set([...held, ...referenced, ...added])];
-  const bad = name !== "" && (!NAME.test(name) || names.includes(name));
+  const bad = nameProblem(name, names.includes(name));
   const call = async (key: string, body: ReturnType<typeof secretsPatch>, done: string) => {
     if (busy) return;
     setBusy(key);
@@ -441,10 +446,10 @@ export function SecretsPanel({ row, referenced }: { row: ConnectionRow; referenc
         </div>
       ))}
       <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
-        <Field label={t("Another secret")} htmlFor="secret-new" error={bad ? t("Lower case letters, digits and _, not used yet") : undefined}>
+        <Field label={t("Another secret")} htmlFor="secret-new" hint={NAME_HINT()} error={bad}>
           <input id="secret-new" className="input mono" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Button disabled={!name || bad} onClick={() => { setAdded((a) => [...a, name]); setName(""); }}>{t("Add")}</Button>
+        <Button disabled={!name || !!bad} onClick={() => { setAdded((a) => [...a, name]); setName(""); }}>{t("Add")}</Button>
       </div>
     </section>
   );
@@ -452,7 +457,7 @@ export function SecretsPanel({ row, referenced }: { row: ConnectionRow; referenc
 
 function Secrets({ names, set: setNames, extra, addName }: { names: string[]; set: string[]; extra: string[]; addName: (n: string) => void }) {
   const [name, setName] = useState("");
-  const bad = name !== "" && (!NAME.test(name) || names.includes(name));
+  const bad = nameProblem(name, names.includes(name));
   return (
     <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <legend className="field-label">{t("Secrets")}</legend>
@@ -464,10 +469,10 @@ function Secrets({ names, set: setNames, extra, addName }: { names: string[]; se
         </Field>
       ))}
       <div className="row" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
-        <Field label={t("Another secret")} htmlFor="secret-new" error={bad ? t("Lower case letters, digits and _, not used yet") : undefined}>
+        <Field label={t("Another secret")} htmlFor="secret-new" hint={NAME_HINT()} error={bad}>
           <input id="secret-new" className="input mono" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Button disabled={!name || bad} onClick={() => { addName(name); setName(""); }}>{t("Add")}</Button>
+        <Button disabled={!name || !!bad} onClick={() => { addName(name); setName(""); }}>{t("Add")}</Button>
       </div>
       {extra.length > 0 && <p className="faint">{t("Added here: {names}", { names: extra.join(", ") })}</p>}
     </fieldset>

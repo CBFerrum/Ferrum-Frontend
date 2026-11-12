@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { byParent, permissionLines, sectionLabel, updateBrings, updateLabel } from "./Apps";
+import { renderToString } from "react-dom/server";
+import { createElement } from "react";
+import { byParent, permissionLines, sectionLabel, unmetRequirement, UpdateFirst, updateBrings, updateLabel } from "./Apps";
 
 describe("add-ons", () => {
   it("follow the app they extend, at any depth", () => {
@@ -46,5 +48,30 @@ describe("what an update brings", () => {
     expect(updateBrings({ version: "1.2.0", packages: [] })).toBeNull();
     expect(updateBrings(null)).toBeNull();
     expect(updateLabel("1.1.0", { version: "1.2.0" })).toBe("Update to 1.2.0");
+  });
+});
+
+describe("an app the workspace's installed apps are too old for", () => {
+  // The refusal as GET /api/admin/apps/pos/plan answered it (422) on the first browser walk.
+  const said = "cannot install: pos 0.7.3 requires erp >=0.26, but erp 0.24.1 is installed; upgrade erp first";
+
+  it("is read from the server's words: which app, what it needs, what is installed", () => {
+    expect(unmetRequirement(said)).toEqual({ app: "pos", version: "0.7.3", dep: "erp", need: ">=0.26", have: "0.24.1" });
+    expect(unmetRequirement("pos needs erp, which is disabled in this workspace; enable it first")).toBeNull();
+  });
+
+  it("says what must be updated first and offers that update, with no install button", () => {
+    const need = unmetRequirement(said)!;
+    const html = renderToString(createElement(UpdateFirst, { need, installed: [{ id: "erp", name: "ERP", update: { version: "0.26.0" } }], onFirst: () => {} }));
+    expect(html).toContain("pos 0.7.3 needs ERP &gt;=0.26, and this workspace has ERP 0.24.1.");
+    expect(html).toContain("Update ERP first, then install it.");
+    expect(html).toContain("Update ERP to 0.26.0");
+    expect(html).not.toContain("Install");
+  });
+
+  it("says so, with no button, where this server has nothing newer to update to", () => {
+    const html = renderToString(createElement(UpdateFirst, { need: unmetRequirement(said)!, installed: [{ id: "erp", name: "ERP", update: null }], onFirst: () => {} }));
+    expect(html).toContain("This server has no newer ERP to update to");
+    expect(html).not.toContain("<button");
   });
 });
