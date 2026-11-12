@@ -142,6 +142,9 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   }
 }
 
+/** The whole response (a print format's ETag, a PDF), its refusals parsed as every request's. */
+export const requestRaw = (path: string, o: RequestOptions = {}) => send(path, o);
+
 export async function request<T>(path: string, o: RequestOptions = {}): Promise<T> {
   const res = await send(path, o);
   if (res.status === 204) return undefined as T;

@@ -3,7 +3,7 @@
 
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPrint, saveBlob, type FieldError } from "../lib/api";
 import { asRows, calcBody, carryTitles, createBody, diffDoc, errorAtCell, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
@@ -43,6 +43,7 @@ import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
 import { RecordMessages } from "./MessageLog";
 import { EmailDocDialog } from "./EmailDoc";
+import { formatLabel, pdfFileName, type Choices, type PrintChoice } from "../lib/printLayout";
 import { preloadRichTextEditor } from "../ui/richtext";
 import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
@@ -207,6 +208,9 @@ function tabLabel(label: string, errors: number): ReactNode {
   );
 }
 
+// The print dialog (PRINT-FORMATS-SPEC §7.1) loads when it is first opened.
+const PrintDialog = lazy(() => import("./PrintDialog").then((m) => ({ default: m.PrintDialog })));
+
 const WIDE = new Set(["text", "markdown", "code", "json"]);
 
 /** How many of a record's own actions show as buttons in its header; the rest go in the overflow menu. */
@@ -222,6 +226,11 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const server = useServerInfo().data;
   const pdf = server?.pdf === true;
   const [emailing, setEmailing] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  /** The print dialog's choice for "E-mail as PDF", with the format's name; null: the toolbar's E-mail (the default format). */
+  const [emailPrint, setEmailPrint] = useState<{ print: PrintChoice; format: string } | null>(null);
+  const printButtonId = useId();
+  const printLevel = server?.print ?? 0;
   const [merging, setMerging] = useState(false);
   const user = useMemo(() => userScope(me), [me]);
   const [base, setBase] = useState<Doc | null>(initial);
@@ -616,11 +625,33 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  // The record type's formats: a server before print formats (§6.4) still has a dialog when it has document templates, and the
+  // e-mail dialog names the default format the attachment prints as.
+  const oldChoices = useQuery({
+    queryKey: ["print", "choices", E, null],
+    queryFn: ({ signal }) => api.get<Choices>(`/api/documents/choices/${encodeURIComponent(E)}`, undefined, signal),
+    enabled: !isNew && !!server,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const printDialog = !isNew && (printLevel >= 1 || !!oldChoices.data?.templates.some((x) => x.output === "page"));
+  const printDialogRef = useRef(printDialog);
+  printDialogRef.current = printDialog;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         if (!locked && dirty && !busy) void saveRef.current();
+      }
+      // Ctrl/Cmd+P on the record opens its print dialog; with focus outside the page (the bar) the browser's own print stays.
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p" && printDialogRef.current) {
+        const at = document.activeElement;
+        if (at && at !== document.body && !at.closest("main") && !at.closest(".dialog")) return;
+        if (document.querySelector("dialog[open]")) return;
+        e.preventDefault();
+        document.getElementById(printButtonId)?.focus(); // so the dialog gives focus back to the Print button
+        setPrinting(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -950,10 +981,13 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               }
             </Menu>
           ))}
-          {!isNew && (
+          {printDialog && (
+            <Button id={printButtonId} variant="ghost" className="btn-icon" icon="printer" aria-label={t("Print")} title={tr("Print (Ctrl+P)")} aria-keyshortcuts="Control+P Meta+P" aria-haspopup="dialog" onClick={() => setPrinting(true)} />
+          )}
+          {!isNew && !printDialog && (
             <Button variant="ghost" className="btn-icon" icon="printer" aria-label={t("Print")} title={t("Print")} onClick={() => openPrint(docPath(E, String(id), "print")).catch((e) => toast(errorMessage(e), "error"))} />
           )}
-          {!isNew && pdf && (
+          {!isNew && !printDialog && pdf && (
             <Button variant="ghost" className="btn-icon" icon="download" aria-label={tr("PDF")} title={tr("PDF")} onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))} />
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
@@ -971,6 +1005,26 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               }}
             />
           )}
+          {printing && (
+            <Suspense fallback={<Spinner small label={tr("Opening the print dialog…")} />}>
+              <PrintDialog
+                entity={E}
+                entityLabel={meta.label}
+                id={String(id)}
+                title={`${meta.label} ${typeof doc.number === "string" ? doc.number : ""}`.trim()}
+                level={printLevel}
+                pdf={pdf}
+                canEmail={server?.mail === true && can(meta.permissions, "export")}
+                canAttach={pdf && server?.mail_attachments === true}
+                onEmail={(print, format) => {
+                  setPrinting(false);
+                  setEmailPrint({ print, format });
+                  setEmailing(true);
+                }}
+                onClose={() => setPrinting(false)}
+              />
+            </Suspense>
+          )}
           {emailing && (
             <EmailDocDialog
               entity={E}
@@ -981,7 +1035,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               html={server?.mail_html === true}
               doc={doc}
               fields={meta.fields}
-              onClose={() => setEmailing(false)}
+              print={emailPrint?.print}
+              attachmentName={pdfFileName(emailPrint?.format ?? formatLabel(oldChoices.data, undefined, meta.label), typeof doc.number === "string" && doc.number ? doc.number : String(id))}
+              onClose={() => (setEmailing(false), setEmailPrint(null))}
             />
           )}
           {merging && (
