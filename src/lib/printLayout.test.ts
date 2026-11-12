@@ -282,3 +282,21 @@ describe("a format as saved", () => {
     expect(toSave({ key: "k", entity: "E", output: "page", languages: { en: { body: "x" } }, enabled: false })).toEqual({ key: "k", entity: "E", output: "page", languages: { en: { body: "x" } }, enabled: false });
   });
 });
+
+describe("a letter head's form (§7.5)", () => {
+  it("writes header and footer blocks a letter head may hold, and reads them back", async () => {
+    const { letterHeadBlocks, letterHeadForm, EMPTY_LETTERHEAD } = await import("./printLayout");
+    const f = { ...EMPTY_LETTERHEAD, logo: "/files/0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", logo_position: "start" as const, lines: [{ kind: "field" as const, path: "company.company_name", bold: true }, { kind: "text" as const, text: "GSTIN {company.in_gstin}" }], footer: "Page {print.page} of {print.pages}" };
+    const b = letterHeadBlocks(f);
+    expect(b.header.sections[0].columns.map((c) => c.id)).toEqual(["lh_logo_c", "lh_lines_c"]);
+    expect(b.header.sections[0].widths).toEqual([4, 8]);
+    for (const part of [b.header, b.footer]) expect(validate({ version: 1, sections: part.sections }, null, { letterhead: true })).toEqual([]);
+    expect(letterHeadForm(b.header, b.footer)).toEqual(f);
+    expect(letterHeadForm(null, null)).toEqual(EMPTY_LETTERHEAD);
+    expect(letterHeadForm({ sections: [{ id: "x", columns: [] }] }, null)).toBeNull();
+    const centred = letterHeadBlocks({ ...f, logo_position: "center", footer: "" });
+    expect(centred.header.sections[0].columns.length).toBe(1);
+    expect(centred.footer.sections).toEqual([]);
+    expect(letterHeadForm(centred.header, centred.footer)?.logo_position).toBe("center");
+  });
+});
