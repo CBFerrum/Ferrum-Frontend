@@ -42,6 +42,14 @@ export type Trigger =
   | { kind: "raw"; event: string; schedule?: unknown };
 
 export type NotifyTo = "owner" | "role" | "user" | "field";
+/** One recipient spec of a message effect: `owner`, `user:<id>`, `role:<name>`, `field:<name>` or `expr:<expression>`. */
+export interface MessageTo { key: string; kind: "owner" | "user" | "role" | "field" | "expr"; value: string }
+export const MESSAGE_TO_KINDS = ["owner", "user", "role", "field", "expr"] as const;
+export const MESSAGE_CHANNEL_NAMES = ["email", "text", "chat", "inapp"] as const;
+const toSpec = (spec: string): MessageTo | null => {
+  const m = /^(user|role|field|expr):([\s\S]*)$/.exec(spec);
+  return spec === "owner" ? { key: newKey(), kind: "owner", value: "" } : m ? { key: newKey(), kind: m[1] as MessageTo["kind"], value: m[2] } : null;
+};
 export type DraftAction = (
   | { key: string; kind: "set_fields"; rows: Row[] }
   | { key: string; kind: "create_document"; entity: string; rows: Row[] }
@@ -51,8 +59,12 @@ export type DraftAction = (
   | { key: string; kind: "append_line"; table: string; rows: Row[]; extra: Record<string, unknown> }
   /** Changes the one line of `table` for which `where` holds (`row` is the line). */
   | { key: string; kind: "set_line"; table: string; where: string; rows: Row[]; extra: Record<string, unknown> }
-  | { key: string; kind: "notify"; to: NotifyTo; target: string; title: string; body: string }
-  | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string }
+  /** `message`: a message template's key (BD-20) in place of the title. */
+  | { key: string; kind: "notify"; to: NotifyTo; target: string; title: string; body: string; message?: string }
+  /** `message`: a message template's key in place of the subject and body. */
+  | { key: string; kind: "email"; to: string; subject: string; purpose?: string; formatted: boolean; body: string; template: string; message?: string }
+  /** A message template sent to people on the channels it has (BD-20): `to` specs, `channels` in the order tried (none: the template's), `all` for every channel each can be reached on, `values` the template declares. */
+  | { key: string; kind: "message"; template: string; to: MessageTo[]; channels: string[]; all: boolean; values: Row[]; extra: Record<string, unknown> }
   /** A step of another app through the capability catalog; `once` gives it its own `key` expression. `extra`: what the editor has no control for. */
   | { key: string; kind: "invoke"; capability: string; rows: Row[]; once: boolean; onceKey: string; extra: Record<string, unknown> }
   /** The one record of `entity` whose `by` fields hold those values; `create` (made when none) and `update` (changed when found) are null when absent. */
@@ -206,16 +218,25 @@ function fromKnown(a: unknown): DraftAction {
       return set ? { key: newKey(), kind: "set_line", table: a.table as string, where: a.where as string, rows, extra } : { key: newKey(), kind: "append_line", table: a.table as string, rows, extra };
     }
     case "notify": {
-      if (!onlyKeys(a, ["type", "to", "title", "body"]) || !isStr(a.to) || !isStr(a.title) || !(a.body === undefined || isStr(a.body))) return raw;
+      const named = isStr(a.message) && a.title === undefined && a.body === undefined;
+      if (!onlyKeys(a, ["type", "to", "title", "body", "message"]) || !isStr(a.to) || !(named || (isStr(a.title) && a.message === undefined)) || !(a.body === undefined || isStr(a.body))) return raw;
       const m = /^(role|user|field):(.*)$/.exec(a.to);
       if (a.to !== "owner" && !m) return raw;
-      return { key: newKey(), kind: "notify", to: m ? (m[1] as NotifyTo) : "owner", target: m ? m[2] : "", title: a.title, body: (a.body as string) ?? "" };
+      return { key: newKey(), kind: "notify", to: m ? (m[1] as NotifyTo) : "owner", target: m ? m[2] : "", title: (a.title as string) ?? "", body: (a.body as string) ?? "", ...(named ? { message: a.message as string } : {}) };
     }
     case "email": {
-      const ok = onlyKeys(a, ["type", "to", "subject", "body", "template", "purpose"]) && isStr(a.to) && isStr(a.subject) && isStr(a.body) && (a.template === undefined || isStr(a.template)) && (a.purpose === undefined || a.purpose === "transactional" || a.purpose === "marketing");
+      const named = isStr(a.message) && a.subject === undefined && a.body === undefined && a.template === undefined;
+      const ok = onlyKeys(a, ["type", "to", "subject", "body", "template", "purpose", "message"]) && isStr(a.to) && (named || (isStr(a.subject) && isStr(a.body) && a.message === undefined)) && (a.template === undefined || isStr(a.template)) && (a.purpose === undefined || a.purpose === "transactional" || a.purpose === "marketing");
       return ok
-        ? { key: newKey(), kind: "email", to: a.to as string, subject: a.subject as string, purpose: a.purpose as string | undefined, formatted: a.template !== undefined, body: a.body as string, template: (a.template as string) ?? "" }
+        ? { key: newKey(), kind: "email", to: a.to as string, subject: (a.subject as string) ?? "", purpose: a.purpose as string | undefined, formatted: a.template !== undefined, body: (a.body as string) ?? "", template: (a.template as string) ?? "", ...(named ? { message: a.message as string } : {}) }
         : raw;
+    }
+    case "message": {
+      const specs = (isStr(a.to) ? [a.to] : Array.isArray(a.to) ? a.to : []).map((x) => (isStr(x) ? toSpec(x) : null));
+      const values = a.values === undefined ? [] : rowsOf(a.values);
+      const channels = a.channels === undefined ? [] : Array.isArray(a.channels) && a.channels.every((c) => isStr(c) && (MESSAGE_CHANNEL_NAMES as readonly string[]).includes(c)) ? (a.channels as string[]) : null;
+      if (!isStr(a.template) || !specs.length || specs.some((x) => !x) || !values || !channels || !(a.all === undefined || typeof a.all === "boolean")) return raw;
+      return { key: newKey(), kind: "message", template: a.template, to: specs as MessageTo[], channels, all: a.all === true, values, extra: rest(a, ["type", "template", "to", "channels", "all", "values"]) };
     }
     case "invoke": {
       const rows = a.input === undefined ? [] : rowsOf(a.input);
@@ -271,6 +292,7 @@ export function fromAutomation(a: Partial<Automation>): Draft {
 
 // ── draft → JSON ──
 
+const specOf = (t: MessageTo) => (t.kind === "owner" ? "owner" : `${t.kind}:${t.value}`);
 const values = (rows: Row[]) => Object.fromEntries(rows.map((r) => [r.field.trim(), r.expr]));
 
 export function actionJson(a: DraftAction): unknown {
@@ -293,7 +315,9 @@ function actionBody(a: DraftAction): unknown {
     case "set_line":
       return { ...a.extra, type: "set_line", table: a.table, where: a.where, values: values(a.rows) };
     case "notify":
-      return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, title: a.title, ...(a.body.trim() ? { body: a.body } : {}) };
+      return { type: "notify", to: a.to === "owner" ? "owner" : `${a.to}:${a.target}`, ...(a.message ? { message: a.message } : { title: a.title, ...(a.body.trim() ? { body: a.body } : {}) }) };
+    case "message":
+      return { ...a.extra, type: "message", template: a.template, to: a.to.length === 1 ? specOf(a.to[0]) : a.to.map(specOf), ...(a.channels.length ? { channels: a.channels } : {}), ...(a.all ? { all: true } : {}), ...(a.values.length ? { values: values(a.values) } : {}) };
     case "find":
       return { ...a.extra, type: "find", entity: a.entity, by: values(a.by), ...(a.create ? { create: values(a.create) } : {}), ...(a.update ? { update: values(a.update) } : {}) };
     case "for_each":
@@ -303,6 +327,7 @@ function actionBody(a: DraftAction): unknown {
     case "invoke":
       return { ...a.extra, type: "invoke", capability: a.capability, ...(a.rows.length ? { input: values(a.rows) } : {}), ...(a.once ? { key: a.onceKey } : {}) };
     case "email":
+      if (a.message) return { type: "email", to: a.to, message: a.message, ...(a.purpose ? { purpose: a.purpose } : {}) };
       // The server always wants a body; a formatted mail with none gets an empty text.
       return { type: "email", to: a.to, subject: a.subject, body: a.formatted && !a.body.trim() ? "''" : a.body, ...(a.formatted ? { template: a.template } : {}), ...(a.purpose ? { purpose: a.purpose } : {}) };
   }
@@ -425,7 +450,7 @@ export function checkActions(actions: DraftAction[], max: number, catalog?: Capa
       if (a.rows.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every row needs a field and a value."));
     } else if (a.kind === "notify") {
       if (a.to !== "owner" && !a.target.trim()) at(a.to === "role" ? tr("choose the role to tell.") : a.to === "user" ? tr("choose the person to tell.") : tr("choose the field that holds the person to tell."));
-      if (!a.title.trim()) at(tr("write the notification's title."));
+      if (!a.message && !a.title.trim()) at(tr("write the notification's title."));
     } else if (a.kind === "invoke") {
       const cap = catalog?.find((c) => c.id === a.capability);
       if (!a.capability) at(tr("choose the step of another app to run."));
@@ -437,8 +462,13 @@ export function checkActions(actions: DraftAction[], max: number, catalog?: Capa
       if (a.once && !a.onceKey.trim()) at(tr("write the key that makes it happen once."));
     } else if (a.kind === "email") {
       if (!a.to.trim()) at(tr("say who the mail goes to."));
-      if (!a.subject.trim()) at(tr("write the subject."));
-      if (a.formatted ? !a.template.trim() : !a.body.trim()) at(a.formatted ? tr("write the formatted message.") : tr("write the message."));
+      if (!a.message && !a.subject.trim()) at(tr("write the subject."));
+      if (!a.message && (a.formatted ? !a.template.trim() : !a.body.trim())) at(a.formatted ? tr("write the formatted message.") : tr("write the message."));
+    } else if (a.kind === "message") {
+      if (!a.template) at(tr("choose the message template to send."));
+      if (!a.to.length) at(tr("say who the message goes to."));
+      if (a.to.some((x) => x.kind !== "owner" && !x.value.trim())) at(tr("every recipient needs a role, a person, a field or an expression."));
+      if (a.values.some((r) => !r.field.trim() || !r.expr.trim())) at(tr("every value needs a name and an expression."));
     }
   });
   return out;
