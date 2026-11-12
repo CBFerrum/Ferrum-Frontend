@@ -4241,6 +4241,10 @@ const words: Record<string, string> = {
   "say who it is escalated to.": "बताएँ कि इसे किसे आगे भेजा जाए।",
   "set when it is escalated, or take the escalation off.": "तय करें कि कब आगे भेजा जाए, या आगे भेजना हटा दें।",
   "Action “{action}”: {message}": "कार्रवाई “{action}”: {message}",
+  "{person} is deciding for you today, until {end}.": "आज {person} आपकी ओर से निर्णय ले रहे हैं, {end} तक।",
+  "You have no away period set.": "आपकी कोई अनुपस्थिति अवधि तय नहीं है।",
+  "Away periods": "अनुपस्थिति की अवधियाँ",
+  "Now": "अभी",
 };
 
 export default words;
