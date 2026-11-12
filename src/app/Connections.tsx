@@ -134,6 +134,9 @@ export function Connections() {
                   {!c.offered && who === "workspace" && (
                     <Button size="sm" loading={busy === `connect:${c.id}`} disabled={!!busy} onClick={() => connect(c)}>{s === "reconnect" ? t("Connect again") : c.account ? t("Reconnect") : t("Connect")}</Button>
                   )}
+                  {!c.offered && c.description.auth?.type === "session" && (
+                    <Button size="sm" loading={busy === `session:${c.id}`} disabled={!!busy} onClick={() => void act(`session:${c.id}`, () => api.post(`/api/admin/connections/${c.id}/session`), t("Signed in"))}>{t("Sign in again")}</Button>
+                  )}
                   {!c.offered && who === "workspace" && c.account && (
                     <Button size="sm" variant="ghost" loading={busy === `disconnect:${c.id}`} disabled={!!busy} onClick={() => void disconnect(c)}>{t("Disconnect")}</Button>
                   )}

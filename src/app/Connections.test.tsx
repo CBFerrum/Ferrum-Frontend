@@ -54,17 +54,34 @@ describe("the editor", () => {
     expect(html).toContain('value="https://api.carrier.example/v2"');
     expect(html).toContain('value="/tracks/{{ inputs.tracking }}"');
     expect(html).toContain("Called from outside");
-    const secrets = [...html.matchAll(/<input[^>]*name="secret:([a-z_]+)"[^>]*>/g)];
+    const secrets = [...html.matchAll(/<input[^>]*id="secret-(api_key|hook)"[^>]*>/g)];
     expect(secrets.map((m) => m[1]).sort()).toEqual(["api_key", "hook"]);
     for (const m of secrets) expect(m[0]).toContain('type="password"');
     for (const m of secrets) expect(m[0]).not.toMatch(/value="[^"]/);
     expect(text(html)).toContain("Set. Type to replace it.");
     expect(text(html)).toContain("Not set.");
+    expect(html).toContain('aria-label="Replace api_key"');
+    expect(html).toContain('aria-label="Remove api_key"');
+    expect(html).not.toContain('aria-label="Remove hook"');
+    expect(html).not.toContain('name="secret:');
     expect(await violations(html)).toEqual([]);
   });
   it("starts a new connection with nothing set", () => {
     const fresh = render(<ConnectionEditor row={null} onClose={() => {}} onSaved={() => {}} />);
     expect(text(fresh)).toContain("No secret is named yet.");
+    expect(fresh).not.toContain("Replace ");
+  });
+  it("keeps a pick, a form part and a file body it has no control for exactly as they are", async () => {
+    const odd: ConnectionRow = { ...carrier, description: { ...carrier.description, auth: { type: "session", login: "login", refresh: "refresh", token_at: "/t" },
+      operations: { login: {}, refresh: {}, up: { method: "POST", path: "/u", form: { caption: "{{ inputs.t }}", media: { file: "{{ inputs.f }}", max_bytes: 5 } }, result: { id: { header: "Location", required: true }, label: { file: { from: "/u" } }, n: "/n" } },
+        down: { body: { file: "{{ inputs.v }}" } } }, meta: { owner: "ops" } } };
+    const html = render(<ConnectionEditor row={odd} onClose={() => {}} onSaved={() => {}} />);
+    expect(html).toContain("A session: log in, then refresh");
+    expect(html).toContain("&quot;file&quot;:&quot;{{ inputs.f }}&quot;");
+    expect(html).toMatch(/<option value="header" selected/);
+    expect(html).toContain("Kept as it is");
+    expect(html).toContain("&quot;owner&quot;: &quot;ops&quot;");
+    expect(await violations(html)).toEqual([]);
   });
 });
 

@@ -93,7 +93,8 @@ export function parseDescription(text: string): { ok: true; value: Desc } | { ok
 }
 
 /** `{a, b}` as the same words an input takes: `["weight", "ref"]` from "weight, ref". */
-export const entries = (m: unknown): [string, string][] => Object.entries((m && typeof m === "object" ? m : {}) as Record<string, unknown>).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]);
+/** A map as rows; a value that is not text (a pick, a file part) stays as it is. */
+export const entries = (m: unknown): [string, unknown][] => Object.entries((m && typeof m === "object" ? m : {}) as Record<string, unknown>);
 
 /** Every secret the description names: the ones calls, the signing and the sign-in use. */
 export function secretNames(d: Desc): string[] {
@@ -104,15 +105,36 @@ export function secretNames(d: Desc): string[] {
 /** A secret's name: lower case letters, digits and `_`, starting with a letter (what the server takes). */
 export const NAME = /^[a-z][a-z0-9_]{0,62}$/;
 
-/** What goes in `secrets`: nothing when none was typed (the ones set stay), else every name listed with its value: the server
- * replaces the whole set, so a name left out would be lost. `error` says which are missing. */
-export function secretsToSend(names: string[], values: Record<string, string>): { send?: Record<string, string>; error?: string } {
-  const typed = names.filter((n) => (values[n] ?? "") !== "");
-  if (!typed.length) return {};
-  const missing = names.filter((n) => !(values[n] ?? ""));
-  if (missing.length) return { error: t("Saving secrets replaces them all. Enter a value for {names} too, or leave every secret empty to keep what is set.", { names: missing.join(", ") }) };
-  return { send: Object.fromEntries(names.map((n) => [n, values[n]])) };
+/** The secrets typed for a new connection: only those with a value (nothing to keep, nothing to lose), none when none was typed. */
+export function typedSecrets(values: Record<string, string>): Record<string, string> | undefined {
+  const typed = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== ""));
+  return Object.keys(typed).length ? typed : undefined;
 }
+
+/** `PATCH /api/admin/connections/{id}/secrets`: set or replace some, remove others, the rest kept. */
+export const secretsPatch = (set: Record<string, string>, remove: string[] = []) => ({ set, remove });
+
+export type PickKind = "at" | "header" | "link" | "expr";
+export const PICK_KINDS: PickKind[] = ["at", "header", "link", "expr"];
+export interface ResultPick { kind: PickKind; value: string; required: boolean }
+
+/** A result or mapping value as a pick (BD-46): a pointer, or `{at | header | link | expr: text, required?}`; `null` for what has no
+ * form here (a file, anything else), which the screen keeps as it is. */
+export function readPick(v: unknown): ResultPick | null {
+  if (typeof v === "string") return { kind: "at", value: v, required: false };
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const kinds = PICK_KINDS.filter((k) => k in o);
+  const rest = Object.keys(o).filter((k) => !PICK_KINDS.includes(k as PickKind) && k !== "required");
+  if (kinds.length !== 1 || rest.length || typeof o[kinds[0]] !== "string" || (o.required !== undefined && typeof o.required !== "boolean")) return null;
+  return { kind: kinds[0], value: o[kinds[0]] as string, required: o.required === true };
+}
+
+/** The value a pick comes to: a plain pointer stays a string. */
+export const makePick = (p: ResultPick): unknown => (p.kind === "at" && !p.required ? p.value : { [p.kind]: p.value, ...(p.required ? { required: true } : {}) });
+
+/** The inbound signature may leave the timestamp out only when the caller's delivery id is named. */
+export const signatureNeedsDelivery = (d: Desc): boolean => at(d, "inbound", "verify", "type") === "signature" && !at(d, "inbound", "verify", "timestamp_header") && !at(d, "inbound", "delivery_header") && !at(d, "inbound", "delivery_at");
 
 /** The body of `POST /api/admin/connections` and `PUT …/{id}`: the description tidied, `secrets` only when given. */
 export function connectionBody(f: { name: string; label: string; enabled: boolean; description: Desc }, secrets?: Record<string, string>) {
@@ -140,7 +162,7 @@ export const changes = (op: Desc): boolean => (typeof op.changes === "boolean" ?
 export const captureMinutes = (s: string): number | null => (/^\d{1,2}$/.test(s.trim()) && Number(s) <= 60 ? Number(s) : null);
 
 export const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
-export const AUTH_KINDS = ["none", "header", "basic", "bearer", "signed", "oauth"] as const;
+export const AUTH_KINDS = ["none", "header", "basic", "bearer", "signed", "oauth", "session"] as const;
 export type AuthKind = (typeof AUTH_KINDS)[number];
 
 /** A new description for a new connection: nothing called, one operation to start from. */

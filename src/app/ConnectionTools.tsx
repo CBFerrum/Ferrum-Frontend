@@ -9,6 +9,9 @@ import { captureMinutes, changes, parseInputs, type ConnectionRow } from "../lib
 import { formatMoment } from "../lib/format";
 import { Alert, Badge, Button, Field, toast } from "../ui/kit";
 import { ListSkeleton, LoadFailed } from "../ui/patterns";
+import { useLinkTitle } from "./widgets";
+
+const Person = ({ id }: { id: string }) => <>{isolate(useLinkTitle("User", id) ?? "…")}</>;
 
 const when = (v?: string | null) => (v ? formatMoment(v, { dateStyle: "medium", timeStyle: "medium" }) : "");
 
@@ -157,7 +160,7 @@ export function Log({ row }: { row: ConnectionRow }) {
   );
 }
 
-interface Pull { name: string; cursor?: unknown; last_run?: string | null; next_run?: string | null; last_error?: string | null }
+interface Pull { user?: string | null; name: string; cursor?: unknown; last_run?: string | null; next_run?: string | null; last_error?: string | null }
 
 export function PullsPanel({ row }: { row: ConnectionRow }) {
   const qc = useQueryClient();
@@ -185,11 +188,12 @@ export function PullsPanel({ row }: { row: ConnectionRow }) {
     <div className="stack">
       {error && <Alert tone="error">{isolate(error)}</Alert>}
       <div className="table-scroll"><table className="table">
-        <thead><tr><th>{t("Pull")}</th><th>{t("Last run")}</th><th>{t("Next run")}</th><th>{t("Cursor")}</th><th>{t("Failure")}</th><th><span className="sr-only">{t("Actions")}</span></th></tr></thead>
+        <thead><tr><th>{t("Pull")}</th><th>{t("Runs as")}</th><th>{t("Last run")}</th><th>{t("Next run")}</th><th>{t("Cursor")}</th><th>{t("Failure")}</th><th><span className="sr-only">{t("Actions")}</span></th></tr></thead>
         <tbody>
           {q.data.pulls.map((p) => (
-            <tr key={p.name}>
+            <tr key={`${p.name}|${p.user ?? ""}`}>
               <td className="mono">{isolate(p.name)}</td>
+              <td>{p.user ? <Person id={p.user} /> : t("The workspace")}</td>
               <td>{p.last_run ? when(p.last_run) : t("Never")}</td>
               <td>{when(p.next_run)}</td>
               <td className="mono">{p.cursor == null ? "" : isolate(typeof p.cursor === "string" ? p.cursor : JSON.stringify(p.cursor))}</td>
