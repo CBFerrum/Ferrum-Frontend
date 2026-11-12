@@ -13,6 +13,13 @@ import {
 } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
+import { useMetaIndex } from "../lib/meta";
+import { MAX_TRANSITION_EFFECTS, newPolicy } from "../lib/workflowDraft";
+import { stepAt } from "../lib/approvalDraft";
+import { move as moveItem, type DraftAction } from "../lib/automationDraft";
+import { ActionCard, AddActions } from "./AutomationEditor";
+import { ApprovalEditor } from "./author/ApprovalEditor";
+import { Questions } from "./author/Questions";
 import { useApply } from "./author/apply";
 import { ExprInput, linkChips } from "./author/ExprInput";
 import { CheckGroup, RoleSelect } from "./author/RoleSelect";
@@ -271,11 +278,14 @@ function StatesTable({ meta, draft, problems, onChange }: { meta: EntityMeta; dr
 
 function TransitionsTable({ meta, draft, problems, serverError, onChange }: { meta: EntityMeta; draft: Draft; problems: Problem[]; serverError: string | null; onChange: (d: Draft) => void }) {
   const links = creatorLinkChoices(meta);
+  const index = useMetaIndex();
+  const entities = useMemo(() => [...(index.data?.entities ?? [])].sort((a, b) => a.label.localeCompare(b.label)).map((e) => ({ value: e.name, label: e.label })), [index.data]);
+  const flagged = new Set(problems.map((p) => p.step));
   const fieldChips = meta.fields.filter((f) => f.type !== "table").map((f) => ({ name: f.name, label: f.label }));
   const edit = (key: string, patch: Partial<DraftTransition>) => onChange({ ...draft, transitions: draft.transitions.map((t) => (t.key === key ? { ...t, ...patch } : t)) });
   const add = () => {
     const [a, b] = [draft.states[0]?.key ?? "", draft.states[1]?.key ?? draft.states[0]?.key ?? ""];
-    onChange({ ...draft, transitions: [...draft.transitions, { key: newKey("t"), action: "", from: a, to: b, roles: [], condition: "", not_creator: false, not_creator_of: [] }] });
+    onChange({ ...draft, transitions: [...draft.transitions, { key: newKey("t"), action: "", from: a, to: b, roles: [], condition: "", not_creator: false, not_creator_of: [], params: [], effects: [], approval: null, extra: {} }] });
   };
   const stateOptions = (current: string) => (
     <>
@@ -310,7 +320,10 @@ function TransitionsTable({ meta, draft, problems, serverError, onChange }: { me
               const what = t.action.trim() || tr("(no name)");
               const bad = problems.some((p) => p.transition === t.key);
               // The server names the action whose condition it could not read.
-              const conditionError = serverError && t.action.trim() && serverError.includes(`transition ${t.action.trim()}`) ? serverError : null;
+              const conditionError = serverError && t.action.trim() && serverError.includes(`transition ${t.action.trim()}`) && !/approval step/i.test(serverError) ? serverError : null;
+              const mentioned = serverError && t.action.trim() && serverError.includes(`transition ${t.action.trim()}`);
+              const approvalStep = t.approval && serverError ? stepAt(serverError, t.action, t.approval) : undefined;
+              const approvalError = mentioned && /approval step/i.test(serverError) ? serverError : null;
               return (
                 <tbody key={t.key}>
                   <tr>
@@ -339,6 +352,58 @@ function TransitionsTable({ meta, draft, problems, serverError, onChange }: { me
                             {tr("Not by whoever created the record")}
                           </label>
                           <CheckGroup legend={tr("Not by whoever is named in…")} options={links} value={t.not_creator_of} onChange={(v) => edit(t.key, { not_creator_of: v })} empty={tr("This entity has no link fields.")} />
+                        </div>
+                      </details>
+                      <details>
+                        <summary>{tr("What {name} asks for when it is taken", { name: isolate(what) })}</summary>
+                        <Questions d={t} onChange={(p) => edit(t.key, { params: p.params })} entities={entities} flagged={flagged} title={tr("Questions asked when it is taken")} hint={tr("A dialog asks these before the action is taken. The answers are params.name in the expressions and effects of this action.")} />
+                      </details>
+                      <details open={!!conditionError || undefined}>
+                        <summary>{tr("What {name} does", { name: isolate(what) })}</summary>
+                        <div className="stack">
+                          <p className="faint">{tr("In order, in the same step as the move: if any is refused, the move is undone.")}</p>
+                          {t.effects.map((a, n) => (
+                            <ActionCard
+                              key={a.key}
+                              a={a}
+                              index={n}
+                              count={t.effects.length}
+                              entities={entities}
+                              chips={meta.fields.filter((f) => f.type !== "table")}
+                              fields={meta.fields}
+                              flagged={flagged.has(a.key)}
+                              entity={meta.name}
+                              owner={t.action}
+                              inButton
+                              lines={meta.children}
+                              earlier={t.effects.slice(0, n)}
+                              onChange={(patch) => edit(t.key, { effects: t.effects.map((x) => (x.key === a.key ? ({ ...x, ...patch } as DraftAction) : x)) })}
+                              onMove={(by) => edit(t.key, { effects: moveItem(t.effects, n, by) })}
+                              onRemove={() => edit(t.key, { effects: t.effects.filter((x) => x.key !== a.key) })}
+                            />
+                          ))}
+                          <AddActions hasTable={meta.fields.some((f) => f.type === "table")} count={t.effects.length} max={MAX_TRANSITION_EFFECTS} onAdd={(a) => edit(t.key, { effects: [...t.effects, a] })} />
+                        </div>
+                      </details>
+                      <details open={!!approvalError || undefined}>
+                        <summary>{tr("Approval before {name}", { name: isolate(what) })}</summary>
+                        <div className="stack">
+                          <label className="check-field">
+                            <input type="checkbox" checked={!!t.approval} onChange={(e) => edit(t.key, { approval: e.target.checked ? newPolicy() : null })} />
+                            {tr("Others must agree before this is taken")}
+                          </label>
+                          {t.approval && (
+                            <ApprovalEditor
+                              policy={t.approval}
+                              onChange={(approval) => edit(t.key, { approval })}
+                              fields={meta.fields}
+                              actions={draft.transitions.map((x) => x.action.trim()).filter((a, n, all) => a && all.indexOf(a) === n)}
+                              states={draft.states.filter((x) => x.docstatus === (draft.states.find((f) => f.key === t.from)?.docstatus ?? 0)).map((x) => ({ value: x.key, label: x.name.trim() || tr("(no name)") }))}
+                              flagged={flagged}
+                              errorStep={approvalStep}
+                              error={approvalError ?? undefined}
+                            />
+                          )}
                         </div>
                       </details>
                     </td>

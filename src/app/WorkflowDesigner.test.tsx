@@ -83,4 +83,38 @@ describe("the workflow designer", () => {
     expect(await violations(html)).toEqual([]);
     expect(await violations(page({ ...meta, workflow: null } as EntityMeta))).toEqual([]);
   });
+
+  const asking = {
+    ...meta,
+    workflow: {
+      ...meta.workflow,
+      transitions: [
+        {
+          action: "Submit", from: "Draft", to: "Pending", roles: ["Purchaser"],
+          params: [{ name: "reason", label: "Reason", type: "text", required: true }],
+          effects: [{ type: "set_fields", values: { notes: "params.reason" } }],
+          approval: {
+            steps: [
+              { label: "Manager", approvers: { field: "supplier" } },
+              { label: "Finance", approvers: { role: "Purchase Manager" }, need: 2, when: "doc.total > 100", with_next: false, not_earlier_deciders: true, not_who_took: ["Submit"], remind_after: "PT8H", escalate_after: "P2D", escalate_to: { role: "Purchase Manager" } },
+            ],
+            allow_requester: false, reset_on: ["total"], on_reject: "Draft",
+          },
+        },
+      ],
+    },
+  } as unknown as EntityMeta;
+
+  it("shows a transition's questions, effects and approval steps, each control labelled", async () => {
+    const h = page(asking);
+    const t = text(h);
+    expect(t).toContain("Questions asked when it is taken");
+    expect(t).toContain("Approval before Submit");
+    expect(t).toContain("Step 2");
+    expect(t).toContain("At the same time as the next step");
+    expect(t).toContain("Not whoever took…");
+    expect(h).toContain('value="8"');
+    expect(h).toContain('value="2"');
+    expect(await violations(h)).toEqual([]);
+  });
 });
