@@ -110,3 +110,22 @@ describe("a button that does a step of another app", () => {
     expect(checkButton(d, [], true, []).length).toBe(1);
   });
 });
+
+describe("a signed link's parts of an action (BD-23, BD-44)", () => {
+  const link = {
+    name: "x_invite", label: "Invite", condition: "doc.status == 'Open'", condition_message: "{{ doc.title }} was accepted already",
+    params: [{ name: "photos", label: "Photos", type: "files", max_files: 3, max_bytes: 2000000, accept: ["image/*", "application/pdf"] }, { name: "scan", label: "Scan", type: "files" }],
+    effects: [{ type: "link", actions: ["accept"], show: ["items"], columns: { items: ["item", "qty"] }, until: "doc.valid_until", days: 14, uses: 1 }],
+  };
+  it("go back as they came: the condition's message, file questions with their limits, and the link effect as it is", () => {
+    expect(toButton(fromButton(link))).toEqual(link);
+  });
+  it("check a file question's limits", () => {
+    const base = fromButton(link);
+    const said = (patch: Record<string, unknown>) => checkButton({ ...base, params: [{ ...base.params[0], ...patch } as never] }, [], false).map((p) => p.message).join(" ");
+    expect(said({})).toBe("");
+    expect(said({ maxFiles: "11" })).toContain("most files");
+    expect(said({ maxBytes: "10485761" })).toContain("largest file");
+    expect(said({ accept: ["image"] })).toContain("not a file type");
+  });
+});

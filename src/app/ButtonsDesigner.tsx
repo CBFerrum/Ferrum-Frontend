@@ -278,6 +278,9 @@ function ButtonForm({ meta, start, taken, packaged, onClose }: { meta: EntityMet
       <div className="stack">
         <WhenInput optional value={d.condition} fields={fields} words={CONDITION_WORDS()} onChange={(condition) => set({ ...d, condition })} />
         {refusal?.at.condition && <p className="field-error">{tr("The server refused the condition; see the message above.")}</p>}
+        <Field label={tr("What a refusal for the condition says (optional)")} htmlFor="bt-cmsg" hint={tr("Shown on a signed link's page and through the API instead of the general words. It may show the record, like {{ doc.title }} was accepted already.")}>
+          <input id="bt-cmsg" className="input" value={d.conditionMessage} onChange={(e) => set({ ...d, conditionMessage: e.target.value })} />
+        </Field>
         <p className="faint">{tr("Leave it empty to show the button on every record.")}</p>
       </div>
       <Field label={tr("Ask first (optional)")} htmlFor="bt-confirm" hint={tr("A question people confirm before the button runs, like “Accept taking this risk on?”")}>

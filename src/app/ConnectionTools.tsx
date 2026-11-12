@@ -185,7 +185,7 @@ export function PullsPanel({ row }: { row: ConnectionRow }) {
     <div className="stack">
       {error && <Alert tone="error">{isolate(error)}</Alert>}
       <div className="table-scroll"><table className="table">
-        <thead><tr><th>{t("Pull")}</th><th>{t("Last run")}</th><th>{t("Next run")}</th><th>{t("Cursor")}</th><th>{t("Failure")}</th><th /></tr></thead>
+        <thead><tr><th>{t("Pull")}</th><th>{t("Last run")}</th><th>{t("Next run")}</th><th>{t("Cursor")}</th><th>{t("Failure")}</th><th><span className="sr-only">{t("Actions")}</span></th></tr></thead>
         <tbody>
           {q.data.pulls.map((p) => (
             <tr key={p.name}>

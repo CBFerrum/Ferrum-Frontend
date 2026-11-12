@@ -41,6 +41,7 @@ import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
+import { RecordLinks } from "./RecordLinks";
 import { RecordMessages } from "./MessageLog";
 import { EmailDocDialog } from "./EmailDoc";
 import { formatLabel, pdfFileName, type Choices, type PrintChoice } from "../lib/printLayout";
@@ -1134,6 +1135,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       {!isNew && !locked && docstatus === 0 && !wfEditable && <Alert tone="info">{tr("You cannot edit documents in the “{wfState}” state.", { wfState: wfState ?? "" })}</Alert>}
 
       {approvalQ.data && <ApprovalPanel entity={E} id={String(id)} request={approvalQ.data} me={me} onChanged={() => void reload().then((fresh) => fresh && load(fresh, docRef.current))} />}
+
+      {!isNew && me.user.is_admin && <RecordLinks entity={E} id={String(id)} />}
 
       {tabs.length > 1 ? (
         <>
