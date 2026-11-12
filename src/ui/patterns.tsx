@@ -279,7 +279,9 @@ export function SaveStatus({ state, at, className }: { state: SaveState; at?: st
  * that widen the selection, `children` the actions (drawn as given, never folded). `actions` are the actions the bar
  * folds: it keeps the count, Clear and as many of them as fit the width, in the order given (the caller may mark one or two
  * `priority`: the last to fold), and puts the rest in one "More" menu, by measured width, so nothing is pushed off a phone's
- * screen. Escape clears. On phones it sits along the bottom of the screen, as the form's actions do.
+ * screen. Escape clears. On phones it sits along the bottom of the screen, as the form's actions do. What fits is decided by the bar's
+ * own width (it is a size container: draw it in a block of its own, full width, as every page does), not the screen's: in a 380px
+ * list column the count stays, Clear is its icon (named "Clear selection") and the actions fold into More, which is never squeezed out.
  */
 export function SelectionToolbar({
   label,
@@ -308,7 +310,7 @@ export function SelectionToolbar({
     <div
       role="toolbar"
       aria-label={label}
-      className="doc-actions flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2 [@media(width>720px)]:[.list-bars_&]:absolute [@media(width>720px)]:[.list-bars_&]:inset-x-0 [@media(width>720px)]:[.list-bars_&]:top-0 [@media(width>720px)]:[.list-bars_&]:min-h-full"
+      className="doc-actions @container flex items-center gap-2 [@media(width>720px)]:sticky [@media(width>720px)]:top-[calc(var(--topbar-h)+env(safe-area-inset-top,0px))] [@media(width>720px)]:z-10 [@media(width>720px)]:flex-wrap [@media(width>720px)]:border-b [@media(width>720px)]:border-border [@media(width>720px)]:bg-primary-soft [@media(width>720px)]:px-4 [@media(width>720px)]:py-2 [@media(width>720px)]:[.list-bars_&]:absolute [@media(width>720px)]:[.list-bars_&]:inset-x-0 [@media(width>720px)]:[.list-bars_&]:top-0 [@media(width>720px)]:[.list-bars_&]:min-h-full"
       onKeyDown={(e) => {
         if (e.key === "Escape") onClear();
       }}
@@ -318,9 +320,9 @@ export function SelectionToolbar({
       </span>
       {scope === "matching" && of != null && of > count && <span className="text-sm whitespace-nowrap text-muted-foreground">{t("of {total} matching", { total: of.toLocaleString() })}</span>}
       {extend}
-      <Button size="sm" variant="ghost" icon="x" onClick={onClear}>
-        {/* With folding actions the phone's bar keeps the count, Clear and what fits: Clear is its icon there, its words for readers. */}
-        {actions?.length ? <span className="sr-only [@media(width>720px)]:not-sr-only">{t("Clear selection")}</span> : t("Clear selection")}
+      <Button size="sm" variant="ghost" icon="x" className="shrink-0" title={actions?.length ? t("Clear selection") : undefined} onClick={onClear}>
+        {/* With folding actions Clear is its icon while the bar itself (not the screen) is narrower than 28rem, its words kept for readers. */}
+        {actions?.length ? <span className="sr-only @[28rem]:not-sr-only">{t("Clear selection")}</span> : t("Clear selection")}
       </Button>
       {actions?.length ? <FoldingActions actions={actions} /> : <span className="hidden flex-1 [@media(width>720px)]:block" aria-hidden="true" />}
       {children}
@@ -367,6 +369,7 @@ function FoldingActions({ actions }: { actions: SelectionAction[] }) {
         b.clientWidth,
         { gap, more: kids[kids.length - 1].getBoundingClientRect().width, priority: list.map((a) => !!a.priority) },
       );
+      b.style.minWidth = `${Math.ceil(kids[kids.length - 1].getBoundingClientRect().width)}px`; // the More button always has its room: the bar wraps before it overlaps
       const next = r.folded.map((i) => list[i].id);
       setFolded((was) => (was.length === next.length && was.every((id, i) => id === next[i]) ? was : next));
     };

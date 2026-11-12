@@ -4619,6 +4619,8 @@ const words: Record<string, string> = {
   "{n} e-mails were not sent; the addresses left are the ones that failed.": "لم تُرسل {n} رسائل؛ العناوين المتبقية هي التي فشلت.",
   "{n} words": "{n} كلمة",
   "{rows} by {columns} table": "جدول {rows} × {columns}",
+  "Picture from the web": "صورة من الويب",
+  "Not loaded while you write; it is kept as it came.": "لا تُحمَّل أثناء الكتابة؛ وتبقى كما وردت.",
   // Print formats: the print dialog, Customize > Print formats, the template editor, letter heads, the designer.
   "Print formats": "قوالب الطباعة",
   "Print (Ctrl+P)": "طباعة (Ctrl+P)",
