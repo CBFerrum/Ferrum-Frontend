@@ -7,6 +7,7 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -20,6 +21,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
+import { PortalContainer } from "../lib/portal";
+import { rememberFocus, trackFocus } from "../lib/focusReturn";
+import { placeMenu } from "./menuPlacement";
 import { cn } from "../lib/utils";
 import { knownStatusTone } from "../lib/statusTones";
 
@@ -216,27 +220,60 @@ export function Dialog({
   description?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const opener = useRef<HTMLElement | null>(null);
+  const [self, setSelf] = useState<HTMLDialogElement | null>(null);
+  useEffect(() => trackFocus(), []);
+  // A dialog that is mounted only while it is wanted (`{asking && <Dialog open …/>}`) never sees `open` turn false: it is removed, and focus is given back as it goes.
+  useEffect(
+    () => () => {
+      giveBack.current?.();
+      giveBack.current = null;
+    },
+    [],
+  );
+  const giveBack = useRef<(() => void) | null>(null);
   const titleId = useId();
   const descId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
+    if (open && !giveBack.current) giveBack.current = rememberFocus(); // (React's strict mode runs the unmount cleanup below once at mount: remember again)
     if (open && !d.open) {
-      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       d.showModal();
       // showModal() would focus the header's close button; prefer the marked or first field instead.
       const first = d.querySelector<HTMLElement>("[data-autofocus]") ?? d.querySelector<HTMLElement>(".dialog-body :is(input, select, textarea):not([disabled])");
       first?.focus();
     } else if (!open && d.open) {
       d.close();
-      // The browser returns focus to what had it when the dialog opened; where that is gone (a menu that closed) or it is lost, to the opener.
-      if (opener.current?.isConnected && document.activeElement !== opener.current) opener.current.focus();
+      // The browser returns focus to what had it; where that is gone (the menu a dialog was opened from has unmounted) focus goes to the menu's trigger, else to the page's heading, never the body.
+      giveBack.current?.();
+      giveBack.current = null;
     }
+  }, [open]);
+  // Opened over a Radix sheet or dialog (a confirmation from inside one): that layer marks every sibling of itself aria-hidden, this <dialog>
+  // included, so the question was hidden from assistive technology (and from role locators) although it is the one thing in reach. And its
+  // Escape handler, on the document, would close the sheet below, not this. Both are put right while this dialog is open.
+  useEffect(() => {
+    const d = ref.current;
+    if (!open || !d) return;
+    const visible = () => d.removeAttribute("aria-hidden");
+    visible();
+    const watch = new MutationObserver(visible);
+    watch.observe(d, { attributes: true, attributeFilter: ["aria-hidden"] });
+    const escape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && e.target instanceof Node && d.contains(e.target) && document.querySelector("[role=dialog][data-state=open]")) e.stopPropagation();
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => {
+      watch.disconnect();
+      window.removeEventListener("keydown", escape, true);
+    };
   }, [open]);
   return (
     <dialog
-      ref={ref}
+      ref={(el) => {
+        ref.current = el;
+        setSelf(el);
+      }}
       className={`dialog ${wide ? "dialog-wide" : ""}`}
       aria-labelledby={titleId}
       aria-describedby={description ? descId : undefined}
@@ -263,8 +300,11 @@ export function Dialog({
               <Icon name="x" />
             </button>
           </header>
-          <div className="dialog-body">{children}</div>
-          {footer && <footer className="dialog-footer">{footer}</footer>}
+          {/* Menus and pop-ups opened inside are drawn inside the dialog: the page behind it is inert, so a portal to <body> would be dimmed and dead. */}
+          <PortalContainer container={self}>
+            <div className="dialog-body">{children}</div>
+            {footer && <footer className="dialog-footer">{footer}</footer>}
+          </PortalContainer>
         </div>
       )}
     </dialog>
@@ -490,6 +530,22 @@ export function announce(message: string): void {
   spoken.set({ text: message, n: spoken.get().n + 1 });
 }
 
+// Where the stack sits: the bottom end unless a page says that corner is occupied. A page declares it with `useToastPlacement` (scoped
+// to the component that mounts it: the last one mounted wins and the one before comes back when it unmounts) or, in markup, with
+// `data-toast-placement="bottom-start | top-end"` on any element (styles.css).
+export type ToastPlacement = "bottom-end" | "bottom-start" | "top-end";
+const placements = createStore<{ id: number; value: ToastPlacement }[]>([]);
+let placementSeq = 0;
+
+/** While the calling component is mounted, notices sit at `placement` (a compose window at the bottom end asks for "bottom-start"). Phones keep them at the top. */
+export function useToastPlacement(placement: ToastPlacement): void {
+  useEffect(() => {
+    const id = ++placementSeq;
+    placements.set([...placements.get(), { id, value: placement }]);
+    return () => placements.set(placements.get().filter((p) => p.id !== id));
+  }, [placement]);
+}
+
 const TOAST_ICON: Record<ToastItem["tone"], string> = { success: "check", error: "alert", info: "info" };
 
 /** One toast; its timer stops while the pointer is over it or focus is inside, and resumes with what was left. */
@@ -537,8 +593,9 @@ function ToastView({ n }: { n: ToastItem }) {
 export function Toaster() {
   const list = useSyncExternalStore(toasts.subscribe, toasts.get, toasts.get);
   const say = useSyncExternalStore(spoken.subscribe, spoken.get, spoken.get);
+  const asked = useSyncExternalStore(placements.subscribe, placements.get, placements.get);
   return (
-    <div className="toaster" role="status" aria-live="polite">
+    <div className="toaster" role="status" aria-live="polite" data-placement={asked.at(-1)?.value}>
       {say.text && (
         <span key={say.n} className="sr-only">
           {say.text}
@@ -653,6 +710,27 @@ export function Menu({
   const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   useDismiss(ref, open, () => setOpen(false));
+  // The list is placed against the trigger before it is painted (below it or above it, shifted and clamped 8px inside the window, its height
+  // capped to the room with its own scroll) and again when the window or any scroller moves, so it never leaves the screen.
+  const list = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = list.current;
+    const btn = trigger.current;
+    if (!open || !el || !btn) return;
+    const place = () => {
+      Object.assign(el.style, { position: "fixed", insetInlineEnd: "auto", insetInlineStart: "auto", right: "auto", bottom: "auto", maxHeight: "none", overflowY: "auto" });
+      const r = btn.getBoundingClientRect();
+      const p = placeMenu(r, { width: el.offsetWidth, height: el.scrollHeight + (el.offsetHeight - el.clientHeight) }, { width: document.documentElement.clientWidth, height: window.innerHeight }, { align, rtl: getComputedStyle(btn).direction === "rtl" });
+      Object.assign(el.style, { left: `${p.left}px`, top: `${p.top}px`, maxHeight: `${p.maxHeight}px` });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, align]);
   // Closing from inside the menu (Escape, choosing an item) hands focus back to the button that opened it, so the keyboard keeps its place
   // and a dialog an item opens returns there when it closes.
   const closeFromInside = () => {
@@ -688,7 +766,7 @@ export function Menu({
         {label}
       </button>
       {open && (
-        <div className={`menu-list menu-${align}`} role="menu" id={menuId}>
+        <div ref={list} className={`menu-list menu-${align}`} role="menu" id={menuId}>
           {children(closeFromInside)}
         </div>
       )}
