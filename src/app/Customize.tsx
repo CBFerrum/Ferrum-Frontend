@@ -11,6 +11,7 @@ import { formDesignerLink } from "../lib/formLayout";
 import { buttonsLink } from "../lib/buttonDraft";
 import { listsLink } from "../lib/publishedListDraft";
 import { targetsLink } from "../lib/targetDraft";
+import { documentApprovalsLink } from "../lib/approvalDraft";
 import { workflowDesignerLink } from "../lib/workflowDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
@@ -70,6 +71,7 @@ export function CustomizePage() {
   const me = useMe();
   const index = useMetaIndex().data;
   const navigate = useNavigate();
+  const entityMeta = useEntityMeta(entity);
   if (me.isLoading) return <PageLoading />;
   if (!me.data?.user.is_admin) {
     return (
@@ -119,6 +121,11 @@ export function CustomizePage() {
           {entity && !["child", "ledger"].includes(index?.entities.find((e) => e.name === entity)?.kind ?? "") && (
             <Link className="btn" to={targetsLink(entity)}>
               {tr("Targets")}
+            </Link>
+          )}
+          {entity && entityMeta.data?.submittable && !entityMeta.data.workflow && (
+            <Link className="btn" to={documentApprovalsLink(entity)}>
+              {tr("Approvals")}
             </Link>
           )}
           {entity && ["master", "document"].includes(index?.entities.find((e) => e.name === entity)?.kind ?? "") && (

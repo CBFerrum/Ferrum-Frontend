@@ -32,6 +32,7 @@ export const recordsRoutes: RouteObject[] = [
   { path: "customize/:entity/targets", lazy: () => import("./TargetsDesigner").then((m) => ({ Component: m.TargetsDesignerPage })) },
   { path: "customize/:entity/lists", lazy: () => import("./PublishedLists").then((m) => ({ Component: m.PublishedListsPage })) },
   { path: "customize/:entity/buttons", lazy: () => import("./ButtonsDesigner").then((m) => ({ Component: m.ButtonsDesignerPage })) },
+  { path: "customize/:entity/approvals", lazy: () => import("./DocumentApprovals").then((m) => ({ Component: m.DocumentApprovalsPage })) },
   { path: "studio/*", element: <ToOwnInterface /> },
   { path: "pos", element: <ToOwnInterface /> },
   { path: "apps/:app/settings", lazy: () => import("./Screen").then((m) => ({ Component: m.AppSettingsPage })) },

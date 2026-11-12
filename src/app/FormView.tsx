@@ -432,17 +432,19 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     }
   };
 
+  // Whether the document's earlier requests were for this action: it has a policy, so pressing it asks.
+  const documentAsks = (op: "submit" | "cancel") => !!approvalQ.data?.document && approvalQ.data.action === op;
   const lifecycle = async (op: "submit" | "cancel") => {
     const ok = await confirmDialog(
       op === "submit"
         ? {
             title: tr("Submit this {label}?", { label: meta.label }),
-            message: tr("Submitted documents can no longer be edited. To change one later, cancel it and amend it."),
+            message: tr("Submitted documents can no longer be edited. To change one later, cancel it and amend it.") + (documentAsks("submit") ? " " + tr("This asks for approval first: it is submitted once the approvers agree.") : ""),
             confirmLabel: tr("Submit"),
           }
         : {
             title: tr("Cancel this {label}?", { label: meta.label }),
-            message: tr("Cancelling reverses its postings and cannot be undone. You can amend it into a new draft afterwards."),
+            message: tr("Cancelling reverses its postings and cannot be undone. You can amend it into a new draft afterwards.") + (documentAsks("cancel") ? " " + tr("This asks for approval first: it is cancelled once the approvers agree.") : ""),
             confirmLabel: tr("Cancel document"),
             danger: true,
           },
@@ -451,7 +453,10 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     await operate(op, async (version) => {
       const d = await api.post<Doc>(docPath(E, String(id), op), undefined, { ifMatch: version });
       load(d, docRef.current);
-      toast(op === "submit" ? tr("{label} submitted", { label: meta.label }) : tr("{label} cancelled", { label: meta.label }));
+      // With a policy the document stays as it is and the answer carries the request (`_approval`).
+      const asked = (d as { _approval?: { status?: string } })._approval?.status === "pending";
+      toast(asked ? (op === "submit" ? tr("{label} sent for approval before it is submitted", { label: meta.label }) : tr("{label} sent for approval before it is cancelled", { label: meta.label })) : op === "submit" ? tr("{label} submitted", { label: meta.label }) : tr("{label} cancelled", { label: meta.label }));
+      void qc.invalidateQueries({ queryKey: ["approval", E, String(id)] });
       void invalidateLists();
     });
   };
@@ -493,8 +498,10 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     }
   };
 
-  const approvalQ = useApproval(E, isNew ? null : String(id), !!wf?.transitions.some((t) => t.approval));
+  // A submittable document no workflow submits may ask for approval before its submit or cancel (BD-19): the latest request says.
+  const approvalQ = useApproval(E, isNew ? null : String(id), !!wf?.transitions.some((t) => t.approval) || (meta.submittable && !wf));
   const pending = approvalQ.data?.status === "pending" ? approvalQ.data : null;
+  const docPending = pending?.document ? pending : null;
   const transitions =
     wf && !isNew
       ? wf.transitions.filter(
@@ -870,16 +877,22 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               {isNew ? t("Create") : t("Save")}
             </Button>
           )}
-          {canSubmit && (
-            <Button variant="primary" onClick={() => void lifecycle("submit")} loading={busy === "submit"} disabled={busyAny}>
-              {dirty ? tr("Save & Submit") : tr("Submit")}
-            </Button>
-          )}
-          {canCancel && (
-            <Button variant="danger" onClick={() => void lifecycle("cancel")} loading={busy === "cancel"} disabled={busyAny}>
-              {tr("Cancel")}
-            </Button>
-          )}
+          {canSubmit &&
+            (docPending?.action === "submit" ? (
+              <Button disabled title={tr("Waiting for approval")}>{tr("Submit: awaiting approval")}</Button>
+            ) : (
+              <Button variant="primary" onClick={() => void lifecycle("submit")} loading={busy === "submit"} disabled={busyAny}>
+                {dirty ? tr("Save & Submit") : tr("Submit")}
+              </Button>
+            ))}
+          {canCancel &&
+            (docPending?.action === "cancel" ? (
+              <Button disabled title={tr("Waiting for approval")}>{tr("Cancel: awaiting approval")}</Button>
+            ) : (
+              <Button variant="danger" onClick={() => void lifecycle("cancel")} loading={busy === "cancel"} disabled={busyAny}>
+                {tr("Cancel")}
+              </Button>
+            ))}
           {canAmend && (
             <Button onClick={() => void amend()} loading={busy === "amend"} disabled={busyAny}>
               {tr("Amend")}

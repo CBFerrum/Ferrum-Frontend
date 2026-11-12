@@ -87,6 +87,7 @@ const pages: Record<string, RouteObject[]> = {
     { path: "customize/:entity/targets", lazy: () => import("@/app/TargetsDesigner").then((m) => ({ Component: m.TargetsDesignerPage })) },
     { path: "customize/:entity/lists", lazy: () => import("@/app/PublishedLists").then((m) => ({ Component: m.PublishedListsPage })) },
     { path: "customize/:entity/buttons", lazy: () => import("@/app/ButtonsDesigner").then((m) => ({ Component: m.ButtonsDesignerPage })) },
+    { path: "customize/:entity/approvals", lazy: () => import("@/app/DocumentApprovals").then((m) => ({ Component: m.DocumentApprovalsPage })) },
     // The help center, under the core's records (the core adds no names of its own at the top).
     { path: "help", lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpPage })) },
     { path: "help/:entity", lazy: () => import("@/app/Help").then((m) => ({ Component: m.HelpArticle })) },
