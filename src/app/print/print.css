@@ -364,10 +364,12 @@
   white-space: nowrap;
   pointer-events: none;
 }
+/* Outside the block (in the page margin or the gap between columns), so the text under the selection stays readable.
+   Physical: the overlay's boxes are measured in the frame's pixels. */
 .pd-handle {
   position: absolute;
-  inset-block-start: -2px;
-  inset-inline-end: -2px;
+  top: 0;
+  left: -24px;
   display: grid;
   place-items: center;
   width: 20px;
@@ -470,7 +472,8 @@
 .pd-moves {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 8px;
+  align-items: center;
 }
 .pd-row {
   display: flex;
@@ -525,4 +528,12 @@
 }
 .pf-toolbar .field {
   margin: 0;
+}
+.print-using {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
 }

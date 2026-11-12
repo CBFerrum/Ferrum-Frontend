@@ -11,6 +11,7 @@ import { formatValue } from "../lib/format";
 import type { Doc, Field as MetaField } from "../lib/meta";
 import { Alert, Button, confirmDialog, Dialog, Field, Icon, Menu, MenuItem, toast } from "../ui/kit";
 import { isRichTextEmpty, resolveMergeFields, RichText, RichTextEditor, richTextToPlain, sanitizeRichText, type MergeField } from "../ui/richtext";
+import { printFields, type PrintChoice } from "../lib/printLayout";
 import { t } from "@ferrum/client";
 import { EyeIcon, FileTextIcon, PaperclipIcon, PencilIcon, SendIcon } from "lucide-react";
 
@@ -44,6 +45,7 @@ export function EmailDocDialog({
   doc,
   fields,
   attachmentName,
+  print,
   onClose,
 }: {
   entity: string;
@@ -58,6 +60,8 @@ export function EmailDocDialog({
   fields?: MetaField[];
   /** What the PDF is called. Seam for the print-format picker: it passes the chosen format's name here and in the request. */
   attachmentName?: string;
+  /** What the PDF prints as (the print dialog's choice): sent with the mail as `/print` takes it; absent, the server's default format. */
+  print?: PrintChoice;
   onClose: (sent: boolean) => void;
 }) {
   const ids = useId();
@@ -166,7 +170,7 @@ export function EmailDocDialog({
     // One mail per recipient (the server sends to one address at a time): each is said to have gone only once it has.
     for (const address of recipients) {
       try {
-        await api.post(docPath(entity, id, "email"), { to: address, subject: subject.trim(), ...(empty ? {} : body), pdf: attach });
+        await api.post(docPath(entity, id, "email"), { to: address, subject: subject.trim(), ...(empty ? {} : body), pdf: attach, ...(attach && print ? printFields(print) : {}) });
       } catch (e) {
         left.push({ to: address, why: errorMessage(e) });
       }

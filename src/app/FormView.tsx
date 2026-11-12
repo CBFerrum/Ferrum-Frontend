@@ -43,7 +43,7 @@ import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
 import { RecordMessages } from "./MessageLog";
 import { EmailDocDialog } from "./EmailDoc";
-import type { Choices } from "../lib/printLayout";
+import { formatLabel, pdfFileName, type Choices, type PrintChoice } from "../lib/printLayout";
 import { preloadRichTextEditor } from "../ui/richtext";
 import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
@@ -227,6 +227,8 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const pdf = server?.pdf === true;
   const [emailing, setEmailing] = useState(false);
   const [printing, setPrinting] = useState(false);
+  /** The print dialog's choice for "E-mail as PDF", with the format's name; null: the toolbar's E-mail (the default format). */
+  const [emailPrint, setEmailPrint] = useState<{ print: PrintChoice; format: string } | null>(null);
   const printButtonId = useId();
   const printLevel = server?.print ?? 0;
   const [merging, setMerging] = useState(false);
@@ -623,11 +625,12 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  // A server before print formats (§6.4) still has a dialog when it has document templates for this record type.
+  // The record type's formats: a server before print formats (§6.4) still has a dialog when it has document templates, and the
+  // e-mail dialog names the default format the attachment prints as.
   const oldChoices = useQuery({
     queryKey: ["print", "choices", E, null],
     queryFn: ({ signal }) => api.get<Choices>(`/api/documents/choices/${encodeURIComponent(E)}`, undefined, signal),
-    enabled: !isNew && !!server && printLevel < 1,
+    enabled: !isNew && !!server,
     staleTime: 30_000,
     retry: false,
   });
@@ -1012,9 +1015,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                 level={printLevel}
                 pdf={pdf}
                 canEmail={server?.mail === true && can(meta.permissions, "export")}
-                onEmail={() => {
-                  // ponytail: EmailDocDialog takes no format yet (it is being rebuilt elsewhere); the PDF it attaches is the record's default format.
+                onEmail={(print, format) => {
                   setPrinting(false);
+                  setEmailPrint({ print, format });
                   setEmailing(true);
                 }}
                 onClose={() => setPrinting(false)}
@@ -1031,7 +1034,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               html={server?.mail_html === true}
               doc={doc}
               fields={meta.fields}
-              onClose={() => setEmailing(false)}
+              print={emailPrint?.print}
+              attachmentName={pdfFileName(emailPrint?.format ?? formatLabel(oldChoices.data, undefined, meta.label), typeof doc.number === "string" && doc.number ? doc.number : String(id))}
+              onClose={() => (setEmailing(false), setEmailPrint(null))}
             />
           )}
           {merging && (

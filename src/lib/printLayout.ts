@@ -795,16 +795,42 @@ export const copiesOffered = (c: Choices, template: string | null) => {
   return own?.length ? own : (c.copies ?? []);
 };
 
+/** The print choice as the server's `/print` query and `/email` body name it (platform `docs.rs` `EmailBody`, `PrintAsk`): the
+ *  standard format is `"standard"`, none named is the default; the default letter head, no language and no copies are left out. */
+export function printFields(o: PrintChoice): { template?: string; letterhead?: string; language?: string; copies?: string[] } {
+  return {
+    ...(o.template !== undefined ? { template: o.template === null ? "standard" : o.template } : {}),
+    ...(o.letterhead && o.letterhead !== "default" ? { letterhead: o.letterhead } : {}),
+    ...(o.language ? { language: o.language } : {}),
+    ...(o.copies?.length ? { copies: o.copies } : {}),
+  };
+}
+
 /** The print request's query: `copy` repeated, in order (URLSearchParams.set would keep one). */
-export function printQuery(o: { template?: string | null; letterhead?: string; language?: string; copies?: string[]; format?: "html" | "pdf" }): string {
+export function printQuery(o: PrintChoice & { format?: "html" | "pdf" }): string {
+  const f = printFields(o);
   const sp = new URLSearchParams();
-  if (o.template !== undefined) sp.set("template", o.template === null ? "standard" : o.template);
-  if (o.letterhead && o.letterhead !== "default") sp.set("letterhead", o.letterhead);
-  if (o.language) sp.set("language", o.language);
-  for (const c of o.copies ?? []) sp.append("copy", c);
+  if (f.template) sp.set("template", f.template);
+  if (f.letterhead) sp.set("letterhead", f.letterhead);
+  if (f.language) sp.set("language", f.language);
+  for (const c of f.copies ?? []) sp.append("copy", c);
   if (o.format) sp.set("format", o.format);
   const s = sp.toString();
   return s ? `?${s}` : "";
+}
+
+/** The PDF's name as the server makes it (`documents.rs` `file_name`): "<format label> <number>.pdf", characters other than
+ *  letters, digits, space, - _ . as "_". */
+export function pdfFileName(label: string, number: string): string {
+  const name = `${label} ${number}`.replace(/[^\p{L}\p{N} \-_.]/gu, "_").slice(0, 120).trim() || "document";
+  return name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`;
+}
+
+/** The format a choice prints with, by name: the chosen one, else the default, else the standard format. */
+export function formatLabel(c: Choices | undefined, template: string | null | undefined, fallback: string): string {
+  const key = template === undefined ? c?.default : template;
+  const t = key ? c?.templates.find((x) => x.key === key) : null;
+  return t ? t.label || t.key : (c?.standard?.label ?? fallback);
 }
 
 // ── a letter head as the slice-one form edits it (§7.5): a logo, lines beside it, a footer line ──

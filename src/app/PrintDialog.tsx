@@ -9,7 +9,7 @@ import { useEffect, useId, useState } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 import { ApiError, docPath, errorMessage, request, requestRaw, saveBlob } from "../lib/api";
 import { usePref } from "../lib/prefs";
-import { copiesOffered, printPrefScope, printQuery, startingChoice, type Choices, type PrintChoice } from "../lib/printLayout";
+import { copiesOffered, formatLabel, printPrefScope, printQuery, startingChoice, type Choices, type PrintChoice } from "../lib/printLayout";
 import { Alert, Button, Dialog, Field, toast } from "../ui/kit";
 import { FormSkeleton } from "../ui/patterns";
 import { openPdf, PAPER_NAMES, PaperFrame, printHtml } from "./print/shared";
@@ -33,8 +33,9 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
   level: number;
   pdf: boolean;
   canEmail: boolean;
-  /** "E-mail as PDF": the dialog closes and the record's e-mail dialog opens with this choice. */
-  onEmail: (choice: Required<PrintChoice>) => void;
+  /** "E-mail as PDF": the dialog closes and the record's e-mail dialog opens with this choice (as the server is asked for it)
+   *  and the name of the format it prints as. */
+  onEmail: (choice: PrintChoice, format: string) => void;
   onClose: () => void;
 }) {
   const ids = useId();
@@ -72,6 +73,8 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
   const [busy, setBusy] = useState<"" | "print" | "pdf">("");
   const remember = () => choice && pref.set(choice);
   const fileName = `${title || entityLabel}.pdf`;
+  // The format that prints, by name, whether picked or the default: the buttons say it.
+  const using = choice ? formatLabel(c, choice.template, entityLabel) : null;
 
   const doPrint = async () => {
     remember();
@@ -107,8 +110,9 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
       title={tr("Print {title}", { title: title || entityLabel })}
       footer={
         <>
+          {using && <span className="print-using me-auto">{tr("Prints as {format}", { format: using })}</span>}
           {canEmail && (
-            <Button icon="mail" disabled={!choice || refused} onClick={() => (remember(), onEmail(choice!))}>
+            <Button icon="mail" disabled={!choice || refused} title={using ? tr("E-mail {format} as a PDF", { format: using }) : undefined} onClick={() => (remember(), onEmail(ask!, using!))}>
               {tr("E-mail as PDF")}
             </Button>
           )}
@@ -117,7 +121,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
               {tr("Download PDF")}
             </Button>
           )}
-          <Button variant="primary" icon="printer" loading={busy === "print"} disabled={!choice || refused || !!busy} onClick={() => void doPrint()}>
+          <Button variant="primary" icon="printer" title={using ? tr("Print as {format}", { format: using }) : undefined} loading={busy === "print"} disabled={!choice || refused || !!busy} onClick={() => void doPrint()}>
             {tr("Print")}
           </Button>
         </>
