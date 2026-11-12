@@ -52,6 +52,8 @@ export interface Section {
   keep_together?: boolean;
   break_before?: boolean;
   when?: Cel;
+  /** Not in §4.1's Section type, but §4.5's worked example sets it on sections ("parties", "lines", "sums", "foot"). */
+  margin_top_mm?: Space;
 }
 export interface Column { id: Id; blocks: Block[] }
 

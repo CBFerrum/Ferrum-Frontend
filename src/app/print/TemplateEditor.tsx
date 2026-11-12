@@ -8,11 +8,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link, useBlocker, useNavigate } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { ApiError, errorMessage, requestRaw } from "../../lib/api";
-import { DEFAULT_MARGINS, templateErrorAt, toSave, type Catalogue, type PageSetup, type PaperSize, type PrintFormat } from "../../lib/printLayout";
+import { DEFAULT_MARGINS, templateErrorAt, toSave, type Catalogue, type PageSetup, type PrintFormat } from "../../lib/printLayout";
 import { Alert, Badge, Button, confirmDialog, Dialog, Field, Tabs, TabPanel, toast, useDebounced } from "../../ui/kit";
 import { SaveStatus } from "../../ui/patterns";
 import { LinkInput } from "../widgets";
-import { formatsLink, openPdf, PaperFrame, preview, readFormat, saveFormat, useCatalogue, type FormatRead } from "./shared";
+import { formatsLink, openPdf, PageFields, PaperFrame, preview, readFormat, saveFormat, useCatalogue, type FormatRead } from "./shared";
 import { useLetterheads } from "./LetterHeads";
 
 type Part = "body" | "header" | "footer";
@@ -316,49 +316,6 @@ export function TemplateEditor({ read, fresh }: { read?: FormatRead & { etag: st
         </Dialog>
       )}
     </div>
-  );
-}
-
-/** Paper and margins; none: the print settings' (a template with no page keeps its own @page). */
-export function PageFields({ page, onChange }: { page?: PageSetup; onChange: (p: Partial<PageSetup> | null) => void }) {
-  const ids = useId();
-  const m = page?.margin_mm ?? DEFAULT_MARGINS;
-  return (
-    <fieldset className="stack" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-      <legend className="field-label">{tr("Paper")}</legend>
-      <div className="pd-row">
-        <Field label={tr("Size")} htmlFor={`${ids}-size`}>
-          <select id={`${ids}-size`} className="select" value={page?.size ?? ""} onChange={(e) => onChange(e.target.value ? { size: e.target.value as PaperSize } : null)}>
-            <option value="">{tr("The print settings'")}</option>
-            {(["A4", "A5", "A3", "Letter", "Legal", "Custom"] as const).map((s) => <option key={s} value={s}>{s === "Custom" ? tr("Custom") : s}</option>)}
-          </select>
-        </Field>
-        {page && (
-          <Field label={tr("Orientation")} htmlFor={`${ids}-or`}>
-            <select id={`${ids}-or`} className="select" value={page.orientation} onChange={(e) => onChange({ orientation: e.target.value as PageSetup["orientation"] })}>
-              <option value="portrait">{tr("Portrait")}</option>
-              <option value="landscape">{tr("Landscape")}</option>
-            </select>
-          </Field>
-        )}
-      </div>
-      {page?.size === "Custom" && (
-        <div className="pd-row">
-          <Field label={tr("Width (mm)")} htmlFor={`${ids}-w`}><input id={`${ids}-w`} className="input" type="number" min={40} max={600} value={page.width_mm ?? 210} onChange={(e) => onChange({ width_mm: Number(e.target.value) })} /></Field>
-          <Field label={tr("Height (mm)")} htmlFor={`${ids}-h`}><input id={`${ids}-h`} className="input" type="number" min={40} max={600} value={page.height_mm ?? 297} onChange={(e) => onChange({ height_mm: Number(e.target.value) })} /></Field>
-        </div>
-      )}
-      {page && (
-        <div className="pd-row">
-          {(["top", "right", "bottom", "left"] as const).map((side) => (
-            <Field key={side} label={{ top: tr("Top"), right: tr("Right"), bottom: tr("Bottom"), left: tr("Left") }[side]} htmlFor={`${ids}-m-${side}`}>
-              <input id={`${ids}-m-${side}`} className="input" type="number" min={0} max={50} value={m[side]} onChange={(e) => onChange({ margin_mm: { ...m, [side]: Math.max(0, Math.min(50, Number(e.target.value))) } })} />
-            </Field>
-          ))}
-        </div>
-      )}
-      {page && <p className="field-hint">{tr("Margins in millimetres, 0 to 50.")}</p>}
-    </fieldset>
   );
 }
 

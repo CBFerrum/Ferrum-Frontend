@@ -460,8 +460,13 @@
   align-items: center;
   margin-block-end: 12px;
 }
-.pd-props .field {
-  margin-block-end: 12px;
+.pd-props .stack {
+  gap: 12px;
+}
+.pd-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 .pd-row {
   display: flex;
