@@ -374,7 +374,8 @@ function TryIt({ def }: { def: PrintFormat }) {
   const sent = useDebounced(JSON.stringify(toSave(def)), 600);
   const ask = { template: JSON.parse(sent) as PrintFormat, record_id: record, sample: !record, ...(language ? { language } : {}) };
   const q = useQuery({ queryKey: ["admin", "print", "preview", ask], queryFn: ({ signal }) => preview(ask, signal), placeholderData: keepPreviousData, retry: false });
-  const html = q.data ? (q.data.content.includes("<html") ? q.data.content : `${q.data.header ?? ""}${q.data.content}${q.data.footer ?? ""}`) : null;
+  // `content` is the page as it prints, letter head and watermark included; `header`/`footer` are only what a PDF repeats.
+  const html = q.data?.content ?? null;
   return (
     <section className="card" aria-labelledby={`${ids}-h`}>
       <div className="card-head">

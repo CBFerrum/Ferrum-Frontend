@@ -5002,6 +5002,7 @@ const words: Record<string, string> = {
   "A layout has at most 100 conditions.": "लेआउट में अधिकतम 100 शर्तें होती हैं।",
   "A layout has at most 20 images.": "लेआउट में अधिकतम 20 छवियाँ होती हैं।",
   "The text blocks hold more than 10,000 characters in all.": "पाठ ब्लॉकों में कुल 10,000 से अधिक अक्षर हैं।",
+  "A letter head's header or footer has at most 20 sections.": "लेटर हेड के हेडर या फ़ुटर में अधिकतम 20 खंड होते हैं।",
 };
 
 export default words;

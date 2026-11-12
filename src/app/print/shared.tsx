@@ -73,7 +73,8 @@ export interface FormatRead { template: PrintFormat; default: PrintFormat | null
 /** A format with the ETag the next save sends back as `If-Match` (§6.2). */
 export async function readFormat(key: string, signal?: AbortSignal): Promise<FormatRead & { etag: string | null }> {
   const res = await requestRaw(`/api/admin/documents/templates/${encodeURIComponent(key)}`, { signal });
-  return { ...((await res.json()) as FormatRead), etag: res.headers.get("etag") };
+  const body = (await res.json()) as FormatRead & { etag?: string };
+  return { ...body, etag: res.headers.get("etag") ?? body.etag ?? null };
 }
 
 /** Saves a format; `etag` (when known) makes a change by someone else since a 409. Gives the new ETag. */
