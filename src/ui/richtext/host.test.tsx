@@ -69,15 +69,23 @@ describe("pictures", () => {
   });
 
   it("holds web pictures: kept in the content, never requested while writing, a placeholder with the description and size", async () => {
+    // Every way an <img> gets its address in the page is watched: the property, the attribute, and the markup parser.
     const requested: string[] = [];
     const desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src")!;
+    const setAttribute = Element.prototype.setAttribute;
     Object.defineProperty(HTMLImageElement.prototype, "src", { configurable: true, get: desc.get, set(v: string) { requested.push(v); desc.set!.call(this, v); } });
+    Element.prototype.setAttribute = function (this: Element, name: string, value: string) {
+      if (this instanceof HTMLImageElement && name.toLowerCase() === "src") requested.push(value);
+      return setAttribute.call(this, name, value);
+    };
+    const remote = () => requested.filter((s) => /^(https?:)?\/\//.test(s));
     try {
       let editor!: Editor;
-      const { host, unmount } = await mount(<RichTextEditor value={html + '<p><img src="https://other.example/p.png"></p><p><img src="data:image/png;base64,iVBORw0KGgo="></p>'} images="inline" remoteImages="hold" imageAttributes={["data-cid"]} imageSources={["/files/"]} label="Message" onEditor={(e) => e && (editor = e)} />);
+      let value = "";
+      const { host, unmount } = await mount(<RichTextEditor value={html + '<p><img src="https://other.example/p.png"></p><p><img src="data:image/png;base64,iVBORw0KGgo="></p>'} images="inline" remoteImages="hold" imageAttributes={["data-cid"]} imageSources={["/files/"]} label="Message" onChange={(v) => (value = v)} onEditor={(e) => e && (editor = e)} />);
       const shown = [...host.querySelectorAll(".ProseMirror img:not(.ProseMirror-separator)")].map((i) => i.getAttribute("src"));
       expect(shown).toEqual(["/files/own.png", "data:image/png;base64,iVBORw0KGgo="]); // only the caller's own and inline pictures are drawn as pictures
-      expect(requested.filter((s) => /^(https?:)?\/\//.test(s))).toEqual([]);
+      expect(remote()).toEqual([]);
       expect(host.innerHTML).not.toMatch(/cdn\.example|other\.example/); // the address is not in the page at all while writing
       const held = host.querySelectorAll(".rte-img-held");
       expect(held).toHaveLength(2);
@@ -85,13 +93,28 @@ describe("pictures", () => {
       expect(held[0]!.textContent).toContain("120 × 40");
       expect((held[0] as HTMLElement).style.width).toBe("120px");
       expect(held[1]!.getAttribute("aria-label")).toBe("Picture from the web");
-      // in the content as it came
-      expect(editor.getHTML()).toContain('src="https://cdn.example/logo.png"');
-      expect(editor.getHTML()).toContain('src="https://other.example/p.png"');
-      expect(editor.getHTML()).toContain('data-cid="part-1"');
+      // in the content as it came: getHTML builds elements in the live document, which must not request either
+      const out = editor.getHTML();
+      expect(out).toContain('src="https://cdn.example/logo.png"');
+      expect(out).toContain('src="https://other.example/p.png"');
+      expect(out).toContain('data-cid="part-1"');
+      expect(out).not.toContain("data-held-src");
+      await act(async () => void editor.commands.insertContentAt(editor.state.doc.content.size - 1, "typing"));
+      expect(value).toContain('src="https://cdn.example/logo.png"');
+      expect(value).not.toContain("data-held-src");
+      expect(remote()).toEqual([]);
+      // what the editor drew for itself (a copy, or the editor letting go of its node views as it unmounts) holds the address as data, not src
+      const drawn = editor.schema.nodes.image!.spec.toDOM!(editor.schema.nodes.image!.create({ src: "https://cdn.example/logo.png", alt: "Logo" }));
+      expect(JSON.stringify(drawn)).toContain("data-held-src");
+      expect(JSON.stringify(drawn)).not.toContain('"src"');
+      // pasted back, it is the same picture again
+      await act(async () => void editor.commands.insertContent('<img data-held-src="https://cdn.example/again.png" alt="Again">'));
+      expect(editor.getHTML()).toContain('src="https://cdn.example/again.png"');
       await unmount();
+      expect(remote()).toEqual([]);
     } finally {
       Object.defineProperty(HTMLImageElement.prototype, "src", desc);
+      Element.prototype.setAttribute = setAttribute;
     }
   });
 });

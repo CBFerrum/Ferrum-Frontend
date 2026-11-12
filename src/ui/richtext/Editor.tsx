@@ -37,6 +37,9 @@ const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator
 /** An address on the web: `http:`, `https:` or `//`, and not under one of the caller's own prefixes. */
 const isRemote = (src: string, own: string[]) => /^(https?:)?\/\//i.test(src.trim()) && !own.some((p) => p && src.startsWith(p));
 
+/** HTML from a held editor with each picture's address back as `src` (see `ImageNode.renderHTML`). */
+const unhold = (html: string) => html.replace(/<img\b[^>]*>/g, (tag) => tag.replace(" data-held-src=", " src="));
+
 /** An image: shown from `src`, its width kept when resized by the handle at its inline end. The caller may declare more `data-*`
  *  attributes to carry (`attributes`), and ask for web pictures to be held: kept as they are, never requested while writing (`hold`). */
 const ImageNode = Node.create<{ attributes: string[]; hold: boolean; sources: string[] }>({
@@ -50,8 +53,20 @@ const ImageNode = Node.create<{ attributes: string[]; hold: boolean; sources: st
     const number = (name: string) => ({ default: null, parseHTML: (el: HTMLElement) => Number(el.getAttribute(name)) || null });
     return { src: { default: null }, alt: { default: null }, width: number("width"), height: number("height"), ...Object.fromEntries(this.options.attributes.map((n) => [n, { default: null }])) };
   },
-  parseHTML: () => [{ tag: "img[src]" }],
-  renderHTML: ({ HTMLAttributes }) => ["img", mergeAttributes(HTMLAttributes)],
+  parseHTML: () => [{ tag: "img[src]" }, { tag: "img[data-held-src]", getAttrs: (el) => ({ src: (el as HTMLElement).getAttribute("data-held-src") }) }],
+  // Held: where ProseMirror draws the node itself (no node view: when TipTap lets go of them as the editor unmounts) or TipTap's `getHTML` builds
+  // elements in the live document, an `<img src>` would be requested the moment it is made. So a held picture's address is written as
+  // `data-held-src` there, and `getHTML` (below) writes it back as `src`.
+  renderHTML({ HTMLAttributes }) {
+    const { src, ...rest } = HTMLAttributes as Record<string, string>;
+    return ["img", mergeAttributes(this.options.hold && src && isRemote(src, this.options.sources) ? { ...rest, "data-held-src": src } : HTMLAttributes)];
+  },
+  onBeforeCreate() {
+    if (!this.options.hold) return;
+    const editor = this.editor;
+    const get = editor.getHTML.bind(editor);
+    editor.getHTML = () => unhold(get());
+  },
   addNodeView() {
     const { attributes, hold, sources } = this.options;
     return ({ node, getPos, editor }) => {
@@ -484,7 +499,7 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
         // The platform bar leaves Ctrl/Cmd+K to a region that asks for it: here it makes a link.
         "data-ferrum-keys": "mod+k",
       },
-      transformPastedHTML: (html) => mergeChips(tidyPastedHtml(html, clean), latest.current.mergeFields ?? []),
+      transformPastedHTML: (html) => mergeChips(tidyPastedHtml(latest.current.remoteImages === "hold" ? unhold(html) : html, clean), latest.current.mergeFields ?? []),
       handlePaste: (_view, event) => {
         const files = Array.from(event.clipboardData?.files ?? []);
         if (!files.length || !canImage) return false;
