@@ -6,7 +6,7 @@ import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { violations } from "../test/axe";
 import { ApprovalsPage, Detail } from "./Approvals";
-import { approvalIndex } from "../lib/approvalDraft";
+import { approvalIndex, shippedRows } from "../lib/approvalDraft";
 import { PolicyTable } from "./ApprovalPolicies";
 
 const item = { request: "r1", entity: "Order", entity_label: "Order", record: "o1", title: "SO-0001", action: "Submit", from: "Draft", requester: "u1", requester_name: "Ann Asker", requested_at: "2026-11-12T08:00:00Z", step: { index: 1, label: "Finance", opened_at: "2026-11-12T09:00:00Z" } };
@@ -93,6 +93,17 @@ describe("the index of approval policies", () => {
     expect(rows[2].to).toBe("/customize/Order/workflow");
     const html = renderToString(<StaticRouter location="/customize/approvals"><PolicyTable rows={rows} label={(e) => e} /></StaticRouter>);
     expect(html).toContain('href="/customize/Change/approvals"');
+    expect(await violations(html)).toEqual([]);
+  });
+  it("lists what packages ship, marked as shipped and whether an administrator changed it, from either shape of the definition", async () => {
+    const pkg = { entity: "Change", package: "board", approvals: [{ on: "action:apply", policy: { steps: [{ label: "Board" }] }, source: "package", package: "board", changed: true, workspace: null }, { on: "transition Close from Draft", policy: { steps: [{}] }, package: "board", changed: false }] };
+    const rows = shippedRows("Change", pkg);
+    expect(rows.map((r) => [r.on, r.shipped])).toEqual([["action:apply", { package: "board", changed: true }], ["transition Close from Draft", { package: "board", changed: false }]]);
+    expect(rows[1].to).toBe("/customize/Change/workflow");
+    const custom = shippedRows("XTicket", { approvals: { submit: { steps: [{ label: "Mine" }] } }, package_approvals: [{ on: "submit", policy: { steps: [{ label: "Theirs" }] }, package: "x" }] });
+    expect(custom[0].shipped).toEqual({ package: "x", changed: true });
+    const html = renderToString(<StaticRouter location="/"><PolicyTable rows={rows} label={(e) => e} /></StaticRouter>);
+    expect(html).toContain("Shipped by board, changed here");
     expect(await violations(html)).toEqual([]);
   });
 });

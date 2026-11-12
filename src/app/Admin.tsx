@@ -41,6 +41,7 @@ import { FormSkeleton, ListSkeleton } from "../ui/patterns";
 import { t as tr, isolate } from "@ferrum/client";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
+const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ default: m.ApprovalPoliciesPage })));
 const Messaging = lazy(() => import("./Messaging").then((m) => ({ default: m.Messaging })));
 
 export const TABS = [
@@ -49,6 +50,7 @@ export const TABS = [
   { id: "packages", get label() { return tr("Packages"); } },
   { id: "connections", get label() { return tr("Connections"); } },
   { id: "connectors", get label() { return tr("Data connectors"); } },
+  { id: "approvals", get label() { return tr("Approval policies"); } },
   { id: "webhooks", get label() { return tr("Webhooks"); } },
   { id: "automations", get label() { return tr("Automations"); } },
   { id: "messaging", get label() { return tr("Messaging"); } },
@@ -65,7 +67,7 @@ export const TABS = [
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -84,7 +86,7 @@ function RowMenu({ label, children }: { label: string; children: ReactNode }) {
 /** The sections, grouped for the side navigation. Ids are the `?tab=` values and the tab/panel ids: they do not change. */
 export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
   { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
-  { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "webhooks", "automations", "messaging", "plugins"] },
+  { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "approvals", "webhooks", "automations", "messaging", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
   { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services"] },
 ];
@@ -186,6 +188,11 @@ export function AdminPage() {
         {tab === "messaging" && (
           <Suspense fallback={<ListSkeleton rows={4} />}>
             <Messaging />
+          </Suspense>
+        )}
+        {tab === "approvals" && (
+          <Suspense fallback={<ListSkeleton rows={4} />}>
+            <ApprovalPolicies embedded />
           </Suspense>
         )}
         {tab === "words" && <InterfaceWords />}

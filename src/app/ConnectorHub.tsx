@@ -47,7 +47,7 @@ const KINDS: Record<string, string> = {
 const words = (capability: string) => capability.replace(/_/g, " ");
 
 function Differences({ id, onChange }: { id: string; onChange: () => void }) {
-  const q = useQuery({ queryKey: ["connection-drift", id], queryFn: ({ signal }) => api.get<{ drift: Drift[] }>(`/api/admin/connections/${id}/drift`, undefined, signal) });
+  const q = useQuery({ queryKey: ["connection-drift", id], queryFn: ({ signal }) => api.get<{ drift: Drift[] }>(`/api/admin/connector-instances/${id}/drift`, undefined, signal) });
   if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   if (!q.data) return <PageLoading />;
   const open = q.data.drift.filter((d) => !d.resolved_at);
@@ -94,7 +94,7 @@ function Differences({ id, onChange }: { id: string; onChange: () => void }) {
 function History({ id, onChange }: { id: string; onChange: () => void }) {
   const q = useQuery({
     queryKey: ["connection-activity", id],
-    queryFn: ({ signal }) => api.get<{ runs: Run[]; streams: { stream: string; entity: string; records: number; last_synced?: string | null }[] }>(`/api/admin/connections/${id}/activity`, undefined, signal),
+    queryFn: ({ signal }) => api.get<{ runs: Run[]; streams: { stream: string; entity: string; records: number; last_synced?: string | null }[] }>(`/api/admin/connector-instances/${id}/activity`, undefined, signal),
   });
   const [busy, setBusy] = useState<string | null>(null);
   if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;

@@ -216,6 +216,8 @@ export interface PolicyRow {
   steps: string[];
   /** The page that edits it. */
   to: string;
+  /** Shipped by this package (a policy a package declares); `changed`: an administrator changed or switched it off. */
+  shipped?: { package: string; changed: boolean };
 }
 
 /** Every approval policy the workspace itself has set, from the customizations list (`GET /api/customize`): the latest active
@@ -242,4 +244,16 @@ export function approvalIndex(list: { entity: string; op: Raw; is_active: boolea
     if (!had || c.seq > had.seq) latest.set(key, { seq: c.seq, row });
   }
   return [...latest.values()].flatMap((v) => (v.row ? [v.row] : [])).sort((a, b) => a.entity.localeCompare(b.entity) || a.on.localeCompare(b.on));
+}
+
+/** The policies the packages ship on one entity, from `GET /api/customize/definition/{Entity}` (either shape), as index rows. */
+export function shippedRows(entity: string, def: unknown): PolicyRow[] {
+  const d = (isObj(def) ? def : {}) as Raw;
+  const list = (Array.isArray(d.package_approvals) ? d.package_approvals : Array.isArray(d.approvals) ? d.approvals : []) as Raw[];
+  return list.flatMap((a) => {
+    if (!isObj(a) || typeof a.on !== "string") return [];
+    const steps = isObj(a.policy) && Array.isArray(a.policy.steps) ? a.policy.steps.map((x, i) => (isObj(x) && typeof x.label === "string" && x.label ? x.label : `${i + 1}`)) : [];
+    const now = typeof a.changed === "boolean" ? a.changed : JSON.stringify((isObj(d.approvals) ? (d.approvals as Raw)[a.on] : undefined) ?? null) !== JSON.stringify(a.policy);
+    return [{ entity, on: a.on, steps, to: a.on.startsWith("transition") ? `/customize/${encodeURIComponent(entity)}/workflow` : documentApprovalsLink(entity), shipped: { package: String(a.package ?? ""), changed: now } }];
+  });
 }
