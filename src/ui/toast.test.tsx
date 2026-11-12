@@ -5,7 +5,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { announce, toast, Toaster } from "./kit";
+import { announce, toast, Toaster, useToastPlacement, type ToastPlacement } from "./kit";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
@@ -89,5 +89,44 @@ describe("announce", () => {
     expect(live.textContent).toBe("3 conversations moved to Trash");
     expect(live.querySelector(".sr-only")).not.toBeNull();
     expect(count()).toBe(0);
+  });
+});
+
+describe("toast placement", () => {
+  const stack = () => host.querySelector(".toaster")!.getAttribute("data-placement");
+  const Asks = ({ at }: { at: ToastPlacement }) => (useToastPlacement(at), null);
+  it("is the bottom end until a mounted component asks otherwise, and returns when it unmounts", () => {
+    expect(stack()).toBeNull();
+    const el = document.body.appendChild(document.createElement("div"));
+    const asker = createRoot(el);
+    act(() => asker.render(<Asks at="bottom-start" />));
+    expect(stack()).toBe("bottom-start");
+    act(() => asker.unmount());
+    expect(stack()).toBeNull();
+    el.remove();
+  });
+  it("lets the last one mounted win, and the one before comes back", () => {
+    const [a, b] = [document.createElement("div"), document.createElement("div")];
+    document.body.append(a, b);
+    const [ra, rb] = [createRoot(a), createRoot(b)];
+    act(() => ra.render(<Asks at="bottom-start" />));
+    act(() => rb.render(<Asks at="top-end" />));
+    expect(stack()).toBe("top-end");
+    act(() => rb.unmount());
+    expect(stack()).toBe("bottom-start");
+    act(() => ra.unmount());
+    expect(stack()).toBeNull();
+    a.remove();
+    b.remove();
+  });
+  it("follows a change of the asked placement", () => {
+    const el = document.body.appendChild(document.createElement("div"));
+    const r = createRoot(el);
+    act(() => r.render(<Asks at="bottom-start" />));
+    act(() => r.render(<Asks at="top-end" />));
+    expect(stack()).toBe("top-end");
+    act(() => r.unmount());
+    expect(stack()).toBeNull();
+    el.remove();
   });
 });
