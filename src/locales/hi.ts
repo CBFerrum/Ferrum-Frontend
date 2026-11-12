@@ -5079,6 +5079,8 @@ const words: Record<string, string> = {
   "Prints as {format}": "{format} के रूप में प्रिंट होगा",
   "E-mail {format} as a PDF": "{format} को PDF के रूप में ई-मेल करें",
   "Print as {format}": "{format} के रूप में प्रिंट करें",
+  "This is the package's format: its layout cannot be changed here, so a new release can still improve it. Its paper, letter head, copies, who may use it and whether it can be printed can (Page). Customize it to design your own copy.": "यह पैकेज का फ़ॉर्मेट है: इसका लेआउट यहाँ नहीं बदला जा सकता, ताकि नया रिलीज़ इसे बेहतर कर सके। इसका कागज़, लेटर हेड, प्रतियाँ, कौन उपयोग करे और क्या यह प्रिंट हो सकता है, बदले जा सकते हैं (पन्ना)। अपनी प्रति डिज़ाइन करने के लिए इसे अनुकूलित करें।",
+  "A package's format: the rest belongs to its layout; Customize it to change that.": "पैकेज का फ़ॉर्मेट: बाक़ी इसके लेआउट का हिस्सा है; उसे बदलने के लिए इसे अनुकूलित करें।",
 };
 
 export default words;

@@ -22,12 +22,14 @@ const DOC_COLOURS = ["#111111", "#374151", "#555555", "#9ca3af", "#1f2937", "#1e
 const SIZE_NAMES = (): Record<Size, string> => ({ xs: tr("Smallest (8 pt)"), sm: tr("Small (9 pt)"), md: tr("Normal (10.5 pt)"), lg: tr("Large (12 pt)"), xl: tr("Larger (14 pt)"), "2xl": tr("Largest (18 pt)") });
 const AS_NAMES = (): Record<(typeof FORMAT_AS)[number], string> => ({ auto: tr("As the field is"), text: tr("Text"), multiline: tr("Lines of text"), number: tr("Number"), amount: tr("Amount"), percent: tr("Percent"), date: tr("Date"), datetime: tr("Date and time"), words: tr("Amount in words"), check: tr("Yes or No") });
 
-export function Properties({ tab, def, layout, selected, cat, problems, letterheads, onDef, onLayout, onSelect, onRemove, onMove, name, where }: {
+export function Properties({ tab, def, layout, selected, cat, problems, letterheads, pkg, onDef, onLayout, onSelect, onRemove, onMove, name, where }: {
   tab: "selected" | "page"; def: PrintFormat; layout: Layout; selected: Id | null; cat?: Catalogue; problems: Problem[]; letterheads: { id: string; letter_head_name: string }[];
+  /** A package's layout (§13 g): only paper, copies, roles, letter head and on/off change. */
+  pkg?: boolean;
   onDef: (d: PrintFormat, group?: string) => void; onLayout: Set; onSelect: (id: Id | null) => void; onRemove: (id: Id) => void; onMove: (next: Layout, said: string, select?: Id) => void;
   name: (id: Id) => string; where: (l: Layout, id: Id) => string;
 }) {
-  if (tab === "page") return <PageTab def={def} cat={cat} letterheads={letterheads} onDef={onDef} />;
+  if (tab === "page") return <PageTab def={def} cat={cat} letterheads={letterheads} onDef={onDef} pkg={pkg} />;
   const w = selected ? locate(layout, selected) : null;
   if (!w || !selected)
     return (
@@ -514,7 +516,7 @@ function TableProps({ t, layout, onLayout, cat, current, onSelect }: { t: TableB
 
 // ── the page ──
 
-function PageTab({ def, cat, letterheads, onDef }: { def: PrintFormat; cat?: Catalogue; letterheads: { id: string; letter_head_name: string }[]; onDef: (d: PrintFormat, group?: string) => void }) {
+function PageTab({ def, cat, letterheads, onDef, pkg }: { def: PrintFormat; cat?: Catalogue; letterheads: { id: string; letter_head_name: string }[]; onDef: (d: PrintFormat, group?: string) => void; pkg?: boolean }) {
   const id = useId();
   const l = def.layout!;
   const style = l.style ?? {};
@@ -524,12 +526,16 @@ function PageTab({ def, cat, letterheads, onDef }: { def: PrintFormat; cat?: Cat
   };
   return (
     <div className="stack">
-      <Text label={tr("Name")} value={def.label} max={80} onChange={(v) => onDef({ ...def, label: v }, "label")} />
+      {pkg && <p className="field-hint">{tr("A package's format: the rest belongs to its layout; Customize it to change that.")}</p>}
+      <fieldset disabled={pkg} className="contents">
+        <Text label={tr("Name")} value={def.label} max={80} onChange={(v) => onDef({ ...def, label: v }, "label")} />
+      </fieldset>
       <label className="check-field">
         <input type="checkbox" role="switch" checked={def.enabled !== false} onChange={(e) => onDef({ ...def, enabled: e.target.checked })} />
         {tr("Can be printed")}
       </label>
       <PageFields page={def.page} onChange={(p) => onDef({ ...def, page: p === null ? undefined : { size: "A4", orientation: "portrait", margin_mm: { top: 15, right: 12, bottom: 15, left: 12 }, ...def.page, ...p } })} />
+      <fieldset disabled={pkg} className="contents">
       <div className="pd-row">
         <Pick label={tr("Typeface")} value={style.font} options={[["sans", tr("Sans serif")], ["serif", tr("Serif")], ["mono", tr("Monospace")]]} none={tr("The print settings'")} onChange={(v) => setStyle({ font: v })} />
         <Pick label={tr("Text size")} value={style.size} options={SIZES.map((s) => [s, SIZE_NAMES()[s]])} none={SIZE_NAMES().md} onChange={(v) => setStyle({ size: v })} />
@@ -537,6 +543,7 @@ function PageTab({ def, cat, letterheads, onDef }: { def: PrintFormat; cat?: Cat
       <Pick label={tr("Line spacing")} value={style.line_height} options={LINE_HEIGHTS.map((h) => [h, String(h)])} none="1.45" onChange={(v) => setStyle({ line_height: v as (typeof LINE_HEIGHTS)[number] | undefined })} />
       <Colour label={tr("Text colour")} value={style.color} onChange={(c) => setStyle({ color: c })} />
       <Colour label={tr("Accent (headings, rules)")} value={style.accent} onChange={(c) => setStyle({ accent: c })} />
+      </fieldset>
       <Field label={tr("Letter head")} htmlFor={`${id}-lh`}>
         <select id={`${id}-lh`} className="select" value={def.letterhead ?? "default"} onChange={(e) => onDef({ ...def, letterhead: e.target.value })}>
           <option value="default">{tr("The record's company's")}</option>
@@ -547,8 +554,10 @@ function PageTab({ def, cat, letterheads, onDef }: { def: PrintFormat; cat?: Cat
       <Field label={tr("Copies offered")} htmlFor={`${id}-copies`} hint={tr("One label a line, at most 5. Empty: the print settings' labels.")}>
         <textarea id={`${id}-copies`} className="textarea" rows={3} value={(def.copies ?? []).join("\n")} onChange={(e) => onDef({ ...def, copies: e.target.value.split("\n").slice(0, 5) }, "copies")} />
       </Field>
+      <fieldset disabled={pkg} className="contents">
       <Text label={tr("Watermark")} value={l.watermark?.text} max={40} hint={tr("Besides Draft and Cancelled, which the print settings add.")} onChange={(v) => onDef({ ...def, layout: { ...l, watermark: v ? { ...l.watermark, text: v } : undefined } }, "wm")} />
       {l.watermark && <When when={l.watermark.when} cat={cat} onChange={(w) => onDef({ ...def, layout: { ...l, watermark: { ...l.watermark!, when: w } } }, "wmw")} />}
+      </fieldset>
       <Field label={tr("Who may use it")} htmlFor={`${id}-roles`} hint={tr("Role names separated by commas. Empty: everyone who may read the record.")}>
         <input id={`${id}-roles`} className="input" value={(def.roles ?? []).join(", ")} onChange={(e) => onDef({ ...def, roles: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) }, "roles")} />
       </Field>
