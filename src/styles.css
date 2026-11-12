@@ -3883,6 +3883,156 @@ a.queue-name:focus-visible::after {
   }
 }
 
+/* ── rich text (src/ui/richtext: RichTextEditor, RichText): docs/design/PATTERNS.md, "Rich text" ──
+   `.rich-text` is the typography of written content, the same in the editor and when shown; it is a form field's content, so it
+   follows the theme. `.rte` is the editor's frame: the toolbar band at the top, the writing area, a quiet footer; focus in the
+   writing area rings the whole frame. */
+.rich-text {
+  overflow-wrap: anywhere;
+  /* Each paragraph takes the direction of its own words; lists and quotes carry dir="auto". */
+  p, h1, h2, h3, h4 { unicode-bidi: plaintext; text-align: start; }
+  > * + * { margin-block-start: 0.6em; }
+  h1 { font-size: var(--text-2xl); line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; margin-block-start: 1em; }
+  h2 { font-size: var(--text-xl); line-height: 1.3; font-weight: 600; margin-block-start: 0.9em; }
+  h3, h4 { font-size: var(--text-lg); line-height: 1.4; font-weight: 600; margin-block-start: 0.8em; }
+  > :first-child { margin-block-start: 0; }
+  ul, ol { padding-inline-start: 1.5em; }
+  ul { list-style: disc; }
+  ol { list-style: decimal; }
+  li > p { margin: 0; }
+  li + li { margin-block-start: 0.2em; }
+  ul[data-type="taskList"] { list-style: none; padding-inline-start: 0.25em; }
+  ul[data-type="taskList"] > li { display: flex; gap: 0.5em; align-items: flex-start; }
+  ul[data-type="taskList"] > li > label { flex: none; display: flex; align-items: center; block-size: 1.6em; }
+  ul[data-type="taskList"] > li > div { flex: 1; min-width: 0; }
+  ul[data-type="taskList"] > li[data-checked="true"] > div { color: var(--muted-foreground); text-decoration: line-through; }
+  blockquote { border-inline-start: 3px solid var(--border-strong); padding-inline-start: 0.9em; color: var(--muted-foreground); }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2); border-radius: 4px; padding: 0.1em 0.3em; }
+  pre { font-family: var(--mono); font-size: var(--text-sm); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; overflow-x: auto; white-space: pre; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  hr { border: 0; border-block-start: 1px solid var(--border-strong); margin-block: 1em; }
+  img { max-width: 100%; height: auto; border-radius: 4px; }
+  /* A highlight is a light colour the writer chose, in both themes: its words are dark on it (the editor writes `color: inherit`). */
+  /* ui-lint-allow raw-color: text on a highlight colour that is content, not theme */
+  mark { border-radius: 2px; padding-inline: 0.1em; color: #202329 !important; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  td, th { border: 1px solid var(--border-strong); padding: 6px 8px; vertical-align: top; text-align: start; }
+  th { background: var(--surface-2); font-weight: 600; }
+  td > p, th > p { margin: 0; }
+}
+/* A merge field: the token's label as a chip; stored and sent as `{{ name }}`. */
+.merge-chip {
+  display: inline-block;
+  padding: 0 6px;
+  margin-inline: 1px;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-radius: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.9em;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.ProseMirror-selectednode.merge-chip, .ProseMirror-selectednode > .merge-chip { outline: 2px solid var(--ring); outline-offset: 1px; }
+.rte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color var(--duration-state), box-shadow var(--duration-state);
+}
+.rte:has(.rte-content:focus) {
+  border-color: var(--ring);
+  outline: 1px solid var(--ring);
+}
+.rte-invalid, .rte-invalid:has(.rte-content:focus) { border-color: var(--danger); outline-color: var(--danger); }
+.rte-disabled { opacity: 0.6; }
+.rte-readonly { border-color: var(--border); }
+.rte-bar {
+  border-block-end: 1px solid var(--border);
+  background: var(--surface-2);
+  border-start-start-radius: calc(var(--radius) - 1px);
+  border-start-end-radius: calc(var(--radius) - 1px);
+}
+.rte-tablebar { border-block-start: 1px solid var(--border); }
+.rte-scroll {
+  min-height: var(--rte-min, 8rem);
+  max-height: var(--rte-max, 28rem);
+  overflow-y: auto;
+  cursor: text;
+}
+.rte-content {
+  padding: 12px 16px 16px;
+  outline: none;
+  white-space: pre-wrap;
+  caret-color: var(--primary);
+  line-height: 1.6;
+}
+.rte[data-variant="minimal"] .rte-content { padding: 10px 12px; }
+/* A letter keeps a line length that reads well; a message or a field is as wide as its box. */
+.rte[data-variant="full"] .rte-content > * { max-inline-size: 76ch; }
+.rte-content ::selection { background: color-mix(in srgb, var(--primary) 22%, transparent); }
+.rte-content .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  color: var(--faint);
+  pointer-events: none;
+}
+.rte-content ul[data-type="taskList"] input { inline-size: 15px; block-size: 15px; accent-color: var(--primary); }
+.rte-content .selectedCell { background: var(--primary-soft); }
+.rte-content table { margin-block: 0.4em; }
+.rte-img { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.rte-img img { border-radius: 4px; }
+.rte-img.is-selected img { outline: 2px solid var(--ring); outline-offset: 2px; }
+.rte-img-handle { position: absolute; inset-inline-end: -5px; inset-block-end: -5px; width: 12px; height: 12px; border: 2px solid var(--surface); border-radius: 3px; background: var(--primary); cursor: nwse-resize; opacity: 0; touch-action: none; }
+.rte-img.is-selected .rte-img-handle, .rte-img:hover .rte-img-handle { opacity: 1; }
+.rte-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  padding: 4px 12px;
+  border-block-start: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+/* Recipients as chips in one box (the record's Email dialog). */
+.chip-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  height: auto;
+  min-height: var(--control-h);
+  padding-block: 3px;
+  cursor: text;
+}
+.chip-input:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.chip-input .chip { min-height: 24px; padding-block: 2px; padding-inline: 10px 4px; gap: 2px; }
+.chip-input .chip-bad { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.chip-x { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; color: var(--muted-foreground); }
+.chip-x:hover { background: var(--surface-3); color: var(--text); }
+.chip-input input { flex: 1 1 10rem; min-width: 8rem; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; padding: 2px 4px; }
+.field-invalid-box { border-color: var(--danger); }
+.email-preview { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 11rem; }
+.email-preview-head { display: flex; flex-direction: column; gap: 2px; padding-block-end: 12px; border-block-end: 1px solid var(--border); font-size: var(--text-sm); }
+.email-preview-file { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--text-sm); }
+.attach-line { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); font-size: var(--text-sm); }
+@media (max-width: 640px) {
+  /* On a phone the toolbar stays in view while the page scrolls under the keyboard. */
+  .rte-bar { position: sticky; top: 0; z-index: 2; }
+}
+@media (forced-colors: active) {
+  .rte:has(.rte-content:focus) { outline: 2px solid Highlight; }
+  .merge-chip { border-color: CanvasText; }
+}
+
 /* ── print ──
    A page prints as its content: no frame, no controls, no scroll containers, no sticky positioning; black on white
    whatever the theme; tables print in full, rows whole, headers repeated. Records and reports are the main targets. */

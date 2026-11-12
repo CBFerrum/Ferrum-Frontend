@@ -26,6 +26,7 @@ import { stateTone, stateWords } from "../lib/targetDraft";
 import { docstatusTone } from "../lib/statusTones";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
 import { uploadFile } from "../lib/files";
+import { RichText, RichTextEditor } from "../ui/richtext";
 import {
   DOCSTATUS_LABEL,
   fieldState,
@@ -67,6 +68,8 @@ const orNull = (s: string) => (s === "" ? null : s);
 /** Kinds that keep their own read-only form: a tick, a link with its open button, a preview, a picker, a secret. */
 const NOT_AS_TEXT = new Set(["check", "link", "json", "attach", "color", "secret", "table"]);
 const MULTILINE = new Set(["text", "markdown", "code"]);
+/** Where a rich-text field's pictures come from besides https: the workspace's own stored files. */
+const RICH_FILES = { imageSources: ["/files/"] };
 
 /** What a field the person cannot edit looks like: its value as text, in the field's own grid cell (numbers end-aligned). Not tabbable, so Tab skips the figures; a click selects and copies. */
 function ReadOnlyValue({ field: f, value, id, invalid, describedBy, compact, label, currencyPrecision }: ControlProps) {
@@ -111,6 +114,34 @@ export function FieldControl(p: ControlProps) {
   // A tick the person cannot change is a word in its place ("Yes" / "No"), named by its label like any value.
   if (f.type === "check" && disabled) {
     return <output id={p.id} aria-describedby={p.describedBy} aria-label={p.compact ? p.label : undefined} className={cn("read-text", value !== true && "read-text-off")}>{value === true ? t("Yes") : t("No")}</output>;
+  }
+  // A long text declared as rich text (`widget: rich_text`): the kit's editor (compact) to write it, the same typography to read and print it.
+  if (f.type === "text" && f.widget === "rich_text") {
+    if (disabled) {
+      return (
+        <div id={p.id} role="group" aria-label={p.label ?? f.label} aria-describedby={p.describedBy} className="read-rich">
+          {text(value) ? <RichText html={text(value)} options={RICH_FILES} /> : <span className="faint">—</span>}
+        </div>
+      );
+    }
+    return (
+      <RichTextEditor
+        toolbar="compact"
+        id={p.id}
+        label={p.label ?? f.label}
+        describedBy={p.describedBy}
+        invalid={p.invalid}
+        maxLength={f.max_length}
+        value={text(value)}
+        onChange={(v) => onChange(orNull(v))}
+        imageSources={RICH_FILES.imageSources}
+        onUploadImage={async (file) => {
+          const stored = await uploadFile(file, p.entity && p.recordId ? { entity: p.entity, id: p.recordId } : undefined);
+          return { src: stored.url, alt: stored.file_name.replace(/\.[^.]+$/, "") };
+        }}
+        minHeight="7rem"
+      />
+    );
   }
   // A value the person cannot edit is shown as text (an input that is readOnly, so it stays selectable and named by its label), not as a greyed box.
   if (disabled && !NOT_AS_TEXT.has(f.type)) return <ReadOnlyValue {...p} />;
