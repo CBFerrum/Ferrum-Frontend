@@ -57,7 +57,7 @@ import {
 } from "./list/settings";
 import { t } from "../lib/i18n";
 import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
-import { CellValue, NotInstalled, notInstalled } from "./widgets";
+import { CellValue, MissingEntity, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
 import { t as tr, isolate } from "@ferrum/client";
@@ -111,6 +111,7 @@ export function ListNothing({ error, onRetry, filtered, onClear, label, labelPlu
 export function ListView() {
   const { entity = "" } = useParams();
   const meta = useEntityMeta(entity);
+  if (!entity) return <MissingEntity page="ListView" />;
   if (notInstalled(meta.error)) return <NotInstalled entity={entity} />;
   if (meta.error) return <ErrorState error={meta.error} onRetry={() => meta.refetch()} />;
   if (!meta.data) return <PageLoading />;

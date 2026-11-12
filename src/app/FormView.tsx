@@ -38,7 +38,7 @@ import {
 import { CollabPanel } from "./Collab";
 import { MergeDialog } from "./list/MergeDialog";
 import { Related } from "./list/Related";
-import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
+import { FieldControl, LinkTitle, MissingEntity, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
 import { RecordLinks } from "./RecordLinks";
@@ -113,6 +113,7 @@ export function FormView() {
   const { entity = "", id = "" } = useParams();
   const meta = useEntityMeta(entity);
   const me = useMe();
+  if (!entity) return <MissingEntity page="FormView" />;
   if (notInstalled(meta.error)) return <NotInstalled entity={entity} />;
   if (meta.error || me.error) return <ErrorState error={meta.error ?? me.error} onRetry={() => (meta.error ? meta.refetch() : me.refetch())} />;
   if (!meta.data || !me.data) return <PageLoading />;

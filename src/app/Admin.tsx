@@ -39,6 +39,7 @@ import {
 } from "../ui/kit";
 import { FormSkeleton, ListSkeleton } from "../ui/patterns";
 import { t as tr, isolate } from "@ferrum/client";
+import { canonicalZones, deviceZone } from "../lib/zone";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
 const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ default: m.ApprovalPoliciesPage })));
@@ -972,7 +973,7 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
   // The browser's list may lack the saved zone (an alias such as Asia/Kolkata), so it is always offered.
-  const zones = [...new Set(["UTC", initial.timezone, ...Intl.supportedValuesOf("timeZone")])].sort();
+  const zones = [...new Set([initial.timezone, ...canonicalZones(["UTC", ...Intl.supportedValuesOf("timeZone")])])].sort();
   const fyChanged = form.fiscal_year_start_month !== initial.fiscal_year_start_month;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1006,7 +1007,7 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
         label={tr("Time zone")}
         htmlFor="ws-tz"
         error={fieldError("timezone")}
-        hint={tr("Today's date, date-based number series and report periods follow it. This device uses {timeZone}.", { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+        hint={tr("Today's date, date-based number series and report periods follow it. This device uses {timeZone}.", { timeZone: deviceZone() })}
       >
         <select id="ws-tz" className="select" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
           {zones.map((z) => (

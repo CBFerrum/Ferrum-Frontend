@@ -415,10 +415,10 @@ function Sidebar() {
           </summary>
           {frameMode === "classic" ? (
             <>
-              <NavLink to="/apps" className="nav-link">
+              <a href="/store/" className="nav-link">
                 <NavIcon icon="layout-grid" />
                 <span className="nav-label">{tr("Apps")}</span>
-              </NavLink>
+              </a>
               <NavLink to="/admin" className="nav-link">
                 <NavIcon icon="shield" />
                 <span className="nav-label">{tr("Admin")}</span>
@@ -498,7 +498,7 @@ function useNavTargets(): NavTarget[] {
     if (frameMode === "classic" && meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read")))
       out.push({ label: tr("Documents"), hint: tr("Docs"), to: docsNav.to });
     if (me?.user.is_admin) {
-      if (frameMode === "classic") out.push({ label: tr("Apps"), hint: tr("Page"), to: "/apps" }, { label: tr("Administration"), hint: tr("Page"), to: "/admin" });
+      if (frameMode === "classic") out.push({ label: tr("Apps"), hint: tr("Page"), to: "", href: "/store/" }, { label: tr("Administration"), hint: tr("Page"), to: "/admin" });
       else out.push({ label: tr("Apps"), hint: tr("Page"), to: "", href: "/store/" }, { label: tr("Administration"), hint: tr("Page"), to: "", href: "/admin/" });
       out.push(frameHasPages ? { label: tr("Customize"), hint: tr("Page"), to: "/customize" } : { label: tr("Customize"), hint: tr("Page"), to: "", href: "/data/customize/" });
     }
