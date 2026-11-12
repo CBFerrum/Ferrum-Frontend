@@ -47,6 +47,12 @@ export interface RichTextEditorProps {
   images?: "upload" | "inline";
   /** Address prefixes the caller's own pictures are served from ("/api/files/"); `https:` is always allowed. */
   imageSources?: string[];
+  /** `data-*` attributes (`["data-cid"]`) the host keeps on a picture through load, editing and `getHTML`: a mail part reference, say. The editor's own
+   *  load and paste cleaning keeps them; `sanitizeRichText` drops them unless the same names are in its `imageAttributes` option. */
+  imageAttributes?: string[];
+  /** `hold`: a picture whose address is on the web (`http:`, `https:`, `//`, and not under `imageSources`) stays in the content, address and all, but is not
+   *  requested while writing: a placeholder with its description and size is drawn instead. `load` (default): every picture is shown. */
+  remoteImages?: "load" | "hold";
   /** More TipTap extensions (mentions); the caller imports them, so load them lazily too. */
   extensions?: unknown[];
   /** The TipTap editor once it exists (null when it goes): for a caller that must act on it (Mail puts a quote at the end, swaps an
@@ -59,6 +65,13 @@ export interface RichTextEditorProps {
   minHeight?: string;
   maxHeight?: string;
   className?: string;
+  /** Merges the editor into the surface that holds it (a compose window, a card): no border, radius, background or ring of its own, the toolbar sticks
+   *  to the top of the host's scrolling area (give it a surface with `--rte-surface`), and the writing area grows with its text instead of scrolling
+   *  (`maxHeight` is ignored; the host scrolls). The default look is unchanged. */
+  frameless?: boolean;
+  /** Content drawn inside the scrolling area before the text (a header, a banner) and after it (a folded quote, a signature). Not editable, never in the value. */
+  before?: ReactNode;
+  after?: ReactNode;
 }
 
 // One request for the session, shared by the lazy component and `preloadRichTextEditor`.
@@ -70,10 +83,10 @@ const Impl = lazy(load);
 export const preloadRichTextEditor = (): Promise<unknown> => load();
 
 /** The frame, already its final size, while the editor's code arrives: a toolbar band and the writing area. */
-function EditorSkeleton({ toolbar = "compact", readOnly, minHeight }: Pick<RichTextEditorProps, "toolbar" | "readOnly" | "minHeight">) {
+function EditorSkeleton({ toolbar = "compact", readOnly, minHeight, frameless, className, before, after }: Pick<RichTextEditorProps, "toolbar" | "readOnly" | "minHeight" | "frameless" | "className" | "before" | "after">) {
   const n = toolbar === "full" ? 14 : toolbar === "minimal" ? 4 : 10;
   return (
-    <div className="rte" aria-busy="true" data-variant={toolbar} style={{ "--rte-min": minHeight ?? (toolbar === "minimal" ? "5rem" : "8rem") } as React.CSSProperties}>
+    <div className={cn("rte", frameless && "rte-frameless", className)} aria-busy="true" data-variant={toolbar} style={{ "--rte-min": minHeight ?? (toolbar === "minimal" ? "5rem" : "8rem") } as React.CSSProperties}>
       {!readOnly && (
         <div className="rte-bar">
           <div className="flex items-center gap-1 px-1 py-1">
@@ -84,10 +97,12 @@ function EditorSkeleton({ toolbar = "compact", readOnly, minHeight }: Pick<RichT
         </div>
       )}
       <div className="rte-scroll">
+        {before && <div className="rte-before">{before}</div>}
         <div className="rte-content flex flex-col gap-2">
           <span className="h-3 w-3/4 animate-pulse rounded bg-muted" />
           <span className="h-3 w-1/2 animate-pulse rounded bg-muted" />
         </div>
+        {after && <div className="rte-after">{after}</div>}
       </div>
     </div>
   );
@@ -104,7 +119,7 @@ export function RichTextEditor(props: RichTextEditorProps) {
   const describedBy = [props.describedBy, message && errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <Suspense fallback={<EditorSkeleton toolbar={props.toolbar} readOnly={props.readOnly} minHeight={props.minHeight} />}>
+      <Suspense fallback={<EditorSkeleton toolbar={props.toolbar} readOnly={props.readOnly} minHeight={props.minHeight} frameless={props.frameless} className={props.className} before={props.before} after={props.after} />}>
         <Impl {...props} describedBy={describedBy} />
       </Suspense>
       {message && (

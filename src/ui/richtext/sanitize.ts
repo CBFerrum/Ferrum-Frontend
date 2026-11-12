@@ -105,10 +105,14 @@ export interface SanitizeOptions {
   inlineImages?: boolean;
   /** Address prefixes an image may come from besides `https:` (the caller's own files: "/api/files/"). */
   imageSources?: string[];
+  /** `data-*` attributes (names such as `data-cid`) an image may keep besides its own: a host's part reference, say. Others are never kept. */
+  imageAttributes?: string[];
   /** For a message going out: links lose `target`, a check list becomes lines that start with ☐ or ☑ (mail programs draw no boxes), each paragraph says `dir="auto"`. */
   mail?: boolean;
 }
 
+/** The only extra attribute names an image may carry: `data-` and a lower-case word, so a host cannot let `onerror` or `src` through. */
+export const IMAGE_DATA = /^data-[a-z][a-z0-9-]*$/;
 const int = (v: string, min: number, max: number) => (/^\d{1,5}$/.test(v) && +v >= min && +v <= max ? String(+v) : null);
 
 /** What an attribute keeps on a tag: its cleaned value, or null to drop it. */
@@ -151,7 +155,7 @@ function attribute(tag: string, name: string, value: string, o: SanitizeOptions)
     case "data-color":
       return tag === "mark" ? cleanColor(v) : null;
     default:
-      return null;
+      return tag === "img" && IMAGE_DATA.test(name) && o.imageAttributes?.includes(name) ? v.slice(0, 500) : null;
   }
 }
 
