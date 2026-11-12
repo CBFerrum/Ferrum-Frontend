@@ -200,6 +200,9 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
   const sent = useDebounced(JSON.stringify(toSave(def)), 250);
   const ask = { template: JSON.parse(sent) as PrintFormat, record_id: record_, sample: !record_, mode: "design" as const, ...(language ? { language } : {}), letterhead };
   const render = useQuery({ queryKey: ["admin", "print", "design", ask], queryFn: ({ signal }) => preview(ask, signal), placeholderData: keepPreviousData, retry: false, enabled: !narrow });
+  // The last page drawn stays on the canvas while a change the server refuses is fixed (the refusal is said above it).
+  const drawn = useRef<string | null>(null);
+  if (render.data?.content) drawn.current = render.data.content;
   const testPrint = () => void openPdf(() => requestRaw("/api/admin/documents/preview", { method: "POST", body: { ...ask, mode: "print", format: "pdf" } })).catch((e) => toast(e instanceof ApiError && e.status === 503 ? tr("This server makes no PDFs: preview prints from the browser only.") : errorMessage(e), "error"));
 
   // ── drag and drop ──
@@ -323,7 +326,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
             <Side layout={layout} cat={cat.data} catLoading={cat.isLoading} catError={cat.error} selected={selected} onSelect={(id) => (setSelected(id), setTab("selected"))} onAdd={addHere} readOnly={readOnly} onKey={onKey} />
           </aside>
           <Canvas
-            html={render.data?.content ?? null}
+            html={render.data?.content ?? drawn.current}
             loading={render.isFetching}
             error={render.isError ? render.error : null}
             page={def.page}
