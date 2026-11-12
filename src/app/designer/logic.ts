@@ -91,30 +91,30 @@ export function tabNameProblem(name: string, layout: LayoutSection[], current?: 
 
 export const UNDO_LIMIT = 100;
 
-export interface Undoable {
-  past: LayoutSection[][];
-  present: LayoutSection[];
-  future: LayoutSection[][];
+export interface Undoable<T = LayoutSection[]> {
+  past: T[];
+  present: T;
+  future: T[];
   /** Changes recorded with the same group in a row (typing in one input) undo as one step. */
   group: string | null;
 }
 
-export const startHistory = (present: LayoutSection[]): Undoable => ({ past: [], present, future: [], group: null });
+export const startHistory = <T = LayoutSection[]>(present: T): Undoable<T> => ({ past: [], present, future: [], group: null });
 
-export function record(h: Undoable, next: LayoutSection[], group: string | null = null): Undoable {
+export function record<T>(h: Undoable<T>, next: T, group: string | null = null): Undoable<T> {
   if (JSON.stringify(next) === JSON.stringify(h.present)) return h;
   if (group && group === h.group) return { ...h, present: next, future: [] };
   return { past: [...h.past, h.present].slice(-UNDO_LIMIT), present: next, future: [], group };
 }
 
-export function undo(h: Undoable): Undoable {
+export function undo<T>(h: Undoable<T>): Undoable<T> {
   const prev = h.past.at(-1);
-  return prev ? { past: h.past.slice(0, -1), present: prev, future: [h.present, ...h.future], group: null } : h;
+  return prev !== undefined ? { past: h.past.slice(0, -1), present: prev, future: [h.present, ...h.future], group: null } : h;
 }
 
-export function redo(h: Undoable): Undoable {
+export function redo<T>(h: Undoable<T>): Undoable<T> {
   const [next, ...rest] = h.future;
-  return next ? { past: [...h.past, h.present], present: next, future: rest, group: null } : h;
+  return h.future.length ? { past: [...h.past, h.present], present: next, future: rest, group: null } : h;
 }
 
 // ── section conditions ──
