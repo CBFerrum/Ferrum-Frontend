@@ -136,9 +136,13 @@ export interface ApprovalRequest {
   to: string;
   requester: string;
   requested_at: string;
-  status: "pending" | "approved" | "rejected" | "recalled" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "recalled" | "cancelled" | "failed";
+  /** `failed`: why the submit was refused when the last approval landed. */
+  failure?: string | null;
+  /** Asked of a document's own submit or cancel (`action` is then `submit` or `cancel`), not a workflow transition. */
+  document?: boolean;
   params?: Record<string, unknown>;
-  steps: { label?: string; state: "waiting" | "open" | "skipped" | "approved" | "rejected"; need: number | string; approvers: string[]; escalated?: string[]; opened_at?: string | null; remind_at?: string | null; escalate_at?: string | null }[];
+  steps: { label?: string; state: "waiting" | "open" | "skipped" | "approved" | "rejected"; need: number | string; approvers: string[]; escalated?: string[]; opened_at?: string | null; remind_at?: string | null; escalate_at?: string | null; reminded_at?: string | null; escalated_at?: string | null }[];
   decisions: { step: number; decider: string; on_behalf_of?: string | null; outcome: "approve" | "reject"; comment?: string | null; at: string; void?: boolean }[];
 }
 

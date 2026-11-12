@@ -29,7 +29,9 @@ function page(a: Partial<Automation>) {
   qc.setQueryData(["admin", "users"], { users: [{ id: "u1", email: "a@x.test", full_name: "Asha" }] });
   return renderToString(
     <QueryClientProvider client={qc}>
-      <AutomationEditor initial={a} onClose={() => {}} onDone={() => {}} />
+      <MemoryRouter>
+        <AutomationEditor initial={a} onClose={() => {}} onDone={() => {}} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -47,6 +49,7 @@ const event: Automation = {
     { type: "create_document", entity: "Project", values: { project_name: "doc.name" } },
     { type: "notify", to: "role:Sales Manager", title: "'x'" },
     { type: "email", to: "doc.email", subject: "'Hi'", body: "''", template: "<p>{{ doc.status }}</p>" },
+    { type: "message", template: "contracts.signed", to: ["field:email"], channels: ["text"] },
     { type: "webhook", url: "https://x.test" },
   ],
 };
@@ -69,7 +72,8 @@ describe("the automation editor", () => {
     expect(t).toContain("Action 2: Create a record");
     expect(t).toContain("Action 3: Notify");
     expect(t).toContain("Action 4: Send mail");
-    expect(t).toContain("Action 5: Other action");
+    expect(t).toContain("Action 5: Send a message");
+    expect(t).toContain("Action 6: Other action");
     expect(html).toContain("https://x.test");
     expect(html).toContain("{{ doc.status }}");
     expect(html).toContain('aria-label="Insert status"');

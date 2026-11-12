@@ -7,6 +7,8 @@ import { t as tr } from "@ferrum/client";
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type Day = (typeof DAYS)[number];
 export type Hours = Partial<Record<Day, [string, string][]>>;
+/** What a given local date is, whatever its weekday and the holidays say (`exceptions` of a calendar). */
+export type Exceptions = Record<string, { open: boolean; hours?: [string, string][] }>;
 
 /** What `GET /api/admin/calendars` lists, and what `PUT` takes (the first four). */
 export interface Calendar {
@@ -15,6 +17,7 @@ export interface Calendar {
   weekends: string[];
   holidays: string[];
   hours?: Hours | null;
+  exceptions?: Exceptions | null;
   revision?: number;
   updated_by?: string | null;
   updated_at?: string;
@@ -35,10 +38,24 @@ export interface Draft {
   custom: boolean;
   windows: Record<Day, Window[]>;
   holidays: string[];
+  /** Dated exceptions, by date; `extra` is what the screen has no control for, kept as it came. */
+  exceptions: ExceptionDraft[];
 }
 
+export interface ExceptionDraft {
+  date: string;
+  open: boolean;
+  windows: Window[];
+  extra: Record<string, unknown>;
+}
+
+/** At most this many exceptions in a calendar. */
+export const MAX_EXCEPTIONS = 1000;
+
 export interface Problem {
-  field: "name" | "calendar" | "hours" | "holidays";
+  field: "name" | "calendar" | "hours" | "holidays" | "exceptions";
+  /** The date an `exceptions` problem is about. */
+  date?: string;
   /** The weekday an `hours` problem is about. */
   day?: Day;
   message: string;
@@ -47,7 +64,7 @@ export interface Problem {
 const none = <T,>(f: () => T) => Object.fromEntries(DAYS.map((d) => [d, f()])) as Record<Day, T>;
 
 export function emptyDraft(zone: string): Draft {
-  return { name: "", zone, open: { ...none(() => true), sat: false, sun: false }, custom: false, windows: none<Window[]>(() => []), holidays: [] };
+  return { name: "", zone, open: { ...none(() => true), sat: false, sun: false }, custom: false, windows: none<Window[]>(() => []), holidays: [], exceptions: [] };
 }
 
 export function fromCalendar(c: Calendar): Draft {
@@ -58,6 +75,9 @@ export function fromCalendar(c: Calendar): Draft {
   d.custom = !!c.hours;
   for (const day of DAYS) d.windows[day] = (c.hours?.[day] ?? []).map(([from, to]) => ({ from, to }));
   d.holidays = [...c.holidays].sort();
+  d.exceptions = Object.entries(c.exceptions ?? {})
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([date, { open, hours, ...extra }]) => ({ date, open: open !== false, windows: (hours ?? []).map(([from, to]) => ({ from, to })), extra }));
   return d;
 }
 
@@ -67,8 +87,12 @@ export function toCalendar(d: Draft): Calendar {
     c.hours = {};
     for (const day of DAYS) if (d.open[day] && d.windows[day].length) c.hours[day] = d.windows[day].map((w) => [w.from, w.to]);
   }
+  if (d.exceptions.length) c.exceptions = Object.fromEntries(d.exceptions.map((e) => [e.date, { ...e.extra, open: e.open, ...(e.windows.length ? { hours: e.windows.map((w): [string, string] => [w.from, w.to]) } : {}) }]));
   return c;
 }
+
+/** A new exception: the date is closed all day until windows say otherwise. */
+export const newException = (date: string): ExceptionDraft => ({ date, open: false, windows: [], extra: {} });
 
 /** Turning on "Set hours" with none yet: a working day from nine to five on each business day. */
 export function seedHours(d: Draft): Draft {
@@ -84,6 +108,18 @@ export function copyDay(d: Draft, from: Day): Draft {
 }
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** What is wrong with a day's windows (both times, start before end, none overlapping), each said with `say`. */
+function checkWindows(ws: Window[], say: (m: "both" | "order" | "overlap", n: number) => void) {
+  const ok: Window[] = [];
+  ws.forEach((w, i) => {
+    if (!TIME.test(w.from) || (!TIME.test(w.to) && w.to !== "24:00")) say("both", i + 1);
+    else if (w.from >= w.to) say("order", i + 1);
+    else ok.push(w);
+  });
+  const sorted = [...ok].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
+  if (sorted.some((w, i) => i > 0 && w.from < sorted[i - 1].to)) say("overlap", 0);
+}
 
 export function isDate(s: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
@@ -125,6 +161,15 @@ export function checkCalendar(d: Draft, isNew: boolean): Problem[] {
       const sorted = [...ok].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
       if (sorted.some((w, i) => i > 0 && w.from < sorted[i - 1].to)) out.push({ field: "hours", day, message: tr("{day}: windows may not overlap.", { day: dayName(day) }) });
     }
+  }
+  const seen = new Set<string>();
+  if (d.exceptions.length > MAX_EXCEPTIONS) out.push({ field: "exceptions", message: tr("A calendar keeps at most {n} exceptions.", { n: MAX_EXCEPTIONS }) });
+  for (const e of d.exceptions) {
+    const at = (message: string) => out.push({ field: "exceptions", date: e.date, message: `${e.date}: ${message}` });
+    if (!isDate(e.date)) at(tr("not a date (use YYYY-MM-DD)."));
+    else if (seen.has(e.date)) at(tr("it is listed twice."));
+    seen.add(e.date);
+    checkWindows(e.windows, (m, n) => at(m === "overlap" ? tr("windows may not overlap.") : m === "both" ? tr("window {n}: enter both times.", { n }) : tr("window {n}: the start must be before the end.", { n })));
   }
   return out;
 }

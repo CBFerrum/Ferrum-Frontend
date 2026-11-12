@@ -2,14 +2,14 @@
 // two-factor sign-in, the browsers signed in as them (each signed out on its own), API keys and app
 // passwords, and connecting an AI assistant.
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 import { LANGUAGES, shell, t, isolate } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
 import { TwoFactorSettings } from "@/app/TwoFactor";
 import { api, ApiError, errorMessage } from "@/lib/api";
-import { formatDateTime, relativeTime } from "@/lib/format";
+import { formatDate, formatDateTime, relativeTime } from "@/lib/format";
 import { useMe, useMetaIndex } from "@/lib/meta";
 import { Alert, Badge, Button, confirmDialog, Dialog, Field, Spinner, toast } from "@/ui/kit";
 import "./shell.css";
@@ -410,9 +410,62 @@ function TimeZone() {
   );
 }
 
+/** One of the person's away periods (`GET /api/away`): today's and those to come, with the stand-in's name. */
+export interface AwayPeriod {
+  starts_on: string;
+  ends_on: string;
+  current: boolean;
+  substitute: string;
+  substitute_name?: string | null;
+  reason: string;
+}
+
+/** The periods the server holds, the current one said plainly, each cleared or changed (cleared, then the form takes its words). */
+export function AwayPeriods({ onChange }: { onChange: (p: AwayPeriod) => void }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["away"], queryFn: ({ signal }) => api.get<AwayPeriod[]>("/api/away", undefined, signal) });
+  const [error, setError] = useState<string | null>(null);
+  const clear = useMutation({
+    mutationFn: (p: AwayPeriod) => api.del(`/api/away?starts_on=${encodeURIComponent(p.starts_on)}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["away"] }),
+    onError: (e) => setError(errorMessage(e)),
+  });
+  if (q.isLoading) return <Spinner />;
+  if (q.error) return <Alert tone="error">{isolate(errorMessage(q.error))}</Alert>;
+  const periods = q.data ?? [];
+  const now = periods.find((p) => p.current);
+  const who = (p: AwayPeriod) => isolate(p.substitute_name || p.substitute);
+  return (
+    <div className="stack">
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      {now && <Alert tone="info">{t("{person} is deciding for you today, until {end}.", { person: who(now), end: formatDate(now.ends_on) })}</Alert>}
+      {!periods.length && <p className="muted">{t("You have no away period set.")}</p>}
+      {!!periods.length && (
+        <ul className="stack" aria-label={t("Away periods")}>
+          {periods.map((p) => (
+            <li key={p.starts_on} className="row" style={{ flexWrap: "wrap" }}>
+              <span>
+                {formatDate(p.starts_on)} – {formatDate(p.ends_on)}: {who(p)}, {isolate(p.reason)}
+              </span>
+              {p.current && <Badge tone="amber">{t("Now")}</Badge>}
+              <Button disabled={clear.isPending} onClick={() => clear.mutate(p, { onSuccess: () => onChange(p) })}>
+                {t("Change")}
+              </Button>
+              <Button variant="danger" loading={clear.isPending && clear.variables === p} disabled={clear.isPending} onClick={() => clear.mutate(p)}>
+                {t("Clear")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Who decides in the person's place between two days (approvals and process tasks go to them meanwhile). The server
- *  keeps the period and ends it on its last day; it offers no way to read or withdraw it, so none is shown here. */
+ *  keeps the periods and ends each on its last day; they are listed above the form. */
 export function Away() {
+  const qc = useQueryClient();
   const [v, setV] = useState({ starts_on: "", ends_on: "", substitute: "", reason: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -429,6 +482,7 @@ export function Away() {
     try {
       await api.post("/api/app/studio/away", Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x.trim()])));
       setSaved(true);
+      void qc.invalidateQueries({ queryKey: ["away"] });
     } catch (err) {
       if (err instanceof ApiError && err.fields.length) setErrors(Object.fromEntries(err.fields.map((f) => [f.field, f.message])));
       else setError(errorMessage(err));
@@ -437,27 +491,30 @@ export function Away() {
     }
   }
   return (
-    <form className="stack" onSubmit={(e) => void submit(e)}>
-      {error && <Alert tone="error">{isolate(error)}</Alert>}
-      {saved && <Alert tone="success">{t("Saved. Decisions that would come to you go to them on those days.")}</Alert>}
-      <Field label={t("From")} htmlFor="away-from" required error={errors.starts_on}>
-        <input id="away-from" className="input" type="date" value={v.starts_on} onChange={set("starts_on")} />
-      </Field>
-      <Field label={t("To")} htmlFor="away-to" required error={errors.ends_on}>
-        <input id="away-to" className="input" type="date" value={v.ends_on} onChange={set("ends_on")} />
-      </Field>
-      <Field label={t("Who decides for you")} htmlFor="away-who" required error={errors.substitute} hint={t("Their e-mail address")}>
-        <input id="away-who" className="input" type="email" value={v.substitute} onChange={set("substitute")} />
-      </Field>
-      <Field label={t("Why")} htmlFor="away-why" required error={errors.reason}>
-        <input id="away-why" className="input" maxLength={500} value={v.reason} onChange={set("reason")} />
-      </Field>
-      <div>
-        <Button type="submit" variant="primary" loading={busy}>
-          {t("Save")}
-        </Button>
-      </div>
-    </form>
+    <div className="stack">
+      <AwayPeriods onChange={(p) => (setV({ starts_on: p.starts_on, ends_on: p.ends_on, substitute: "", reason: p.reason }), setSaved(false))} />
+      <form className="stack" onSubmit={(e) => void submit(e)}>
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        {saved && <Alert tone="success">{t("Saved. Decisions that would come to you go to them on those days.")}</Alert>}
+        <Field label={t("From")} htmlFor="away-from" required error={errors.starts_on}>
+          <input id="away-from" className="input" type="date" value={v.starts_on} onChange={set("starts_on")} />
+        </Field>
+        <Field label={t("To")} htmlFor="away-to" required error={errors.ends_on}>
+          <input id="away-to" className="input" type="date" value={v.ends_on} onChange={set("ends_on")} />
+        </Field>
+        <Field label={t("Who decides for you")} htmlFor="away-who" required error={errors.substitute} hint={t("Their e-mail address")}>
+          <input id="away-who" className="input" type="email" value={v.substitute} onChange={set("substitute")} />
+        </Field>
+        <Field label={t("Why")} htmlFor="away-why" required error={errors.reason}>
+          <input id="away-why" className="input" maxLength={500} value={v.reason} onChange={set("reason")} />
+        </Field>
+        <div>
+          <Button type="submit" variant="primary" loading={busy}>
+            {t("Save")}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
