@@ -5266,6 +5266,21 @@ const words: Record<string, string> = {
   "https only, to this host and the hosts allowed below.": "https only, to this host and the hosts allowed below.",
   "name": "name",
   "{n} calls to its inbound address were refused.": "{n} calls to its inbound address were refused.",
+  // Administration screens for platform features (connections, approvals, rules, targets, lists, links): English until translated.
+  "An administrator switched off what {package} ships here.": "An administrator switched off what {package} ships here.",
+  "Approval before “{action}”": "Approval before “{action}”",
+  "As {package} ships it": "As {package} ships it",
+  "Ask for approval before “{action}” runs": "Ask for approval before “{action}” runs",
+  "Changed from what {package} ships": "Changed from what {package} ships",
+  "Details of {title}": "Details of {title}",
+  "Hide": "Hide",
+  "It is no longer waiting.": "It is no longer waiting.",
+  "Nothing is approved or refused; the record stays as it is.": "Nothing is approved or refused; the record stays as it is.",
+  "This record type has no action that changes something, so no action asks for approval.": "This record type has no action that changes something, so no action asks for approval.",
+  "Withdraw": "Withdraw",
+  "Withdraw my request": "Withdraw my request",
+  "Withdraw this request?": "Withdraw this request?",
+  "Withdrawn": "Withdrawn",
 };
 
 export default words;
