@@ -14,6 +14,7 @@ import {
   type Automation, type Draft, type DraftAction, type NotifyTo, type Problem, type Trigger,
 } from "../lib/automationDraft";
 import { Alert, Button, Dialog, ErrorState, Field, toast } from "../ui/kit";
+import { LinkOptions } from "./author/LinkOptions";
 import { ExprInput, linkChips } from "./author/ExprInput";
 import { FilterRows, grow, optionsOf, Pick, Rows, Tools, wrap } from "./author/controls";
 import { useRoleNames } from "./author/RoleSelect";
@@ -310,7 +311,8 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
         {index > 0 && (a.kind === "set_fields" || a.kind === "create_document" || a.kind === "update_linked" || a.kind === "append_line" || a.kind === "set_line") && <p className="faint">{tr("Values can also use results[n]: what the earlier steps made, n counting from 0.")}</p>}
         {a.kind === "invoke" && <InvokeCard a={a} index={index} owner={owner} inButton={inButton} chips={chips} links={linkChips(fields)} onChange={patch} />}
         {a.kind !== "raw" && <WhenBox a={a} fields={fields} chips={chips} patch={patch} nested={nested} />}
-        {a.kind === "raw" && (
+        {a.kind === "raw" && isLinkEffect(a.json) && <LinkOptions id={`link-${a.key}`} effect={a.json as Record<string, unknown>} fields={fields} onChange={(json) => patch({ json })} />}
+        {a.kind === "raw" && !isLinkEffect(a.json) && (
           <>
             <p className="faint">{tr("The editor has no form for this action. It is kept exactly as it is; change it under Edit as JSON.")}</p>
             <pre className="mono" tabIndex={0} aria-label={tr("The action as JSON")} style={{ overflow: "auto", margin: 0 }}>{JSON.stringify(a.json, null, 2)}</pre>
@@ -320,6 +322,9 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
     </section>
   );
 }
+
+/** The `link` effect: a signed link to the record (BD-23). It has no form of its own in the draft, so it is kept as JSON and set here. */
+const isLinkEffect = (j: unknown) => !!j && typeof j === "object" && (j as { type?: unknown }).type === "link";
 
 const eventName = (e: string) => ({ created: tr("created"), updated: tr("updated"), submitted: tr("submitted"), cancelled: tr("cancelled"), deleted: tr("deleted") })[e] ?? e;
 
@@ -494,6 +499,7 @@ export function AddActions({ count, max, onAdd, hasTable, nested }: { /** Inside
     [tr("Send mail"), () => ({ key: newKey(), kind: "email", to: "", subject: "", formatted: false, body: "", template: "" })],
     [tr("Send a message"), () => ({ key: newKey(), kind: "message", template: "", to: [{ key: newKey(), kind: "owner", value: "" }], channels: [], all: false, values: [], extra: {} })],
     [tr("Find"), () => ({ key: newKey(), kind: "find", entity: "", by: row(), create: null, update: null, extra: {} })],
+    ...(nested ? [] : ([[tr("Issue a signed link"), () => ({ key: newKey(), kind: "raw", json: { type: "link", actions: [], days: 7 } })]] as [string, () => DraftAction][])),
     ...(nested ? [] : ([[tr("For each"), () => ({ key: newKey(), kind: "for_each", over: "table", table: "", entity: "", link: "", where: "", effects: [], extra: {} })]] as [string, () => DraftAction][])),
     ...(hasTable ? ([[tr("Copy lines"), () => ({ key: newKey(), kind: "copy_lines", table: "", source: "link", link: "", result: "", from_table: "", rows: row(), mode: "", extra: {} })]] as [string, () => DraftAction][]) : []),
   ];

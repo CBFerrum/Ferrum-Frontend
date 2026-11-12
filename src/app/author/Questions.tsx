@@ -6,7 +6,7 @@ import { newParam, PARAM_TYPES, setParamLabel, type DraftParam } from "../../lib
 import { Button, Field } from "../../ui/kit";
 import { grow, optionsOf, Pick, Tools, wrap } from "./controls";
 
-const PARAM_NAMES = (): Record<string, string> => ({ data: tr("Text"), text: tr("Long text"), select: tr("Choice"), int: tr("Whole number"), date: tr("Date"), link: tr("Link to…") });
+const PARAM_NAMES = (): Record<string, string> => ({ data: tr("Text"), text: tr("Long text"), select: tr("Choice"), int: tr("Whole number"), date: tr("Date"), link: tr("Link to…"), files: tr("Files") });
 
 /** The questions a button or a workflow transition asks first (name, label, kind of answer, choices, whether it must be answered). */
 export function Questions<T extends { params: DraftParam[] }>({ d, onChange, entities, flagged, title, hint }: { d: T; onChange: (d: T) => void; entities: { value: string; label: string }[]; flagged: Set<string | undefined>; title?: string; hint?: string }) {
@@ -52,6 +52,21 @@ export function Questions<T extends { params: DraftParam[] }>({ d, onChange, ent
               <Field label={tr("Pick a record of")} htmlFor={`bt-pk-${p.key}`}>
                 <Pick label={tr("Pick a record of")} id={`bt-pk-${p.key}`} value={p.to} options={optionsOf(entities.map((e) => ({ name: e.value, label: e.label })), p.to)} onChange={(to) => edit(p.key, { to })} />
               </Field>
+            )}
+            {p.type === "files" && (
+              <div className="row" style={wrap}>
+                <Field label={tr("Most files")} htmlFor={`bt-pf-${p.key}`} hint={tr("1 to 10. Empty: one.")}>
+                  <input id={`bt-pf-${p.key}`} className="input" type="number" min={1} max={10} value={p.maxFiles} onChange={(e) => edit(p.key, { maxFiles: e.target.value })} />
+                </Field>
+                <Field label={tr("Largest file (bytes)")} htmlFor={`bt-pb-${p.key}`} hint={tr("Up to 10485760 (10 MB). Empty: 10 MB.")}>
+                  <input id={`bt-pb-${p.key}`} className="input" type="number" min={1} max={10485760} value={p.maxBytes} onChange={(e) => edit(p.key, { maxBytes: e.target.value })} />
+                </Field>
+                <div style={{ ...grow, flexBasis: 220 }}>
+                  <Field label={tr("Kinds of file it takes")} htmlFor={`bt-pa-${p.key}`} hint={tr("One per line, like image/* or application/pdf. Empty: any.")}>
+                    <textarea id={`bt-pa-${p.key}`} className="textarea mono" rows={2} spellCheck={false} defaultValue={p.accept.join("\n")} onChange={(e) => edit(p.key, { accept: e.target.value.split("\n") })} />
+                  </Field>
+                </div>
+              </div>
             )}
             <Field label={tr("Explanation (optional)")} htmlFor={`bt-pd-${p.key}`}>
               <input id={`bt-pd-${p.key}`} className="input" value={p.description} onChange={(e) => edit(p.key, { description: e.target.value })} />
