@@ -731,6 +731,13 @@ function MenusAndPopups() {
           </ContextMenuContent>
         </ContextMenu>
       </Row>
+      <Row label="kit Menu at the edges">
+        <div data-gallery="menu-edges" className="flex w-full justify-between gap-2">
+          <Menu label="Start edge" align="end">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+          <Menu label="Long list" align="start">{(close) => many.map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+          <Menu label="End edge" align="start">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+        </div>
+      </Row>
       <Row label="in a sheet">
         <Sheet>
           <SheetTrigger asChild><ShButton variant="outline" size="sm">Open sheet</ShButton></SheetTrigger>
@@ -748,7 +755,7 @@ function MenusAndPopups() {
         <Button onClick={() => setDlg2(true)}>Confirm over a dialog</Button>
       </Row>
       <Dialog open={dlg} onClose={() => setDlg(false)} title="Move INV-2026-00418">
-        <div className="flex gap-2">{menu("Menu in a dialog")}{pop("Popover in a dialog")}</div>
+        <div className="flex gap-2">{menu("Menu in a dialog")}{pop("Popover in a dialog")}<Menu label="Kit menu in a dialog">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu></div>
       </Dialog>
       <Dialog open={dlg2} onClose={() => setDlg2(false)} title="Edit INV-2026-00418" footer={<Button onClick={() => setDlg2(false)}>Close</Button>}>
         <Button variant="danger" data-gallery="confirm-opener" onClick={() => void confirmDialog({ title: "Discard the changes?", message: "Your edits to INV-2026-00418 are lost.", confirmLabel: "Discard", danger: true })}>Discard changes…</Button>

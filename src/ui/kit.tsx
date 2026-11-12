@@ -7,6 +7,7 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -21,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
 import { PortalContainer } from "../lib/portal";
+import { placeMenu } from "./menuPlacement";
 import { cn } from "../lib/utils";
 import { knownStatusTone } from "../lib/statusTones";
 
@@ -697,6 +699,27 @@ export function Menu({
   const trigger = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   useDismiss(ref, open, () => setOpen(false));
+  // The list is placed against the trigger before it is painted (below it or above it, shifted and clamped 8px inside the window, its height
+  // capped to the room with its own scroll) and again when the window or any scroller moves, so it never leaves the screen.
+  const list = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = list.current;
+    const btn = trigger.current;
+    if (!open || !el || !btn) return;
+    const place = () => {
+      Object.assign(el.style, { position: "fixed", insetInlineEnd: "auto", insetInlineStart: "auto", right: "auto", bottom: "auto", maxHeight: "none", overflowY: "auto" });
+      const r = btn.getBoundingClientRect();
+      const p = placeMenu(r, { width: el.offsetWidth, height: el.scrollHeight + (el.offsetHeight - el.clientHeight) }, { width: document.documentElement.clientWidth, height: window.innerHeight }, { align, rtl: getComputedStyle(btn).direction === "rtl" });
+      Object.assign(el.style, { left: `${p.left}px`, top: `${p.top}px`, maxHeight: `${p.maxHeight}px` });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, align]);
   // Closing from inside the menu (Escape, choosing an item) hands focus back to the button that opened it, so the keyboard keeps its place
   // and a dialog an item opens returns there when it closes.
   const closeFromInside = () => {
@@ -732,7 +755,7 @@ export function Menu({
         {label}
       </button>
       {open && (
-        <div className={`menu-list menu-${align}`} role="menu" id={menuId}>
+        <div ref={list} className={`menu-list menu-${align}`} role="menu" id={menuId}>
           {children(closeFromInside)}
         </div>
       )}
