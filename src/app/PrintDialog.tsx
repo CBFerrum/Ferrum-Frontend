@@ -9,7 +9,7 @@ import { useEffect, useId, useState } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 import { ApiError, docPath, errorMessage, request, requestRaw, saveBlob } from "../lib/api";
 import { usePref } from "../lib/prefs";
-import { copiesOffered, formatLabel, printPrefScope, printQuery, startingChoice, type Choices, type PrintChoice } from "../lib/printLayout";
+import { copiesOffered, formatLabel, languageName, printPrefScope, printQuery, startingChoice, type Choices, type PrintChoice } from "../lib/printLayout";
 import { Alert, Button, Dialog, Field, toast } from "../ui/kit";
 import { FormSkeleton } from "../ui/patterns";
 import { openPdf, PAPER_NAMES, PaperFrame, printHtml } from "./print/shared";
@@ -171,7 +171,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
                   <select id={`${ids}-lang`} className="select" value={choice.language} onChange={(e) => set({ language: e.target.value })}>
                     <option value="">{tr("Your language")}</option>
                     {languages.map((l) => (
-                      <option key={l} value={l}>{isolate(l)}</option>
+                      <option key={l} value={l}>{isolate(languageName(l))}</option>
                     ))}
                   </select>
                 </Field>

@@ -754,6 +754,16 @@ export function templateErrorAt(message: string): { language: string; part: "bod
   return m ? { language: m[1], part: m[2] as "body" | "header" | "footer", line: Number(m[3]), text: m[4] } : null;
 }
 
+/** A language's name in the interface's language, with its tag when the browser does not know it: "Hindi", "हिन्दी". */
+export function languageName(tag: string, inLanguage = typeof document !== "undefined" ? document.documentElement.lang || "en" : "en"): string {
+  try {
+    const name = new Intl.DisplayNames([inLanguage], { type: "language" }).of(tag);
+    return name && name !== tag ? name : tag;
+  } catch {
+    return tag;
+  }
+}
+
 // ── the dialog's choices and the person's memory (§6.1) ──
 
 export interface ChoiceTemplate { key: string; label?: string | null; output: string; kind?: "template" | "layout"; languages?: string[]; letterhead?: string; copies?: string[]; page?: { size: PaperSize; orientation: "portrait" | "landscape"; width_mm?: number; height_mm?: number } }

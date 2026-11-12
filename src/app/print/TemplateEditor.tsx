@@ -8,7 +8,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Link, useBlocker, useNavigate } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { ApiError, errorMessage, requestRaw } from "../../lib/api";
-import { DEFAULT_MARGINS, templateErrorAt, toSave, type Catalogue, type PageSetup, type PrintFormat } from "../../lib/printLayout";
+import { DEFAULT_MARGINS, languageName, templateErrorAt, toSave, type Catalogue, type PageSetup, type PrintFormat } from "../../lib/printLayout";
 import { Alert, Badge, Button, confirmDialog, Dialog, Field, Tabs, TabPanel, toast, useDebounced } from "../../ui/kit";
 import { SaveStatus } from "../../ui/patterns";
 import { LinkInput } from "../widgets";
@@ -219,7 +219,7 @@ export function TemplateEditor({ read, fresh }: { read?: FormatRead & { etag: st
               )}
             </div>
             <div className="card-body stack">
-              <Tabs id={`${ids}-lang`} tabs={langs.map((l) => ({ id: l, label: at?.language === l ? `${l} ⚠` : l }))} value={lang} onChange={setLang} />
+              <Tabs id={`${ids}-lang`} tabs={langs.map((l) => ({ id: l, label: `${languageName(l)}${at?.language === l ? " ⚠" : ""}` }))} value={lang} onChange={setLang} />
               {b && (
                 <TabPanel id={`${ids}-lang`} tab={lang}>
                   <div className="stack">
@@ -391,7 +391,7 @@ function TryIt({ def }: { def: PrintFormat }) {
           <Field label={tr("Language")} htmlFor={`${ids}-lang`}>
             <select id={`${ids}-lang`} className="select" value={language} onChange={(e) => setLanguage(e.target.value)}>
               <option value="">{tr("Yours")}</option>
-              {Object.keys(def.languages ?? {}).map((l) => <option key={l} value={l}>{isolate(l)}</option>)}
+              {Object.keys(def.languages ?? {}).map((l) => <option key={l} value={l}>{isolate(languageName(l))}</option>)}
             </select>
           </Field>
         </div>

@@ -74,17 +74,17 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
   }, []);
   const setLayout = useCallback((l: Layout, group?: string) => change({ ...hist.present, layout: l }, group), [change, hist.present]);
 
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => !closing.current && dirty && !readOnly && currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => !closing.current && dirty && currentLocation.pathname !== nextLocation.pathname);
   useEffect(() => {
     if (blocker.state !== "blocked") return;
     void confirmDialog({ title: tr("Leave without saving?"), message: tr("Your changes to this format will be lost."), confirmLabel: tr("Leave"), danger: true }).then((ok) => (ok ? blocker.proceed() : blocker.reset()));
   }, [blocker]);
   useEffect(() => {
-    if (!dirty || readOnly) return;
+    if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, readOnly]);
+  }, [dirty]);
 
   // ── keyboard: everything drag does ──
   const name = (id: Id) => {
@@ -254,16 +254,16 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
         def={def}
         actions={
           <>
-            {!readOnly && <SaveStatus state={state === "saved" && dirty ? "draft" : state} at={state === "saved" ? savedAt : null} />}
+            <SaveStatus state={state === "saved" && dirty ? "draft" : state} at={state === "saved" ? savedAt : null} />
             {read && <Button onClick={() => setVersions(true)}><HistoryIcon size={16} aria-hidden="true" />{tr("Versions")}</Button>}
             {!readOnly && <Button onClick={() => setSaveAs(true)}>{tr("Save as…")}</Button>}
-            {!readOnly && <Button variant="primary" loading={state === "saving"} disabled={state === "saving" || !dirty} onClick={() => void save()}>{tr("Save")}</Button>}
+            {<Button variant="primary" loading={state === "saving"} disabled={state === "saving" || !dirty} onClick={() => void save()}>{tr("Save")}</Button>}
           </>
         }
       />
       {readOnly && (
         <Alert tone="info" action={<Button variant="primary" onClick={() => setSaveAs(true)}>{tr("Customize this format")}</Button>}>
-          {tr("This is the package's format: it cannot be changed here, so a new release can still improve it. Customize it to design your own copy.")}
+          {tr("This is the package's format: its layout cannot be changed here, so a new release can still improve it. Its paper, letter head, copies, who may use it and whether it can be printed can (Page). Customize it to design your own copy.")}
         </Alert>
       )}
       {problemsHere.length > 0 && (
@@ -349,7 +349,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
               ))}
             </div>
             <div className="pd-scroll" role="tabpanel" id={`${ids}-panel`} aria-labelledby={`${ids}-tab-${tab}`}>
-              <fieldset disabled={readOnly} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+              <fieldset disabled={readOnly && tab !== "page"} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
                 <Properties
                   tab={tab}
                   def={def}
@@ -358,6 +358,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
                   cat={cat.data}
                   problems={problemsHere.filter((p) => p.id === selected)}
                   letterheads={lhs.data ?? []}
+                  pkg={readOnly}
                   onDef={(d, group) => change(d, group)}
                   onLayout={(l, group) => setLayout(l, group)}
                   onSelect={setSelected}
