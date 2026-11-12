@@ -4183,6 +4183,11 @@ const words: Record<string, string> = {
   "Waiting for others": "दूसरों की प्रतीक्षा में",
   "Nothing is waiting for your decision.": "आपके निर्णय के लिए कुछ नहीं रुका है।",
   "None of your requests is waiting.": "आपका कोई अनुरोध प्रतीक्षा में नहीं है।",
+  "Saved. Decisions that would come to you go to them on those days.": "सहेजा गया। उन दिनों आपके निर्णय उनके पास जाएँगे।",
+  "Who decides for you": "आपकी ओर से कौन निर्णय लेगा",
+  "Their e-mail address": "उनका ईमेल पता",
+  "Away": "अनुपस्थित",
+  "While you are away, decisions that would come to you go to someone else, in their own name on your behalf. It ends on its last day.": "आपकी अनुपस्थिति में आपके निर्णय किसी और के पास जाते हैं, जो आपकी ओर से अपने नाम से निर्णय लेता है। यह अंतिम दिन समाप्त हो जाता है।",
 };
 
 export default words;

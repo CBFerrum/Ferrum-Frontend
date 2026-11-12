@@ -4183,6 +4183,11 @@ const words: Record<string, string> = {
   "Waiting for others": "بانتظار الآخرين",
   "Nothing is waiting for your decision.": "لا شيء بانتظار قرارك.",
   "None of your requests is waiting.": "لا يوجد أي طلب منك قيد الانتظار.",
+  "Saved. Decisions that would come to you go to them on those days.": "تم الحفظ. القرارات التي كانت ستأتيك تذهب إليهم في تلك الأيام.",
+  "Who decides for you": "من يقرر عنك",
+  "Their e-mail address": "عنوان بريدهم الإلكتروني",
+  "Away": "بعيد",
+  "While you are away, decisions that would come to you go to someone else, in their own name on your behalf. It ends on its last day.": "أثناء غيابك تذهب القرارات التي كانت ستأتيك إلى شخص آخر، باسمه نيابةً عنك. وتنتهي في آخر يوم.",
 };
 
 export default words;
