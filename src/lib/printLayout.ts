@@ -116,10 +116,13 @@ export interface PrintFormat {
 
 export const kindOf = (f: Pick<PrintFormat, "layout" | "kind">) => f.kind ?? (f.layout ? "layout" : "template");
 
-/** What is saved: the server derives `kind`; empty optional parts are left out as the server leaves them out. */
+/** What is saved: the server derives `kind`; `default` is never sent; empty optional parts are left out as the server leaves them out. */
 export function toSave(f: PrintFormat): PrintFormat {
   const out: PrintFormat = JSON.parse(JSON.stringify(f));
   delete out.kind;
+  // The workspace's default is its own choice (D9, PUT …/defaults): a save never sends `default`, or saving a package's format
+  // as read (default: true) would make it the workspace's default again (seen on the walk server).
+  delete out.default;
   if (!out.roles?.length) delete out.roles;
   if (!out.copies?.length) delete out.copies;
   if (out.letterhead === "default") delete out.letterhead;
