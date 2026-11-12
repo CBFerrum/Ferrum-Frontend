@@ -41,6 +41,7 @@ import { Related } from "./list/Related";
 import { FieldControl, LinkTitle, NotInstalled, notInstalled, TableGrid, withValue, type GridCell } from "./widgets";
 import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
+import { RecordMessages } from "./MessageLog";
 import { EmailDocDialog } from "./EmailDoc";
 import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
@@ -1108,6 +1109,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       ) : (
         details(active)
       )}
+      {!isNew && <RecordMessages entity={E} id={String(id)} />}
     </div>
   );
 }

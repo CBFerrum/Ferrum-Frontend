@@ -521,7 +521,7 @@ function Try({ t, dirty, isNew, onRefusal }: { t: Template; dirty: boolean; isNe
     onError: (e) => onRefusal(e instanceof ApiError && e.fields.length ? e.fields.map((f) => f.message).join("; ") : errorMessage(e)),
   });
   const test = useMutation({
-    mutationFn: () => api.post<Sent[]>("/api/admin/messages/test", { template: t.key, channel: ch, ...(phone.trim() ? { phone: phone.trim() } : {}), ...(record ? { record_id: record } : {}) }),
+    mutationFn: () => api.post<{ sent: Sent[] }>("/api/admin/messages/test", { template: t.key, channel: ch, ...(phone.trim() ? { phone: phone.trim() } : {}), ...(record ? { record_id: record } : {}) }),
   });
   const shown = preview.data;
   return (
@@ -583,7 +583,7 @@ function Try({ t, dirty, isNew, onRefusal }: { t: Template; dirty: boolean; isNe
             {test.error && <Alert tone="error">{isolate(errorMessage(test.error))}</Alert>}
             {test.data && (
               <ul aria-label={tr("What the test came to")}>
-                {test.data.map((s, i) => (
+                {test.data.sent.map((s, i) => (
                   <li key={i}>{tr("{channel}: {state}", { channel: CHANNEL_NAMES()[(s.channel ?? ch) as Channel] ?? s.channel ?? "", state: s.state })}{s.reason ? ` (${s.reason})` : ""}</li>
                 ))}
               </ul>
