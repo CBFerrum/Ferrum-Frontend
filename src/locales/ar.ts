@@ -4178,6 +4178,11 @@ const words: Record<string, string> = {
   "Escalates {at}": "يُصعَّد في {at}",
   "Recall this request": "سحب هذا الطلب",
   "{action}: awaiting approval": "{action}: بانتظار الموافقة",
+  "All approvals": "كل الموافقات",
+  "To decide": "بانتظار قرارك",
+  "Waiting for others": "بانتظار الآخرين",
+  "Nothing is waiting for your decision.": "لا شيء بانتظار قرارك.",
+  "None of your requests is waiting.": "لا يوجد أي طلب منك قيد الانتظار.",
 };
 
 export default words;

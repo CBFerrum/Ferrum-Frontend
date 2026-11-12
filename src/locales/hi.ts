@@ -4178,6 +4178,11 @@ const words: Record<string, string> = {
   "Escalates {at}": "{at} को आगे भेजा जाएगा",
   "Recall this request": "यह अनुरोध वापस लें",
   "{action}: awaiting approval": "{action}: अनुमोदन की प्रतीक्षा",
+  "All approvals": "सभी अनुमोदन",
+  "To decide": "निर्णय के लिए",
+  "Waiting for others": "दूसरों की प्रतीक्षा में",
+  "Nothing is waiting for your decision.": "आपके निर्णय के लिए कुछ नहीं रुका है।",
+  "None of your requests is waiting.": "आपका कोई अनुरोध प्रतीक्षा में नहीं है।",
 };
 
 export default words;
