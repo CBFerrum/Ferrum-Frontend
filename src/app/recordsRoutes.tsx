@@ -25,6 +25,8 @@ export const recordsRoutes: RouteObject[] = [
   { path: "customize/new", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
   { path: "customize/:entity/design", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
   { path: "customize/menus", lazy: () => import("./Menus").then((m) => ({ Component: m.MenusPage })) },
+  { path: "customize/messages", lazy: () => import("./MessageTemplates").then((m) => ({ Component: m.MessageTemplatesPage })) },
+  { path: "customize/messages/:key", lazy: () => import("./MessageTemplates").then((m) => ({ Component: m.MessageTemplatePage })) },
   { path: "customize/packs", lazy: () => import("./Packs").then((m) => ({ Component: m.PacksPage })) },
   { path: "customize/:entity?", lazy: () => import("./Customize").then((m) => ({ Component: m.CustomizePage })) },
   { path: "customize/:entity/form", lazy: () => import("./FormDesigner").then((m) => ({ Component: m.FormDesignerPage })) },

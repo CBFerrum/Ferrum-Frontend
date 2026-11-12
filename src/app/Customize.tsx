@@ -136,6 +136,9 @@ export function CustomizePage() {
           <Link className="btn" to="/customize/menus">
             {tr("Menus")}
           </Link>
+          <Link className="btn" to="/customize/messages">
+            {tr("Message templates")}
+          </Link>
           <Link className="btn" to="/customize/packs">
             {tr("Packs")}
           </Link>
