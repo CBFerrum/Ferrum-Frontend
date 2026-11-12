@@ -7,9 +7,10 @@ import { useState } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import {
-  addHolidays, checkCalendar, copyDay, dayName, DAYS, emptyDraft, fromCalendar, parseDates, seedHours, toCalendar,
-  type Calendar, type Day, type Draft, type Window,
+  addHolidays, checkCalendar, copyDay, dayName, DAYS, emptyDraft, fromCalendar, newException, parseDates, seedHours, toCalendar,
+  type Calendar, type Day, type Draft, type ExceptionDraft, type Window,
 } from "../lib/calendarDraft";
+import { formatDate, todayIso } from "../lib/format";
 import { Alert, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 
 const SHORT = () => ({ mon: tr("Mon"), tue: tr("Tue"), wed: tr("Wed"), thu: tr("Thu"), fri: tr("Fri"), sat: tr("Sat"), sun: tr("Sun") });
@@ -103,7 +104,7 @@ export function Calendars() {
   );
 }
 
-function CalendarDialog({ value, onClose, onDone }: { value: Calendar | null; onClose: () => void; onDone: () => void }) {
+export function CalendarDialog({ value, onClose, onDone }: { value: Calendar | null; onClose: () => void; onDone: () => void }) {
   const isNew = !value;
   const [d, setD] = useState<Draft>(() => (value ? fromCalendar(value) : emptyDraft(Intl.DateTimeFormat().resolvedOptions().timeZone)));
   const [tried, setTried] = useState(false);
@@ -112,6 +113,7 @@ function CalendarDialog({ value, onClose, onDone }: { value: Calendar | null; on
   const [date, setDate] = useState("");
   const [pasted, setPasted] = useState("");
   const [notDates, setNotDates] = useState<string[]>([]);
+  const [exDate, setExDate] = useState("");
   // The browser's list may lack the saved zone (an alias such as Asia/Kolkata), so it is always offered.
   const zones = [...new Set(["UTC", d.zone, ...Intl.supportedValuesOf("timeZone")])].sort();
   const problems = tried ? checkCalendar(d, isNew) : [];
@@ -274,7 +276,95 @@ function CalendarDialog({ value, onClose, onDone }: { value: Calendar | null; on
           </div>
           {about("holidays") && <p className="field-error" role="alert">{about("holidays")}</p>}
         </fieldset>
+        <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend className="field-label" style={{ marginBottom: 6 }}>
+            {tr("Exceptions")}
+          </legend>
+          <p className="faint">{tr("A date that is closed or open whatever its weekday and the holidays say. Open with no hours is open all day; closed with hours is closed only for those hours of the day.")}</p>
+          <Exceptions
+            value={d.exceptions}
+            onChange={(exceptions) => set({ exceptions })}
+            date={exDate}
+            setDate={setExDate}
+            errors={problems.filter((p) => p.field === "exceptions").map((p) => p.message).concat(server.filter((f) => f.field === "exceptions").map((f) => f.message))}
+          />
+        </fieldset>
       </div>
     </Dialog>
+  );
+}
+
+/** The dated exceptions by date, those already past collapsed. */
+function Exceptions({ value, onChange, date, setDate, errors }: { value: ExceptionDraft[]; onChange: (v: ExceptionDraft[]) => void; date: string; setDate: (d: string) => void; errors: string[] }) {
+  const today = todayIso();
+  const past = value.filter((e) => e.date < today);
+  const coming = value.filter((e) => e.date >= today);
+  const edit = (e: ExceptionDraft, patch: Partial<ExceptionDraft>) => onChange(value.map((x) => (x === e ? { ...x, ...patch } : x)));
+  const add = () => {
+    if (!date || value.some((e) => e.date === date)) return setDate("");
+    onChange([...value, newException(date)].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)));
+    setDate("");
+  };
+  const row = (e: ExceptionDraft) => (
+    <ExceptionRow key={e.date} e={e} onChange={(p) => edit(e, p)} onRemove={() => onChange(value.filter((x) => x !== e))} />
+  );
+  return (
+    <div className="stack">
+      {errors.map((m) => (
+        <p key={m} className="field-error" role="alert">{isolate(m)}</p>
+      ))}
+      {value.length === 0 && <span className="muted">{tr("No exceptions")}</span>}
+      {coming.map(row)}
+      {past.length > 0 && (
+        <details>
+          <summary>{tr("Past exceptions ({n})", { n: past.length })}</summary>
+          <div className="stack">{past.map(row)}</div>
+        </details>
+      )}
+      <div className="row" style={wrap}>
+        <input className="input" type="date" style={{ width: 170 }} aria-label={tr("A date to make an exception")} value={date} onChange={(e) => setDate(e.target.value)} />
+        <Button size="sm" icon="plus" disabled={!date} onClick={add}>
+          {tr("Add exception")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ExceptionRow({ e, onChange, onRemove }: { e: ExceptionDraft; onChange: (p: Partial<ExceptionDraft>) => void; onRemove: () => void }) {
+  const day = formatDate(e.date);
+  const setWindow = (i: number, patch: Partial<Window>) => onChange({ windows: e.windows.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
+  return (
+    <div className="stack" role="group" aria-label={tr("Exception on {date}", { date: e.date })}>
+      <div className="row" style={wrap}>
+        <span className="mono">{isolate(e.date)}</span>
+        <span className="faint">{isolate(day)}</span>
+        <select className="select" style={{ width: 140 }} aria-label={tr("{date}: closed or open", { date: e.date })} value={e.open ? "open" : "closed"} onChange={(x) => onChange({ open: x.target.value === "open" })}>
+          <option value="closed">{tr("Closed")}</option>
+          <option value="open">{tr("Open")}</option>
+        </select>
+        <Button size="sm" icon="trash" aria-label={tr("Remove exception {date}", { date: e.date })} onClick={onRemove} />
+      </div>
+      {e.windows.map((w, i) => {
+        const n = i + 1;
+        const midnight = w.to === "24:00";
+        return (
+          <div key={i} className="row" style={wrap}>
+            <input className="input" type="time" style={{ width: 130 }} aria-label={tr("{date}, window {n}, from", { date: e.date, n })} value={w.from} onChange={(x) => setWindow(i, { from: x.target.value })} />
+            <input className="input" type="time" style={{ width: 130 }} aria-label={tr("{date}, window {n}, to", { date: e.date, n })} disabled={midnight} value={midnight ? "" : w.to} onChange={(x) => setWindow(i, { to: x.target.value })} />
+            <label className="check-field">
+              <input type="checkbox" aria-label={tr("{date}, window {n}, until midnight", { date: e.date, n })} checked={midnight} onChange={(x) => setWindow(i, { to: x.target.checked ? "24:00" : "" })} />
+              {tr("until midnight")}
+            </label>
+            <Button size="sm" icon="trash" aria-label={tr("Remove {date}, window {n}", { date: e.date, n })} onClick={() => onChange({ windows: e.windows.filter((_, j) => j !== i) })} />
+          </div>
+        );
+      })}
+      <div>
+        <Button size="sm" icon="plus" aria-label={tr("Add a window on {date}", { date: e.date })} onClick={() => onChange({ windows: [...e.windows, { from: "", to: "" }] })}>
+          {tr("Add window")}
+        </Button>
+      </div>
+    </div>
   );
 }
