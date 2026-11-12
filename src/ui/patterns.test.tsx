@@ -65,6 +65,17 @@ describe("SelectionToolbar", () => {
     expect(capped).toContain("of 1,200 matching");
     expect(draw({})).toContain("Clear selection");
   });
+  it("draws every action before it has been measured, and a hidden copy to measure by", () => {
+    const html = draw({ actions: [{ id: "a", label: "Archive", onSelect: () => {} }, { id: "d", label: "Delete", danger: true, onSelect: () => {} }] });
+    expect(html.match(/>Archive</g)).toHaveLength(2); // the button and its copy in the gauge
+    expect(html).toMatch(/<div[^>]*aria-hidden="true"[^>]*inert[^>]*invisible/);
+    expect(html).toContain("More actions"); // only the gauge has the More button yet
+    expect(html).toContain("btn-danger");
+    expect(html).toContain('class="sr-only [@media(width&gt;720px)]:not-sr-only"'); // Clear: icon on a phone, its words kept for readers
+  });
+  it("is the same bar without actions", () => {
+    expect(draw({ children: <button>Assign</button> })).not.toContain("inert");
+  });
 });
 
 describe("PageLoading", () => {

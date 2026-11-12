@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { usePortalContainer } from "@/lib/portal"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 function Popover({
@@ -18,10 +19,15 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  container,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  /** Where it is drawn; by default the open dialog around it, else the page's overlay root (lib/portal). */
+  container?: HTMLElement | null
+}) {
+  const around = usePortalContainer()
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? around}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

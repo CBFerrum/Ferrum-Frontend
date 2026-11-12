@@ -243,6 +243,19 @@ export interface LauncherEntry {
   family?: string | null;
 }
 
+/** A transfer an app runs itself, shown in the bar's upload tray (`uploads.track`). Calls after `done()` or `fail()` do nothing. */
+export interface TrackedUpload {
+  id: string;
+  /** Bytes sent so far. */
+  progress(bytes: number): void;
+  /** A try failed and another is coming; `message` says why (shown in the tray). */
+  retrying(message?: string): void;
+  /** Every byte is sent and the app is waiting for the server to take it in. */
+  sending(): void;
+  done(): void;
+  fail(message?: string): void;
+}
+
 export interface Shell {
   version: string;
   host: string;
@@ -275,6 +288,10 @@ export interface Shell {
     dismiss(id: string): Promise<void>;
     list(): Upload[];
     on(event: "progress" | "done" | "failed" | "cancelled", cb: (u: Upload) => void): () => void;
+    /** Puts a transfer the app runs itself in the bar's tray: `cancel` is the tray's Stop, `retry` its Retry. An app does not draw its own upload panel.
+     *  Where the bar cannot track (no shell, an older server: `canTrack` is false) it resolves to a handle that does nothing, so an app keeps its own panel then. */
+    track(o: { label: string; size: number; cancel?: () => void; retry?: () => void }): Promise<TrackedUpload>;
+    canTrack: boolean;
   };
   family(): Promise<Family | null>;
   /** Opens the assistant beside the page with what the person is looking at (a record, a
@@ -288,6 +305,47 @@ export interface Shell {
 }
 
 const noop = () => {};
+
+const idle: TrackedUpload = Object.freeze({ id: "", progress: noop, retrying: noop, sending: noop, done: noop, fail: noop });
+
+/** The bar's handle, made safe: after `done()` or `fail()` every call does nothing, and a bar that throws does not break the transfer. */
+function guarded(h: TrackedUpload): TrackedUpload {
+  let closed = false;
+  const run = (f: () => void, ends = false) => {
+    if (closed) return;
+    if (ends) closed = true;
+    try {
+      f();
+    } catch {
+      // the tray is a courtesy: the transfer goes on without it
+    }
+  };
+  return Object.freeze({
+    id: h.id,
+    progress: (b: number) => run(() => h.progress(b)),
+    retrying: (m?: string) => run(() => h.retrying(m)),
+    sending: () => run(() => h.sending()),
+    done: () => run(() => h.done(), true),
+    fail: (m?: string) => run(() => h.fail(m), true),
+  });
+}
+
+const trackers = new WeakMap<object, Shell["uploads"]>();
+/** `uploads` with `track` and `canTrack`: a bar older than `uploads.track` has none, and says so here once for every app. */
+function withTrack(u: Partial<Shell["uploads"]> | undefined): Shell["uploads"] {
+  if (!u) return fallback.uploads;
+  const hit = trackers.get(u);
+  if (hit) return hit;
+  const bar = u.track;
+  const out = {
+    ...fallback.uploads,
+    ...u,
+    canTrack: typeof bar === "function",
+    track: async (o: Parameters<Shell["uploads"]["track"]>[0]) => (typeof bar === "function" ? guarded(await bar.call(u, o)) : idle),
+  } as Shell["uploads"];
+  trackers.set(u, out);
+  return out;
+}
 
 /** Where no shell runs: plain navigation and titles, no intents, no live channel; uploads go
  *  while the page lives. */
@@ -334,6 +392,8 @@ const fallback: Shell = {
     dismiss: () => Promise.resolve(),
     list: () => [],
     on: () => noop,
+    track: () => Promise.resolve(idle),
+    canTrack: false,
   },
   family: () => Promise.resolve(null),
   assistant: () => Promise.resolve(false),
@@ -346,8 +406,7 @@ const fallback: Shell = {
 export function shell(): Shell {
   const s = (globalThis as { ferrum?: { shell?: Partial<Shell> } }).ferrum?.shell;
   if (!s) return fallback;
-  if (s.sidepanel && s.uploads && s.family && s.apps && s.assistant) return s as Shell;
-  return { ...fallback, ...s } as Shell;
+  return { ...fallback, ...s, uploads: withTrack(s.uploads) } as Shell;
 }
 
 // ───────────────────────── requests ─────────────────────────

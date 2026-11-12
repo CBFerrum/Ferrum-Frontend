@@ -98,6 +98,8 @@ export function installFakeShell(
       dismiss: async () => {},
       list: () => [],
       on: () => noop,
+      track: async () => ({ id: "tracked", progress: noop, retrying: noop, sending: noop, done: noop, fail: noop }),
+      canTrack: true,
     },
     family: async () => o.family ?? null,
     // The assistant opens as the side panel of that name.
