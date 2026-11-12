@@ -173,7 +173,7 @@ export function PaperFrame({ html, page, loading, error, title, maxScale = 1, fi
           </Alert>
         </div>
       ) : null}
-      {scale > 0 && (
+      {scale > 0 && !(error && !html) && (
         <div className="pf-paper-box" style={{ width: pw * scale, height: ph * scale }}>
           <div className="pf-paper" style={{ width: pw, height: ph, transform: `scale(${scale})` }}>
             {html ? (
