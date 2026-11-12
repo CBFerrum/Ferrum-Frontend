@@ -71,7 +71,9 @@ describe("SelectionToolbar", () => {
     expect(html).toMatch(/<div[^>]*aria-hidden="true"[^>]*inert[^>]*invisible/);
     expect(html).toContain("More actions"); // only the gauge has the More button yet
     expect(html).toContain("btn-danger");
-    expect(html).toContain('class="sr-only [@media(width&gt;720px)]:not-sr-only"'); // Clear: icon on a phone, its words kept for readers
+    expect(html).toContain('class="sr-only @[28rem]:not-sr-only"'); // Clear: its icon while the bar is narrower than 28rem, its words kept for readers
+    expect(html).toContain('title="Clear selection"');
+    expect(html).toMatch(/class="doc-actions @container /); // the bar's own width decides, not the screen's
   });
   it("is the same bar without actions", () => {
     expect(draw({ children: <button>Assign</button> })).not.toContain("inert");

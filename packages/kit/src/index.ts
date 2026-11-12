@@ -18,4 +18,4 @@ export { FamilyNav } from "./FamilyNav";
 export { useLiveEntity, useLivePush, type LiveEvent } from "./live";
 export { useCanIntent, useShellTitle } from "./hooks";
 export { NavIcon, navIconsReady } from "./NavIcon";
-export { navIcon, conceptIcon, NAV_ICON_NAMES, type NavIconInput } from "./navIconName";
+export { navIcon, conceptIcon, reportIcon, NAV_ICON_NAMES, type NavIconInput } from "./navIconName";

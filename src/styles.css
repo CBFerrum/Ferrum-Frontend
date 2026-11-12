@@ -3992,6 +3992,34 @@ a.queue-name:focus-visible::after {
 .rte-img.is-selected img { outline: 2px solid var(--ring); outline-offset: 2px; }
 .rte-img-handle { position: absolute; inset-inline-end: -5px; inset-block-end: -5px; width: 12px; height: 12px; border: 2px solid var(--surface); border-radius: 3px; background: var(--primary); cursor: nwse-resize; opacity: 0; touch-action: none; }
 .rte-img.is-selected .rte-img-handle, .rte-img:hover .rte-img-handle { opacity: 1; }
+/* A picture from the web that is kept in the content and not loaded while writing (`remoteImages="hold"`): a box of its size saying what it is. */
+.rte-img-held {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 8rem;
+  max-width: 100%;
+  min-height: 3rem;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  text-align: center;
+  overflow: hidden;
+}
+.rte-img-held > small { font-size: var(--text-xs); color: var(--faint); }
+.rte-img.is-selected .rte-img-held { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* `frameless`: the editor is part of its host (a compose window, a card): no frame of its own; the toolbar sticks to the top of the host's
+   scrolling area on the host's surface (`--rte-surface`, else the page surface), the text grows and the host scrolls. */
+.rte-frameless, .rte-frameless:has(.rte-content:focus), .rte-frameless.rte-invalid { border: 0; border-radius: 0; background: transparent; outline: none; }
+.rte-frameless .rte-bar { position: sticky; top: 0; z-index: 2; border-radius: 0; background: var(--rte-surface, var(--surface)); }
+.rte-frameless .rte-scroll { max-height: none; overflow: visible; }
+.rte-frameless.rte-invalid .rte-content { box-shadow: inset 2px 0 0 var(--danger); }
 .rte-footer {
   display: flex;
   align-items: center;
@@ -4030,6 +4058,7 @@ a.queue-name:focus-visible::after {
 }
 @media (forced-colors: active) {
   .rte:has(.rte-content:focus) { outline: 2px solid Highlight; }
+  .rte-frameless:has(.rte-content:focus) .rte-content { outline: 2px solid Highlight; }
   .merge-chip { border-color: CanvasText; }
 }
 
