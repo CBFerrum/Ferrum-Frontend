@@ -128,7 +128,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
       }
     >
       <div className="print-dialog">
-        <PaperFrame title={tr("How {title} prints", { title: title || entityLabel })} html={render.data} page={picked?.page} loading={render.isFetching} error={render.isError ? render.error : null} />
+        <PaperFrame title={tr("How {title} prints", { title: title || entityLabel })} html={render.data} page={picked?.page ?? (choice?.template === null ? c?.standard?.page : undefined)} loading={render.isFetching} error={render.isError ? render.error : null} />
         <div className="print-pickers">
           {failed ? (
             <Alert tone="error">{isolate(errorMessage(failed))}</Alert>
@@ -190,7 +190,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
                   <p className="field-hint">{choice.copies.length ? tr("{n} copies, each on its own pages.", { n: choice.copies.length }) : tr("None ticked: one copy, unlabelled.")}</p>
                 </fieldset>
               )}
-              <p className="print-paper-line">{tr("Paper: {paper}", { paper: PAPER_NAMES(picked?.page) })}</p>
+              <p className="print-paper-line">{tr("Paper: {paper}", { paper: PAPER_NAMES(picked?.page ?? (choice.template === null ? c.standard?.page : undefined)) })}</p>
               {!pdf && <p className="field-hint">{tr("This server makes no PDFs: Print opens your browser's print, which can also save a PDF.")}</p>}
             </>
           )}

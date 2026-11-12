@@ -119,8 +119,8 @@ function List() {
     <Menu ariaLabel={tr("Actions for {name}", { name: r.label || r.key })} label={<Ellipsis size={16} aria-hidden="true" />} buttonClass="btn btn-ghost btn-md icon-btn">
       {(close) => (
         <>
-          <MenuItem onSelect={() => (close(), navigate(formatLink(r.key)))}>{r.source === "package" && r.kind === "layout" ? tr("Open") : tr("Edit")}</MenuItem>
-          {r.source === "package" && r.kind === "layout" && <MenuItem onSelect={() => (close(), setMaking({ from: r, customize: true }))}>{tr("Customize this format…")}</MenuItem>}
+          <MenuItem onSelect={() => (close(), navigate(formatLink(r.key)))}>{r.source !== "workspace" && r.kind === "layout" ? tr("Open") : tr("Edit")}</MenuItem>
+          {r.source !== "workspace" && r.kind === "layout" && <MenuItem onSelect={() => (close(), setMaking({ from: r, customize: true }))}>{tr("Customize this format…")}</MenuItem>}
           <MenuItem onSelect={() => (close(), setMaking({ from: r }))}>{tr("Duplicate…")}</MenuItem>
           <MenuItem refusal={r.is_default ? tr("It is the default") : r.enabled === false ? tr("Turn it on first") : null} onSelect={() => (close(), void setDefault(r, r.entity))}>{tr("Set as default")}</MenuItem>
           <MenuItem onSelect={() => (close(), void setEnabled(r, r.enabled === false))}>{r.enabled === false ? tr("Turn on") : tr("Turn off")}</MenuItem>

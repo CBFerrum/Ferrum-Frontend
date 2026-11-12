@@ -15,7 +15,7 @@ import { Alert, Button, confirmDialog, Field, toast, useDebounced } from "../../
 import { ButtonLink, LoadFailed, SaveStatus, StatePanel, TableSkeleton } from "../../ui/patterns";
 import { Tools } from "../author/controls";
 import { LinkInput } from "../widgets";
-import { AdminGate, formatsLink, letterheadsLink, NeedsLevel, PaperFrame, preview, PRINT_SETTINGS_HREF, useCatalogue } from "./shared";
+import { AdminGate, formatsLink, letterheadsLink, NeedsLevel, PaperFrame, preview, PRINT_SETTINGS_HREF, useCatalogue, type PreviewAsk } from "./shared";
 
 interface LetterHeadRow { id: string; letter_head_name: string; company?: string | null; disabled?: boolean; _titles?: Record<string, string> }
 
@@ -203,8 +203,10 @@ function Editor({ doc }: { doc: Doc | null }) {
         const c = await api.get<Doc>(docPath("Company", company));
         await api.patch(docPath("Company", company), { letter_head: doc!.id }, { ifMatch: c.version as number });
         toast(tr("Its company prints with this letter head now"));
-      } else if (settings.data) {
-        await api.patch(docPath("PrintSettings", String(settings.data.id)), { letter_head: doc!.id }, { ifMatch: settings.data.version as number });
+      } else {
+        // One settings record per workspace: until it is first saved there is none, and it is made by this save (§13 c).
+        if (settings.data) await api.patch(docPath("PrintSettings", String(settings.data.id)), { letter_head: doc!.id }, { ifMatch: settings.data.version as number });
+        else await api.post(docPath("PrintSettings"), { letter_head: doc!.id });
         toast(tr("Every company without its own prints with this letter head now"));
         await settings.refetch();
       }
@@ -307,28 +309,35 @@ function Editor({ doc }: { doc: Doc | null }) {
               {doc && (
                 <div className="row" style={{ flexWrap: "wrap" }}>
                   <Button disabled={!company || dirty} title={!company ? tr("Choose its company first") : undefined} onClick={() => void makeDefault("company")}>{tr("Default for this company")}</Button>
-                  <Button disabled={!settings.data || dirty || settings.data.letter_head === doc.id} onClick={() => void makeDefault("workspace")}>{settings.data?.letter_head === doc.id ? tr("The workspace's default") : tr("Make it the workspace's default")}</Button>
+                  <Button disabled={settings.isLoading || !!settings.error || dirty || settings.data?.letter_head === doc.id} onClick={() => void makeDefault("workspace")}>{settings.data?.letter_head === doc.id ? tr("The workspace's default") : tr("Make it the workspace's default")}</Button>
                 </div>
               )}
             </div>
           </section>
         </div>
-        <LetterHeadPreview form={form} entities={(index.data?.entities ?? []).filter((e) => e.kind === "document").map((e) => ({ name: e.name, label: e.label }))} />
+        <LetterHeadPreview form={form} id={doc ? String(doc.id) : undefined} company={company} heights={heights} entities={(index.data?.entities ?? []).filter((e) => e.kind === "document").map((e) => ({ name: e.name, label: e.label }))} />
       </div>
     </>
   );
 }
 
 /** The unsaved letter head, placed in a blank layout as its own sections, on the sample of a record type. */
-function LetterHeadPreview({ form, entities }: { form: LetterHeadForm; entities: { name: string; label: string }[] }) {
+function LetterHeadPreview({ form, entities, id, company, heights }: { form: LetterHeadForm; entities: { name: string; label: string }[]; id?: string; company: string | null; heights: { header: number; footer: number } }) {
   const ids = useId();
   const [entity, setEntity] = useState("");
   const ent = entity || entities.find((e) => e.name === "SalesInvoice")?.name || entities[0]?.name || "";
   const b = letterHeadBlocks(form);
-  // Page numbers are filled in only by the PDF service in a letter head: here they print as 1.
-  const sections = JSON.parse(JSON.stringify([...b.header.sections, { id: "lh_preview_body", columns: [{ id: "lh_preview_c", blocks: [{ id: "lh_preview_gap", type: "spacer", height_mm: 60 }] }] }, ...b.footer.sections]).replace(/"v":"print\.pages?"/g, '"t":"1"'));
-  const def = useDebounced(JSON.stringify({ key: "letter_head_preview", label: "Preview", entity: ent, output: "page", letterhead: "none", layout: { version: 1, sections } } satisfies PrintFormat), 400);
-  const q = useQuery({ queryKey: ["admin", "print", "lh-preview", def], queryFn: ({ signal }) => preview({ template: JSON.parse(def) as PrintFormat, sample: true }, signal), enabled: !!ent, placeholderData: keepPreviousData, retry: false });
+  // The unsaved letter head itself is worn by a blank format on the sample record (§13 i, deviation 21); its own uploaded
+  // images show when its id is given.
+  const ask = useDebounced(
+    JSON.stringify({
+      template: { key: "letter_head_preview", label: "Preview", entity: ent, output: "page", layout: { version: 1, sections: [{ id: "lh_preview_body", columns: [{ id: "lh_preview_c", blocks: [{ id: "lh_preview_gap", type: "spacer", height_mm: 60 }] }] }] } } satisfies PrintFormat,
+      letterhead: { ...(id ? { id } : {}), ...(company ? { company } : {}), header: b.header, footer: b.footer, header_height_mm: heights.header, footer_height_mm: heights.footer },
+      sample: true,
+    }),
+    400,
+  );
+  const q = useQuery({ queryKey: ["admin", "print", "lh-preview", ask], queryFn: ({ signal }) => preview(JSON.parse(ask) as PreviewAsk, signal), enabled: !!ent, placeholderData: keepPreviousData, retry: false });
   return (
     <section className="card" aria-labelledby={`${ids}-h`}>
       <div className="card-head"><h2 id={`${ids}-h`}>{tr("Preview")}</h2></div>

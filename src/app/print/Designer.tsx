@@ -13,7 +13,6 @@ import { Link, useBlocker, useNavigate } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage, requestRaw, withPrintCsp } from "../../lib/api";
 import { formatDateTime } from "../../lib/format";
-import { useServerInfo } from "../../lib/meta";
 import {
   blockFromCatalogue, BLOCK_NAMES, duplicateNode, locate, MM_PX, moveBlock, newBlock, nodeAt, nodeName, nudge, paperMm, parseSlot, refusedNode, removeNode, resizeColumns,
   insertBlock, toNeighbourColumn, toNewSectionAbove, toSave, validate, widthsOf, type Block, type BlockType, type Catalogue, type Id, type Layout, type PrintFormat, type Problem,
@@ -58,8 +57,8 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
   const [letterhead, setLetterhead] = useState("none");
   const [zoom, setZoom] = useState<(typeof ZOOMS)[number]>("fit");
   const closing = useRef(false);
-  const packages = useServerInfo().data?.packages.map((p) => p.name) ?? [];
-  const readOnly = !!read && packages.some((p) => def.key.startsWith(`${p}.`));
+  // A package's layout (source package or edited: `read.default` is the package's) cannot change in place (§13 g, D8).
+  const readOnly = !!read?.default;
   const isNew = !read;
   const dirty = isNew || JSON.stringify(toSave(def)) !== base;
   const cat = useCatalogue(def.entity);
@@ -391,7 +390,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
           <p>{tr("Your changes stay here until you choose.")}</p>
         </Dialog>
       )}
-      {saveAs && <SaveAs def={def} saved={!!read && !dirty} readOnly={readOnly} onClose={() => setSaveAs(false)} onDone={(key) => { closing.current = true; setSaveAs(false); navigate(formatLink(key)); closing.current = false; }} />}
+      {saveAs && <SaveAs def={def} saved={!!read && (!dirty || readOnly)} readOnly={readOnly} onClose={() => setSaveAs(false)} onDone={(key) => { closing.current = true; setSaveAs(false); navigate(formatLink(key)); closing.current = false; }} />}
       {versions && read && <Versions formatKey={def.key} dirty={dirty} etag={etag} onClose={() => setVersions(false)} onRestored={(t, tag) => { setHist(startHistory(structuredClone(t))); setEtag(tag); setBase(JSON.stringify(toSave(t))); setState("saved"); setSavedAt(new Date().toISOString()); setVersions(false); }} />}
     </div>
   );
@@ -698,9 +697,10 @@ function SaveAs({ def, saved, readOnly, onClose, onDone }: { def: PrintFormat; s
     if (!/^[a-z][a-z0-9_.]*$/.test(k)) return setProblem(tr("The key is lower case letters, digits, underscores and dots, starting with a letter."));
     setBusy(true);
     try {
+      // Saved and unchanged: the server's duplicate is the copy (§13 e). Unsaved changes (or a format never saved) travel with
+      // the copy: it is saved as it is on screen.
       if (saved) await api.post(`/api/admin/documents/templates/${encodeURIComponent(def.key)}/duplicate`, { key: k, label: label.trim() });
-      // Unsaved changes (or a format never saved) travel with the copy: the copy is saved as it is on screen.
-      if (!saved || !readOnly) await saveFormat(toSave({ ...def, key: k, label: label.trim(), based_on: def.based_on ?? def.key, default: false }), null);
+      else await saveFormat(toSave({ ...def, key: k, label: label.trim(), based_on: def.based_on ?? def.key, default: false }), null);
       if (makeDefault) await api.put(`/api/admin/documents/defaults/${encodeURIComponent(def.entity)}`, { key: k });
       toast(tr("{name} made", { name: label.trim() }));
       onDone(k);
