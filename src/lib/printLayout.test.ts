@@ -285,6 +285,16 @@ describe("the print dialog's memory (§6.1)", () => {
     expect(copiesOffered(c, "selling.sales_invoice")).toEqual(["Original", "Duplicate"]);
     expect(copiesOffered(c, null)).toEqual(["Original for Recipient"]);
   });
+  it("names the format that prints and its file as the server does", async () => {
+    const { formatLabel, pdfFileName, printFields } = await import("./printLayout");
+    expect(formatLabel(c, undefined, "Sales Invoice")).toBe("Sales Invoice");
+    expect(formatLabel(c, "w.gst", "x")).toBe("GST");
+    expect(formatLabel({ ...c, default: null, standard: { label: "Standard" } }, undefined, "x")).toBe("Standard");
+    expect(formatLabel(undefined, undefined, "Sales Invoice")).toBe("Sales Invoice");
+    expect(pdfFileName("GST invoice (ours)", "SINV/0042")).toBe("GST invoice _ours_ SINV_0042.pdf");
+    expect(printFields({ template: null, letterhead: "default", language: "", copies: [] })).toEqual({ template: "standard" });
+    expect(printFields({ template: "k", letterhead: "lh1", language: "hi", copies: ["Original"] })).toEqual({ template: "k", letterhead: "lh1", language: "hi", copies: ["Original"] });
+  });
   it("asks the server with each copy and only what was chosen", () => {
     expect(printQuery({ template: "k", letterhead: "default", language: "", copies: ["A", "B C"], format: "html" })).toBe("?template=k&copy=A&copy=B+C&format=html");
     expect(printQuery({ template: null, letterhead: "none" })).toBe("?template=standard&letterhead=none");

@@ -11,6 +11,8 @@ import {
 } from "../../lib/printLayout";
 import { Alert, Button, Field, Menu, MenuItem } from "../../ui/kit";
 import { SwatchPalette } from "../../ui/swatches";
+import { Toolbar, ToolbarButton, ToolbarGroup } from "../../ui/toolbar";
+import { ArrowDown, ArrowUp, Copy, Trash2 } from "lucide-react";
 import { PageFields } from "./shared";
 
 type Set = (l: Layout, group?: string) => void;
@@ -57,9 +59,15 @@ function Moves({ layout, id, kind, onMove, onRemove, name, where }: { layout: La
   const moved = (next: Layout) => onMove(next, tr("{name} moved to {where}", { name: name(id), where: where(next, id) }), id);
   const cols = columnsInOrder(layout);
   return (
-    <div className="pd-moves" role="group" aria-label={tr("Move {name}", { name: name(id) })}>
-      <Button size="sm" icon="up" aria-label={tr("Move up (Alt+↑)")} title={tr("Move up (Alt+↑)")} onClick={() => moved(nudge(layout, id, -1))} />
-      <Button size="sm" icon="down" aria-label={tr("Move down (Alt+↓)")} title={tr("Move down (Alt+↓)")} onClick={() => moved(nudge(layout, id, 1))} />
+    <div className="pd-moves">
+      <Toolbar label={tr("Move {name}", { name: name(id) })}>
+        <ToolbarGroup id="move" keep>
+          <ToolbarButton label={tr("Move up (Alt+↑)")} shortcut="Alt-ArrowUp" icon={<ArrowUp />} onPress={() => moved(nudge(layout, id, -1))} />
+          <ToolbarButton label={tr("Move down (Alt+↓)")} shortcut="Alt-ArrowDown" icon={<ArrowDown />} onPress={() => moved(nudge(layout, id, 1))} />
+          {(kind === "block" || kind === "section") && <ToolbarButton label={tr("Duplicate (Ctrl+D)")} shortcut="Mod-d" icon={<Copy />} onPress={() => { const r = duplicateNode(layout, id); onMove(r.layout, tr("{name} duplicated", { name: name(id) }), r.id); }} />}
+          <ToolbarButton label={tr("Remove (Delete)")} shortcut="Delete" icon={<Trash2 />} className="text-destructive" onPress={() => onRemove(id)} />
+        </ToolbarGroup>
+      </Toolbar>
       {kind === "block" && (
         <Menu label={tr("Move to…")} buttonClass="btn btn-default btn-sm">
           {(close) => (
@@ -76,8 +84,6 @@ function Moves({ layout, id, kind, onMove, onRemove, name, where }: { layout: La
           )}
         </Menu>
       )}
-      {(kind === "block" || kind === "section") && <Button size="sm" icon="copy" aria-label={tr("Duplicate (Ctrl+D)")} title={tr("Duplicate (Ctrl+D)")} onClick={() => { const r = duplicateNode(layout, id); onMove(r.layout, tr("{name} duplicated", { name: name(id) }), r.id); }} />}
-      <Button size="sm" variant="danger" icon="trash" aria-label={tr("Remove (Delete)")} title={tr("Remove (Delete)")} onClick={() => onRemove(id)} />
     </div>
   );
 }
