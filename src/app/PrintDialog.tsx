@@ -24,7 +24,7 @@ export const choicesQuery = (entity: string, record?: string) => ({
 /** Page formats a server before print formats offers (level 0): there is a dialog only when there is one. */
 export const hasPageTemplates = (c: Choices | undefined) => !!c?.templates.some((x) => x.output === "page");
 
-export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEmail, onEmail, onClose }: {
+export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEmail, canAttach = true, onEmail, onClose }: {
   entity: string;
   entityLabel: string;
   id: string;
@@ -33,6 +33,8 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
   level: number;
   pdf: boolean;
   canEmail: boolean;
+  /** The server's mailer can attach the PDF (`mail_attachments` and `pdf`); else the e-mail goes without it. */
+  canAttach?: boolean;
   /** "E-mail as PDF": the dialog closes and the record's e-mail dialog opens with this choice (as the server is asked for it)
    *  and the name of the format it prints as. */
   onEmail: (choice: PrintChoice, format: string) => void;
@@ -112,8 +114,8 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
         <>
           {using && <span className="print-using me-auto">{tr("Prints as {format}", { format: using })}</span>}
           {canEmail && (
-            <Button icon="mail" disabled={!choice || refused} title={using ? tr("E-mail {format} as a PDF", { format: using }) : undefined} onClick={() => (remember(), onEmail(ask!, using!))}>
-              {tr("E-mail as PDF")}
+            <Button icon="mail" disabled={!choice || refused} title={!canAttach ? tr("This server's mailer cannot attach files: the e-mail goes without the PDF.") : using ? tr("E-mail {format} as a PDF", { format: using }) : undefined} onClick={() => (remember(), onEmail(ask!, using!))}>
+              {canAttach ? tr("E-mail as PDF") : tr("E-mail")}
             </Button>
           )}
           {pdf && (

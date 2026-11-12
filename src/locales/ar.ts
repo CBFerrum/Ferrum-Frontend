@@ -5081,6 +5081,7 @@ const words: Record<string, string> = {
   "Print as {format}": "اطبع بقالب {format}",
   "This is the package's format: its layout cannot be changed here, so a new release can still improve it. Its paper, letter head, copies, who may use it and whether it can be printed can (Page). Customize it to design your own copy.": "هذا قالب الحزمة: لا يمكن تغيير تخطيطه هنا، كي يتمكن إصدار جديد من تحسينه. أما الورق والترويسة والنسخ ومن يستخدمه وإمكان طباعته فيمكن تغييرها (الصفحة). خصّصه لتصمم نسختك الخاصة.",
   "A package's format: the rest belongs to its layout; Customize it to change that.": "قالب حزمة: الباقي جزء من تخطيطه؛ خصّصه لتغيير ذلك.",
+  "This server's mailer cannot attach files: the e-mail goes without the PDF.": "لا يستطيع بريد هذا الخادم إرفاق الملفات: يُرسل البريد دون PDF.",
 };
 
 export default words;

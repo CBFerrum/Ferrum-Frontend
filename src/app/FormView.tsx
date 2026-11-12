@@ -1015,6 +1015,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                 level={printLevel}
                 pdf={pdf}
                 canEmail={server?.mail === true && can(meta.permissions, "export")}
+                canAttach={pdf && server?.mail_attachments === true}
                 onEmail={(print, format) => {
                   setPrinting(false);
                   setEmailPrint({ print, format });
