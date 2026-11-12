@@ -6,6 +6,8 @@ import { StaticRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { violations } from "../test/axe";
 import { ApprovalsPage, Detail } from "./Approvals";
+import { approvalIndex } from "../lib/approvalDraft";
+import { PolicyTable } from "./ApprovalPolicies";
 
 const item = { request: "r1", entity: "Order", entity_label: "Order", record: "o1", title: "SO-0001", action: "Submit", from: "Draft", requester: "u1", requester_name: "Ann Asker", requested_at: "2026-11-12T08:00:00Z", step: { index: 1, label: "Finance", opened_at: "2026-11-12T09:00:00Z" } };
 function page(data: unknown) {
@@ -73,5 +75,24 @@ describe("a request opened in the inbox", () => {
     const list = page({ to_decide: [item], awaiting_others: [{ ...item, request: "r2", record: "o2" }] });
     expect(list).toContain("Review");
     expect(list).toContain("Details");
+  });
+});
+
+describe("the index of approval policies", () => {
+  const list = [
+    { entity: "Bill", op: { op: "set_approval", on: "submit", approval: { steps: [{ label: "Finance" }] } }, is_active: true, seq: 1 },
+    { entity: "Bill", op: { op: "set_approval", on: "submit", approval: { steps: [{ label: "Old" }] } }, is_active: true, seq: 0 },
+    { entity: "Change", op: { op: "set_approval", on: { action: "apply" }, approval: { steps: [{ label: "Board" }, {}] } }, is_active: true, seq: 2 },
+    { entity: "Bill", op: { op: "set_approval", on: "cancel", approval: null }, is_active: true, seq: 3 },
+    { entity: "Order", op: { op: "set_workflow", workflow: { transitions: [{ action: "Approve", from: "A", to: "B", approval: { steps: [{ label: "Boss" }] } }, { action: "Skip", from: "A", to: "C" }] } }, is_active: true, seq: 4 },
+  ];
+  it("lists the latest policy per entity and trigger, with its page, and none that was taken away", async () => {
+    const rows = approvalIndex(list as never);
+    expect(rows.map((r) => `${r.entity}:${r.on}:${r.steps.join("+")}`)).toEqual(["Bill:submit:Finance", "Change:action:apply:Board+2", "Order:transition Approve:Boss"]);
+    expect(rows[0].to).toBe("/customize/Bill/approvals");
+    expect(rows[2].to).toBe("/customize/Order/workflow");
+    const html = renderToString(<StaticRouter location="/customize/approvals"><PolicyTable rows={rows} label={(e) => e} /></StaticRouter>);
+    expect(html).toContain('href="/customize/Change/approvals"');
+    expect(await violations(html)).toEqual([]);
   });
 });
