@@ -16,6 +16,9 @@ import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import type { Automation } from "../lib/automationDraft";
 import { Connections } from "./Connections";
+import { ConnectorHub } from "./ConnectorHub";
+import { HideDialog } from "./RuleHide";
+import { permissionBody } from "../lib/ruleHide";
 import { InterfaceWords } from "./InterfaceWords";
 import { Services } from "./Services";
 import { LinkInput, LinkTitle } from "./widgets";
@@ -38,6 +41,7 @@ import { FormSkeleton, ListSkeleton } from "../ui/patterns";
 import { t as tr, isolate } from "@ferrum/client";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
+const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ default: m.ApprovalPoliciesPage })));
 const Messaging = lazy(() => import("./Messaging").then((m) => ({ default: m.Messaging })));
 
 export const TABS = [
@@ -45,6 +49,8 @@ export const TABS = [
   { id: "roles", get label() { return tr("Roles & permissions"); } },
   { id: "packages", get label() { return tr("Packages"); } },
   { id: "connections", get label() { return tr("Connections"); } },
+  { id: "connectors", get label() { return tr("Data connectors"); } },
+  { id: "approvals", get label() { return tr("Approval policies"); } },
   { id: "webhooks", get label() { return tr("Webhooks"); } },
   { id: "automations", get label() { return tr("Automations"); } },
   { id: "messaging", get label() { return tr("Messaging"); } },
@@ -61,7 +67,7 @@ export const TABS = [
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -80,7 +86,7 @@ function RowMenu({ label, children }: { label: string; children: ReactNode }) {
 /** The sections, grouped for the side navigation. Ids are the `?tab=` values and the tab/panel ids: they do not change. */
 export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
   { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
-  { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "webhooks", "automations", "messaging", "plugins"] },
+  { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "approvals", "webhooks", "automations", "messaging", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
   { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services"] },
 ];
@@ -154,7 +160,18 @@ export function AdminPage() {
         {tab === "users" && <Users />}
         {tab === "roles" && <Roles />}
         {tab === "packages" && <Packages />}
-        {tab === "connections" && <Connections />}
+        {tab === "connections" && (
+          <div className="stack">
+            <p className="muted">{tr("Connections are web services you describe yourself (address, sign-in, operations) and that apps, buttons and automations call. Data connectors, next to this, keep records in step with an outside system.")}</p>
+            <Connections />
+          </div>
+        )}
+        {tab === "connectors" && (
+          <div className="stack">
+            <p className="muted">{tr("Data connectors come with plugins and keep records here in step with an account at another system. Connections, next to this, are services you describe yourself.")}</p>
+            <ConnectorHub />
+          </div>
+        )}
         {tab === "webhooks" && <Webhooks />}
         {tab === "automations" && <Automations />}
         {tab === "plugins" && <Plugins />}
@@ -171,6 +188,11 @@ export function AdminPage() {
         {tab === "messaging" && (
           <Suspense fallback={<ListSkeleton rows={4} />}>
             <Messaging />
+          </Suspense>
+        )}
+        {tab === "approvals" && (
+          <Suspense fallback={<ListSkeleton rows={4} />}>
+            <ApprovalPolicies embedded />
           </Suspense>
         )}
         {tab === "words" && <InterfaceWords />}
@@ -1164,6 +1186,11 @@ interface Permission {
   via?: string | null;
   /** The entity's actions its holders may run on the records it reaches. */
   actions?: string[];
+  shared?: string | null;
+  /** Fields and child tables the rule neither shows nor accepts (BD-40). */
+  hide?: string[];
+  /** Whether its package still rewrites the row with each release. */
+  packaged?: boolean;
 }
 interface Role {
   name: string;
@@ -1635,6 +1662,7 @@ function Roles() {
   const [newRole, setNewRole] = useState("");
   const [extraRoles, setExtraRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
+  const [hiding, setHiding] = useState<Permission | null>(null);
   const [addEntity, setAddEntity] = useState("");
   const [addOwner, setAddOwner] = useState(false);
   const [addVia, setAddVia] = useState("");
@@ -1653,23 +1681,7 @@ function Roles() {
 
   const put = async (p: Permission, key: string) => {
     setSaving(key);
-    const body = {
-      entity: p.entity,
-      read: p.can_read,
-      write: p.can_write,
-      create: p.can_create,
-      delete: p.can_delete,
-      submit: p.can_submit,
-      cancel: p.can_cancel,
-      export: p.can_export,
-      import: p.can_import,
-      if_owner: p.if_owner,
-      read_groups: p.read_groups ?? [],
-      write_groups: p.write_groups ?? [],
-      where: p.match_rule ?? undefined,
-      via: p.via || undefined,
-      actions: p.actions ?? [],
-    };
+    const body = permissionBody(p);
     const ok = await attempt(() => api.put(`/api/admin/roles/${encodeURIComponent(current)}/permissions`, body));
     if (ok) await qc.invalidateQueries({ queryKey: ["admin", "roles"] });
     setSaving(null);
@@ -1748,6 +1760,19 @@ function Roles() {
             </form>
           </div>
           {role?.description && <p className="muted">{isolate(role.description)}</p>}
+          {hiding && role && (
+            <HideDialog
+              role={role.name}
+              rule={hiding}
+              entityLabel={label(hiding.entity)}
+              onClose={() => setHiding(null)}
+              onSaved={() => {
+                setHiding(null);
+                void qc.invalidateQueries({ queryKey: ["admin", "roles"] });
+                toast(tr("Saved"));
+              }}
+            />
+          )}
           {role && <PortalMark role={role} onChanged={() => void qc.invalidateQueries({ queryKey: ["admin", "roles"] })} />}
           <section className="card" aria-label={tr("Permissions of {current}", { current })}>
             <div className="table-wrap">
@@ -1800,6 +1825,13 @@ function Roles() {
                             </span>
                           )}
                           {!!p.actions?.length && <ActionNames entity={p.entity} names={p.actions} />}
+                          {!!p.hide?.length && <span className="muted">{tr("hides {names}", { names: p.hide.join(", ") })}{isolate(" ")}</span>}
+                          {p.packaged ? <Badge tone="blue">{tr("follows its package")}</Badge> : role?.package ? <Badge tone="amber">{tr("edited here")}</Badge> : null}{isolate(" ")}
+                          {p.entity !== "*" && (
+                            <Button size="sm" variant="ghost" aria-label={tr("Hidden fields of {entity}", { entity: label(p.entity) })} onClick={() => setHiding(p)}>
+                              {tr("Hidden fields")}
+                            </Button>
+                          )}
                           {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
                             <ConditionText entity={p.entity} cond={p.match_rule} />
                           ) : (

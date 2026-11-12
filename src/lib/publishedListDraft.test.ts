@@ -79,3 +79,27 @@ describe("the batches", () => {
     expect(currentLists(rows, "XPermit")).toEqual([def]);
   });
 });
+
+describe("record pages, counters and framing (BD-24, BD-25, BD-42)", () => {
+  const more = [...fields, f("views", "int"), f("helpful", "int"), f("unhelpful", "int"), f("body", "text")];
+  const full = { ...def, slug: "holder", detail: ["kind"], summary: "holder", frame_origins: ["https://town.example", "https://a.example:8443"], count_views: "views", votes: { up: "helpful", down: "unhelpful" } };
+  const ctx = { taken: [], offered: offering({ ...meta, fields: more }).offered, fields: more };
+  it("go back as they came, and stay when only the label is edited", () => {
+    expect(toList(fromList(full))).toEqual(full);
+    expect(toList({ ...fromList(full), label: "New label" })).toEqual({ ...full, label: "New label" });
+    expect(toList(fromList({ ...full, slug: undefined, detail: [], summary: undefined, frame_origins: [], count_views: undefined, votes: undefined }))).toEqual(def);
+  });
+  it("pass a good list and find each fault", () => {
+    const d = () => fromList(full);
+    expect(checkList(d(), ctx)).toEqual([]);
+    expect(checkList({ ...d(), slug: "views" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), slug: "" }, ctx).length).toBeGreaterThan(0);
+    expect(checkList({ ...d(), summary: "salary" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), frameOrigins: "http://town.example" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), frameOrigins: "https://town.example/path" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), frameOrigins: Array.from({ length: 11 }, (_, i) => `https://s${i}.example`).join("\n") }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), countViews: "holder" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), votesDown: "" }, ctx)).toHaveLength(1);
+    expect(checkList({ ...d(), votesDown: "helpful" }, ctx)).toHaveLength(1);
+  });
+});

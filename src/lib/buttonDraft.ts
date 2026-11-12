@@ -10,7 +10,9 @@ import { fieldName } from "./entityDraft";
 export type Raw = Record<string, unknown>;
 
 /** The kinds of question the form can ask (the record form's action dialog draws each). */
-export const PARAM_TYPES = ["data", "text", "select", "int", "date", "link"] as const;
+export const PARAM_TYPES = ["data", "text", "select", "int", "date", "link", "files"] as const;
+export const MAX_PARAM_FILES = 10;
+export const MAX_FILE_BYTES = 10_485_760;
 export const MAX_EFFECTS = 10;
 export const MAX_REFUSALS = 10;
 
@@ -25,6 +27,10 @@ export interface DraftParam {
   to: string;
   required: boolean;
   description: string;
+  /** A `files` question (BD-44): the files at most (1 to 10), each at most this many bytes (10 MB at most), and the types it takes (`image/*`). Text, so a half-typed number is kept. */
+  maxFiles: string;
+  maxBytes: string;
+  accept: string[];
   extra: Raw;
 }
 
@@ -45,6 +51,8 @@ export interface ButtonDraft {
   /** None: whoever may edit the record. */
   roles: string[];
   condition: string;
+  /** What a refusal for the condition says, on a signed link's page and through the API (BD-44); a template over the record. */
+  conditionMessage: string;
   confirm: string;
   refusals: DraftRefusal[];
   params: DraftParam[];
@@ -61,13 +69,13 @@ const rest = (o: Raw, known: string[]): Raw => Object.fromEntries(Object.entries
 /** A button that is a configured one: it carries `effects` (a package's coded action has none to administrators). */
 export const isConfigured = (a: { effects?: unknown }) => Array.isArray(a.effects);
 
-export const startButton = (): ButtonDraft => ({ saved: false, name: "", nameTouched: false, label: "", roles: [], condition: "", confirm: "", refusals: [], params: [], effects: [], extra: {} });
+export const startButton = (): ButtonDraft => ({ saved: false, name: "", nameTouched: false, label: "", roles: [], condition: "", conditionMessage: "", confirm: "", refusals: [], params: [], effects: [], extra: {} });
 
-export const newParam = (): DraftParam => ({ key: newKey(), name: "", nameTouched: false, label: "", type: "data", options: [], to: "", required: false, description: "", extra: {} });
+export const newParam = (): DraftParam => ({ key: newKey(), name: "", nameTouched: false, label: "", type: "data", options: [], to: "", required: false, description: "", maxFiles: "", maxBytes: "", accept: [], extra: {} });
 export const newRefusal = (): DraftRefusal => ({ key: newKey(), when: "", message: "", extra: {} });
 
-const KNOWN_PARAM = ["name", "label", "type", "options", "to", "required", "description"];
-const KNOWN = ["name", "label", "condition", "confirm", "roles", "refuse_if", "params", "effects"];
+const KNOWN_PARAM = ["name", "label", "type", "options", "to", "required", "description", "max_files", "max_bytes", "accept"];
+const KNOWN = ["name", "label", "condition", "condition_message", "confirm", "roles", "refuse_if", "params", "effects"];
 
 /** The questions a button or transition asks, as drafts. */
 export const paramsFrom = (raw: unknown): DraftParam[] =>
@@ -75,7 +83,7 @@ export const paramsFrom = (raw: unknown): DraftParam[] =>
     const o = isObj(p) ? p : {};
     return {
       key: newKey(), name: str(o.name), nameTouched: true, label: str(o.label), type: str(o.type) || "data", options: strings(o.options), to: str(o.to),
-      required: o.required === true, description: str(o.description), extra: rest(o, KNOWN_PARAM),
+      required: o.required === true, description: str(o.description), maxFiles: str(o.max_files), maxBytes: str(o.max_bytes), accept: strings(o.accept), extra: rest(o, KNOWN_PARAM),
     };
   });
 
@@ -88,6 +96,12 @@ export const paramsJson = (params: DraftParam[]): Raw[] =>
     if (p.type === "link" && p.to) o.to = p.to;
     if (p.required) o.required = true;
     if (p.description.trim()) o.description = p.description.trim();
+    if (p.type === "files") {
+      if (p.maxFiles.trim()) o.max_files = Number(p.maxFiles);
+      if (p.maxBytes.trim()) o.max_bytes = Number(p.maxBytes);
+      const accept = p.accept.map((x) => x.trim()).filter(Boolean);
+      if (accept.length) o.accept = accept;
+    }
     return o;
   });
 
@@ -100,6 +114,7 @@ export function fromButton(a: Raw): ButtonDraft {
     label: str(a.label),
     roles: strings(a.roles),
     condition: str(a.condition),
+    conditionMessage: str(a.condition_message),
     confirm: str(a.confirm),
     refusals: (Array.isArray(a.refuse_if) ? a.refuse_if : []).map((r) => {
       const o = isObj(r) ? r : {};
@@ -116,6 +131,7 @@ export function fromButton(a: Raw): ButtonDraft {
 export function toButton(d: ButtonDraft): Raw {
   const out: Raw = { ...d.extra, name: d.name.trim(), label: d.label.trim() };
   if (d.condition.trim()) out.condition = d.condition.trim();
+  if (d.conditionMessage.trim()) out.condition_message = d.conditionMessage.trim();
   if (d.confirm.trim()) out.confirm = d.confirm.trim();
   if (d.roles.length) out.roles = d.roles;
   if (d.refusals.length) out.refuse_if = d.refusals.map((r) => ({ ...r.extra, when: r.when.trim(), message: r.message.trim() }));
@@ -166,6 +182,14 @@ export function checkParams(params: DraftParam[]): ButtonProblem[] {
     seen.add(p.name.trim());
     if (p.type === "select" && !p.options.some((o) => o.trim())) at(tr("list the choices."));
     if (p.type === "link" && !p.to) at(tr("choose what it links to."));
+    if (p.type === "files") {
+      const most = p.maxFiles.trim();
+      if (most && !(/^\d+$/.test(most) && Number(most) >= 1 && Number(most) <= MAX_PARAM_FILES)) at(tr("the most files is a whole number from 1 to {n}.", { n: MAX_PARAM_FILES }));
+      const size = p.maxBytes.trim();
+      if (size && !(/^\d+$/.test(size) && Number(size) >= 1 && Number(size) <= MAX_FILE_BYTES)) at(tr("the largest file is a whole number of bytes, at most {n}.", { n: MAX_FILE_BYTES }));
+      const bad = p.accept.map((x) => x.trim()).filter(Boolean).find((x) => !/^[a-z0-9.+-]+\/([a-z0-9.+-]+|\*)$/i.test(x));
+      if (bad) at(tr("“{type}” is not a file type: write image/png, or image/* for a family.", { type: bad }));
+    }
   });
   return out;
 }

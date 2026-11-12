@@ -24,6 +24,18 @@ export interface ListDef {
   sort?: [string, "asc" | "desc"];
   csv?: boolean;
   limit?: number;
+  /** A text field whose value is each record's public address: record pages, search, search engines (BD-25). */
+  slug?: string;
+  /** Fields only a record's page shows. */
+  detail?: string[];
+  /** The field a record page gives search engines as its description. */
+  summary?: string;
+  /** Sites that may frame its pages (`https://host[:port]`, at most 10). */
+  frame_origins?: string[];
+  /** A whole-number field counting each record page's visitors (BD-42). */
+  count_views?: string;
+  /** Whole-number fields counting "was this helpful" answers. */
+  votes?: { up: string; down: string };
 }
 
 export interface ListDraft {
@@ -39,11 +51,19 @@ export interface ListDraft {
   csv: boolean;
   /** Text, so a half-typed number is kept; blank: the server's default (200). */
   limit: string;
+  slug: string;
+  detail: string[];
+  summary: string;
+  /** One origin per line, as typed. */
+  frameOrigins: string;
+  countViews: string;
+  votesUp: string;
+  votesDown: string;
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 
-export const startList = (): ListDraft => ({ saved: false, name: "", nameTouched: false, label: "", description: "", fields: [], filters: [], sortField: "", sortDir: "asc", csv: false, limit: "" });
+export const startList = (): ListDraft => ({ saved: false, name: "", nameTouched: false, label: "", description: "", fields: [], filters: [], sortField: "", sortDir: "asc", csv: false, limit: "", slug: "", detail: [], summary: "", frameOrigins: "", countViews: "", votesUp: "", votesDown: "" });
 
 /** From the definition (the properties a list has, nothing else). */
 export function fromList(raw: Raw): ListDraft {
@@ -55,6 +75,9 @@ export function fromList(raw: Raw): ListDraft {
     fields: Array.isArray(raw.fields) ? raw.fields.filter((x): x is string => typeof x === "string") : [],
     filters, sortField: sort ? str(sort[0]) : "", sortDir: sort && sort[1] === "desc" ? "desc" : "asc",
     csv: raw.csv === true, limit: raw.limit === undefined ? "" : str(raw.limit),
+    slug: str(raw.slug), detail: Array.isArray(raw.detail) ? raw.detail.filter((x): x is string => typeof x === "string") : [], summary: str(raw.summary),
+    frameOrigins: Array.isArray(raw.frame_origins) ? raw.frame_origins.map(str).join("\n") : "", countViews: str(raw.count_views),
+    votesUp: str((raw.votes as Raw | undefined)?.up), votesDown: str((raw.votes as Raw | undefined)?.down),
   };
 }
 
@@ -66,8 +89,26 @@ export function toList(d: ListDraft): ListDef {
   if (d.sortField) out.sort = [d.sortField, d.sortDir];
   if (d.csv) out.csv = true;
   if (d.limit.trim()) out.limit = Number(d.limit);
+  if (d.slug) out.slug = d.slug;
+  if (d.detail.length) out.detail = d.detail;
+  if (d.summary) out.summary = d.summary;
+  const origins = originList(d.frameOrigins);
+  if (origins.length) out.frame_origins = origins;
+  if (d.countViews) out.count_views = d.countViews;
+  if (d.votesUp || d.votesDown) out.votes = { up: d.votesUp, down: d.votesDown };
   return out;
 }
+
+/** Origins one to a line (or comma): trimmed, no empty one. */
+export const originList = (text: string): string[] => text.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
+/** `https://host[:port]`, nothing after it. */
+export const ORIGIN_OK = /^https:\/\/[A-Za-z0-9.-]+(:\d{1,5})?$/;
+export const MAX_ORIGINS = 10;
+export const MAX_DETAIL = 12;
+
+/** The address of a record's page, with a placeholder where its slug goes, and the sitemap of every published page. */
+export const recordPath = (workspace: string, name: string) => `${publicPath(workspace, name)}/{${"slug"}}`;
+export const sitemapPath = (workspace: string) => `/public/${encodeURIComponent(workspace)}/sitemap.xml`;
 
 // ── the name ──
 
@@ -145,6 +186,22 @@ export function checkList(d: ListDraft, c: CheckContext): string[] {
   const gone = d.fields.filter((n) => !c.offered.some((o) => o.name === n));
   if (gone.length) say(tr("These fields can no longer be published: {names}. Untick them.", { names: gone.join(", ") }));
   if (d.filters.length > MAX_FILTERS) say(tr("Use at most {n} filter rows.", { n: MAX_FILTERS }));
+  const isOffered = (n: string) => c.offered.some((o) => o.name === n);
+  const intField = (n: string) => c.fields.some((f) => f.name === n && (f as { type?: string }).type === "int");
+  if (d.slug && !c.fields.some((f) => f.name === d.slug && ["data", "text"].includes((f as { type?: string }).type ?? ""))) say(tr("The address of a record page comes from a text field of this entity."));
+  if (d.slug && !isOffered(d.slug)) say(tr("The field {name} cannot be published, so it cannot be the address of a record page.", { name: d.slug }));
+  if (d.detail.length > MAX_DETAIL) say(tr("A record page shows at most {n} more fields.", { n: MAX_DETAIL }));
+  if (d.detail.some((n) => !isOffered(n))) say(tr("A field that cannot be published is among those only the record page shows. Untick it."));
+  if (d.summary && !d.fields.includes(d.summary) && !d.detail.includes(d.summary)) say(tr("The summary is one of the fields shown, on the list or on the record page."));
+  if ((d.detail.length || d.summary || d.countViews || d.votesUp || d.votesDown) && !d.slug) say(tr("Record pages need the address field: choose it first."));
+  const origins = originList(d.frameOrigins);
+  if (origins.length > MAX_ORIGINS) say(tr("At most {n} sites may frame the pages.", { n: MAX_ORIGINS }));
+  const badOrigin = origins.find((o) => !ORIGIN_OK.test(o));
+  if (badOrigin) say(tr("{origin} is not a site address: https://host, with a port if it has one, and nothing after it.", { origin: badOrigin }));
+  if (d.countViews && !intField(d.countViews)) say(tr("Views are counted in a whole-number field."));
+  if (!!d.votesUp !== !!d.votesDown) say(tr("Votes need two fields: one for helpful, one for not helpful."));
+  if (d.votesUp && d.votesDown && (!intField(d.votesUp) || !intField(d.votesDown))) say(tr("Votes are counted in whole-number fields."));
+  if (d.votesUp && d.votesUp === d.votesDown) say(tr("Helpful and not helpful need two different fields."));
   d.filters.forEach((f, i) => {
     const empty = f.value === "" || f.value === undefined || f.value === null || f.value === "%%";
     if (!f.field || (f.op !== "is" && empty)) say(tr("Finish filter row {n}, or remove it.", { n: i + 1 }));
