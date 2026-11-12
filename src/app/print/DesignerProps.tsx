@@ -174,7 +174,7 @@ function PathPick({ label, value, onChange, cat, table, allowNone }: { label: st
       <select id={id} className="select" value={value ?? ""} onChange={(e) => onChange(e.target.value || undefined)}>
         {allowNone !== undefined && <option value="">{allowNone}</option>}
         {value && !known && <option value={value}>{value}</option>}
-        {groups.map(([g, fs]) => fs.length ? <optgroup key={g} label={g}>{fs.map((f) => <option key={f.path} value={f.path}>{f.label}</option>)}</optgroup> : null)}
+        {groups.map(([g, fs], gi) => fs.length ? <optgroup key={`${gi}:${g}`} label={g}>{fs.map((f) => <option key={f.path} value={f.path}>{f.label}</option>)}</optgroup> : null)}
       </select>
     </Field>
   );

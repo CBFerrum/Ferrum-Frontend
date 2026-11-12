@@ -166,11 +166,14 @@ describe("the checks before save (§4.2), naming the block", () => {
     expect(said).toMatch(/title: .*size from the scale/);
   });
   it("refuses unknown paths, line fields outside a table and page numbers outside a letter head", () => {
-    const l = insertBlock(insertBlock(insertBlock(L, { id: "a", type: "field", value: "doc.nope" }, "bill", 0).layout, { id: "b", type: "field", value: "row.qty" }, "bill", 0).layout, { id: "c", type: "field", value: "print.page" }, "bill", 0).layout;
+    const l = insertBlock(insertBlock(insertBlock(L, { id: "a", type: "field", value: "links.nope.x" }, "bill", 0).layout, { id: "b", type: "field", value: "row.qty" }, "bill", 0).layout, { id: "c", type: "field", value: "print.page" }, "bill", 0).layout;
     const said = msgs(l).join("\n");
-    expect(said).toMatch(/a: .*no field “doc.nope”/);
+    expect(said).toMatch(/a: .*no field “links.nope.x”/);
+    expect(msgs(insertBlock(L, { id: "z", type: "field", value: "doc.not_in_catalogue" }, "bill", 0).layout)).toEqual([]);
     expect(said).toMatch(/b: .*line's field/);
     expect(said).toMatch(/c: .*only in a letter head/);
+    const sys = insertBlock(L, { id: "ag", type: "field", value: "links.customer.number" }, "bill", 0).layout;
+    expect(msgs(sys)).toEqual([]);
     const tc = updateNode(L, "c_qty", { value: "row.nope" });
     expect(msgs(tc).join()).toMatch(/c_qty: Column “Qty”: the lines have no field “row.nope”/);
   });
