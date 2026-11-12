@@ -13,4 +13,8 @@ export default defineConfig({
     ],
   },
   esbuild: { jsx: "automatic" },
+  // A test that draws screens and runs axe over them takes one to three seconds alone and five to ten when the machine is building
+  // something else (measured 12 Nov 2026 at a load average near 100): the 5-second default failed whichever of them was slowest
+  // that run. The longest ones still say their own 30 seconds.
+  test: { testTimeout: 20_000 },
 });
