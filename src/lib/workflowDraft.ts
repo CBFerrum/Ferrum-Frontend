@@ -5,7 +5,14 @@
 // server additionally refuses (a condition it cannot read, a field that is gone) is shown as it words it.
 
 import { t as tr } from "@ferrum/client";
+import { checkPolicy, fromPolicy, newPolicy, toPolicy, type DraftPolicy } from "./approvalDraft";
+import { checkActions, actionJson, fromAction, type DraftAction } from "./automationDraft";
+import { checkParams, paramsFrom, paramsJson, type DraftParam } from "./buttonDraft";
 import type { EntityMeta, Workflow } from "./meta";
+
+export const MAX_TRANSITION_EFFECTS = 10;
+/** What a transition carries that the screen has no control for stays as it was; the server's own marks are not part of it. */
+const KNOWN = ["action", "from", "to", "roles", "condition", "not_creator", "not_creator_of", "params", "effects", "approval", "may_take", "may_run", "package"];
 
 export interface DraftState {
   key: string;
@@ -27,6 +34,13 @@ export interface DraftTransition {
   condition: string;
   not_creator: boolean;
   not_creator_of: string[];
+  /** What it asks for when taken. */
+  params: DraftParam[];
+  /** What it does after the move. */
+  effects: DraftAction[];
+  /** Who must agree first; null: nobody. */
+  approval: DraftPolicy | null;
+  extra: Record<string, unknown>;
 }
 
 export interface Draft {
@@ -42,8 +56,11 @@ export interface Problem {
   message: string;
   state?: string;
   transition?: string;
+  /** The key of an approval step, a question or an effect of the transition. */
+  step?: string;
 }
 
+export { newPolicy };
 export const workflowDesignerLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/workflow`;
 
 let counter = 0;
@@ -75,6 +92,10 @@ export function fromMeta(meta: Pick<EntityMeta, "name" | "label">, wf: Workflow)
       condition: t.condition ?? "",
       not_creator: !!t.not_creator,
       not_creator_of: [...(t.not_creator_of ?? [])],
+      params: paramsFrom(t.params),
+      effects: (Array.isArray(t.effects) ? t.effects : []).map(fromAction),
+      approval: fromPolicy(t.approval, keyOf),
+      extra: Object.fromEntries(Object.entries(t as unknown as Record<string, unknown>).filter(([k]) => !KNOWN.includes(k))),
     })),
   };
 }
@@ -94,6 +115,7 @@ export function toWorkflow(d: Draft, entity: string) {
     initial_state: name(d.initial),
     states: d.states.map((s) => ({ name: s.name.trim(), docstatus: s.docstatus, edit_roles: s.edit_roles, editable: s.editable, required: s.required })),
     transitions: d.transitions.map((t) => ({
+      ...t.extra,
       action: t.action.trim(),
       from: name(t.from),
       to: name(t.to),
@@ -101,6 +123,9 @@ export function toWorkflow(d: Draft, entity: string) {
       condition: t.condition.trim() || null,
       not_creator: t.not_creator,
       not_creator_of: t.not_creator_of,
+      ...(t.params.length ? { params: paramsJson(t.params) } : {}),
+      ...(t.effects.length ? { effects: t.effects.map(actionJson) } : {}),
+      ...(t.approval ? { approval: toPolicy(t.approval, name) } : {}),
     })),
   };
 }
@@ -159,6 +184,9 @@ export function checkDraft(d: Draft, submittable: boolean): Problem[] {
     if (!action) out.push({ message: tr("Every action needs a name."), transition: t.key });
     if (!from) out.push({ message: tr("The action “{action}” does not start from a state that exists.", { action: action || "…" }), transition: t.key });
     if (!has.has(t.to)) out.push({ message: tr("The action “{action}” does not lead to a state that exists.", { action: action || "…" }), transition: t.key });
+    for (const p of checkParams(t.params)) out.push({ message: tr("Action “{action}”: {message}", { action: action || "…", message: p.message }), transition: t.key, step: p.row });
+    for (const p of checkActions(t.effects, MAX_TRANSITION_EFFECTS).filter((p) => p.message !== tr("Add at least one action."))) out.push({ message: tr("Action “{action}”: {message}", { action: action || "…", message: p.message }), transition: t.key, step: p.action });
+    if (t.approval) for (const p of checkPolicy(t.approval)) out.push({ message: tr("Action “{action}”: {message}", { action: action || "…", message: p.message }), transition: t.key, step: p.step });
     if (action && from) {
       const id = `${t.from}\n${action}`;
       if (seen.has(id)) out.push({ message: tr("“{state}” has two actions called “{action}”: rename one.", { state: label(from), action }), transition: t.key });

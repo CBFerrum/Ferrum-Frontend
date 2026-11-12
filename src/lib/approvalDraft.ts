@@ -1,0 +1,156 @@
+// An approval policy on a workflow transition (BD-19) as the designer edits it: ordered steps, each with its approvers,
+// how many, and the rest of what the server takes. `fromPolicy` and `toPolicy` convert between the server's JSON and
+// a draft so that opening and saving changes nothing the person did not touch (what the screen has no control for stays
+// in `extra`). `checkPolicy` says in words what would not work; what the server refuses is shown as it words it.
+
+import { t as tr } from "@ferrum/client";
+import { newKey } from "./automationDraft";
+
+type Raw = Record<string, unknown>;
+const isObj = (v: unknown): v is Raw => !!v && typeof v === "object" && !Array.isArray(v);
+const str = (v: unknown) => (typeof v === "string" ? v : v === undefined || v === null ? "" : String(v));
+const strings = (v: unknown) => (Array.isArray(v) ? v.map(str) : []);
+const rest = (o: Raw, known: string[]): Raw => Object.fromEntries(Object.entries(o).filter(([k]) => !known.includes(k)));
+
+export const MAX_STEPS = 10;
+export const WHO_KINDS = ["role", "field", "expr"] as const;
+export type WhoKind = (typeof WHO_KINDS)[number];
+
+/** Who may decide: a role, a field of the record holding a user, or an expression giving one. */
+export interface DraftWho {
+  kind: WhoKind;
+  value: string;
+  extra: Raw;
+}
+
+export interface DraftStep {
+  key: string;
+  label: string;
+  who: DraftWho;
+  need: "any" | "all" | "number";
+  /** Whole number, when `need` is `number`. */
+  count: string;
+  when: string;
+  with_next: boolean;
+  not_earlier_deciders: boolean;
+  /** Names of the workflow's actions. */
+  not_who_took: string[];
+  calendar: string;
+  /** ISO 8601 durations, or a number of seconds the screen has no control for (kept as it was). */
+  remind_after: string;
+  escalate_after: string;
+  escalate_to: DraftWho | null;
+  extra: Raw;
+}
+
+export interface DraftPolicy {
+  steps: DraftStep[];
+  allow_requester: boolean;
+  /** Names of fields. */
+  reset_on: string[];
+  /** Key of a state of the workflow ("" none: the record stays). */
+  on_reject: string;
+  extra: Raw;
+}
+
+export const newWho = (): DraftWho => ({ kind: "role", value: "", extra: {} });
+export const newStep = (): DraftStep => ({
+  key: newKey(), label: "", who: newWho(), need: "any", count: "2", when: "", with_next: false, not_earlier_deciders: false, not_who_took: [], calendar: "",
+  remind_after: "", escalate_after: "", escalate_to: null, extra: {},
+});
+export const newPolicy = (): DraftPolicy => ({ steps: [newStep()], allow_requester: false, reset_on: [], on_reject: "", extra: {} });
+
+function fromWho(v: unknown): DraftWho {
+  const o = isObj(v) ? v : {};
+  const kind = WHO_KINDS.find((k) => k in o) ?? "role";
+  return { kind, value: str(o[kind]), extra: rest(o, [...WHO_KINDS]) };
+}
+const whoJson = (w: DraftWho): Raw => ({ ...w.extra, [w.kind]: w.value.trim() });
+
+const STEP_KNOWN = ["label", "approvers", "need", "when", "with_next", "not_earlier_deciders", "not_who_took", "calendar", "remind_after", "escalate_after", "escalate_to"];
+
+/** `keyOf`: a state's name to the key the designer knows it by. */
+export function fromPolicy(raw: unknown, keyOf: (name: string) => string): DraftPolicy | null {
+  if (!isObj(raw)) return null;
+  const steps = (Array.isArray(raw.steps) ? raw.steps : []).map((s): DraftStep => {
+    const o = isObj(s) ? s : {};
+    const need = o.need;
+    return {
+      key: newKey(),
+      label: str(o.label),
+      who: fromWho(o.approvers),
+      need: need === "all" ? "all" : typeof need === "number" ? "number" : "any",
+      count: typeof need === "number" ? String(need) : "2",
+      when: str(o.when),
+      with_next: o.with_next === true,
+      not_earlier_deciders: o.not_earlier_deciders === true,
+      not_who_took: strings(o.not_who_took),
+      calendar: str(o.calendar),
+      remind_after: str(o.remind_after),
+      escalate_after: str(o.escalate_after),
+      escalate_to: o.escalate_to === undefined || o.escalate_to === null ? null : fromWho(o.escalate_to),
+      extra: rest(o, STEP_KNOWN),
+    };
+  });
+  return {
+    steps,
+    allow_requester: raw.allow_requester === true,
+    reset_on: strings(raw.reset_on),
+    on_reject: raw.on_reject ? keyOf(str(raw.on_reject)) : "",
+    extra: rest(raw, ["steps", "allow_requester", "reset_on", "on_reject"]),
+  };
+}
+
+/** The `approval` a draft comes to (the server's policy), `name`: a state's key to its name. */
+export function toPolicy(d: DraftPolicy, name: (key: string) => string): Raw {
+  const out: Raw = {
+    ...d.extra,
+    steps: d.steps.map((s) => {
+      const o: Raw = { ...s.extra };
+      if (s.label.trim()) o.label = s.label.trim();
+      o.approvers = whoJson(s.who);
+      if (s.need === "all") o.need = "all";
+      else if (s.need === "number") o.need = Number(s.count);
+      if (s.when.trim()) o.when = s.when.trim();
+      if (s.with_next) o.with_next = true;
+      if (s.not_earlier_deciders) o.not_earlier_deciders = true;
+      if (s.not_who_took.length) o.not_who_took = s.not_who_took;
+      if (s.calendar.trim()) o.calendar = s.calendar.trim();
+      if (s.remind_after.trim()) o.remind_after = s.remind_after.trim();
+      if (s.escalate_after.trim()) o.escalate_after = s.escalate_after.trim();
+      if (s.escalate_to) o.escalate_to = whoJson(s.escalate_to);
+      return o;
+    }),
+  };
+  if (d.allow_requester) out.allow_requester = true;
+  if (d.reset_on.length) out.reset_on = d.reset_on;
+  if (d.on_reject) out.on_reject = name(d.on_reject);
+  return out;
+}
+
+export interface PolicyProblem {
+  message: string;
+  /** The key of the step it is about. */
+  step?: string;
+}
+
+/** What is wrong with a policy, in words a person who is not a developer follows. */
+export function checkPolicy(d: DraftPolicy): PolicyProblem[] {
+  const out: PolicyProblem[] = [];
+  if (!d.steps.length) return [{ message: tr("An approval needs at least one step: add one, or take the approval off.") }];
+  if (d.steps.length > MAX_STEPS) out.push({ message: tr("Use at most {n} approval steps.", { n: MAX_STEPS }) });
+  d.steps.forEach((s, i) => {
+    const say = (m: string) => out.push({ message: tr("Approval step {n}: {message}", { n: i + 1, message: m }), step: s.key });
+    if (!s.who.value.trim()) say(tr("say who decides."));
+    if (s.need === "number" && !/^[1-9]\d*$/.test(s.count.trim())) say(tr("how many must agree is a whole number, 1 or more."));
+    if (s.escalate_to && !s.escalate_to.value.trim()) say(tr("say who it is escalated to."));
+    if (s.escalate_to && !s.escalate_after.trim()) say(tr("set when it is escalated, or take the escalation off."));
+  });
+  return out;
+}
+
+/** Where a refusal's words point: "transition Submit, approval step 2: …" names the step (counting from 1). */
+export function stepAt(message: string, action: string, d: DraftPolicy): string | undefined {
+  const m = /transition (.+?), approval step (\d+)/i.exec(message);
+  return m && m[1].trim() === action.trim() ? d.steps[Number(m[2]) - 1]?.key : undefined;
+}
