@@ -45,6 +45,52 @@ describe("@ferrum/client", () => {
     expect([calls.ready, calls.titles]).toEqual([1, ["Deals"]]);
   });
 
+  describe("uploads.track", () => {
+    const install = (uploads?: unknown) => vi.stubGlobal("ferrum", { shell: { uploads } });
+    const bar = () => {
+      const calls: string[] = [];
+      const handle = { id: "u1", progress: (b: number) => calls.push(`progress ${b}`), retrying: () => calls.push("retrying"), sending: () => calls.push("sending"), done: () => calls.push("done"), fail: (m?: string) => calls.push(`fail ${m}`) };
+      return { calls, uploads: { track: vi.fn(async () => handle) } };
+    };
+
+    it("is a handle that does nothing where no shell runs", async () => {
+      expect(shell().uploads.canTrack).toBe(false);
+      const h = await shell().uploads.track({ label: "a.zip", size: 10 });
+      expect(() => [h.progress(1), h.retrying(), h.sending(), h.done(), h.fail("x")]).not.toThrow();
+    });
+
+    it("does nothing, and says so, on a bar that has no track", async () => {
+      install({ start: vi.fn() });
+      expect(shell().uploads.canTrack).toBe(false);
+      expect((await shell().uploads.track({ label: "a.zip", size: 10 })).id).toBe("");
+      expect(typeof shell().uploads.start).toBe("function");
+    });
+
+    it("passes the transfer to the bar's tray", async () => {
+      const b = bar();
+      install(b.uploads);
+      expect(shell().uploads.canTrack).toBe(true);
+      const cancel = () => {};
+      const h = await shell().uploads.track({ label: "a.zip", size: 10, cancel });
+      h.progress(5);
+      h.sending();
+      h.done();
+      expect(b.uploads.track).toHaveBeenCalledWith({ label: "a.zip", size: 10, cancel });
+      expect(b.calls).toEqual(["progress 5", "sending", "done"]);
+    });
+
+    it("ignores calls after done or fail", async () => {
+      const b = bar();
+      install(b.uploads);
+      const h = await shell().uploads.track({ label: "a.zip", size: 10 });
+      h.fail("no room");
+      h.progress(9);
+      h.done();
+      h.fail("again");
+      expect(b.calls).toEqual(["fail no room"]);
+    });
+  });
+
   it("sends the session cookie and the interface's version, and turns errors into ApiError", async () => {
     installFakeShell();
     const seen: RequestInit[] = [];

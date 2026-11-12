@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn, insideNativeDialog } from "@/lib/utils"
+import { useRestoreFocus } from "@/lib/focusReturn"
 import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 import { t } from "@ferrum/client";
@@ -48,11 +49,13 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   onInteractOutside,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const closeFocus = useRestoreFocus(onCloseAutoFocus)
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -71,6 +74,7 @@ function SheetContent({
           className
         )}
         onInteractOutside={insideNativeDialog(onInteractOutside)}
+        onCloseAutoFocus={closeFocus}
         {...props}
       >
         {children}

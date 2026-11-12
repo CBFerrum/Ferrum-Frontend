@@ -8,11 +8,20 @@ import { Button as ShButton } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { SwatchPalette, rememberColor, type Swatch } from "@/ui/swatches";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSeparator } from "@/ui/toolbar";
+import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, Redo2Icon, StrikethroughIcon, UnderlineIcon, Undo2Icon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toggle } from "@/components/ui/toggle";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyRun } from "@/app/EmptyRun";
-import { Alert, announce, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, type Tone } from "@/ui/kit";
+import { Alert, announce, Badge, Button, confirmDialog, ConfirmHost, Dialog, Field, Menu, MenuItem, PageLoading, TabPanel, Tabs, toast, Toaster, useToastPlacement, type Tone, type ToastPlacement } from "@/ui/kit";
 import { MemoryRouter } from "react-router";
 import { PageHeader as PageHead } from "@/app/studio/dashboard/ui";
 import { ButtonLink, FormSkeleton, HomeSection, HomeSkeleton, ListSkeleton, PageSplit, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, Tile, TileGrid, type SaveState, type StateKind } from "@/ui/patterns";
@@ -463,6 +472,14 @@ export function Sections() {
         </Dialog>
       </Section>
 
+      <Section id="menus" title="Menus, pop-ups and dialogs">
+        <MenusAndPopups />
+      </Section>
+
+      <Section id="toolbar" title="Toolbar and swatch palette">
+        <ToolbarExamples />
+      </Section>
+
       <Section id="toast" title="Toast and confirm">
         <Row label="raise">
           <Button onClick={() => toast("Invoice INV-2026-00418 approved")}>Show toast</Button>
@@ -471,6 +488,7 @@ export function Sections() {
           <Button onClick={() => announce("3 conversations moved to Trash")}>Announce only</Button>
           <Button variant="danger" onClick={() => void confirmDialog({ title: "Delete INV-2026-00418?", message: "This cannot be undone.", confirmLabel: "Delete", danger: true })}>Confirm…</Button>
         </Row>
+        <PlacementDemo />
         <Toaster />
         <ConfirmHost />
       </Section>
@@ -552,6 +570,21 @@ export function Sections() {
             <Button size="sm">Assign</Button>
           </SelectionToolbar>
         </div>
+        <div data-gallery="selection-folding" className="relative">
+          <SelectionToolbar
+            label="Actions for the 4 invoices selected"
+            count={4}
+            onClear={() => {}}
+            actions={[
+              { id: "archive", label: "Archive", icon: "file", onSelect: () => {} },
+              { id: "assign", label: "Assign to…", icon: "user", onSelect: () => {} },
+              { id: "export", label: "Export", icon: "download", onSelect: () => {} },
+              { id: "print", label: "Print", icon: "printer", onSelect: () => {} },
+              { id: "share", label: "Share by link", icon: "external", onSelect: () => {} },
+              { id: "delete", label: "Delete", icon: "trash", danger: true, priority: true, onSelect: () => {} },
+            ]}
+          />
+        </div>
         <div data-gallery="selection-capped" className="relative">
           <SelectionToolbar label="Actions for the 500 invoices selected" count={500} scope="matching" of={1200} onClear={() => {}}>
             <Button size="sm">Assign</Button>
@@ -562,12 +595,190 @@ export function Sections() {
   );
 }
 
+/** Every shadcn/Radix overlay the kit owns, each with a trigger of its own, and the combinations that went wrong: a menu in a dialog, a pop-up in a sheet, a confirm over a dialog. */
+function PlacementDemo() {
+  const [at, setAt] = useState<ToastPlacement | null>(null);
+  return (
+    <div data-gallery="toast-placement" className="flex flex-col gap-3">
+      <Row label="placement">
+        {(["bottom-start", "top-end"] as const).map((p) => (
+          <Button key={p} onClick={() => setAt(at === p ? null : p)}>{at === p ? `Stop asking for ${p}` : `Ask for ${p}`}</Button>
+        ))}
+        <span className="text-sm text-muted-foreground">Phones keep notices at the top.</span>
+      </Row>
+      {at && <ComposeStack placement={at} />}
+    </div>
+  );
+}
+
+const HUES = [0, 30, 55, 140, 175, 200, 230, 255, 285, 330];
+// Swatches are data a caller owns (a document's colours), not tokens: ten hues in three shades, from the hue angle.
+// ui-lint-allow colour: a palette's swatches are the caller's data
+const SWATCHES: Swatch[] = [90, 70, 45].flatMap((l, s) => HUES.map((h, i) => ({ color: `hsl(${h} ${s === 0 ? 60 : 75}% ${l}%)`, label: `Hue ${i + 1}, shade ${s + 1}` })));
+
+function ToolbarExamples() {
+  const [on, setOn] = useState<Record<string, boolean>>({ bold: true });
+  const flip = (k: string) => () => setOn({ ...on, [k]: !on[k] });
+  const [colour, setColour] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
+  const bar = (
+    <Toolbar label="Formatting">
+      <ToolbarGroup id="history">
+        <ToolbarButton label="Undo" shortcut="Mod-z" icon={<Undo2Icon />} onPress={() => {}} />
+        <ToolbarButton label="Redo" shortcut="Mod-Shift-z" icon={<Redo2Icon />} disabled onPress={() => {}} />
+      </ToolbarGroup>
+      <ToolbarGroup id="marks" keep>
+        <ToolbarButton label="Bold" shortcut="Mod-b" icon={<BoldIcon />} pressed={!!on.bold} onPress={flip("bold")} />
+        <ToolbarButton label="Italic" shortcut="Mod-i" icon={<ItalicIcon />} pressed={!!on.italic} onPress={flip("italic")} />
+        <ToolbarButton label="Underline" shortcut="Mod-u" icon={<UnderlineIcon />} pressed={!!on.underline} onPress={flip("underline")} />
+        <ToolbarButton label="Strikethrough" icon={<StrikethroughIcon />} pressed={!!on.strike} onPress={flip("strike")} />
+      </ToolbarGroup>
+      <ToolbarGroup id="align">
+        <ToolbarButton label="Align left" icon={<AlignLeftIcon />} pressed onPress={() => {}} />
+        <ToolbarButton label="Align centre" icon={<AlignCenterIcon />} onPress={() => {}} />
+        <ToolbarButton label="Align right" icon={<AlignRightIcon />} onPress={() => {}} />
+      </ToolbarGroup>
+      <ToolbarGroup id="lists">
+        <ToolbarButton label="Bullet list" icon={<ListIcon />} onPress={() => {}} />
+        <ToolbarButton label="Numbered list" icon={<ListOrderedIcon />} onPress={() => {}} />
+        <ToolbarSeparator />
+        <ToolbarButton label="Link" shortcut="Mod-k" icon={<LinkIcon />} onPress={() => {}} />
+      </ToolbarGroup>
+    </Toolbar>
+  );
+  return (
+    <div data-gallery="toolbar" className="flex flex-col gap-4">
+      {[720, 420, 260].map((w) => (
+        <div key={w} data-gallery={`toolbar-${w}`} className="rounded-lg border border-border bg-surface" style={{ width: w, maxWidth: "100%" }}>
+          {bar}
+        </div>
+      ))}
+      <div data-gallery="swatch-palette" className="w-fit rounded-lg border border-border bg-popover p-3">
+        <SwatchPalette label="Text colour" swatches={SWATCHES} value={colour} noneLabel="Automatic" recent={recent} onChange={(c) => { setColour(c); if (c) setRecent(rememberColor(recent, c)); }} />
+      </div>
+    </div>
+  );
+}
+
+/** A page that occupies the bottom end (a compose window) asks the toaster to move for as long as it is mounted. */
+function ComposeStack({ placement }: { placement: ToastPlacement }) {
+  useToastPlacement(placement);
+  return <div data-gallery="compose-stack" className="rounded-md border border-border bg-surface px-3 py-2 text-sm">Compose window (asks for {placement})</div>;
+}
+
+function MenusAndPopups() {
+  const [dlg, setDlg] = useState(false);
+  const [dlg2, setDlg2] = useState(false);
+  const [share, setShare] = useState(false);
+  const many = Array.from({ length: 40 }, (_, i) => `Action ${i + 1}`);
+  const menu = (label: string, long = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <ShButton variant="outline" size="sm">{label}</ShButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {(long ? many : ["Open", "Rename", "Move to…"]).map((m) => (
+          <DropdownMenuItem key={m}>{m}</DropdownMenuItem>
+        ))}
+        {!long && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>By link</DropdownMenuItem>
+              <DropdownMenuItem>With a person</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const pop = (label: string) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <ShButton variant="outline" size="sm">{label}</ShButton>
+      </PopoverTrigger>
+      <PopoverContent aria-label="Date range">Pick a date range.</PopoverContent>
+    </Popover>
+  );
+  return (
+    <div data-gallery="menus" className="flex flex-col gap-3">
+      <Row label="menu">{menu("Dropdown menu")}{menu("Long menu", true)}</Row>
+      <Row label="popover">{pop("Popover")}</Row>
+      <Row label="select">
+        <Select>
+          <SelectTrigger className="w-40" aria-label="Status"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="done">Done</SelectItem>
+          </SelectContent>
+        </Select>
+      </Row>
+      <Row label="tooltip, card">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild><ShButton variant="outline" size="sm">Tooltip</ShButton></TooltipTrigger>
+            <TooltipContent>Bold (Ctrl+B)</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <HoverCard openDelay={0}>
+          <HoverCardTrigger asChild><ShButton variant="outline" size="sm">Hover card</ShButton></HoverCardTrigger>
+          <HoverCardContent>{PEOPLE[0]}, Finance</HoverCardContent>
+        </HoverCard>
+        <ContextMenu>
+          <ContextMenuTrigger className="rounded-md border border-dashed border-border px-3 py-1 text-sm">Right-click here</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem>Copy</ContextMenuItem>
+            <ContextMenuItem>Paste</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      </Row>
+      <Row label="kit Menu at the edges">
+        <div data-gallery="menu-edges" className="flex w-full justify-between gap-2">
+          <Menu label="Start edge" align="end">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+          <Menu label="Long list" align="start">{(close) => many.map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+          <Menu label="End edge" align="start">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu>
+        </div>
+      </Row>
+      <Row label="in a sheet">
+        <Sheet>
+          <SheetTrigger asChild><ShButton variant="outline" size="sm">Open sheet</ShButton></SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Filters</SheetTitle>
+              <SheetDescription>A pop-up opened from a sheet.</SheetDescription>
+            </SheetHeader>
+            <div className="flex gap-2 p-4">{menu("Menu in a sheet")}{pop("Popover in a sheet")}<Button variant="danger" onClick={() => void confirmDialog({ title: "Clear the filters?", confirmLabel: "Clear", danger: true })}>Confirm in a sheet</Button></div>
+          </SheetContent>
+        </Sheet>
+      </Row>
+      <Row label="dialog from a menu">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><ShButton variant="outline" size="sm">Row menu</ShButton></DropdownMenuTrigger>
+          <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShare(true)}>Share…</DropdownMenuItem></DropdownMenuContent>
+        </DropdownMenu>
+        <Menu label="Kit row menu">{(close) => <MenuItem onSelect={() => { close(); setShare(true); }}>Share…</MenuItem>}</Menu>
+      </Row>
+      <Dialog open={share} onClose={() => setShare(false)} title="Share “Contracts”"><p>Dialog opened from a menu item.</p></Dialog>
+      <Row label="in a dialog">
+        <Button onClick={() => setDlg(true)}>Dialog with a menu</Button>
+        <Button onClick={() => setDlg2(true)}>Confirm over a dialog</Button>
+      </Row>
+      <Dialog open={dlg} onClose={() => setDlg(false)} title="Move INV-2026-00418">
+        <div className="flex gap-2">{menu("Menu in a dialog")}{pop("Popover in a dialog")}<Menu label="Kit menu in a dialog">{(close) => ["Open", "Rename", "Move to…"].map((m) => <MenuItem key={m} onSelect={close}>{m}</MenuItem>)}</Menu></div>
+      </Dialog>
+      <Dialog open={dlg2} onClose={() => setDlg2(false)} title="Edit INV-2026-00418" footer={<Button onClick={() => setDlg2(false)}>Close</Button>}>
+        <Button variant="danger" data-gallery="confirm-opener" onClick={() => void confirmDialog({ title: "Discard the changes?", message: "Your edits to INV-2026-00418 are lost.", confirmLabel: "Discard", danger: true })}>Discard changes…</Button>
+      </Dialog>
+    </div>
+  );
+}
+
 export function Gallery() {
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-24">
+    <main className="mx-auto max-w-6xl px-4 pb-24">
       <Controls />
       <h1 className="py-4 text-2xl font-semibold">Ferrum gallery</h1>
       <Sections />
-    </div>
+    </main>
   );
 }
