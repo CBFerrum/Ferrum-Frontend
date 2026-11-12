@@ -15,9 +15,12 @@ function mark(el: HTMLElement) {
 
 /** Watches the page once: scrolling, resizing, and rows appearing or changing. */
 export function watchEdges() {
+  // A page without frames to wait for (jsdom in tests) has no layout to measure either: nothing is watched, nothing is left scheduled.
+  if (typeof requestAnimationFrame !== "function") return;
   let queued = false;
   const soon = () => {
-    if (queued) return;
+    // Asked again when it fires: a test that lent the page `requestAnimationFrame` may have taken it back (or torn the page down).
+    if (queued || typeof requestAnimationFrame !== "function") return;
     queued = true;
     requestAnimationFrame(() => {
       queued = false;

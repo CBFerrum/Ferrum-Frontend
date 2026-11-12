@@ -287,7 +287,8 @@ function WorkHomes() {
 }
 
 /** The sections alone (the tests render these). */
-export function Sections() {
+/** `without`: section ids left out (the gallery test checks the rich-text editors on their own). */
+export function Sections({ without = [] }: { without?: string[] }) {
   const [tab, setTab] = useState("invoices");
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -482,9 +483,11 @@ export function Sections() {
         <ToolbarExamples />
       </Section>
 
-      <Section id="rich-text" title="Rich text">
-        <RichTextExamples />
-      </Section>
+      {!without.includes("rich-text") && (
+        <Section id="rich-text" title="Rich text">
+          <RichTextExamples />
+        </Section>
+      )}
 
       <Section id="toast" title="Toast and confirm">
         <Row label="raise">
@@ -800,7 +803,7 @@ const FIELDS: MergeField[] = [
 ];
 const ARABIC = "<p>مرحبًا فاطمة،</p><p>نرسل إليك الفاتورة <strong>INV-2026-00418</strong> المستحقة في ٣٠ نوفمبر.</p><ul><li><p>الدفع بالتحويل المصرفي</p></li><li><p>أو الرد على هذه الرسالة</p></li></ul>";
 
-function RichTextExamples() {
+export function RichTextExamples() {
   const [full, setFull] = useState(LETTER);
   const [compact, setCompact] = useState(MESSAGE);
   const [minimal, setMinimal] = useState("<p>Looks good to me. <strong>Ship it</strong> after the review.</p>");

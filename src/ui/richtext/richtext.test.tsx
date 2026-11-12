@@ -187,7 +187,8 @@ describe("loading", () => {
     const index = readFileSync("src/ui/richtext/index.tsx", "utf8");
     const sanitize = readFileSync("src/ui/richtext/sanitize.ts", "utf8");
     expect(index).not.toMatch(/^import [^t].*(@tiptap|\.\/Editor)/m); // types only
-    expect(index).toContain('lazy(() => import("./Editor"))');
+    expect(index).toContain('import("./Editor")');
+    expect(index).toContain("lazy(load)");
     expect(sanitize).not.toMatch(/@tiptap/);
   });
 });

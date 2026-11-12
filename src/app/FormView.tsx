@@ -957,7 +957,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <Button variant="ghost" className="btn-icon" icon="download" aria-label={tr("PDF")} title={tr("PDF")} onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))} />
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
-            <Button variant="ghost" className="btn-icon" icon="mail" aria-label={t("Email")} title={t("Email")} onPointerEnter={preloadRichTextEditor} onFocus={preloadRichTextEditor} onClick={() => setEmailing(true)} />
+            <Button variant="ghost" className="btn-icon" icon="mail" aria-label={t("Email")} title={t("Email")} onPointerEnter={() => void preloadRichTextEditor()} onFocus={() => void preloadRichTextEditor()} onClick={() => setEmailing(true)} />
           )}
           {asking && (
             <ActionDialog
