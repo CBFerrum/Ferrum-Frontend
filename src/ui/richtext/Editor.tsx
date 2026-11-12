@@ -26,6 +26,7 @@ import { cn } from "../../lib/utils";
 import { toast } from "../kit";
 import { rememberColor, SwatchPalette, type Swatch } from "../swatches";
 import { Toolbar, ToolbarButton, ToolbarGroup } from "../toolbar";
+import { LinkEnds } from "./linkEnds";
 import { cleanFontFamily, mergeChips, mergeToken, safeHref, sanitizeRichText, tidyPastedHtml, type SanitizeOptions } from "./sanitize";
 import type { MergeField, RichTextEditorProps } from "./index";
 
@@ -421,6 +422,7 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
       ImageNode,
       MergeFieldNode.configure({ fields }),
       BlockDirection,
+      LinkEnds,
       Placeholder.configure({ placeholder: p.placeholder ?? "" }),
       CharacterCount.configure({ limit: p.maxLength ?? null }),
       ...((p.extensions ?? []) as AnyExtension[]),
