@@ -222,5 +222,5 @@ describe("these screens, for assistive technology", () => {
     const found = new Set<string>();
     for (const html of drawn) for (const v of await violations(html)) found.add(v);
     expect([...found]).toEqual([]);
-  });
+  }, 30_000); // axe over every screen drawn: seconds alone, more on a busy machine (as solutions/render.test.tsx)
 });

@@ -93,7 +93,7 @@ describe("the automation editor", () => {
 
   it("breaks none of axe's rules that hold without layout", async () => {
     for (const a of [event, scheduled, relative]) expect(await violations(page(a))).toEqual([]);
-  });
+  }, 30_000); // axe over three screens: about two seconds alone, five and more on a busy machine (as solutions/render.test.tsx)
 });
 
 describe("the mail preview dialog", () => {

@@ -43,6 +43,7 @@ import { ActionDialog } from "./ActionDialog";
 import { ApprovalPanel, useApproval } from "./ApprovalPanel";
 import { RecordMessages } from "./MessageLog";
 import { EmailDocDialog } from "./EmailDoc";
+import { preloadRichTextEditor } from "../ui/richtext";
 import { EmptyRun } from "./EmptyRun";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
@@ -956,7 +957,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             <Button variant="ghost" className="btn-icon" icon="download" aria-label={tr("PDF")} title={tr("PDF")} onClick={() => download(docPath(E, String(id), "print"), `${E}-${String(id)}.pdf`, { format: "pdf" }).catch((e) => toast(errorMessage(e), "error"))} />
           )}
           {!isNew && server?.mail === true && can(meta.permissions, "export") && (
-            <Button variant="ghost" className="btn-icon" icon="mail" aria-label={t("Email")} title={t("Email")} onClick={() => setEmailing(true)} />
+            <Button variant="ghost" className="btn-icon" icon="mail" aria-label={t("Email")} title={t("Email")} onPointerEnter={() => void preloadRichTextEditor()} onFocus={() => void preloadRichTextEditor()} onClick={() => setEmailing(true)} />
           )}
           {asking && (
             <ActionDialog
@@ -977,6 +978,9 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               title={`${meta.label} ${typeof doc.number === "string" ? doc.number : ""}`.trim()}
               defaultTo={meta.fields.filter((f) => f.type === "email").map((f) => doc[f.name]).find((v): v is string => typeof v === "string" && v.includes("@"))}
               pdf={pdf && server?.mail_attachments === true}
+              html={server?.mail_html === true}
+              doc={doc}
+              fields={meta.fields}
               onClose={() => setEmailing(false)}
             />
           )}

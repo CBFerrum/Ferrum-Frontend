@@ -169,7 +169,7 @@ export function Toolbar({ label, children, onEscape, scrollBelow = 0, className 
           settle();
         }
       }} onKeyDown={onKeyDown}>
-        <div ref={row} className={cn("flex items-center gap-0.5", DIVIDER)}>
+        <div ref={row} className={cn("flex shrink-0 items-center gap-0.5", DIVIDER)}>
           {shown}
           {waiting.length > 0 && (
             <div className="flex items-center">

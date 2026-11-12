@@ -16,6 +16,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Switch } from "@/components/ui/switch";
 import { SwatchPalette, rememberColor, type Swatch } from "@/ui/swatches";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSeparator } from "@/ui/toolbar";
+import { RichText, RichTextEditor, type MergeField } from "@/ui/richtext";
+import { FieldControl } from "@/app/widgets";
 import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, BoldIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, Redo2Icon, StrikethroughIcon, UnderlineIcon, Undo2Icon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toggle } from "@/components/ui/toggle";
@@ -285,7 +287,8 @@ function WorkHomes() {
 }
 
 /** The sections alone (the tests render these). */
-export function Sections() {
+/** `without`: section ids left out (the gallery test checks the rich-text editors on their own). */
+export function Sections({ without = [] }: { without?: string[] }) {
   const [tab, setTab] = useState("invoices");
   const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -479,6 +482,12 @@ export function Sections() {
       <Section id="toolbar" title="Toolbar and swatch palette">
         <ToolbarExamples />
       </Section>
+
+      {!without.includes("rich-text") && (
+        <Section id="rich-text" title="Rich text">
+          <RichTextExamples />
+        </Section>
+      )}
 
       <Section id="toast" title="Toast and confirm">
         <Row label="raise">
@@ -780,5 +789,56 @@ export function Gallery() {
       <h1 className="py-4 text-2xl font-semibold">Ferrum gallery</h1>
       <Sections />
     </main>
+  );
+}
+
+// ui-lint-allow raw-color: a highlight colour inside sample content, which is the content's own
+const LETTER = `<h2>Delivery schedule for November</h2><p>Dear ${PEOPLE[0]},</p><p>Thank you for order <strong>SO-2026-00418</strong>. The goods leave our <em>Pune</em> warehouse on <mark data-color="#fff475" style="background-color: #fff475; color: inherit">Thursday 19 November</mark>; please check:</p><ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>the delivery address</p></li><li data-type="taskItem" data-checked="false"><p>who signs for the goods</p></li></ul><table><tbody><tr><th><p>Item</p></th><th><p>Quantity</p></th></tr><tr><td><p>Field tablet 10"</p></td><td><p>24</p></td></tr></tbody></table><blockquote><p>Payment within 30 days of the invoice.</p></blockquote><p>See <a href="https://example.com/terms">our terms</a>.</p>`;
+const MESSAGE = `<p>Hello {{ customer_name }},</p><p>Please find invoice <strong>{{ number }}</strong> attached, due on {{ due_date }}.</p><ol><li><p>Pay by bank transfer, or</p></li><li><p>reply to this e-mail with any question.</p></li></ol><p>Kind regards</p>`;
+const FIELDS: MergeField[] = [
+  { name: "customer_name", label: "Customer name" },
+  { name: "number", label: "Invoice number" },
+  { name: "due_date", label: "Due date" },
+  { name: "grand_total", label: "Grand total" },
+];
+const ARABIC = "<p>مرحبًا فاطمة،</p><p>نرسل إليك الفاتورة <strong>INV-2026-00418</strong> المستحقة في ٣٠ نوفمبر.</p><ul><li><p>الدفع بالتحويل المصرفي</p></li><li><p>أو الرد على هذه الرسالة</p></li></ul>";
+
+export function RichTextExamples() {
+  const [full, setFull] = useState(LETTER);
+  const [compact, setCompact] = useState(MESSAGE);
+  const [minimal, setMinimal] = useState("<p>Looks good to me. <strong>Ship it</strong> after the review.</p>");
+  const [bad, setBad] = useState("");
+  const [rtl, setRtl] = useState(ARABIC);
+  const [scope, setScope] = useState("<p>Install <strong>24 field tablets</strong> at the Pune site:</p><ul><li><p>mount and power each unit</p></li><li><p>pair it with the site gateway</p></li></ul>");
+  const block = (id: string, label: string, editor: React.ReactNode) => (
+    <div data-rte={id} className="flex max-w-3xl flex-col gap-1.5">
+      <span id={`rte-${id}`} className="field-label">
+        {label}
+      </span>
+      {editor}
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-8">
+      {block("full", "Letter (full)", <RichTextEditor toolbar="full" fonts value={full} onChange={setFull} labelledBy="rte-full" wordCount status="Saved" images="inline" />)}
+      {block("compact", "Message with merge fields (compact)", <RichTextEditor toolbar="compact" value={compact} onChange={setCompact} labelledBy="rte-compact" mergeFields={FIELDS} placeholder="Write a message…" />)}
+      {block("minimal", "Comment (minimal)", <RichTextEditor toolbar="minimal" value={minimal} onChange={setMinimal} labelledBy="rte-minimal" placeholder="Add a comment…" maxLength={500} />)}
+      {block("invalid", "Description (invalid)", <RichTextEditor toolbar="compact" id="rte-invalid-ed" value={bad} onChange={setBad} labelledBy="rte-invalid" placeholder="Describe the fault…" invalid="Describe the fault before you send it." />)}
+      {block("disabled", "Disabled", <RichTextEditor toolbar="compact" value={MESSAGE} labelledBy="rte-disabled" mergeFields={FIELDS} disabled />)}
+      {block("rtl", "Right to left (Arabic)", <RichTextEditor toolbar="compact" value={rtl} onChange={setRtl} labelledBy="rte-rtl" />)}
+      <div data-rte="field" className="flex max-w-3xl flex-col gap-4">
+        <span className="text-sm text-muted-foreground">A record field declared <code>widget: rich_text</code> (widgets.tsx), editable and read-only</span>
+        <Field label="Scope of work" htmlFor="g-rich-field">
+          <FieldControl field={{ name: "scope", label: "Scope of work", type: "text", widget: "rich_text" } as never} id="g-rich-field" value={scope} onChange={(v) => setScope(String(v ?? ""))} />
+        </Field>
+        <Field label="Scope of work (submitted)" htmlFor="g-rich-field-ro">
+          <FieldControl field={{ name: "scope", label: "Scope of work (submitted)", type: "text", widget: "rich_text" } as never} id="g-rich-field-ro" value={scope} disabled onChange={() => {}} />
+        </Field>
+      </div>
+      <div data-rte="read" className="flex max-w-3xl flex-col gap-1.5">
+        <span className="field-label">Read-only (RichText)</span>
+        <RichText html={MESSAGE} mergeFields={FIELDS} />
+      </div>
+    </div>
   );
 }
