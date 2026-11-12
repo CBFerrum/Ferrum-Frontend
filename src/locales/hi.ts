@@ -4161,6 +4161,23 @@ const words: Record<string, string> = {
   "the lines of a table": "किसी तालिका की पंक्तियाँ",
   "the records that link here": "इससे जुड़े रिकॉर्ड",
   "use at most {n} effects in a loop.": "लूप में अधिकतम {n} प्रभाव रखें।",
+  "is needed": "आवश्यक है",
+  "Waiting for approval": "अनुमोदन की प्रतीक्षा में",
+  "Recalled": "वापस लिया गया",
+  "Waiting": "प्रतीक्षा में",
+  "Skipped": "छोड़ा गया",
+  "Say why when you reject": "अस्वीकार करते समय कारण बताएँ",
+  "Approval of “{action}”": "“{action}” का अनुमोदन",
+  "Asked by {person} on {at}: {from} to {to}.": "{person} ने {at} को माँगा: {from} से {to}।",
+  "{voided} earlier decision(s) were cancelled when a field that matters changed, and the steps opened again.": "{voided} पिछले निर्णय रद्द हुए क्योंकि एक अहम फ़ील्ड बदला, और चरण फिर खुले।",
+  "Step {n}": "चरण {n}",
+  "needs {need} of": "{need} चाहिए, इनमें से",
+  "{person} for {other}": "{other} की ओर से {person}",
+  "Escalated to": "आगे भेजा गया:",
+  "Reminder due {at}": "अनुस्मारक {at} को",
+  "Escalates {at}": "{at} को आगे भेजा जाएगा",
+  "Recall this request": "यह अनुरोध वापस लें",
+  "{action}: awaiting approval": "{action}: अनुमोदन की प्रतीक्षा",
 };
 
 export default words;
