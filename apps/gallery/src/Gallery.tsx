@@ -820,12 +820,16 @@ const FIELDS: MergeField[] = [
 ];
 const ARABIC = "<p>مرحبًا فاطمة،</p><p>نرسل إليك الفاتورة <strong>INV-2026-00418</strong> المستحقة في ٣٠ نوفمبر.</p><ul><li><p>الدفع بالتحويل المصرفي</p></li><li><p>أو الرد على هذه الرسالة</p></li></ul>";
 
+const HOSTED = "<p>Hi Priya,</p><p>The checklist is attached. I will confirm the hotel on Monday.</p><p>Thanks,</p>";
+const HELD = '<p>Our plant, as it stands today:</p><p><img src="https://cdn.example/plant.jpg" alt="Pune plant, east gate" width="320" height="140" data-cid="part-7"> <img src="https://cdn.example/tracker.gif"></p>';
+
 export function RichTextExamples() {
   const [full, setFull] = useState(LETTER);
   const [compact, setCompact] = useState(MESSAGE);
   const [minimal, setMinimal] = useState("<p>Looks good to me. <strong>Ship it</strong> after the review.</p>");
   const [bad, setBad] = useState("");
   const [rtl, setRtl] = useState(ARABIC);
+  const [hosted, setHosted] = useState(HOSTED);
   const [scope, setScope] = useState("<p>Install <strong>24 field tablets</strong> at the Pune site:</p><ul><li><p>mount and power each unit</p></li><li><p>pair it with the site gateway</p></li></ul>");
   const block = (id: string, label: string, editor: React.ReactNode) => (
     <div data-rte={id} className="flex max-w-3xl flex-col gap-1.5">
@@ -843,6 +847,32 @@ export function RichTextExamples() {
       {block("invalid", "Description (invalid)", <RichTextEditor toolbar="compact" id="rte-invalid-ed" value={bad} onChange={setBad} labelledBy="rte-invalid" placeholder="Describe the fault…" invalid="Describe the fault before you send it." />)}
       {block("disabled", "Disabled", <RichTextEditor toolbar="compact" value={MESSAGE} labelledBy="rte-disabled" mergeFields={FIELDS} disabled />)}
       {block("rtl", "Right to left (Arabic)", <RichTextEditor toolbar="compact" value={rtl} onChange={setRtl} labelledBy="rte-rtl" />)}
+      <div data-rte="host" className="flex max-w-3xl flex-col gap-1.5">
+        <span id="rte-host" className="field-label">Inside a host surface (frameless, with content before and after the text)</span>
+        {/* The host owns the frame and the scrolling: the toolbar sticks to the top of this box. */}
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-border bg-surface shadow-sm" data-rte-host>
+          <RichTextEditor
+            toolbar="compact"
+            frameless
+            value={hosted}
+            onChange={setHosted}
+            labelledBy="rte-host"
+            placeholder="Write a reply…"
+            minHeight="10rem"
+            before={<div className="border-b border-border px-4 py-2 text-sm text-muted-foreground">To: Priya Nair · Re: Q4 pilot: site visit checklist</div>}
+            after={
+              <div className="flex flex-col gap-2 px-4 pb-4 text-sm text-muted-foreground">
+                <p className="border-t border-border pt-2">-- <br />Ana Costa, Operations</p>
+                <button type="button" className="btn btn-ghost btn-sm self-start" aria-expanded="false">Show the quoted message</button>
+              </div>
+            }
+          />
+        </div>
+      </div>
+      <div data-rte="held" className="flex max-w-3xl flex-col gap-1.5">
+        <span id="rte-held" className="field-label">Pictures from the web held while writing (remoteImages), with a carried attribute (data-cid)</span>
+        <RichTextEditor toolbar="compact" labelledBy="rte-held" value={HELD} remoteImages="hold" imageAttributes={["data-cid"]} />
+      </div>
       <div data-rte="field" className="flex max-w-3xl flex-col gap-4">
         <span className="text-sm text-muted-foreground">A record field declared <code>widget: rich_text</code> (widgets.tsx), editable and read-only</span>
         <Field label="Scope of work" htmlFor="g-rich-field">

@@ -27,24 +27,33 @@ import { toast } from "../kit";
 import { rememberColor, SwatchPalette, type Swatch } from "../swatches";
 import { Toolbar, ToolbarButton, ToolbarGroup } from "../toolbar";
 import { LinkEnds } from "./linkEnds";
-import { cleanFontFamily, mergeChips, mergeToken, safeHref, sanitizeRichText, tidyPastedHtml, type SanitizeOptions } from "./sanitize";
+import { cleanFontFamily, IMAGE_DATA, mergeChips, mergeToken, safeHref, sanitizeRichText, tidyPastedHtml, type SanitizeOptions } from "./sanitize";
 import type { MergeField, RichTextEditorProps } from "./index";
 
 const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 // ── nodes of our own ──
 
-/** An image: shown from `src`, its width kept when resized by the handle at its inline end. */
-const ImageNode = Node.create({
+/** An address on the web: `http:`, `https:` or `//`, and not under one of the caller's own prefixes. */
+const isRemote = (src: string, own: string[]) => /^(https?:)?\/\//i.test(src.trim()) && !own.some((p) => p && src.startsWith(p));
+
+/** An image: shown from `src`, its width kept when resized by the handle at its inline end. The caller may declare more `data-*`
+ *  attributes to carry (`attributes`), and ask for web pictures to be held: kept as they are, never requested while writing (`hold`). */
+const ImageNode = Node.create<{ attributes: string[]; hold: boolean; sources: string[] }>({
   name: "image",
   group: "inline",
   inline: true,
   atom: true,
   draggable: true,
-  addAttributes: () => ({ src: { default: null }, alt: { default: null }, width: { default: null, parseHTML: (el) => Number(el.getAttribute("width")) || null } }),
+  addOptions: () => ({ attributes: [], hold: false, sources: [] }),
+  addAttributes() {
+    const number = (name: string) => ({ default: null, parseHTML: (el: HTMLElement) => Number(el.getAttribute(name)) || null });
+    return { src: { default: null }, alt: { default: null }, width: number("width"), height: number("height"), ...Object.fromEntries(this.options.attributes.map((n) => [n, { default: null }])) };
+  },
   parseHTML: () => [{ tag: "img[src]" }],
   renderHTML: ({ HTMLAttributes }) => ["img", mergeAttributes(HTMLAttributes)],
   addNodeView() {
+    const { attributes, hold, sources } = this.options;
     return ({ node, getPos, editor }) => {
       const wrap = document.createElement("span");
       wrap.className = "rte-img";
@@ -54,10 +63,40 @@ const ImageNode = Node.create({
       handle.className = "rte-img-handle";
       handle.setAttribute("aria-hidden", "true");
       const draw = (n: typeof node) => {
-        img.src = n.attrs.src ?? "";
+        const src: string = n.attrs.src ?? "";
+        for (const a of attributes) {
+          if (n.attrs[a] == null) img.removeAttribute(a);
+          else img.setAttribute(a, String(n.attrs[a]));
+        }
+        if (hold && isRemote(src, sources)) {
+          // Kept in the content, not requested: a box of the picture's size saying what it is.
+          img.removeAttribute("src");
+          const box = document.createElement("span");
+          box.className = "rte-img-held";
+          box.setAttribute("role", "img");
+          const name = n.attrs.alt || t("Picture from the web");
+          box.setAttribute("aria-label", name);
+          box.title = t("Not loaded while you write; it is kept as it came.");
+          const w = Number(n.attrs.width) || 0;
+          const h = Number(n.attrs.height) || 0;
+          if (w) box.style.width = `${w}px`;
+          if (h) box.style.height = `${h}px`;
+          const label = document.createElement("span");
+          label.textContent = name;
+          box.append(label);
+          if (w || h) {
+            const size = document.createElement("small");
+            size.textContent = w && h ? `${w} × ${h}` : String(w || h);
+            box.append(size);
+          }
+          wrap.replaceChildren(box);
+          return;
+        }
+        img.src = src;
         img.alt = n.attrs.alt ?? "";
         if (n.attrs.width) img.style.width = `${n.attrs.width}px`;
         else img.style.removeProperty("width");
+        wrap.replaceChildren(img, handle);
       };
       draw(node);
       handle.addEventListener("pointerdown", (e) => {
@@ -75,12 +114,12 @@ const ImageNode = Node.create({
           () => {
             handle.removeEventListener("pointermove", move);
             const pos = getPos();
-            if (typeof pos === "number") editor.chain().command(({ tr }) => (tr.setNodeAttribute(pos, "width", Math.round(img.getBoundingClientRect().width)), true)).run();
+            // The height is left to follow the width (a stale one would squash the picture in the reader's mail program).
+            if (typeof pos === "number") editor.chain().command(({ tr }) => (tr.setNodeAttribute(pos, "width", Math.round(img.getBoundingClientRect().width)).setNodeAttribute(pos, "height", null), true)).run();
           },
           { once: true },
         );
       });
-      wrap.append(img, handle);
       return { dom: wrap, update: (n) => (n.type.name === "image" ? (draw(n), true) : false), selectNode: () => wrap.classList.add("is-selected"), deselectNode: () => wrap.classList.remove("is-selected") };
     };
   },
@@ -364,7 +403,7 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
   const fields = p.mergeFields ?? [];
   const latest = useRef(p);
   latest.current = p;
-  const clean: SanitizeOptions = useMemo(() => ({ inlineImages: p.images === "inline", imageSources: p.imageSources }), [p.images, p.imageSources]);
+  const clean: SanitizeOptions = useMemo(() => ({ inlineImages: p.images === "inline", imageSources: p.imageSources, imageAttributes: p.imageAttributes }), [p.images, p.imageSources, p.imageAttributes]);
   const toEditor = (v: RichTextEditorProps["value"]) => (typeof v === "string" ? mergeChips(sanitizeRichText(v, clean), fields) : (v ?? ""));
   const keyOf = (v: RichTextEditorProps["value"]) => (typeof v === "string" ? v : JSON.stringify(v ?? ""));
   const emitted = useRef<string>(keyOf(p.value));
@@ -419,7 +458,7 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
       TableRow,
       TableHeader,
       TableCell,
-      ImageNode,
+      ImageNode.configure({ attributes: (p.imageAttributes ?? []).filter((n) => IMAGE_DATA.test(n)), hold: p.remoteImages === "hold", sources: p.imageSources ?? [] }),
       MergeFieldNode.configure({ fields }),
       BlockDirection,
       LinkEnds,
@@ -715,7 +754,7 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
 
   return (
     <div
-      className={cn("rte", p.invalid && "rte-invalid", p.disabled && "rte-disabled", p.readOnly && "rte-readonly", p.className)}
+      className={cn("rte", p.frameless && "rte-frameless", p.invalid && "rte-invalid", p.disabled && "rte-disabled", p.readOnly && "rte-readonly", p.className)}
       style={{ "--rte-min": p.minHeight ?? (minimal ? "5rem" : "8rem"), "--rte-max": p.maxHeight ?? "28rem" } as React.CSSProperties}
       data-variant={variant}
     >
@@ -755,7 +794,9 @@ export default function RichTextEditorImpl(p: RichTextEditorProps) {
           }
         }}
       >
+        {p.before && <div className="rte-before">{p.before}</div>}
         <EditorContent editor={editor} />
+        {p.after && <div className="rte-after">{p.after}</div>}
       </div>
       {footer && (
         <div className="rte-footer">

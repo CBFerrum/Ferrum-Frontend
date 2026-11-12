@@ -3,19 +3,9 @@
 
 import type { Editor } from "@tiptap/core";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { RichTextEditor } from "./index";
-
-async function mount(ui: React.ReactNode) {
-  const host = document.createElement("div");
-  document.body.append(host);
-  const root = createRoot(host);
-  await act(async () => root.render(ui));
-  for (let i = 0; i < 400 && !host.querySelector(".ProseMirror"); i++) await act(() => new Promise((r) => setTimeout(r, 20)));
-  await act(() => new Promise((r) => setTimeout(r, 20)));
-  return { host, unmount: () => act(() => root.unmount()) };
-}
+import { mount } from "./testMount";
 
 /** Typing as the browser delivers it: each character goes to the text-input handlers first (input rules, ours), else is inserted at the caret. */
 async function type(editor: Editor, text: string) {
@@ -23,7 +13,7 @@ async function type(editor: Editor, text: string) {
     await act(async () => {
       const { view } = editor;
       const { from, to } = view.state.selection;
-      if (!view.someProp("handleTextInput", (f) => f(view, from, to, ch))) view.dispatch(view.state.tr.insertText(ch, from, to));
+      if (!view.someProp("handleTextInput", (f) => f(view, from, to, ch, () => view.state.tr.insertText(ch, from, to)))) view.dispatch(view.state.tr.insertText(ch, from, to));
     });
   }
 }
@@ -37,7 +27,7 @@ Range.prototype.getBoundingClientRect ??= () => new DOMRect();
 
 async function written(text: string, start = "") {
   let editor!: Editor;
-  const { unmount } = await mount(<RichTextEditor value={start} label="Message" onEditor={(e) => (editor = e)} />);
+  const { unmount } = await mount(<RichTextEditor value={start} label="Message" onEditor={(e) => e && (editor = e)} />);
   await act(async () => void editor.commands.setTextSelection(editor.state.doc.content.size - 1));
   await type(editor, text);
   return { editor, unmount };
