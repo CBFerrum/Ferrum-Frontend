@@ -69,8 +69,8 @@ function Who({ id, legend, value, onChange, fields, entityFields }: { id: string
   );
 }
 
-function StepCard({ s, i, count, fields, actions, error, flagged, onChange, onMove, onRemove }: {
-  s: DraftStep; i: number; count: number; fields: MetaField[]; actions: string[]; error?: string; flagged: boolean;
+function StepCard({ s, i, count, fields, actions, document, error, flagged, onChange, onMove, onRemove }: {
+  s: DraftStep; i: number; count: number; fields: MetaField[]; actions: string[]; document?: boolean; error?: string; flagged: boolean;
   onChange: (p: Partial<DraftStep>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void;
 }) {
   const calendars = useCalendars();
@@ -112,7 +112,7 @@ function StepCard({ s, i, count, fields, actions, error, flagged, onChange, onMo
         <input type="checkbox" checked={s.not_earlier_deciders} onChange={(e) => onChange({ not_earlier_deciders: e.target.checked })} />
         {tr("Not someone who decided an earlier step")}
       </label>
-      <CheckGroup legend={tr("Not whoever took…")} options={actions.map((a) => ({ value: a, label: a }))} value={s.not_who_took} onChange={(not_who_took) => onChange({ not_who_took })} empty={tr("This workflow has no actions yet.")} />
+      {!document && <CheckGroup legend={tr("Not whoever took…")} options={actions.map((a) => ({ value: a, label: a }))} value={s.not_who_took} onChange={(not_who_took) => onChange({ not_who_took })} empty={tr("This workflow has no actions yet.")} />}
       <Field label={tr("Business calendar (working time for the times below)")} htmlFor={`${id}-cal`}>
         {names.length ? (
           <select id={`${id}-cal`} className="select" value={s.calendar} onChange={(e) => onChange({ calendar: e.target.value })}>
@@ -149,9 +149,10 @@ function StepCard({ s, i, count, fields, actions, error, flagged, onChange, onMo
   );
 }
 
-export function ApprovalEditor({ policy, onChange, fields, actions, states, flagged, errorStep, error }: {
+/** `document`: a document's own submit or cancel, which has no states to reject to and no transitions to name, and where the system may be let through. */
+export function ApprovalEditor({ policy, onChange, fields, actions, states, flagged, errorStep, error, document, idPrefix = "ap" }: {
   policy: DraftPolicy; onChange: (p: DraftPolicy) => void; fields: MetaField[]; actions: string[]; states: { value: string; label: string }[];
-  flagged: Set<string | undefined>; errorStep?: string; error?: string;
+  flagged: Set<string | undefined>; errorStep?: string; error?: string; document?: boolean; idPrefix?: string;
 }) {
   const edit = (key: string, patch: Partial<DraftStep>) => onChange({ ...policy, steps: policy.steps.map((s) => (s.key === key ? { ...s, ...patch } : s)) });
   const plain = fields.filter((f) => f.type !== "table").map((f) => ({ value: f.name, label: f.label || f.name }));
@@ -166,6 +167,7 @@ export function ApprovalEditor({ policy, onChange, fields, actions, states, flag
           count={policy.steps.length}
           fields={fields}
           actions={actions}
+          document={document}
           flagged={flagged.has(s.key)}
           error={errorStep === s.key ? error : undefined}
           onChange={(p) => edit(s.key, p)}
@@ -181,14 +183,27 @@ export function ApprovalEditor({ policy, onChange, fields, actions, states, flag
         {tr("The person who asked may decide too")}
       </label>
       <CheckGroup legend={tr("A change to these fields cancels the decisions so far")} options={plain} value={policy.reset_on} onChange={(reset_on) => onChange({ ...policy, reset_on })} />
-      <Field label={tr("When it is rejected, the record moves to")} htmlFor="ap-reject">
-        <select id="ap-reject" className="select" value={policy.on_reject} onChange={(e) => onChange({ ...policy, on_reject: e.target.value })}>
-          <option value="">{tr("Nowhere: it stays where it is")}</option>
-          {states.map((s) => (
-            <option key={s.value} value={s.value}>{isolate(s.label)}</option>
-          ))}
-        </select>
-      </Field>
+      {!document && (
+        <Field label={tr("When it is rejected, the record moves to")} htmlFor={`${idPrefix}-reject`}>
+          <select id={`${idPrefix}-reject`} className="select" value={policy.on_reject} onChange={(e) => onChange({ ...policy, on_reject: e.target.value })}>
+            <option value="">{tr("Nowhere: it stays where it is")}</option>
+            {states.map((s) => (
+              <option key={s.value} value={s.value}>{isolate(s.label)}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <label className="check-field">
+        <input type="checkbox" checked={policy.lock} onChange={(e) => onChange({ ...policy, lock: e.target.checked })} />
+        {tr("Lock the record while it awaits approval (but for the fields above)")}
+      </label>
+      {document && (
+        <label className="check-field">
+          <input type="checkbox" checked={policy.system_bypass} onChange={(e) => onChange({ ...policy, system_bypass: e.target.checked })} />
+          {tr("Let the system (an automation, another app) go ahead without approval")}
+        </label>
+      )}
+      <CheckGroup legend={tr("Fields approvers see even where a field group hides them")} options={plain} value={policy.show} onChange={(show) => onChange({ ...policy, show })} />
     </div>
   );
 }
