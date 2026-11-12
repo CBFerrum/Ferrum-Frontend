@@ -211,7 +211,7 @@ function List() {
                       <td>{badges(r)}</td>
                       <td>{r.roles?.length ? isolate(r.roles.join(", ")) : <span className="faint">{tr("Everyone who may read the record")}</span>}</td>
                       <td>{enabledSwitch(r)}</td>
-                      <td className="nowrap faint">{r.updated_at ? <>{formatDateTime(r.updated_at)}{r.updated_by && !UUID.test(r.updated_by) ? <div>{isolate(r.updated_by)}</div> : null}</> : "—"}</td>
+                      <td className="nowrap faint">{r.updated_at ? <>{formatDateTime(r.updated_at)}{r.updated_by_name ? <div>{isolate(r.updated_by_name)}</div> : r.updated_by && !UUID.test(r.updated_by) ? <div>{isolate(r.updated_by)}</div> : null}</> : "—"}</td>
                       <td className="nowrap"><div className="row-actions">{actions(r)}</div></td>
                     </tr>
                   ))}

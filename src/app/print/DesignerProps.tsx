@@ -5,7 +5,7 @@
 import { useId, useState } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 import {
-  addSection, BLOCK_NAMES, columnsInOrder, duplicateNode, FORMAT_AS, firstPath, LINE_HEIGHTS, locate, moveBlock, newTableColumn, nodeAt, nudge, parseCondition, paragraphsOf, pathLabel, pathsOf, removeNode, setColumnCount, SIZES, SPACES, textOf,
+  addSection, allTables, BLOCK_NAMES, columnsInOrder, duplicateNode, FORMAT_AS, firstPath, LINE_HEIGHTS, locate, moveBlock, newTableColumn, nodeAt, nudge, parseCondition, paragraphsOf, pathLabel, pathsOf, removeNode, setColumnCount, SIZES, SPACES, textOf,
   toNeighbourColumn, toNewSectionAbove, updateNode, widthsOf, writeCondition,
   type Align, type Block, type Catalogue, type Column, type Format, type Id, type Layout, type PrintFormat, type Problem, type Section, type SimpleCondition, type Size, type TableBlock, type TableColumn, type Value,
 } from "../../lib/printLayout";
@@ -22,10 +22,13 @@ const DOC_COLOURS = ["#111111", "#374151", "#555555", "#9ca3af", "#1f2937", "#1e
 const SIZE_NAMES = (): Record<Size, string> => ({ xs: tr("Smallest (8 pt)"), sm: tr("Small (9 pt)"), md: tr("Normal (10.5 pt)"), lg: tr("Large (12 pt)"), xl: tr("Larger (14 pt)"), "2xl": tr("Largest (18 pt)") });
 const AS_NAMES = (): Record<(typeof FORMAT_AS)[number], string> => ({ auto: tr("As the field is"), text: tr("Text"), multiline: tr("Lines of text"), number: tr("Number"), amount: tr("Amount"), percent: tr("Percent"), date: tr("Date"), datetime: tr("Date and time"), words: tr("Amount in words"), check: tr("Yes or No") });
 
-export function Properties({ tab, def, layout, selected, cat, problems, letterheads, pkg, onDef, onLayout, onSelect, onRemove, onMove, name, where }: {
+export function Properties({ tab, def, layout, selected, cat, problems, letterheads, pkg, ghost, showingAll, onDef, onLayout, onSelect, onRemove, onMove, name, where }: {
   tab: "selected" | "page"; def: PrintFormat; layout: Layout; selected: Id | null; cat?: Catalogue; problems: Problem[]; letterheads: { id: string; letter_head_name: string }[];
   /** A package's layout (§13 g): only paper, copies, roles, letter head and on/off change. */
   pkg?: boolean;
+  /** The selected part's condition is false for the previewed record (a ghost on the canvas). */
+  ghost?: boolean;
+  showingAll?: boolean;
   onDef: (d: PrintFormat, group?: string) => void; onLayout: Set; onSelect: (id: Id | null) => void; onRemove: (id: Id) => void; onMove: (next: Layout, said: string, select?: Id) => void;
   name: (id: Id) => string; where: (l: Layout, id: Id) => string;
 }) {
@@ -47,6 +50,13 @@ export function Properties({ tab, def, layout, selected, cat, problems, letterhe
         <strong>{isolate(name(selected))}</strong>
       </div>
       {problems.map((p, i) => <Alert key={i} tone="error">{isolate(p.message)}</Alert>)}
+      {ghost && "when" in node && node.when && (
+        <Alert tone="warning">
+          <strong>{tr("Hidden for this record")}</strong>
+          <div>{tr("It prints when {condition}, which is false for the record shown.", { condition: node.when })}</div>
+          {!showingAll && <div className="faint">{tr("Show hidden parts to see it at full size, or change its condition below.")}</div>}
+        </Alert>
+      )}
       {w.kind !== "column" && <Moves layout={layout} id={selected} kind={w.kind} onMove={onMove} onRemove={onRemove} name={name} where={where} />}
       {w.kind === "section" && <SectionProps s={node as Section} layout={layout} set={set} onLayout={onLayout} cat={cat} />}
       {w.kind === "column" && <ColumnProps c={node as Column} s={layout.sections[w.s]} i={w.c} layout={layout} onLayout={onLayout} onSelect={onSelect} />}
@@ -162,7 +172,7 @@ function Colour({ label, value, onChange }: { label: string; value: string | und
 /** A field path, from the catalogue: the record's fields, linked records, the company, the print; `row` for a table's lines. */
 function PathPick({ label, value, onChange, cat, table, allowNone }: { label: string; value: string | undefined; onChange: (p: string | undefined) => void; cat?: Catalogue; table?: string; allowNone?: string }) {
   const id = useId();
-  const rows = table ? (cat?.tables.find((t) => t.path === table)?.columns ?? []) : [];
+  const rows = table ? ((cat ? allTables(cat) : []).find((t) => t.path === table)?.columns ?? []) : [];
   const groups: [string, { path: string; label: string }[]][] = table
     ? [[tr("Lines"), rows]]
     : cat
@@ -197,7 +207,7 @@ function ValuePick({ label, value, onChange, cat, table }: { label: string; valu
   );
 }
 
-function FormatPick({ format, onChange }: { format: Format | undefined; onChange: (f: Format | undefined) => void }) {
+function FormatPick({ format, onChange, cat }: { format: Format | undefined; onChange: (f: Format | undefined) => void; cat?: Catalogue }) {
   const f = format ?? {};
   const put = (patch: Partial<Format>) => {
     const next = Object.fromEntries(Object.entries({ ...f, ...patch }).filter(([, v]) => v !== undefined)) as Format;
@@ -209,13 +219,32 @@ function FormatPick({ format, onChange }: { format: Format | undefined; onChange
       <Pick label={tr("Print it as")} value={as} options={FORMAT_AS.map((a) => [a, AS_NAMES()[a]])} onChange={(v) => put({ as: v === "auto" ? undefined : v })} />
       {["number", "amount", "percent"].includes(as) && <Num label={tr("Decimals")} value={f.decimals} min={0} max={9} onChange={(v) => put({ decimals: v })} />}
       {as === "amount" && <Pick label={tr("Currency shown as")} value={f.show ?? "symbol"} options={[["symbol", tr("Symbol (₹)")], ["code", tr("Code (INR)")], ["none", tr("Nothing")]]} onChange={(v) => put({ show: v === "symbol" ? undefined : v })} />}
-      {(as === "date" || as === "datetime") && <Pick label={tr("Date style")} value={f.date ?? "short"} options={[["short", tr("Short")], ["long", tr("Long, with the month's name")]]} onChange={(v) => put({ date: v === "short" ? undefined : v })} />}
+      {(as === "date" || as === "datetime" || as === "auto") && <Pick label={tr("Date style")} value={f.date} none={tr("Default (29 Oct 2026)")} options={[["short", tr("Short (29/10/2026)")], ["medium", tr("Medium (29 Oct 2026)")], ["long", tr("Long (29 October 2026)")]]} onChange={(v) => put({ date: v })} />}
+      {["number", "amount", "percent", "words", "auto"].includes(as) && <SignPick sign={f.sign} onChange={(v) => put({ sign: v })} cat={cat} />}
     </>
   );
 }
 
+/** "Show without its sign": never, always, or when a condition holds (§12 items 27, 46; checked like any condition). */
+function SignPick({ sign, onChange, cat }: { sign: Format["sign"]; onChange: (s: Format["sign"]) => void; cat?: Catalogue }) {
+  const id = useId();
+  const mode = !sign ? "never" : sign === "abs" ? "always" : "when";
+  return (
+    <div className="stack" style={{ gap: 4 }}>
+      <Field label={tr("Show without its sign")} htmlFor={id}>
+        <select id={id} className="select" value={mode} onChange={(e) => onChange(e.target.value === "never" ? undefined : e.target.value === "always" ? "abs" : { abs_when: typeof sign === "object" ? sign.abs_when : "doc.is_return" })}>
+          <option value="never">{tr("Never")}</option>
+          <option value="always">{tr("Always")}</option>
+          <option value="when">{tr("When…")}</option>
+        </select>
+      </Field>
+      {typeof sign === "object" && <When when={sign.abs_when} cat={cat} label={tr("Without its sign")} onChange={(w) => onChange(w ? { abs_when: w } : "abs")} />}
+    </div>
+  );
+}
+
 /** When it prints: always, when a field has a value, is empty or is a value; anything else stays as written (CEL). */
-function When({ when, onChange, cat }: { when: string | undefined; onChange: (w: string | undefined) => void; cat?: Catalogue }) {
+function When({ when, onChange, cat, label }: { when: string | undefined; onChange: (w: string | undefined) => void; cat?: Catalogue; label?: string }) {
   const id = useId();
   const simple = when ? parseCondition(when) : null;
   const [raw, setRaw] = useState(!!when && !simple);
@@ -224,7 +253,7 @@ function When({ when, onChange, cat }: { when: string | undefined; onChange: (w:
   const s = simple ?? { path: cat?.fields[0]?.path ?? "doc.number", op: "set" as const };
   return (
     <fieldset className="stack" style={{ border: 0, margin: 0, padding: 0, minWidth: 0, gap: 4 }}>
-      <legend className="field-label">{tr("Prints")}</legend>
+      <legend className="field-label">{label ?? tr("Prints")}</legend>
       <select className="select" aria-label={tr("When it prints")} value={mode} onChange={(e) => {
         const v = e.target.value;
         setRaw(v === "cel");
@@ -332,7 +361,7 @@ function BlockProps({ b, layout, set, onLayout, cat }: { b: Block; layout: Layou
             <SizePick value={b.size} onChange={(v) => set({ size: v })} />
           </div>
           <Colour label={tr("Colour")} value={b.color} onChange={(c) => set({ color: c })} />
-          <FormatPick format={b.format} onChange={(f) => set({ format: f })} />
+          <FormatPick format={b.format} cat={cat} onChange={(f) => set({ format: f })} />
           <Check label={tr("Print nothing when it is empty")} value={b.hide_empty !== false} onChange={(v) => set({ hide_empty: v ? undefined : false })} />
           <Common b={b} set={set} cat={cat} />
         </>
@@ -463,13 +492,13 @@ function BlockProps({ b, layout, set, onLayout, cat }: { b: Block; layout: Layou
 function TableProps({ t, layout, onLayout, cat, current, onSelect }: { t: TableBlock; layout: Layout; onLayout: Set; cat?: Catalogue; current?: Id; onSelect?: (id: Id | null) => void }) {
   const set = (patch: Partial<TableBlock>, g?: string) => onLayout(updateNode(layout, t.id, patch), g ? `${t.id}:${g}` : undefined);
   const setCol = (c: TableColumn, patch: Partial<TableColumn>, g?: string) => onLayout(updateNode(layout, c.id, patch), g ? `${c.id}:${g}` : undefined);
-  const lines = cat?.tables.find((x) => x.path === t.value);
+  const lines = cat ? allTables(cat).find((x) => x.path === t.value) : undefined;
   const [adding, setAdding] = useState("");
   const total = t.columns.reduce((a, c) => a + (c.width_pct ?? 0), 0);
   return (
     <>
       {current && onSelect && <Button size="sm" onClick={() => onSelect(t.id)}>{tr("The whole table")}</Button>}
-      <Pick label={tr("Lines")} value={t.value} options={(cat?.tables ?? []).map((x) => [x.path, x.label])} onChange={(v) => v && set({ value: v })} />
+      <Pick label={tr("Lines")} value={t.value} options={(cat ? allTables(cat) : []).map((x) => [x.path, x.label])} onChange={(v) => v && set({ value: v })} />
       <p className="field-label">{tr("Columns")} <span className="faint">{total ? tr("({pct}% given)", { pct: total }) : ""}</span></p>
       {t.columns.map((c, i) => (
         <div key={c.id} className="pd-tcol" aria-current={current === c.id || undefined}>
@@ -479,8 +508,9 @@ function TableProps({ t, layout, onLayout, cat, current, onSelect }: { t: TableB
             <Num label={tr("Width %")} value={c.width_pct} min={3} max={100} onChange={(v) => setCol(c, { width_pct: v })} />
             <Pick label={tr("Alignment")} value={c.align} options={[["start", tr("Start")], ["center", tr("Centre")], ["end", tr("End")]]} none={tr("Automatic")} onChange={(v) => setCol(c, { align: v })} />
           </div>
-          <FormatPick format={c.format} onChange={(f) => setCol(c, { format: f })} />
+          <FormatPick format={c.format} cat={cat} onChange={(f) => setCol(c, { format: f })} />
           <PathPick label={tr("Under it, small")} value={c.secondary === undefined ? undefined : firstPath(c.secondary)} table={t.value} cat={cat} allowNone={tr("Nothing")} onChange={(p) => setCol(c, { secondary: p })} />
+          <Check label={tr("A zero prints as a blank")} value={c.hide_zero} onChange={(v) => setCol(c, { hide_zero: v || undefined })} />
           <Check label={tr("Summed in the totals row")} value={t.totals?.includes(c.id)} onChange={(v) => set({ totals: v ? [...(t.totals ?? []), c.id] : (t.totals ?? []).filter((x) => x !== c.id) })} />
           <When when={c.when} cat={cat} onChange={(w) => setCol(c, { when: w }, "when")} />
           <div className="pd-row">
