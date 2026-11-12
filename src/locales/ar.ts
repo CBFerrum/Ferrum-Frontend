@@ -5392,6 +5392,20 @@ const words: Record<string, string> = {
   "the largest file is a whole number of bytes, at most {n}.": "the largest file is a whole number of bytes, at most {n}.",
   "the most files is a whole number from 1 to {n}.": "the most files is a whole number from 1 to {n}.",
   "“{type}” is not a file type: write image/png, or image/* for a family.": "“{type}” is not a file type: write image/png, or image/* for a family.",
+  // Administration screens for platform features (connections, approvals, rules, targets, lists, links): English until translated.
+  "Approval policies": "Approval policies",
+  "Asked": "Asked",
+  "Before cancelling": "Before cancelling",
+  "Before submitting": "Before submitting",
+  "Before “{action}” runs": "Before “{action}” runs",
+  "Connections are web services you describe yourself (address, sign-in, operations) and that apps, buttons and automations call. Data connectors, next to this, keep records in step with an outside system.": "Connections are web services you describe yourself (address, sign-in, operations) and that apps, buttons and automations call. Data connectors, next to this, keep records in step with an outside system.",
+  "Data connectors": "Data connectors",
+  "Data connectors come with plugins and keep records here in step with an account at another system. Connections, next to this, are services you describe yourself.": "Data connectors come with plugins and keep records here in step with an account at another system. Connections, next to this, are services you describe yourself.",
+  "No approval policy yet": "No approval policy yet",
+  "On the transition {action}": "On the transition {action}",
+  "Open a record type under Customize and choose its approvals.": "Open a record type under Customize and choose its approvals.",
+  "Open the policy of {entity}": "Open the policy of {entity}",
+  "The policies this workspace has set. A policy a package ships shows on its record type's own page.": "The policies this workspace has set. A policy a package ships shows on its record type's own page.",
 };
 
 export default words;
