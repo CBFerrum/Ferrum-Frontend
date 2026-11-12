@@ -19,16 +19,26 @@ function rows(items: ApprovalItem[], base: string, who: "requester" | "none") {
           meta={
             <>
               {isolate(i.entity_label)} · {isolate(i.action)} ({isolate(i.from)})
-              {who === "requester" && (
-                <>
-                  {" · "}
-                  <Who id={i.requester} />
-                </>
-              )}
+              {who === "requester" && <> · {i.requester_name ? isolate(i.requester_name) : <Who id={i.requester} />}</>}
               {" · "}
               <time dateTime={i.requested_at} title={formatDateTime(i.requested_at)}>
                 {relativeTime(i.requested_at)}
               </time>
+              {i.step && (
+                <>
+                  {" · "}
+                  {isolate(i.step.label || t("Step {n}", { n: i.step.index + 1 }))}
+                  {i.step.opened_at && (
+                    <>
+                      {": "}
+                      {t("waiting since")}{" "}
+                      <time dateTime={i.step.opened_at} title={formatDateTime(i.step.opened_at)}>
+                        {relativeTime(i.step.opened_at)}
+                      </time>
+                    </>
+                  )}
+                </>
+              )}
             </>
           }
         />

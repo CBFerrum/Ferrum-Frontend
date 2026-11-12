@@ -4245,6 +4245,15 @@ const words: Record<string, string> = {
   "You have no away period set.": "आपकी कोई अनुपस्थिति अवधि तय नहीं है।",
   "Away periods": "अनुपस्थिति की अवधियाँ",
   "Now": "अभी",
+  "Not done": "पूरा नहीं हुआ",
+  "Everyone agreed, but it could not be done: {reason}": "सभी ने सहमति दी, पर यह नहीं हो सका: {reason}",
+  "no reason was given": "कोई कारण नहीं बताया गया",
+  "Fix what it names and press {action} on the record again to ask again.": "जो बताया गया है उसे ठीक करें और फिर से अनुरोध करने के लिए रिकॉर्ड पर {action} दबाएँ।",
+  "Fix what it names and take “{action}” again to ask again.": "जो बताया गया है उसे ठीक करें और फिर से अनुरोध करने के लिए “{action}” दोबारा लें।",
+  "The person who asked can ask again.": "जिसने अनुरोध किया था वह फिर से अनुरोध कर सकता है।",
+  "Reminded": "याद दिलाया गया",
+  "Escalated": "आगे बढ़ाया गया",
+  "waiting since": "प्रतीक्षा में, से",
 };
 
 export default words;
