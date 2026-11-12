@@ -61,10 +61,13 @@ export interface RichTextEditorProps {
   className?: string;
 }
 
-const Impl = lazy(() => import("./Editor"));
+// One request for the session, shared by the lazy component and `preloadRichTextEditor`.
+let loading: Promise<typeof import("./Editor")> | null = null;
+const load = () => (loading ??= import("./Editor"));
+const Impl = lazy(load);
 
-/** Fetches the editor's code ahead of need (a pointer over "Email", say). */
-export const preloadRichTextEditor = () => void import("./Editor");
+/** Fetches the editor's code ahead of need (a pointer over "Email", say); resolves when it is there (tests await it). */
+export const preloadRichTextEditor = (): Promise<unknown> => load();
 
 /** The frame, already its final size, while the editor's code arrives: a toolbar band and the writing area. */
 function EditorSkeleton({ toolbar = "compact", readOnly, minHeight }: Pick<RichTextEditorProps, "toolbar" | "readOnly" | "minHeight">) {
