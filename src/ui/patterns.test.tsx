@@ -3,7 +3,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PageLoading } from "./kit";
-import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, type StateKind } from "./patterns";
+import { FormSkeleton, ListSkeleton, ReaderSkeleton, SaveStatus, SelectionToolbar, StatePanel, TableSkeleton, TargetCard, type StateKind } from "./patterns";
 
 describe("StatePanel", () => {
   const role = (kind: StateKind) => /<div [^>]*data-state-kind[^>]*>/.exec(renderToString(<StatePanel kind={kind} />))![0];
@@ -77,6 +77,24 @@ describe("SelectionToolbar", () => {
   });
   it("is the same bar without actions", () => {
     expect(draw({ children: <button>Assign</button> })).not.toContain("inert");
+  });
+});
+
+describe("TargetCard", () => {
+  const card = (state: string, due: string | null = "2026-11-12T09:00:00Z") => renderToString(<TargetCard label="First response" state={state} due={due} />);
+  it("says the state as a word, with the due moment, and keeps the tone to the state id", () => {
+    const html = card("breached");
+    expect(html).toContain("Breached");
+    expect(html).toContain("Was due");
+    expect(html).toContain('data-target-state="breached"');
+    expect(html).toContain('aria-label="First response"');
+    expect(card("running")).toContain("Due ");
+    expect(card("met_late")).toContain("met late");
+  });
+  it("promises no moment for a stopped clock, and shows no line without one", () => {
+    expect(card("paused")).toContain("The clock is stopped.");
+    expect(card("paused")).not.toContain("<time");
+    expect(card("running", null)).not.toContain("Due ");
   });
 });
 

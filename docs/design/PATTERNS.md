@@ -183,6 +183,19 @@ Accessibility: `role="status"`, polite; icon plus words, never colour alone.
 
 Do not: show `saved` before the durable milestone, or for `local`; lose the draft on `failed` or `conflict`; invent other states.
 
+## TargetCard
+
+When: a record shows a service target (due, paused, breached). An app draws one per target the record has (`targetsOf(meta.targets, doc)` gives `{label, state, due}`; the platform keeps the state in the target's `state_field` and the due moment in its `due_field`).
+
+```tsx
+import { TargetCard } from "@ferrum/kit";
+<TargetCard label={t("First response")} state="breached" due="2026-11-12T09:00:00Z" />
+```
+
+States are the platform's: `running`, `paused`, `met`, `met_late`, `breached`. The state is always a word on a badge, and its tone comes from the id, never from the word. Running says "Due …", breached "Was due …", met late "Was due …, met late"; a paused clock says it is stopped and promises no moment. The due moment is a `time` through `formatMoment`. The card is a labelled region, one per target, no interaction.
+
+Do not: colour by the translated word, show a due moment for a paused clock, or draw a countdown that moves.
+
 ## SelectionToolbar
 
 When: rows are selected. `BulkBar` (the list's bulk actions) renders through it.

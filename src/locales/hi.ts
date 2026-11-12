@@ -5292,6 +5292,21 @@ const words: Record<string, string> = {
   "edited here": "edited here",
   "follows its package": "follows its package",
   "hides {names}": "hides {names}",
+  // Administration screens for platform features (connections, approvals, rules, targets, lists, links): English until translated.
+  "Calendar taken from the record": "Calendar taken from the record",
+  "Clock starts at": "Clock starts at",
+  "Due {at}": "Due {at}",
+  "Due {at}, met": "Due {at}, met",
+  "From {field}": "From {field}",
+  "Optional: a date and time field of the record. An imported record is then due by its own opening, and breached at once when that is long past. Empty: the save that starts the clock.": "Optional: a date and time field of the record. An imported record is then due by its own opening, and breached at once when that is long past. Empty: the save that starts the clock.",
+  "Optional: a field of the record that names its calendar, or a link and a field of the record it links to (agreement.calendar). Where it is empty, the calendar above counts.": "Optional: a field of the record that names its calendar, or a link and a field of the record it links to (agreement.calendar). Where it is empty, the calendar above counts.",
+  "The calendar field is a field of the record, or a link and a field of the record it links to (agreement.calendar).": "The calendar field is a field of the record, or a link and a field of the record it links to (agreement.calendar).",
+  "The clock is stopped.": "The clock is stopped.",
+  "The save that starts it": "The save that starts it",
+  "Was due {at}": "Was due {at}",
+  "Was due {at}, met late": "Was due {at}, met late",
+  "starts at {field}": "starts at {field}",
+  "“{name}” cannot start the clock: it is not a date and time field.": "“{name}” cannot start the clock: it is not a date and time field.",
 };
 
 export default words;
