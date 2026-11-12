@@ -76,7 +76,7 @@ const STEP: Record<ApprovalRequest["steps"][number]["state"], { tone: Tone; get 
   rejected: { tone: "red", get label() { return t("Rejected"); } },
 };
 
-function Decide({ request, onChanged }: { request: ApprovalRequest; onChanged: () => void }) {
+export function Decide({ request, onChanged }: { request: ApprovalRequest; onChanged: () => void }) {
   const [comment, setComment] = useState("");
   const [needReason, setNeedReason] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +106,53 @@ function Decide({ request, onChanged }: { request: ApprovalRequest; onChanged: (
         </Button>
       </div>
     </div>
+  );
+}
+
+/** The request's steps: each with its state, who may decide and who has (the trail), reminders and escalations. */
+export function Steps({ request }: { request: ApprovalRequest }) {
+  const decisions = request.decisions.filter((d) => !d.void);
+  return (
+    <ol className="stack" aria-label={t("Steps")}>
+        {request.steps.map((s, n) => {
+          const made = decisions.filter((d) => d.step === n);
+          return (
+            <li key={n} className="stack">
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <strong>{isolate(s.label || t("Step {n}", { n: n + 1 }))}</strong>
+                <Badge tone={STEP[s.state].tone}>{STEP[s.state].label}</Badge>
+                {s.state !== "skipped" && (
+                  <span className="muted">{t("needs {need} of", { need: s.need === "any" ? 1 : s.need === "all" ? t("all") : String(s.need) })} <People ids={s.approvers} /></span>
+                )}
+              </div>
+              {made.map((d, i) => (
+                <p key={i} className="muted">
+                  {d.on_behalf_of ? placed(t("{person} for {other}"), { person: <Who id={d.decider} />, other: <Who id={d.on_behalf_of} /> }) : <Who id={d.decider} />}{" "}
+                  {d.outcome === "approve" ? t("approved") : t("rejected")} <time dateTime={d.at}>{isolate(formatDateTime(d.at))}</time>
+                  {d.comment ? <>: {isolate(d.comment)}</> : null}
+                </p>
+              ))}
+              {!!s.escalated?.length && (
+                <p className="muted">
+                  {t("Escalated to")} <People ids={s.escalated} />
+                </p>
+              )}
+              {s.reminded_at && (
+                <p className="muted">
+                  {t("Reminded")} <time dateTime={s.reminded_at}>{isolate(formatDateTime(s.reminded_at))}</time>
+                </p>
+              )}
+              {s.escalated_at && (
+                <p className="muted">
+                  {t("Escalated")} <time dateTime={s.escalated_at}>{isolate(formatDateTime(s.escalated_at))}</time>
+                </p>
+              )}
+              {s.state === "open" && s.remind_at && !s.reminded_at && <p className="faint">{t("Reminder due {at}", { at: formatDateTime(s.remind_at) })}</p>}
+              {s.state === "open" && s.escalate_at && !s.escalated_at && !s.escalated?.length && <p className="faint">{t("Escalates {at}", { at: formatDateTime(s.escalate_at) })}</p>}
+            </li>
+          );
+        })}
+    </ol>
   );
 }
 
@@ -154,46 +201,7 @@ export function ApprovalPanel({ entity, id, request, me, onChanged }: { entity: 
       )}
       {voided > 0 && <p className="muted">{t("{voided} earlier decision(s) were cancelled when a field that matters changed, and the steps opened again.", { voided })}</p>}
       {error && <Alert tone="error">{isolate(error)}</Alert>}
-      <ol className="stack" aria-label={t("Steps")}>
-        {request.steps.map((s, n) => {
-          const made = decisions.filter((d) => d.step === n);
-          return (
-            <li key={n} className="stack">
-              <div className="row" style={{ flexWrap: "wrap" }}>
-                <strong>{isolate(s.label || t("Step {n}", { n: n + 1 }))}</strong>
-                <Badge tone={STEP[s.state].tone}>{STEP[s.state].label}</Badge>
-                {s.state !== "skipped" && (
-                  <span className="muted">{t("needs {need} of", { need: s.need === "any" ? 1 : s.need === "all" ? t("all") : String(s.need) })} <People ids={s.approvers} /></span>
-                )}
-              </div>
-              {made.map((d, i) => (
-                <p key={i} className="muted">
-                  {d.on_behalf_of ? placed(t("{person} for {other}"), { person: <Who id={d.decider} />, other: <Who id={d.on_behalf_of} /> }) : <Who id={d.decider} />}{" "}
-                  {d.outcome === "approve" ? t("approved") : t("rejected")} <time dateTime={d.at}>{isolate(formatDateTime(d.at))}</time>
-                  {d.comment ? <>: {isolate(d.comment)}</> : null}
-                </p>
-              ))}
-              {!!s.escalated?.length && (
-                <p className="muted">
-                  {t("Escalated to")} <People ids={s.escalated} />
-                </p>
-              )}
-              {s.reminded_at && (
-                <p className="muted">
-                  {t("Reminded")} <time dateTime={s.reminded_at}>{isolate(formatDateTime(s.reminded_at))}</time>
-                </p>
-              )}
-              {s.escalated_at && (
-                <p className="muted">
-                  {t("Escalated")} <time dateTime={s.escalated_at}>{isolate(formatDateTime(s.escalated_at))}</time>
-                </p>
-              )}
-              {s.state === "open" && s.remind_at && !s.reminded_at && <p className="faint">{t("Reminder due {at}", { at: formatDateTime(s.remind_at) })}</p>}
-              {s.state === "open" && s.escalate_at && !s.escalated_at && !s.escalated?.length && <p className="faint">{t("Escalates {at}", { at: formatDateTime(s.escalate_at) })}</p>}
-            </li>
-          );
-        })}
-      </ol>
+      <Steps request={request} />
       {pending && mine.isLoading && <PageLoading />}
       {pending && mine.error && <ErrorState error={mine.error} onRetry={() => mine.refetch()} />}
       {mayDecide && <Decide request={request} onChanged={refresh} />}
