@@ -74,6 +74,7 @@ const pages: Record<string, RouteObject[]> = {
     { index: true, element: <DataIndex /> },
     { path: "e/:entity", lazy: () => import("@/app/ListView").then((m) => ({ Component: m.ListView })) },
     { path: "e/:entity/:id", lazy: () => import("@/app/FormView").then((m) => ({ Component: m.FormView })) },
+    { path: "approvals", lazy: () => import("@/app/Approvals").then((m) => ({ Component: m.ApprovalsPage })) },
     { path: "r/:name", lazy: () => import("@/app/ReportView").then((m) => ({ Component: m.ReportView })) },
     // Customize, for every workspace on the shell, with ERP or without.
     { path: "customize/new", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },

@@ -150,7 +150,7 @@ function DurInput({ value, onChange, label, id }: { value: Dur; onChange: (d: Du
 }
 
 /** The workspace's business calendars; none when the route is not there (404) or the workspace has none. */
-function useCalendars() {
+export function useCalendars() {
   return useQuery({
     queryKey: ["admin-calendars"],
     queryFn: async ({ signal }) => {

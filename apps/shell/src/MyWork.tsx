@@ -6,7 +6,7 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AtSign, CalendarClock, Check, ClipboardCheck, Inbox, Stamp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { shell, t, isolate } from "@ferrum/client";
+import { routeBase, shell, t, isolate } from "@ferrum/client";
 import { AppIcon } from "@ferrum/kit";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
@@ -74,7 +74,7 @@ export function byUrgency(items: WorkItem[], today = localDay()): WorkItem[] {
   const tier = (i: WorkItem) => {
     if (i.due && i.due < today) return 0;
     if (i.due === today) return 1;
-    if (i.kind === "approval") return 2;
+    if (i.kind === "approval" || i.kind === "approval_request") return 2;
     if (i.kind === "mention") return 3;
     return i.due ? 4 : 5;
   };
@@ -94,6 +94,7 @@ function dueLabel(due: string, today: string): { text: string; tone: "red" | "am
 const KIND_ICON: Record<string, ReactNode> = {
   assignment: <ClipboardCheck aria-hidden />,
   approval: <Stamp aria-hidden />,
+  approval_request: <Stamp aria-hidden />,
   mention: <AtSign aria-hidden />,
 };
 
@@ -192,6 +193,11 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
     <section className="shell-work" aria-labelledby="shell-work-title">
       <div className="shell-work-head">
         <h2 id="shell-work-title">{t("My work")}</h2>
+        {items.some((i) => i.kind === "approval_request") && (
+          <a className="shell-link" href={`${routeBase("data")}approvals`}>
+            {t("All approvals")}
+          </a>
+        )}
         {items.length > 0 && (
           <ToggleGroup type="single" variant="outline" size="sm" value={filter} onValueChange={(v) => v && (setFilter(v), setAll(false))} aria-label={t("Show")}>
             <ToggleGroupItem value="all">

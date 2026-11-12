@@ -25,12 +25,15 @@ export function ActionDialog({
   action,
   doc,
   path,
+  ifMatch,
   onClose,
   onDone,
 }: {
   action: ActionDef;
   doc: Doc;
   path: string;
+  /** The version the record is at, for a workflow transition. */
+  ifMatch?: number;
   onClose: () => void;
   onDone: (result: unknown) => void;
 }) {
@@ -43,16 +46,22 @@ export function ActionDialog({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    setError(null);
+    // What it needs is said on the field before anything is sent.
+    const missing = params.filter((p) => p.required && !(values[p.name] ?? "").trim());
+    if (missing.length) {
+      setErrors(missing.map((p) => ({ field: p.name, message: t("is needed") })));
+      return;
+    }
     setBusy(true);
     setErrors([]);
-    setError(null);
     const body: Record<string, unknown> = {};
     for (const p of params) {
       const v = (values[p.name] ?? "").trim();
       if (v !== "") body[p.name] = p.type === "int" ? Number(v) : v;
     }
     try {
-      onDone(await api.post<unknown>(path, body));
+      onDone(await api.post<unknown>(path, body, ifMatch === undefined ? undefined : { ifMatch }));
     } catch (err) {
       if (err instanceof ApiError && err.fields.length) {
         const { own, others } = splitErrors(err.fields, params);

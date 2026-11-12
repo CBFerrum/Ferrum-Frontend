@@ -20,6 +20,7 @@ function ToOwnInterface() {
 export const recordsRoutes: RouteObject[] = [
   { path: "e/:entity", lazy: () => import("./ListView").then((m) => ({ Component: m.ListView })) },
   { path: "e/:entity/:id", lazy: () => import("./FormView").then((m) => ({ Component: m.FormView })) },
+  { path: "approvals", lazy: () => import("./Approvals").then((m) => ({ Component: m.ApprovalsPage })) },
   { path: "r/:name", lazy: () => import("./ReportView").then((m) => ({ Component: m.ReportView })) },
   { path: "customize/new", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
   { path: "customize/:entity/design", lazy: () => import("./EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },

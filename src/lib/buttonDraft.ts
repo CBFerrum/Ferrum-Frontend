@@ -69,6 +69,28 @@ export const newRefusal = (): DraftRefusal => ({ key: newKey(), when: "", messag
 const KNOWN_PARAM = ["name", "label", "type", "options", "to", "required", "description"];
 const KNOWN = ["name", "label", "condition", "confirm", "roles", "refuse_if", "params", "effects"];
 
+/** The questions a button or transition asks, as drafts. */
+export const paramsFrom = (raw: unknown): DraftParam[] =>
+  (Array.isArray(raw) ? raw : []).map((p) => {
+    const o = isObj(p) ? p : {};
+    return {
+      key: newKey(), name: str(o.name), nameTouched: true, label: str(o.label), type: str(o.type) || "data", options: strings(o.options), to: str(o.to),
+      required: o.required === true, description: str(o.description), extra: rest(o, KNOWN_PARAM),
+    };
+  });
+
+/** The `params` a draft comes to (what the server takes). */
+export const paramsJson = (params: DraftParam[]): Raw[] =>
+  params.map((p) => {
+    const o: Raw = { ...p.extra, name: p.name.trim(), label: p.label.trim(), type: p.type };
+    const options = p.options.map((x) => x.trim()).filter(Boolean);
+    if (p.type === "select" && options.length) o.options = options;
+    if (p.type === "link" && p.to) o.to = p.to;
+    if (p.required) o.required = true;
+    if (p.description.trim()) o.description = p.description.trim();
+    return o;
+  });
+
 /** The draft of an action as `GET /api/meta/{Entity}` describes it to an administrator. */
 export function fromButton(a: Raw): ButtonDraft {
   return {
@@ -83,13 +105,7 @@ export function fromButton(a: Raw): ButtonDraft {
       const o = isObj(r) ? r : {};
       return { key: newKey(), when: str(o.when), message: str(o.message), extra: rest(o, ["when", "message"]) };
     }),
-    params: (Array.isArray(a.params) ? a.params : []).map((p) => {
-      const o = isObj(p) ? p : {};
-      return {
-        key: newKey(), name: str(o.name), nameTouched: true, label: str(o.label), type: str(o.type) || "data", options: strings(o.options), to: str(o.to),
-        required: o.required === true, description: str(o.description), extra: rest(o, KNOWN_PARAM),
-      };
-    }),
+    params: paramsFrom(a.params),
     effects: (Array.isArray(a.effects) ? a.effects : []).map(fromEffect),
     // `may_run` and `package` are the server's marks, not part of the definition: sent back, they are refused.
     extra: rest(a, [...KNOWN, "may_run", "package"]),
@@ -103,17 +119,7 @@ export function toButton(d: ButtonDraft): Raw {
   if (d.confirm.trim()) out.confirm = d.confirm.trim();
   if (d.roles.length) out.roles = d.roles;
   if (d.refusals.length) out.refuse_if = d.refusals.map((r) => ({ ...r.extra, when: r.when.trim(), message: r.message.trim() }));
-  if (d.params.length) {
-    out.params = d.params.map((p) => {
-      const o: Raw = { ...p.extra, name: p.name.trim(), label: p.label.trim(), type: p.type };
-      const options = p.options.map((x) => x.trim()).filter(Boolean);
-      if (p.type === "select" && options.length) o.options = options;
-      if (p.type === "link" && p.to) o.to = p.to;
-      if (p.required) o.required = true;
-      if (p.description.trim()) o.description = p.description.trim();
-      return o;
-    });
-  }
+  if (d.params.length) out.params = paramsJson(d.params);
   out.effects = d.effects.map(actionJson);
   return out;
 }
@@ -133,7 +139,7 @@ export function setLabel(d: ButtonDraft, label: string, taken: string[], package
 }
 
 /** A question's label: its name follows until it is typed. */
-export function setParamLabel(d: ButtonDraft, key: string, label: string): ButtonDraft {
+export function setParamLabel<T extends { params: DraftParam[] }>(d: T, key: string, label: string): T {
   return {
     ...d,
     params: d.params.map((p) => (p.key !== key ? p : { ...p, label, name: p.nameTouched ? p.name : fieldName(label, d.params.filter((o) => o.key !== key).map((o) => o.name)) })),
@@ -145,6 +151,23 @@ const NAME = /^[a-z][a-z0-9_]{0,62}$/;
 export interface ButtonProblem extends Problem {
   /** The key of the refusal or question it is about. */
   row?: string;
+}
+
+/** What is wrong with a list of questions; `row` is the question's key. */
+export function checkParams(params: DraftParam[]): ButtonProblem[] {
+  const out: ButtonProblem[] = [];
+  const say = (message: string, row?: string) => out.push({ message, row });
+  const seen = new Set<string>();
+  params.forEach((p, i) => {
+    const at = (m: string) => say(tr("Question {n}: {message}", { n: i + 1, message: m }), p.key);
+    if (!p.label.trim()) at(tr("give it a label."));
+    if (!NAME.test(p.name.trim())) at(tr("its name must be lower-case letters, digits and underscores, starting with a letter."));
+    else if (seen.has(p.name.trim())) at(tr("“{name}” is used twice.", { name: p.name.trim() }));
+    seen.add(p.name.trim());
+    if (p.type === "select" && !p.options.some((o) => o.trim())) at(tr("list the choices."));
+    if (p.type === "link" && !p.to) at(tr("choose what it links to."));
+  });
+  return out;
 }
 
 /** What is wrong with a draft, in words a person who is not a developer follows. `taken`: names of the actions the entity has. */
@@ -161,16 +184,7 @@ export function checkButton(d: ButtonDraft, taken: string[], packaged: boolean, 
     if (!r.when.trim()) say(tr("Refusal {n}: say when it applies.", { n: i + 1 }), r.key);
     if (!r.message.trim()) say(tr("Refusal {n}: write the message people see.", { n: i + 1 }), r.key);
   });
-  const seen = new Set<string>();
-  d.params.forEach((p, i) => {
-    const at = (m: string) => say(tr("Question {n}: {message}", { n: i + 1, message: m }), p.key);
-    if (!p.label.trim()) at(tr("give it a label."));
-    if (!NAME.test(p.name.trim())) at(tr("its name must be lower-case letters, digits and underscores, starting with a letter."));
-    else if (seen.has(p.name.trim())) at(tr("“{name}” is used twice.", { name: p.name.trim() }));
-    seen.add(p.name.trim());
-    if (p.type === "select" && !p.options.some((o) => o.trim())) at(tr("list the choices."));
-    if (p.type === "link" && !p.to) at(tr("choose what it links to."));
-  });
+  out.push(...checkParams(d.params));
   out.push(...checkActions(d.effects, MAX_EFFECTS, catalog).map((p) => ({ ...p, message: p.message === tr("Add at least one action.") ? tr("Add at least one thing the button does.") : p.message })));
   return out;
 }
