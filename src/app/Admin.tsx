@@ -16,6 +16,8 @@ import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
 import type { Automation } from "../lib/automationDraft";
 import { Connections } from "./Connections";
+import { HideDialog } from "./RuleHide";
+import { permissionBody } from "../lib/ruleHide";
 import { InterfaceWords } from "./InterfaceWords";
 import { Services } from "./Services";
 import { LinkInput, LinkTitle } from "./widgets";
@@ -1164,6 +1166,11 @@ interface Permission {
   via?: string | null;
   /** The entity's actions its holders may run on the records it reaches. */
   actions?: string[];
+  shared?: string | null;
+  /** Fields and child tables the rule neither shows nor accepts (BD-40). */
+  hide?: string[];
+  /** Whether its package still rewrites the row with each release. */
+  packaged?: boolean;
 }
 interface Role {
   name: string;
@@ -1635,6 +1642,7 @@ function Roles() {
   const [newRole, setNewRole] = useState("");
   const [extraRoles, setExtraRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
+  const [hiding, setHiding] = useState<Permission | null>(null);
   const [addEntity, setAddEntity] = useState("");
   const [addOwner, setAddOwner] = useState(false);
   const [addVia, setAddVia] = useState("");
@@ -1653,23 +1661,7 @@ function Roles() {
 
   const put = async (p: Permission, key: string) => {
     setSaving(key);
-    const body = {
-      entity: p.entity,
-      read: p.can_read,
-      write: p.can_write,
-      create: p.can_create,
-      delete: p.can_delete,
-      submit: p.can_submit,
-      cancel: p.can_cancel,
-      export: p.can_export,
-      import: p.can_import,
-      if_owner: p.if_owner,
-      read_groups: p.read_groups ?? [],
-      write_groups: p.write_groups ?? [],
-      where: p.match_rule ?? undefined,
-      via: p.via || undefined,
-      actions: p.actions ?? [],
-    };
+    const body = permissionBody(p);
     const ok = await attempt(() => api.put(`/api/admin/roles/${encodeURIComponent(current)}/permissions`, body));
     if (ok) await qc.invalidateQueries({ queryKey: ["admin", "roles"] });
     setSaving(null);
@@ -1748,6 +1740,19 @@ function Roles() {
             </form>
           </div>
           {role?.description && <p className="muted">{isolate(role.description)}</p>}
+          {hiding && role && (
+            <HideDialog
+              role={role.name}
+              rule={hiding}
+              entityLabel={label(hiding.entity)}
+              onClose={() => setHiding(null)}
+              onSaved={() => {
+                setHiding(null);
+                void qc.invalidateQueries({ queryKey: ["admin", "roles"] });
+                toast(tr("Saved"));
+              }}
+            />
+          )}
           {role && <PortalMark role={role} onChanged={() => void qc.invalidateQueries({ queryKey: ["admin", "roles"] })} />}
           <section className="card" aria-label={tr("Permissions of {current}", { current })}>
             <div className="table-wrap">
@@ -1800,6 +1805,13 @@ function Roles() {
                             </span>
                           )}
                           {!!p.actions?.length && <ActionNames entity={p.entity} names={p.actions} />}
+                          {!!p.hide?.length && <span className="muted">{tr("hides {names}", { names: p.hide.join(", ") })}{isolate(" ")}</span>}
+                          {p.packaged ? <Badge tone="blue">{tr("follows its package")}</Badge> : role?.package ? <Badge tone="amber">{tr("edited here")}</Badge> : null}{isolate(" ")}
+                          {p.entity !== "*" && (
+                            <Button size="sm" variant="ghost" aria-label={tr("Hidden fields of {entity}", { entity: label(p.entity) })} onClick={() => setHiding(p)}>
+                              {tr("Hidden fields")}
+                            </Button>
+                          )}
                           {p.match_rule && Object.keys(p.match_rule).length > 0 ? (
                             <ConditionText entity={p.entity} cond={p.match_rule} />
                           ) : (

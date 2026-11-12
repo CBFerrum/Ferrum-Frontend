@@ -5281,6 +5281,17 @@ const words: Record<string, string> = {
   "Withdraw my request": "Withdraw my request",
   "Withdraw this request?": "Withdraw this request?",
   "Withdrawn": "Withdrawn",
+  // Administration screens for platform features (connections, approvals, rules, targets, lists, links): English until translated.
+  "Hidden fields": "Hidden fields",
+  "Hidden fields of {entity}": "Hidden fields of {entity}",
+  "Hidden fields: {entity}": "Hidden fields: {entity}",
+  "Hide from holders of this rule": "Hide from holders of this rule",
+  "Holders of {role} will not see {names} on the {entity} records this rule reaches, and cannot change them. Another rule of theirs that reaches the same record and does not hide them shows them again.": "Holders of {role} will not see {names} on the {entity} records this rule reaches, and cannot change them. Another rule of theirs that reaches the same record and does not hide them shows them again.",
+  "Nothing is hidden by this rule.": "Nothing is hidden by this rule.",
+  "This rule follows its package. Saving it here makes it your own, and releases of the package stop rewriting it.": "This rule follows its package. Saving it here makes it your own, and releases of the package stop rewriting it.",
+  "edited here": "edited here",
+  "follows its package": "follows its package",
+  "hides {names}": "hides {names}",
 };
 
 export default words;
