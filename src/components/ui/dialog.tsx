@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn, insideNativeDialog } from "@/lib/utils"
+import { useRestoreFocus } from "@/lib/focusReturn"
 import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
@@ -53,10 +54,12 @@ function DialogContent({
   children,
   showCloseButton = true,
   onInteractOutside,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const closeFocus = useRestoreFocus(onCloseAutoFocus)
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -67,6 +70,7 @@ function DialogContent({
           className
         )}
         onInteractOutside={insideNativeDialog(onInteractOutside)}
+        onCloseAutoFocus={closeFocus}
         {...props}
       >
         {children}

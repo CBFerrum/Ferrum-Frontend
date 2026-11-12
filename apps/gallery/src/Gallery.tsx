@@ -669,6 +669,7 @@ function ComposeStack({ placement }: { placement: ToastPlacement }) {
 function MenusAndPopups() {
   const [dlg, setDlg] = useState(false);
   const [dlg2, setDlg2] = useState(false);
+  const [share, setShare] = useState(false);
   const many = Array.from({ length: 40 }, (_, i) => `Action ${i + 1}`);
   const menu = (label: string, long = false) => (
     <DropdownMenu>
@@ -750,6 +751,14 @@ function MenusAndPopups() {
           </SheetContent>
         </Sheet>
       </Row>
+      <Row label="dialog from a menu">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild><ShButton variant="outline" size="sm">Row menu</ShButton></DropdownMenuTrigger>
+          <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setShare(true)}>Share…</DropdownMenuItem></DropdownMenuContent>
+        </DropdownMenu>
+        <Menu label="Kit row menu">{(close) => <MenuItem onSelect={() => { close(); setShare(true); }}>Share…</MenuItem>}</Menu>
+      </Row>
+      <Dialog open={share} onClose={() => setShare(false)} title="Share “Contracts”"><p>Dialog opened from a menu item.</p></Dialog>
       <Row label="in a dialog">
         <Button onClick={() => setDlg(true)}>Dialog with a menu</Button>
         <Button onClick={() => setDlg2(true)}>Confirm over a dialog</Button>
