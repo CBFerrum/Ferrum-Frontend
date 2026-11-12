@@ -479,8 +479,8 @@ export function blockFromCatalogue(path: Path, c: Catalogue, l: Layout, computed
   return b;
 }
 
-/** A table column for a row path of `table`. */
-export function newTableColumn(l: Layout, table: TableBlock, path: Path, label?: string): TableColumn {
+/** A table column for a row path. */
+export function newTableColumn(l: Layout, path: Path, label?: string): TableColumn {
   return { id: freshId(l, `c_${path.split(".").at(-1)}`), value: path, ...(label ? { label } : {}) };
 }
 
@@ -801,4 +801,56 @@ export function printQuery(o: { template?: string | null; letterhead?: string; l
   if (o.format) sp.set("format", o.format);
   const s = sp.toString();
   return s ? `?${s}` : "";
+}
+
+// ── a letter head as the slice-one form edits it (§7.5): a logo, lines beside it, a footer line ──
+
+export interface LetterHeadForm {
+  logo: string | null; // "/files/<uuid>"
+  logo_position: Align;
+  logo_height_mm: number;
+  lines: ({ kind: "field"; path: Path; bold?: boolean } | { kind: "text"; text: string; bold?: boolean })[];
+  lines_align: Align;
+  footer: string;
+}
+export const EMPTY_LETTERHEAD: LetterHeadForm = { logo: null, logo_position: "start", logo_height_mm: 20, lines: [], lines_align: "end", footer: "" };
+
+/** The header and footer blocks (`{sections}`) the form writes. */
+export function letterHeadBlocks(f: LetterHeadForm): { header: { sections: Section[] }; footer: { sections: Section[] } } {
+  const lines: Block[] = f.lines.map((x, i) =>
+    x.kind === "field"
+      ? { id: `lh_line_${i + 1}`, type: "field", value: x.path, label: null, align: f.lines_align, ...(x.bold ? { weight: "bold" as const } : {}) }
+      : { id: `lh_line_${i + 1}`, type: "text", content: paragraphsOf(x.text, f.lines_align).map((p) => (x.bold ? { ...p, spans: p.spans.map((s) => ({ ...s, b: true })) } : p)) },
+  );
+  const logo: Block[] = f.logo ? [{ id: "lh_logo", type: "image", src: { file: f.logo }, height_mm: f.logo_height_mm, align: f.logo_position, alt: "" }] : [];
+  const columns: Column[] = !logo.length || f.logo_position === "center"
+    ? [{ id: "lh_head_c", blocks: [...logo, ...lines] }]
+    : f.logo_position === "start"
+      ? [{ id: "lh_logo_c", blocks: logo }, { id: "lh_lines_c", blocks: lines }]
+      : [{ id: "lh_lines_c", blocks: lines }, { id: "lh_logo_c", blocks: logo }];
+  const header: Section = { id: "lh_head", columns, ...(columns.length === 2 ? { widths: f.logo_position === "start" ? [4, 8] : [8, 4] } : {}) };
+  const footer: Section[] = f.footer.trim() ? [{ id: "lh_foot", columns: [{ id: "lh_foot_c", blocks: [{ id: "lh_foot_text", type: "text", size: "sm", content: paragraphsOf(f.footer, "center") }] }] }] : [];
+  return { header: { sections: [header] }, footer: { sections: footer } };
+}
+
+/** The form back from blocks it wrote; `null` when the blocks were made some other way (the form would replace them). */
+export function letterHeadForm(header: unknown, footer: unknown): LetterHeadForm | null {
+  const hs = (header as { sections?: Section[] } | null)?.sections;
+  const fs = (footer as { sections?: Section[] } | null)?.sections;
+  if (!hs && !fs) return { ...EMPTY_LETTERHEAD };
+  const blocks = (hs ?? []).flatMap((s) => s.columns.flatMap((c) => c.blocks));
+  if ((hs ?? []).some((s) => s.id !== "lh_head") || blocks.some((b) => !/^lh_(logo|line_\d+)$/.test(b.id))) return null;
+  const logo = blocks.find((b): b is ImageBlock => b.id === "lh_logo" && b.type === "image");
+  const lineBlocks = blocks.filter((b) => b.id.startsWith("lh_line_"));
+  const cols = hs?.[0]?.columns ?? [];
+  const position: Align = !logo ? "start" : cols.length === 1 ? "center" : cols[0].id === "lh_logo_c" ? "start" : "end";
+  const foot = fs?.[0]?.columns[0]?.blocks.find((b): b is TextBlock => b.type === "text");
+  return {
+    logo: logo && "file" in logo.src ? logo.src.file : null,
+    logo_position: position,
+    logo_height_mm: logo?.height_mm ?? 20,
+    lines: lineBlocks.map((b) => (b.type === "field" ? { kind: "field" as const, path: firstPath(b.value), ...(b.weight === "bold" ? { bold: true } : {}) } : { kind: "text" as const, text: b.type === "text" ? textOf(b.content) : "", ...(b.type === "text" && b.content.some((p) => p.spans.some((s) => s.b)) ? { bold: true } : {}) })),
+    lines_align: (lineBlocks[0]?.align ?? (lineBlocks[0]?.type === "text" ? lineBlocks[0].content[0]?.align : undefined) ?? "end") as Align,
+    footer: foot ? textOf(foot.content) : "",
+  };
 }
