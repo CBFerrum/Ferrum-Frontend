@@ -5,7 +5,6 @@
 // screen writes, else it stays an expression.
 
 import { t as tr } from "@ferrum/client";
-import type { Tone } from "../ui/kit";
 import { fieldName } from "./entityDraft";
 import type { Field } from "./meta";
 
@@ -15,16 +14,18 @@ export interface Dur { amount: string; unit: Unit }
 export type How = "same" | "choice" | "advanced";
 
 export const MAX_TARGETS = 8;
-/** The words a state field holds, in the order people meet them. */
-export const STATES = ["running", "paused", "met", "met_late", "breached"] as const;
-export const stateWords = (): Record<string, string> => ({ running: tr("Running"), paused: tr("Paused"), met: tr("Met"), met_late: tr("Met late"), breached: tr("Breached") });
-export const stateTone = (s: string): Tone => ({ running: "blue", paused: "amber", met: "green", met_late: "amber", breached: "red" } as Record<string, Tone>)[s] ?? "neutral";
+export { STATES, stateTone, stateWords } from "./targetState";
+import { STATES } from "./targetState";
 
 /** A target as `GET /api/meta/{Entity}` (and the definition) carries it. */
 export interface TargetDef {
   name: string;
   label: string;
   calendar?: string;
+  /** Where each record names its calendar (BD-41): a field of the record, or `link.field` of the record it links to. */
+  calendar_field?: string;
+  /** A date-time field of the record the clock starts from, rather than the save. */
+  start_field?: string;
   start_when?: string;
   within: string;
   pause_when?: string;
@@ -40,6 +41,8 @@ export interface TargetDraft {
   label: string;
   /** A business calendar's name; none: plain elapsed time. */
   calendar: string;
+  calendarField: string;
+  startField: string;
   startWhen: string;
   pauseWhen: string;
   metWhen: string;
@@ -61,7 +64,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String
 const blank = (): Dur => ({ amount: "", unit: "h" });
 
 export const startTarget = (): TargetDraft => ({
-  saved: false, name: "", nameTouched: false, label: "", calendar: "", startWhen: "", pauseWhen: "", metWhen: "",
+  saved: false, name: "", nameTouched: false, label: "", calendar: "", calendarField: "", startField: "", startWhen: "", pauseWhen: "", metWhen: "",
   how: "same", same: { amount: "", unit: "h" }, field: "", per: {}, within: "", dueField: "", stateField: "", makeDue: true, makeState: true,
 });
 
@@ -113,7 +116,7 @@ export function fromTarget(t: Raw, fields: Pick<Field, "name" | "type" | "option
   const within = str(t.within);
   const simple = readWithin(within, fields);
   return {
-    ...startTarget(), saved: true, name: str(t.name), nameTouched: true, label: str(t.label), calendar: str(t.calendar), startWhen: str(t.start_when), pauseWhen: str(t.pause_when),
+    ...startTarget(), saved: true, name: str(t.name), nameTouched: true, label: str(t.label), calendar: str(t.calendar), calendarField: str(t.calendar_field), startField: str(t.start_field), startWhen: str(t.start_when), pauseWhen: str(t.pause_when),
     metWhen: str(t.met_when), within, ...(simple ?? { how: "advanced" as const }), dueField: str(t.due_field), stateField: str(t.state_field), makeDue: false, makeState: false,
   };
 }
@@ -135,6 +138,8 @@ export function toTarget(d: TargetDraft, options: string[] = [], made?: { due: s
   const out: TargetDef = { name: d.name.trim(), label: d.label.trim(), within: withinOf(d, options), met_when: d.metWhen.trim(), due_field: d.makeDue && made ? made.due : d.dueField, state_field: d.makeState && made ? made.state : d.stateField };
   const opt: Partial<TargetDef> = {};
   if (d.calendar) opt.calendar = d.calendar;
+  if (d.calendarField.trim()) opt.calendar_field = d.calendarField.trim();
+  if (d.startField) opt.start_field = d.startField;
   if (d.startWhen.trim()) opt.start_when = d.startWhen.trim();
   if (d.pauseWhen.trim()) opt.pause_when = d.pauseWhen.trim();
   return { ...out, ...opt };
@@ -177,6 +182,8 @@ export function checkTarget(d: TargetDraft, ctx: { taken: string[]; fields: Fiel
     if (rows.some((r) => !POSITIVE.test(r.amount.trim()))) say(tr("Each duration is a whole number of minutes, hours or days."));
   }
   if (!d.metWhen.trim()) say(tr("Say when the target is met."));
+  if (d.calendarField.trim() && !/^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)?$/.test(d.calendarField.trim())) say(tr("The calendar field is a field of the record, or a link and a field of the record it links to (agreement.calendar)."));
+  if (d.startField && !ctx.fields.some((f) => f.name === d.startField && f.type === "datetime")) say(tr("“{name}” cannot start the clock: it is not a date and time field.", { name: d.startField }));
   const check = (kind: "due" | "state", made: boolean, value: string) => {
     if (made) return;
     const f = eligible(ctx.fields, kind, d.name, ctx.packaged).find((x) => x.name === value);
@@ -226,3 +233,12 @@ export function withinWords(t: Pick<TargetDef, "within">, fields: Pick<Field, "n
 }
 
 export const targetsLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/targets`;
+
+/** What a record shows of its targets: each one that has begun (its state is kept), with its due moment. `doc` is the record as the server sends it. */
+export function targetsOf(targets: Pick<TargetDef, "name" | "label" | "due_field" | "state_field">[] | undefined, doc: Record<string, unknown>): { name: string; label: string; state: string; due: string | null }[] {
+  return (targets ?? []).flatMap((t) => {
+    const state = doc[t.state_field];
+    const due = doc[t.due_field];
+    return typeof state === "string" && state ? [{ name: t.name, label: t.label, state, due: typeof due === "string" && due ? due : null }] : [];
+  });
+}

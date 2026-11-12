@@ -169,7 +169,11 @@ export function stepAt(message: string, action: string, d: DraftPolicy): string 
 
 /** What `set_approval` takes for a document's submit or cancel: the policy as a draft makes it, with no state to reject to and
  *  no transition to name (the server refuses both there); `null` takes the policy away. Unknown properties stay. */
-export const documentOp = (on: "submit" | "cancel", d: DraftPolicy | null): Raw => ({
+export type DocOn = "submit" | "cancel" | { action: string };
+/** How the server names it: `submit`, `cancel`, `action:<name>`. */
+export const onKey = (on: DocOn): string => (typeof on === "string" ? on : `action:${on.action}`);
+
+export const documentOp = (on: DocOn, d: DraftPolicy | null): Raw => ({
   op: "set_approval",
   on,
   approval: d ? toPolicy({ ...d, on_reject: "", steps: d.steps.map((s) => ({ ...s, not_who_took: [] })) }, (k) => k) : null,
@@ -178,9 +182,78 @@ export const documentOp = (on: "submit" | "cancel", d: DraftPolicy | null): Raw 
 /** The policy now on a document's submit or cancel, from the customizations list (`GET /api/customize`): the latest active
  *  `set_approval` of the entity for that action that nothing replaced; `null` when none (or it was taken away). A policy a
  *  package itself declares is not in that list. */
-export function currentDocumentPolicy(list: { entity: string; op: Raw; is_active: boolean; seq: number; superseded_by?: string | null }[], entity: string, on: "submit" | "cancel"): Raw | null {
-  const mine = list.filter((c) => c.entity === entity && c.is_active && !c.superseded_by && c.op.op === "set_approval" && c.op.on === on).sort((a, b) => b.seq - a.seq);
+export function currentDocumentPolicy(list: { entity: string; op: Raw; is_active: boolean; seq: number; superseded_by?: string | null }[], entity: string, on: DocOn): Raw | null {
+  const mine = list.filter((c) => c.entity === entity && c.is_active && !c.superseded_by && c.op.op === "set_approval" && (typeof on === "string" ? c.op.on === on : isObj(c.op.on) && c.op.on.action === on.action)).sort((a, b) => b.seq - a.seq);
   return isObj(mine[0]?.op.approval) ? (mine[0].op.approval as Raw) : null;
 }
 
 export const documentApprovalsLink = (entity: string) => `/customize/${encodeURIComponent(entity)}/approvals`;
+
+/** What `GET /api/customize/definition/{Entity}` says of the policies a package ships: a package's entity answers
+ * `approvals: [{on, policy, package, changed, workspace}]`; a custom entity `approvals: {key: policy}` and
+ * `package_approvals: [{on, policy, package}]`. For one `on` key: the package, and whether an administrator changed it
+ * (their policy differs from what ships, or is switched off); `null` when no package ships one there. */
+export function shippedPolicy(def: unknown, key: string): { package: string; changed: boolean } | null {
+  const d = (isObj(def) ? def : {}) as Raw;
+  const shipped = (Array.isArray(d.package_approvals) ? d.package_approvals : Array.isArray(d.approvals) ? d.approvals : []) as Raw[];
+  const one = shipped.find((a) => isObj(a) && a.on === key);
+  if (!one) return null;
+  const now = typeof one.changed === "boolean" ? one.changed : JSON.stringify((isObj(d.approvals) ? (d.approvals as Raw)[key] : undefined) ?? null) !== JSON.stringify(one.policy);
+  return { package: String(one.package ?? ""), changed: now };
+}
+
+/** The policy in force on one `on` key according to the definition (a package's own, until the workspace sets its own), or null. */
+export function effectivePolicy(def: unknown, key: string): Raw | null {
+  const d = (isObj(def) ? def : {}) as Raw;
+  const p = Array.isArray(d.approvals) ? (d.approvals as Raw[]).find((a) => isObj(a) && a.on === key)?.workspace : isObj(d.approvals) ? (d.approvals as Raw)[key] : null;
+  return isObj(p) ? p : null;
+}
+
+export interface PolicyRow {
+  entity: string;
+  /** `submit`, `cancel`, `action:<name>` or `transition <action>`. */
+  on: string;
+  steps: string[];
+  /** The page that edits it. */
+  to: string;
+  /** Shipped by this package (a policy a package declares); `changed`: an administrator changed or switched it off. */
+  shipped?: { package: string; changed: boolean };
+}
+
+/** Every approval policy the workspace itself has set, from the customizations list (`GET /api/customize`): the latest active
+ * `set_approval` per entity and `on`, and each workflow transition that carries a policy. Policies only a package ships are not
+ * in that list; each entity's page shows them. */
+export function approvalIndex(list: { entity: string; op: Raw; is_active: boolean; seq: number; superseded_by?: string | null }[]): PolicyRow[] {
+  const latest = new Map<string, { seq: number; row: PolicyRow | null }>();
+  const labels = (a: unknown) => (isObj(a) && Array.isArray(a.steps) ? a.steps.map((x, i) => (isObj(x) && typeof x.label === "string" && x.label ? x.label : `${i + 1}`)) : []);
+  for (const c of list) {
+    if (!c.is_active || c.superseded_by) continue;
+    let key = "";
+    let row: PolicyRow | null = null;
+    if (c.op.op === "set_approval") {
+      const on = typeof c.op.on === "string" ? c.op.on : isObj(c.op.on) ? `action:${String(c.op.on.action)}` : "";
+      key = `${c.entity}|${on}`;
+      row = isObj(c.op.approval) ? { entity: c.entity, on, steps: labels(c.op.approval), to: documentApprovalsLink(c.entity) } : null;
+    } else if (c.op.op === "set_workflow" && isObj(c.op.workflow) && Array.isArray(c.op.workflow.transitions)) {
+      key = `${c.entity}|workflow`;
+      const found = (c.op.workflow.transitions as Raw[]).filter((x) => isObj(x.approval));
+      for (const x of found) latest.set(`${c.entity}|transition ${String(x.action)} ${String(x.from)}`, { seq: c.seq, row: { entity: c.entity, on: `transition ${String(x.action)}`, steps: labels(x.approval), to: `/customize/${encodeURIComponent(c.entity)}/workflow` } });
+      continue;
+    } else continue;
+    const had = latest.get(key);
+    if (!had || c.seq > had.seq) latest.set(key, { seq: c.seq, row });
+  }
+  return [...latest.values()].flatMap((v) => (v.row ? [v.row] : [])).sort((a, b) => a.entity.localeCompare(b.entity) || a.on.localeCompare(b.on));
+}
+
+/** The policies the packages ship on one entity, from `GET /api/customize/definition/{Entity}` (either shape), as index rows. */
+export function shippedRows(entity: string, def: unknown): PolicyRow[] {
+  const d = (isObj(def) ? def : {}) as Raw;
+  const list = (Array.isArray(d.package_approvals) ? d.package_approvals : Array.isArray(d.approvals) ? d.approvals : []) as Raw[];
+  return list.flatMap((a) => {
+    if (!isObj(a) || typeof a.on !== "string") return [];
+    const steps = isObj(a.policy) && Array.isArray(a.policy.steps) ? a.policy.steps.map((x, i) => (isObj(x) && typeof x.label === "string" && x.label ? x.label : `${i + 1}`)) : [];
+    const now = typeof a.changed === "boolean" ? a.changed : JSON.stringify((isObj(d.approvals) ? (d.approvals as Raw)[a.on] : undefined) ?? null) !== JSON.stringify(a.policy);
+    return [{ entity, on: a.on, steps, to: a.on.startsWith("transition") ? `/customize/${encodeURIComponent(entity)}/workflow` : documentApprovalsLink(entity), shipped: { package: String(a.package ?? ""), changed: now } }];
+  });
+}

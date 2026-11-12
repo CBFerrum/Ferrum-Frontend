@@ -11,7 +11,8 @@ import { errorMessage } from "../lib/api";
 import { formatMoment } from "../lib/format";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { Button, Icon, Menu, MenuItem } from "./kit";
+import { Badge, Button, Icon, Menu, MenuItem } from "./kit";
+import { stateTone, stateWords } from "../lib/targetState";
 import { foldActions } from "./selectionFold";
 
 // ── StatePanel ──
@@ -267,6 +268,33 @@ export function SaveStatus({ state, at, className }: { state: SaveState; at?: st
       <span>{saveWords(state)}</span>
       {when && <time className="text-muted-foreground">{when}</time>}
     </span>
+  );
+}
+
+// ── TargetCard ──
+
+/**
+ * A service target on a record (BD-04, BD-41): its label, its state as a word and a badge (running, paused, met, met late,
+ * breached; the colour follows the state id, never the word) and the due moment. A paused clock is stopped, so no due moment
+ * is promised; a breached or late one says it was due. `state` and `due` are what the record keeps in the target's
+ * `state_field` and `due_field`.
+ */
+export function TargetCard({ label, state, due, className }: { label: string; state: string; due?: string | null; className?: string }) {
+  const at = due ? formatMoment(due, { dateStyle: "medium", timeStyle: "short" }) : "";
+  const line =
+    state === "paused" ? t("The clock is stopped.")
+    : !at ? ""
+    : state === "running" ? t("Due {at}", { at })
+    : state === "breached" ? t("Was due {at}", { at })
+    : state === "met_late" ? t("Was due {at}, met late", { at })
+    : state === "met" ? t("Due {at}, met", { at })
+    : t("Due {at}", { at });
+  return (
+    <section data-target-state={state} aria-label={label} className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card p-3 text-sm", className)}>
+      <strong className="font-medium">{label}</strong>
+      <Badge tone={stateTone(state)}>{stateWords()[state] ?? state}</Badge>
+      {line && (due && state !== "paused" ? <time dateTime={due} className="text-muted-foreground">{line}</time> : <span className="text-muted-foreground">{line}</span>)}
+    </section>
   );
 }
 

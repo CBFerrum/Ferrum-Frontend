@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, connectionFacts, runWords } from "./connections";
+import { ago, connectionFacts, runWords } from "./connectorHub";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const fact = (facts: ReturnType<typeof connectionFacts>, label: string) => facts.find((f) => f.label === label)!;

@@ -4,7 +4,7 @@
 // primitives (Button, Dialog… as plain building blocks) are `@ferrum/kit/primitives`.
 export * from "../../../src/ui/kit";
 export type { Tone } from "../../../src/ui/kit";
-export { ButtonLink, failureKind, FormSkeleton, HomeSection, HomeSkeleton, PageSplit, PageStack, Progress, type ProgressTone, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid, ListSkeleton, LoadFailed, ReaderSkeleton, SaveStatus, SelectionToolbar, type SelectionAction, StatePanel, TableSkeleton, type SaveState, type StateKind } from "../../../src/ui/patterns";
+export { ButtonLink, failureKind, FormSkeleton, HomeSection, HomeSkeleton, PageSplit, PageStack, Progress, type ProgressTone, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid, ListSkeleton, LoadFailed, ReaderSkeleton, SaveStatus, SelectionToolbar, type SelectionAction, StatePanel, TableSkeleton, TargetCard, type SaveState, type StateKind } from "../../../src/ui/patterns";
 export { rovingStep, shortcutLabel, Toolbar, ToolbarButton, ToolbarGroup, ToolbarOverflow, ToolbarSeparator } from "../../../src/ui/toolbar";
 export { isRichTextEmpty, mergeChips, mergeToken, plainToRichText, preloadRichTextEditor, resolveMergeFields, RichText, RichTextEditor, richTextToPlain, sanitizeRichText, type MergeField, type RichTextEditorProps, type SanitizeOptions } from "../../../src/ui/richtext";
 export { gridStep, normalizeColor, rememberColor, SwatchPalette, type Swatch } from "../../../src/ui/swatches";

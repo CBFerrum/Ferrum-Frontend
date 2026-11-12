@@ -80,6 +80,7 @@ const pages: Record<string, RouteObject[]> = {
     { path: "customize/new", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
     { path: "customize/:entity/design", lazy: () => import("@/app/EntityDesigner").then((m) => ({ Component: m.EntityDesignerPage })) },
     { path: "customize/menus", lazy: () => import("@/app/Menus").then((m) => ({ Component: m.MenusPage })) },
+    { path: "customize/approvals", lazy: () => import("@/app/ApprovalPolicies").then((m) => ({ Component: m.ApprovalPoliciesPage })) },
     { path: "customize/messages", lazy: () => import("@/app/MessageTemplates").then((m) => ({ Component: m.MessageTemplatesPage })) },
     { path: "customize/messages/:key", lazy: () => import("@/app/MessageTemplates").then((m) => ({ Component: m.MessageTemplatePage })) },
     { path: "customize/print", lazy: () => import("@/app/print/Formats").then((m) => ({ Component: m.PrintFormatsPage })) },

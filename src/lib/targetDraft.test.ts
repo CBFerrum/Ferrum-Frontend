@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkTarget, eligible, fromTarget, readWithin, removeBatch, saveBatch, setLabel, startTarget, stateTone, toTarget, withinOf, withinWords, type TargetDraft } from "./targetDraft";
+import { checkTarget, eligible, fromTarget, readWithin, removeBatch, saveBatch, setLabel, startTarget, stateTone, targetsOf, toTarget, withinOf, withinWords, type TargetDraft } from "./targetDraft";
 import { fieldState, isServerManaged, type Field } from "./meta";
 
 const f = (name: string, type: string, extra: Record<string, unknown> = {}) => ({ name, label: name, type, can_read: true, can_write: true, ...extra }) as unknown as Field;
@@ -122,5 +122,29 @@ describe("a field a target keeps", () => {
     expect(isServerManaged(kept)).toBe(true);
     expect(fieldState(kept, { doc: {} }).disabled).toBe(true);
     expect(fieldState(f("x_by", "datetime"), { doc: {} }).disabled).toBe(false);
+  });
+});
+
+describe("a calendar and a start taken from the record (BD-41)", () => {
+  const withOpened = [...fields, f("opened_at", "datetime"), f("plan", "select", { options: ["Gold"] })];
+  it("are sent when chosen and left out when not, and read back from a saved target", () => {
+    const sent = toTarget(draft({ calendarField: "agreement.calendar", startField: "opened_at" }));
+    expect(sent).toMatchObject({ calendar_field: "agreement.calendar", start_field: "opened_at" });
+    const plain = toTarget(draft());
+    expect("calendar_field" in plain || "start_field" in plain).toBe(false);
+    const back = fromTarget({ ...small(), calendar_field: "plan", start_field: "opened_at" }, withOpened);
+    expect([back.calendarField, back.startField]).toEqual(["plan", "opened_at"]);
+  });
+  it("are checked: the calendar field's shape and a start that is a date and time", () => {
+    const ctx = { taken: [], fields: withOpened, packaged: false };
+    const said = (patch: Partial<TargetDraft>) => checkTarget(draft({ makeDue: true, makeState: true, ...patch }), ctx).map((p) => p.message).join(" ");
+    expect(said({ calendarField: "a.b.c" })).toContain("calendar field");
+    expect(said({ startField: "plan" })).toContain("cannot start the clock");
+    expect(said({ calendarField: "agreement.calendar", startField: "opened_at" })).toBe("");
+  });
+  it("shows what a record keeps of its targets, once begun", () => {
+    const targets = [{ name: "a", label: "A", due_field: "a_by", state_field: "a_state" }, { name: "b", label: "B", due_field: "b_by", state_field: "b_state" }];
+    expect(targetsOf(targets, { a_state: "breached", a_by: "2026-11-12T09:00:00Z", b_state: null })).toEqual([{ name: "a", label: "A", state: "breached", due: "2026-11-12T09:00:00Z" }]);
+    expect(targetsOf(undefined, {})).toEqual([]);
   });
 });

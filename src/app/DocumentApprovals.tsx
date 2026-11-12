@@ -8,9 +8,9 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage } from "../lib/api";
-import { checkPolicy, currentDocumentPolicy, documentOp, fromPolicy, newPolicy, type DraftPolicy } from "../lib/approvalDraft";
+import { checkPolicy, currentDocumentPolicy, documentOp, effectivePolicy, fromPolicy, newPolicy, onKey, shippedPolicy, type DocOn, type DraftPolicy } from "../lib/approvalDraft";
 import { useEntityMeta, useMe, type EntityMeta } from "../lib/meta";
-import { Alert, Button, EmptyState, ErrorState, PageLoading, toast } from "../ui/kit";
+import { Alert, Badge, Button, EmptyState, ErrorState, PageLoading, toast } from "../ui/kit";
 import { useApply } from "./author/apply";
 import { ApprovalEditor } from "./author/ApprovalEditor";
 
@@ -46,14 +46,17 @@ function Loader({ entity }: { entity: string }) {
     }
     return <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={tr("Could not load {entity}", { entity: isolate(entity) })} />;
   }
+  // What the packages ship, to mark the policies that follow them and those an administrator changed. Not needed to edit: a failure only drops the marks.
+  const shipped = useQuery({ queryKey: ["customize", "definition", entity], queryFn: ({ signal }) => api.get<unknown>(`/api/customize/definition/${encodeURIComponent(entity)}`, undefined, signal), retry: false });
   if (list.error) return <ErrorState error={list.error} onRetry={() => list.refetch()} />;
-  if (!meta.data || !list.data) return <PageLoading />;
-  return <DocumentApprovals meta={meta.data} list={list.data.customizations} />;
+  if (!meta.data || !list.data || shipped.isLoading) return <PageLoading />;
+  return <DocumentApprovals meta={meta.data} list={list.data.customizations} shipped={shipped.data} />;
 }
 
-export function DocumentApprovals({ meta, list }: { meta: EntityMeta; list: Parameters<typeof currentDocumentPolicy>[0] }) {
+export function DocumentApprovals({ meta, list, shipped }: { meta: EntityMeta; list: Parameters<typeof currentDocumentPolicy>[0]; shipped?: unknown }) {
   const label = isolate(meta.label);
   const usable = meta.submittable && !meta.workflow;
+  const actions = (meta.actions ?? []).filter((a) => !a.read_only && !a.hidden);
   return (
     <div className="stack">
       <div className="page-head">
@@ -70,21 +73,27 @@ export function DocumentApprovals({ meta, list }: { meta: EntityMeta; list: Para
         </EmptyState>
       ) : (
         <>
-          <Policy meta={meta} on="submit" title={tr("Approval before submitting")} list={list} />
-          <Policy meta={meta} on="cancel" title={tr("Approval before cancelling")} list={list} />
+          <Policy meta={meta} on="submit" title={tr("Approval before submitting")} list={list} shipped={shipped} />
+          <Policy meta={meta} on="cancel" title={tr("Approval before cancelling")} list={list} shipped={shipped} />
         </>
+      )}
+      {actions.length > 0 ? (
+        actions.map((a) => <Policy key={a.name} meta={meta} on={{ action: a.name }} title={tr("Approval before “{action}”", { action: a.label || a.name })} list={list} shipped={shipped} />)
+      ) : (
+        <p className="muted">{tr("This record type has no action that changes something, so no action asks for approval.")}</p>
       )}
     </div>
   );
 }
 
-function Policy({ meta, on, title, list }: { meta: EntityMeta; on: "submit" | "cancel"; title: string; list: Parameters<typeof currentDocumentPolicy>[0] }) {
+function Policy({ meta, on, title, list, shipped }: { meta: EntityMeta; on: DocOn; title: string; list: Parameters<typeof currentDocumentPolicy>[0]; shipped?: unknown }) {
   const apply = useApply(meta.name);
-  const [d, setD] = useState<DraftPolicy | null>(() => fromPolicy(currentDocumentPolicy(list, meta.name, on), (k) => k));
+  const [d, setD] = useState<DraftPolicy | null>(() => fromPolicy(currentDocumentPolicy(list, meta.name, on) ?? effectivePolicy(shipped, onKey(on)), (k) => k));
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const id = `da-${on}`;
+  const id = `da-${onKey(on).replace(/[^a-z0-9_-]/gi, "-")}`;
+  const ships = shippedPolicy(shipped, onKey(on));
   const set = (next: DraftPolicy | null) => (setD(next), setProblems([]), setRefused(null));
   const save = async () => {
     const found = d ? checkPolicy(d) : [];
@@ -108,6 +117,7 @@ function Policy({ meta, on, title, list }: { meta: EntityMeta; on: "submit" | "c
     <section className="card" aria-labelledby={`${id}-h`}>
       <div className="card-head">
         <h2 id={`${id}-h`}>{title}</h2>
+        {ships && <Badge tone={ships.changed ? "amber" : "blue"}>{ships.changed ? tr("Changed from what {package} ships", { package: ships.package }) : tr("As {package} ships it", { package: ships.package })}</Badge>}
       </div>
       <div className="card-body stack">
         {problems.length > 0 && (
@@ -121,9 +131,10 @@ function Policy({ meta, on, title, list }: { meta: EntityMeta; on: "submit" | "c
           </Alert>
         )}
         {refused && !errorStep && <Alert tone="error">{isolate(refused)}</Alert>}
+        {ships && ships.changed && !d && <p className="muted">{tr("An administrator switched off what {package} ships here.", { package: ships.package })}</p>}
         <label className="check-field">
           <input id={`${id}-on`} type="checkbox" checked={!!d} onChange={(e) => set(e.target.checked ? newPolicy() : null)} />
-          {on === "submit" ? tr("Ask for approval before a {entity} is submitted", { entity: isolate(meta.label) }) : tr("Ask for approval before a {entity} is cancelled", { entity: isolate(meta.label) })}
+          {on === "submit" ? tr("Ask for approval before a {entity} is submitted", { entity: isolate(meta.label) }) : on === "cancel" ? tr("Ask for approval before a {entity} is cancelled", { entity: isolate(meta.label) }) : tr("Ask for approval before “{action}” runs", { action: on.action })}
         </label>
         {d && (
           <ApprovalEditor policy={d} onChange={set} fields={meta.fields} actions={[]} states={[]} flagged={new Set(problems.length ? d.steps.map((s) => s.key) : [])} errorStep={errorStep} error={errorStep ? (refused ?? undefined) : undefined} document idPrefix={id} />

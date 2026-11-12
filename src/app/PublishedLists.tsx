@@ -8,7 +8,7 @@ import { Link, useParams } from "react-router";
 import { bootstrap, t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage } from "../lib/api";
 import { useEntityMeta, useMe, type Field as MetaField, type EntityMeta } from "../lib/meta";
-import { checkList, currentLists, fromList, MAX_FIELDS, MAX_LIMIT, MAX_LISTS, offering, publicPath, saveBatch, setLabel, startList, takeDownBatch, type ListDraft } from "../lib/publishedListDraft";
+import { checkList, currentLists, fromList, MAX_DETAIL, MAX_FIELDS, MAX_LIMIT, MAX_LISTS, MAX_ORIGINS, offering, originList, publicPath, sitemapPath, saveBatch, setLabel, startList, takeDownBatch, type ListDraft } from "../lib/publishedListDraft";
 import { Alert, Button, confirmDialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
 import { BatchRefused, useApplyBatch } from "./author/apply";
 import { FormCard } from "./author/FormCard";
@@ -176,7 +176,7 @@ function Lists({ meta }: { meta: EntityMeta }) {
   );
 }
 
-function ListForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: ListDraft; taken: string[]; onClose: () => void }) {
+export function ListForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: ListDraft; taken: string[]; onClose: () => void }) {
   const apply = useApplyBatch();
   const [d, setD] = useState(start);
   const [problems, setProblems] = useState<string[]>([]);
@@ -187,6 +187,8 @@ function ListForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: Li
   const { offered, unavailable } = offering(meta);
   const gone = d.fields.filter((n) => !offered.some((o) => o.name === n));
   const usable: MetaField[] = [...(meta.numbering ? [{ name: "number", label: tr("Number"), type: "data" } as MetaField] : []), ...meta.fields.filter((f) => f.type !== "table")];
+  const textFields = usable.filter((f) => f.type === "data" && f.name !== "number" && offered.some((o) => o.name === f.name));
+  const intFields = usable.filter((f) => f.type === "int");
   const set = (next: ListDraft) => {
     setD(next);
     setProblems([]);
@@ -321,6 +323,65 @@ function ListForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: Li
         <input type="checkbox" checked={d.csv} onChange={(e) => set({ ...d, csv: e.target.checked })} />
         {tr("Offer a CSV download")}
       </label>
+      <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <legend className="field-label">{tr("Record pages")}</legend>
+        <p className="faint">{tr("With an address field, each record has a page of its own, the list can be searched and paged, and search engines are offered it. Without one the list stays out of search engines.")}</p>
+        <Field label={tr("Address of each record")} htmlFor="pl-slug" hint={tr("A text field whose value is part of the record’s address. It must be one that can be published.")}>
+          <select id="pl-slug" className="select" value={d.slug} onChange={(e) => set({ ...d, slug: e.target.value, ...(e.target.value ? null : { detail: [], summary: "", countViews: "", votesUp: "", votesDown: "" }) })}>
+            <option value="">{tr("No record pages")}</option>
+            {textFields.map((f) => <option key={f.name} value={f.name}>{isolate(f.label)}</option>)}
+            {d.slug && !textFields.some((f) => f.name === d.slug) && <option value={d.slug}>{isolate(d.slug)}</option>}
+          </select>
+        </Field>
+        {d.slug && (
+          <>
+            {addressOf(d.name.trim()) && <p className="faint" style={{ overflowWrap: "anywhere" }}>{tr("A record’s page, where its {field} goes last: {address}", { field: d.slug, address: `${addressOf(d.name.trim())}/…` })}</p>}
+            {bootstrap()?.workspace?.slug && <p className="faint" style={{ overflowWrap: "anywhere" }}>{tr("Sitemap of every published page: {address}", { address: `${window.location.origin}${sitemapPath(bootstrap()!.workspace!.slug)}` })}</p>}
+            <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+              <legend className="field-label">{tr("Shown only on the record’s page ({n} of {max})", { n: d.detail.length, max: MAX_DETAIL })}</legend>
+              {offered.filter((o) => o.name !== "number" && !d.fields.includes(o.name)).map((o) => (
+                <label key={o.name} className="check-field">
+                  <input type="checkbox" checked={d.detail.includes(o.name)} disabled={!d.detail.includes(o.name) && d.detail.length >= MAX_DETAIL} onChange={(e) => set({ ...d, detail: e.target.checked ? [...d.detail, o.name] : d.detail.filter((n) => n !== o.name) })} />
+                  {isolate(o.label)}
+                </label>
+              ))}
+            </fieldset>
+            <Field label={tr("Description for search engines")} htmlFor="pl-summary" hint={tr("One of the fields shown.")}>
+              <select id="pl-summary" className="select" value={d.summary} onChange={(e) => set({ ...d, summary: e.target.value })}>
+                <option value="">{tr("None")}</option>
+                {[...d.fields, ...d.detail].map((n) => <option key={n} value={n}>{isolate(offered.find((o) => o.name === n)?.label ?? n)}</option>)}
+              </select>
+            </Field>
+            <Field label={tr("Count each page’s visitors in")} htmlFor="pl-views" hint={tr("A whole-number field. Once a visitor a record a day; a link preview counts nothing.")}>
+              <select id="pl-views" className="select" value={d.countViews} onChange={(e) => set({ ...d, countViews: e.target.value })}>
+                <option value="">{tr("Do not count")}</option>
+                {intFields.map((f) => <option key={f.name} value={f.name}>{isolate(f.label)}</option>)}
+              </select>
+            </Field>
+            <div className="row" style={wrap}>
+              <div style={{ ...grow, flexBasis: 200 }}>
+                <Field label={tr("“Was this helpful”: yes counted in")} htmlFor="pl-up">
+                  <select id="pl-up" className="select" value={d.votesUp} onChange={(e) => set({ ...d, votesUp: e.target.value })}>
+                    <option value="">{tr("No votes")}</option>
+                    {intFields.map((f) => <option key={f.name} value={f.name}>{isolate(f.label)}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <div style={{ ...grow, flexBasis: 200 }}>
+                <Field label={tr("“Was this helpful”: no counted in")} htmlFor="pl-down">
+                  <select id="pl-down" className="select" value={d.votesDown} onChange={(e) => set({ ...d, votesDown: e.target.value })}>
+                    <option value="">{tr("No votes")}</option>
+                    {intFields.map((f) => <option key={f.name} value={f.name}>{isolate(f.label)}</option>)}
+                  </select>
+                </Field>
+              </div>
+            </div>
+          </>
+        )}
+      </fieldset>
+      <Field label={tr("Sites that may show its pages in a frame")} htmlFor="pl-frames" hint={tr("One per line, like https://town.example (at most {n}). Without any, no site may frame them.", { n: MAX_ORIGINS })} error={originList(d.frameOrigins).length > MAX_ORIGINS ? tr("Too many sites") : undefined}>
+        <textarea id="pl-frames" className="textarea mono" rows={2} spellCheck={false} autoCapitalize="none" value={d.frameOrigins} onChange={(e) => set({ ...d, frameOrigins: e.target.value })} />
+      </Field>
       <p className="faint">{tr("At most {n} lists in a workspace.", { n: MAX_LISTS })}</p>
       <div>
         <Button onClick={onClose}>{tr("Cancel")}</Button>
