@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 import { LANGUAGES, shell, t, isolate } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
+import { MyConnections } from "@/app/Connections";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
 import { TwoFactorSettings } from "@/app/TwoFactor";
 import { api, ApiError, errorMessage } from "@/lib/api";
@@ -578,6 +579,10 @@ export function AccountPage() {
       <Section id="acct-away" title={t("Away")}>
         <p className="muted">{t("While you are away, decisions that would come to you go to someone else, in their own name on your behalf. It ends on its last day.")}</p>
         <Away />
+      </Section>
+      <Section id="acct-connections" title={t("My connections")}>
+        <p className="muted">{t("Accounts at other services that act for you, such as your mailbox. Connect them here.")}</p>
+        <MyConnections />
       </Section>
       <Section id="acct-devices" title={t("Signed-in browsers")}>
         <Devices />
