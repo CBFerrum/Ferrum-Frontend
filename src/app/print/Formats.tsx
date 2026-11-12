@@ -40,6 +40,8 @@ export function PrintFormatsPage() {
 }
 
 const KEY = /^[a-z][a-z0-9_.]*$/;
+/** The server answers `updated_by` as a person's id (no name to show yet): an id is not shown. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** A workspace key from a name: lower case, underscores, never a package's prefix (it has no dot). */
 export const keyFrom = (name: string) => name.trim().toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "_").replace(/^[^a-z]+|_+$/g, "").slice(0, 60);
 
@@ -209,7 +211,7 @@ function List() {
                       <td>{badges(r)}</td>
                       <td>{r.roles?.length ? isolate(r.roles.join(", ")) : <span className="faint">{tr("Everyone who may read the record")}</span>}</td>
                       <td>{enabledSwitch(r)}</td>
-                      <td className="nowrap faint">{r.updated_at ? <>{formatDateTime(r.updated_at)}{r.updated_by ? <div>{isolate(r.updated_by)}</div> : null}</> : "—"}</td>
+                      <td className="nowrap faint">{r.updated_at ? <>{formatDateTime(r.updated_at)}{r.updated_by && !UUID.test(r.updated_by) ? <div>{isolate(r.updated_by)}</div> : null}</> : "—"}</td>
                       <td className="nowrap"><div className="row-actions">{actions(r)}</div></td>
                     </tr>
                   ))}
