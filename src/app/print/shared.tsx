@@ -98,7 +98,7 @@ export const PAPER_NAMES = (page?: Pick<PageSetup, "size" | "orientation"> | nul
 
 /** The server's preview of a format (§6.2): HTML for the paper, or a PDF. */
 export interface PreviewAnswer { language: string; output: string; kind?: string; content: string; header?: string | null; footer?: string | null; record_id?: string | null; warnings?: string[]; ms?: number }
-export interface PreviewAsk { template: string | PrintFormat; record_id?: string | null; sample?: boolean; language?: string; letterhead?: string; copies?: string[]; mode?: "print" | "design" }
+export interface PreviewAsk { template: string | PrintFormat; record_id?: string | null; sample?: boolean; language?: string; letterhead?: string | { id?: string; company?: string; header: unknown; footer: unknown; header_height_mm?: number; footer_height_mm?: number }; copies?: string[]; mode?: "print" | "design" }
 export const preview = (ask: PreviewAsk, signal?: AbortSignal) => api.post<PreviewAnswer>("/api/admin/documents/preview", ask, { signal });
 
 /** A PDF the server makes, in a new tab. The tab is opened at once (inside the click, so pop-up blockers allow it) and filled in. */

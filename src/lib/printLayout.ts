@@ -759,7 +759,7 @@ export function templateErrorAt(message: string): { language: string; part: "bod
 export interface ChoiceTemplate { key: string; label?: string | null; output: string; kind?: "template" | "layout"; languages?: string[]; letterhead?: string; copies?: string[]; page?: { size: PaperSize; orientation: "portrait" | "landscape"; width_mm?: number; height_mm?: number } }
 export interface Choices {
   templates: ChoiceTemplate[];
-  standard?: { label: string };
+  standard?: { label: string; page?: ChoiceTemplate["page"] };
   default: string | null;
   letterheads?: { id: string; name: string; company?: string | null; default_for_record?: boolean }[];
   languages?: string[];
