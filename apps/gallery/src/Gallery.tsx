@@ -594,6 +594,23 @@ export function Sections({ without = [] }: { without?: string[] }) {
             ]}
           />
         </div>
+        {/* A list column is narrower than the screen: the bar goes by its own width. */}
+        <div data-gallery="selection-narrow" className="flex flex-col gap-3">
+          {[320, 380, 600].map((w) => (
+            <div key={w} data-gallery={`selection-${w}`} className="relative max-w-full" style={{ width: w }}>
+              <SelectionToolbar
+                label={`Actions for the 2 messages selected (${w}px column)`}
+                count={2}
+                onClear={() => {}}
+                actions={[
+                  { id: "archive", label: "Archive", icon: "file", onSelect: () => {} },
+                  { id: "read", label: "Mark as read", icon: "check", onSelect: () => {} },
+                  { id: "delete", label: "Delete", icon: "trash", danger: true, priority: true, onSelect: () => {} },
+                ]}
+              />
+            </div>
+          ))}
+        </div>
         <div data-gallery="selection-capped" className="relative">
           <SelectionToolbar label="Actions for the 500 invoices selected" count={500} scope="matching" of={1200} onClear={() => {}}>
             <Button size="sm">Assign</Button>
