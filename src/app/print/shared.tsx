@@ -8,7 +8,7 @@ import { t as tr } from "@ferrum/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, errorMessage, requestRaw, withPrintCsp } from "../../lib/api";
 import { useMe, useServerInfo } from "../../lib/meta";
-import { DEFAULT_MARGINS, MM_PX, paperMm, type Catalogue, type PageSetup, type PaperSize, type PrintFormat } from "../../lib/printLayout";
+import { DEFAULT_MARGINS, MM_PX, paperMm, type Catalogue, type LatestRecord, type PageSetup, type PaperSize, type PrintFormat } from "../../lib/printLayout";
 import { Alert, Field, Spinner } from "../../ui/kit";
 import { StatePanel } from "../../ui/patterns";
 import "./print.css";
@@ -66,6 +66,8 @@ export interface FormatRow {
   default_changed?: boolean;
   based_on?: string | null;
   updated_by?: string | null;
+  /** The person's name (§12 item 43). */
+  updated_by_name?: string | null;
   updated_at?: string | null;
 }
 export interface FormatRead { template: PrintFormat; default: PrintFormat | null; edited: boolean; default_changed: boolean }
@@ -99,8 +101,8 @@ export const PAPER_NAMES = (page?: Pick<PageSetup, "size" | "orientation"> | nul
   page ? `${page.size === "Custom" ? tr("Custom paper") : page.size}, ${page.orientation === "landscape" ? tr("landscape") : tr("portrait")}` : tr("The print settings' paper");
 
 /** The server's preview of a format (§6.2): HTML for the paper, or a PDF. */
-export interface PreviewAnswer { language: string; output: string; kind?: string; content: string; header?: string | null; footer?: string | null; record_id?: string | null; warnings?: string[]; ms?: number }
-export interface PreviewAsk { template: string | PrintFormat; record_id?: string | null; sample?: boolean; language?: string; letterhead?: string | { id?: string; company?: string; header: unknown; footer: unknown; header_height_mm?: number; footer_height_mm?: number }; copies?: string[]; mode?: "print" | "design" }
+export interface PreviewAnswer { language: string; output: string; kind?: string; content: string; header?: string | null; footer?: string | null; record_id?: string | null; warnings?: string[]; ms?: number; latest_record?: LatestRecord | null }
+export interface PreviewAsk { template: string | PrintFormat; record_id?: string | null; sample?: boolean; /** Hidden parts at full size, dimmed (§12 item 45). */ design?: "all"; language?: string; letterhead?: string | { id?: string; company?: string; header: unknown; footer: unknown; header_height_mm?: number; footer_height_mm?: number }; copies?: string[]; mode?: "print" | "design" }
 export const preview = (ask: PreviewAsk, signal?: AbortSignal) => api.post<PreviewAnswer>("/api/admin/documents/preview", ask, { signal });
 
 /** A PDF the server makes, in a new tab. The tab is opened at once (inside the click, so pop-up blockers allow it) and filled in. */

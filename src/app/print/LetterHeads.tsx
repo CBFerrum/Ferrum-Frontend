@@ -138,7 +138,9 @@ function Editor({ doc }: { doc: Doc | null }) {
   const [form, setForm] = useState<LetterHeadForm>(read ?? { ...EMPTY_LETTERHEAD });
   const [name, setName] = useState(String(doc?.letter_head_name ?? ""));
   const [company, setCompany] = useState<string | null>((doc?.company as string | null) ?? null);
-  const [heights, setHeights] = useState({ header: Number(doc?.header_height_mm ?? 30), footer: Number(doc?.footer_height_mm ?? 15) });
+  // Empty is automatic: as tall as what prints (§12 item 34); a number is a fixed height.
+  const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+  const [heights, setHeights] = useState<Heights>({ header: num(doc?.header_height_mm), footer: num(doc?.footer_height_mm) });
   const [disabled, setDisabled] = useState(!!doc?.disabled);
   const [version, setVersion] = useState<number | undefined>(typeof doc?.version === "number" ? doc.version : undefined);
   const [state, setState] = useState<"draft" | "saving" | "saved" | "failed" | "conflict">(doc ? "saved" : "draft");
@@ -299,8 +301,8 @@ function Editor({ doc }: { doc: Doc | null }) {
                 <input id={`${ids}-foot`} className="input" value={form.footer} onChange={(e) => change(setForm)({ ...form, footer: e.target.value })} />
               </Field>
               <div className="pd-row">
-                <Field label={tr("Header height (mm)")} htmlFor={`${ids}-hh`}><input id={`${ids}-hh`} className="input" type="number" min={0} max={120} value={heights.header} onChange={(e) => change(setHeights)({ ...heights, header: Number(e.target.value) })} /></Field>
-                <Field label={tr("Footer height (mm)")} htmlFor={`${ids}-fh`}><input id={`${ids}-fh`} className="input" type="number" min={0} max={80} value={heights.footer} onChange={(e) => change(setHeights)({ ...heights, footer: Number(e.target.value) })} /></Field>
+                <HeightField label={tr("Header height")} value={heights.header} max={120} fixed={30} onChange={(v) => change(setHeights)({ ...heights, header: v })} />
+                <HeightField label={tr("Footer height")} value={heights.footer} max={80} fixed={15} onChange={(v) => change(setHeights)({ ...heights, footer: v })} />
               </div>
               <label className="check-field">
                 <input type="checkbox" role="switch" checked={!disabled} onChange={(e) => change(setDisabled)(!e.target.checked)} />
@@ -322,7 +324,27 @@ function Editor({ doc }: { doc: Doc | null }) {
 }
 
 /** The unsaved letter head, placed in a blank layout as its own sections, on the sample of a record type. */
-function LetterHeadPreview({ form, entities, id, company, heights }: { form: LetterHeadForm; entities: { name: string; label: string }[]; id?: string; company: string | null; heights: { header: number; footer: number } }) {
+type Heights = { header: number | null; footer: number | null };
+
+/** A letter head part's height: Automatic (as tall as what prints, the default) or a fixed number of millimetres. */
+function HeightField({ label, value, max, fixed, onChange }: { label: string; value: number | null; max: number; fixed: number; onChange: (v: number | null) => void }) {
+  const id = useId();
+  return (
+    <div className="field">
+      <label className="field-label" htmlFor={id}>{label}</label>
+      <div className="row">
+        <select id={id} className="select" value={value === null ? "auto" : "fixed"} onChange={(e) => onChange(e.target.value === "auto" ? null : fixed)}>
+          <option value="auto">{tr("Automatic")}</option>
+          <option value="fixed">{tr("Fixed")}</option>
+        </select>
+        {value !== null && <input className="input" type="number" min={0} max={max} aria-label={tr("{label} in millimetres", { label })} value={value} onChange={(e) => onChange(Math.max(0, Math.min(max, Number(e.target.value))))} style={{ width: 90 }} />}
+      </div>
+      {value === null && <p className="field-hint">{tr("As tall as what prints.")}</p>}
+    </div>
+  );
+}
+
+function LetterHeadPreview({ form, entities, id, company, heights }: { form: LetterHeadForm; entities: { name: string; label: string }[]; id?: string; company: string | null; heights: Heights }) {
   const ids = useId();
   const [entity, setEntity] = useState("");
   const ent = entity || entities.find((e) => e.name === "SalesInvoice")?.name || entities[0]?.name || "";
@@ -332,7 +354,7 @@ function LetterHeadPreview({ form, entities, id, company, heights }: { form: Let
   const ask = useDebounced(
     JSON.stringify({
       template: { key: "letter_head_preview", label: "Preview", entity: ent, output: "page", layout: { version: 1, sections: [{ id: "lh_preview_body", columns: [{ id: "lh_preview_c", blocks: [{ id: "lh_preview_gap", type: "spacer", height_mm: 60 }] }] }] } } satisfies PrintFormat,
-      letterhead: { ...(id ? { id } : {}), ...(company ? { company } : {}), header: b.header, footer: b.footer, header_height_mm: heights.header, footer_height_mm: heights.footer },
+      letterhead: { ...(id ? { id } : {}), ...(company ? { company } : {}), header: b.header, footer: b.footer, ...(heights.header !== null ? { header_height_mm: heights.header } : {}), ...(heights.footer !== null ? { footer_height_mm: heights.footer } : {}) },
       sample: true,
     }),
     400,

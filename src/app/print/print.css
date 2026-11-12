@@ -537,3 +537,15 @@
   color: var(--muted-foreground);
   font-size: var(--text-sm);
 }
+/* A part hidden for the previewed record (a thin dashed strip, or a column's hairline heading): selectable, said dashed. */
+.pd-hit[data-ghost="true"] {
+  outline: 1px dashed var(--warning);
+  outline-offset: 0;
+}
+.pd-hit[data-ghost="true"][data-selected="true"] {
+  outline: 2px dashed var(--primary);
+}
+.pd-outline [role="treeitem"][data-ghost="true"] > span:first-child {
+  color: var(--muted-foreground);
+  text-decoration: line-through dotted;
+}

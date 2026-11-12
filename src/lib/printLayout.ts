@@ -28,8 +28,11 @@ export interface Format {
   as?: (typeof FORMAT_AS)[number];
   decimals?: number;
   show?: "symbol" | "code" | "none";
-  date?: "short" | "long";
+  /** Default `medium` (29 Oct 2026; §12 item 36). */
+  date?: "short" | "medium" | "long";
   currency?: string;
+  /** Printed without its sign: always (`abs`), or when a condition holds (§12 items 27, 46). */
+  sign?: "abs" | { abs_when: Cel };
 }
 
 export interface Layout {
@@ -78,7 +81,7 @@ export type PageBreakBlock = Common & { type: "page_break" };
 export type Block = FieldBlock | HeadingBlock | TextBlock | ImageBlock | TableBlock | TotalsBlock | SignatureBlock | BarcodeBlock | CopyLabelBlock | DividerBlock | SpacerBlock | PageBreakBlock;
 export type BlockType = Block["type"];
 
-export interface TableColumn { id: Id; value: Value; label?: string; width_pct?: number; align?: Align; format?: Format; secondary?: Value; when?: Cel }
+export interface TableColumn { id: Id; value: Value; label?: string; width_pct?: number; align?: Align; format?: Format; secondary?: Value; when?: Cel; /** A zero prints as a blank cell (§12 item 28). */ hide_zero?: boolean }
 export interface TotalRow { label: string; value: Value; format?: Format; emphasis?: boolean; hide_zero?: boolean; when?: Cel }
 export interface Paragraph { align?: Align; spans: Span[] }
 export type Span = ({ t: string } | { v: Value; format?: Format }) & { b?: boolean; i?: boolean; u?: boolean };
@@ -147,12 +150,17 @@ export interface Catalogue {
   fields: CatField[];
   system: CatField[];
   tables: { path: Path; label: string; of: string; columns: CatField[] }[];
-  links: { path: Path; field: string; to: string; label: string; fields: CatField[] }[];
+  links: { path: Path; field: string; to: string; label: string; fields: CatField[]; tables?: Catalogue["tables"] }[];
   company?: CatField[];
+  /** The company's tables (`company.<table>`, §12 item 30). */
+  company_tables?: Catalogue["tables"];
   computed: CatField[];
   print: CatField[];
   settings: CatField[];
 }
+
+/** Every table a table block may print: the record's, a linked record's and the company's (§12 item 30). */
+export const allTables = (c: Catalogue): Catalogue["tables"] => [...c.tables, ...c.links.flatMap((l) => l.tables ?? []), ...(c.company_tables ?? [])];
 
 /** Every path a layout may name outside a table, with its catalogue entry. */
 export function pathIndex(c: Catalogue): Map<Path, CatField> {
@@ -465,7 +473,7 @@ export function newBlock(type: BlockType, l: Layout, value?: Path): Block {
 /** The block a catalogue entry makes when dropped: a table for a table (with its first columns), an image for an attach field,
  *  "in words" for a computed words value, else a field. */
 export function blockFromCatalogue(path: Path, c: Catalogue, l: Layout, computedFormat?: string): Block {
-  const table = c.tables.find((t) => t.path === path);
+  const table = allTables(c).find((t) => t.path === path);
   if (table) {
     const taken = new Set<string>();
     const cols: TableColumn[] = table.columns.slice(0, 5).map((x) => {
@@ -560,7 +568,7 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
     if (!p) return add(id, tr("{name}: choose a field.", { name: what }));
     if (p.startsWith("row.")) {
       if (!row) return add(id, tr("{name}: “{path}” is a line's field: it prints only in a table's columns.", { name: what, path: p }));
-      if (c && !c.tables.find((t) => t.path === row.table)?.columns.some((x) => x.path === p)) add(id, tr("{name}: the lines have no field “{path}”.", { name: what, path: p }));
+      if (c && !allTables(c).find((t) => t.path === row.table)?.columns.some((x) => x.path === p)) add(id, tr("{name}: the lines have no field “{path}”.", { name: what, path: p }));
       return;
     }
     if (row && p.startsWith("doc.") === false && !/^(links|company|settings|print)\./.test(p)) return add(id, tr("{name}: “{path}” is not a field.", { name: what, path: p }));
@@ -583,6 +591,7 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
     if (f.as && !FORMAT_AS.includes(f.as)) add(id, tr("{name}: “{as}” is not a way to print a value.", { name: what, as: f.as }));
     range(id, what, f.decimals, 0, 9, tr("decimals"));
     if (f.currency !== undefined && !/^[A-Z]{3}$/.test(f.currency)) add(id, tr("{name}: a currency is a three-letter code, like INR.", { name: what }));
+    if (f.sign && typeof f.sign === "object") cel(id, what, f.sign.abs_when);
   };
   const tokens = (id: Id, what: string, s: string) => {
     for (const m of s.matchAll(TOKEN)) path(id, what, m[1]);
@@ -652,7 +661,7 @@ export function validate(l: Layout, c?: Catalogue | null, o: { letterhead?: bool
             break;
           case "table": {
             path(b.id, bn, b.value);
-            if (c && b.value && !c.tables.some((t) => t.path === b.value)) add(b.id, tr("{name}: “{path}” is not a table of lines.", { name: bn, path: b.value }));
+            if (c && b.value && !allTables(c).some((t) => t.path === b.value)) add(b.id, tr("{name}: “{path}” is not a table of lines.", { name: bn, path: b.value }));
             if (b.columns.length < 1 || b.columns.length > 20) add(b.id, tr("{name}: a table has 1 to 20 columns.", { name: bn }));
             const ids = new Set(b.columns.map((x) => x.id));
             for (const x of b.totals ?? []) if (!ids.has(x)) add(b.id, tr("{name}: the totals row names a column it does not have.", { name: bn }));
@@ -773,6 +782,9 @@ export function languageName(tag: string, inLanguage = typeof document !== "unde
 // ── the dialog's choices and the person's memory (§6.1) ──
 
 export interface ChoiceTemplate { key: string; label?: string | null; output: string; kind?: "template" | "layout"; languages?: string[]; letterhead?: string; copies?: string[]; page?: { size: PaperSize; orientation: "portrait" | "landscape"; width_mm?: number; height_mm?: number } }
+/** What the preview answers besides the page (§12 item 40): the newest record the administrator may read. */
+export interface LatestRecord { id: string; title: string }
+
 export interface Choices {
   templates: ChoiceTemplate[];
   standard?: { label: string; page?: ChoiceTemplate["page"] };

@@ -21,13 +21,13 @@ import { Alert, announce, Button, confirmDialog, Dialog, Field, toast, useDeboun
 import { SaveStatus, StatePanel } from "../../ui/patterns";
 import { Toolbar, ToolbarButton, ToolbarGroup } from "../../ui/toolbar";
 import { LinkInput } from "../widgets";
+import { usePref } from "../../lib/prefs";
 import { record, redo, startHistory, undo, type Undoable } from "../designer/logic";
 import { Properties } from "./DesignerProps";
+import { readMarks, type Box, type SlotBox } from "./marks";
 import { useLetterheads } from "./LetterHeads";
 import { formatLink, formatsLink, openPdf, PaperFrame, preview, readFormat, saveFormat, useCatalogue, useWidth, type FormatRead } from "./shared";
 
-interface Box { id: Id; kind: "section" | "column" | "block" | "tcol"; x: number; y: number; w: number; h: number }
-interface SlotBox { slot: string; column: Id; index: number; x: number; y: number; w: number; h: number }
 type DragData = { from: "palette"; label: string; make: (l: Layout) => Block } | { from: "canvas"; id: Id; label: string };
 
 const ZOOMS = ["fit", "0.75", "1", "1.25"] as const;
@@ -52,7 +52,12 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
   const [conflict, setConflict] = useState(false);
   const [saveAs, setSaveAs] = useState(false);
   const [versions, setVersions] = useState(false);
-  const [record_, setRecord] = useState<string | null>(null);
+  // The record the canvas shows: the sample until another is chosen, remembered per format and person.
+  const recordPref = usePref<{ record?: string | null }>(`print-design:${def.key}`.slice(0, 120), {});
+  const record_ = recordPref.value.record ?? null;
+  const setRecord = (id: string | null) => recordPref.set({ record: id });
+  const [ghosts, setGhosts] = useState<Set<Id>>(() => new Set());
+  const [showAll, setShowAll] = useState(false);
   const [language, setLanguage] = useState("");
   const [letterhead, setLetterhead] = useState("none");
   const [zoom, setZoom] = useState<(typeof ZOOMS)[number]>("fit");
@@ -198,11 +203,12 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
 
   // ── the canvas's render ──
   const sent = useDebounced(JSON.stringify(toSave(def)), 250);
-  const ask = { template: JSON.parse(sent) as PrintFormat, record_id: record_, sample: !record_, mode: "design" as const, ...(language ? { language } : {}), letterhead };
+  const ask = { template: JSON.parse(sent) as PrintFormat, record_id: record_, sample: !record_, mode: "design" as const, ...(showAll ? { design: "all" as const } : {}), ...(language ? { language } : {}), letterhead };
   const render = useQuery({ queryKey: ["admin", "print", "design", ask], queryFn: ({ signal }) => preview(ask, signal), placeholderData: keepPreviousData, retry: false, enabled: !narrow });
   // The last page drawn stays on the canvas while a change the server refuses is fixed (the refusal is said above it).
   const drawn = useRef<string | null>(null);
   if (render.data?.content) drawn.current = render.data.content;
+  const latest = render.data?.latest_record ?? null;
   const testPrint = () => void openPdf(() => requestRaw("/api/admin/documents/preview", { method: "POST", body: { ...ask, mode: "print", format: "pdf" } })).catch((e) => toast(e instanceof ApiError && e.status === 503 ? tr("This server makes no PDFs: preview prints from the browser only.") : errorMessage(e), "error"));
 
   // ── drag and drop ──
@@ -297,6 +303,11 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
         <div style={{ flex: "1 1 220px", minWidth: 180, maxWidth: 320 }}>
           <LinkInput to={def.entity} value={record_} onChange={(id) => setRecord(id)} label={tr("Preview with record")} placeholder={tr("The sample record")} />
         </div>
+        {latest && latest.id !== record_ && <Button onClick={() => setRecord(latest.id)}>{tr("Latest: {title}", { title: latest.title })}</Button>}
+        {record_ && <Button variant="ghost" onClick={() => setRecord(null)}>{tr("Sample")}</Button>}
+        <Button aria-pressed={showAll} onClick={() => setShowAll(!showAll)} title={tr("Parts whose condition is false for this record are thin dashed strips; shown, they are drawn at full size, dimmed.")}>
+          {showAll ? tr("Hide hidden parts") : tr("Show hidden parts")}
+        </Button>
         <label className="sr-only" htmlFor={`${ids}-lh`}>{tr("Letter head in the preview")}</label>
         <select id={`${ids}-lh`} className="select" style={{ width: "auto" }} value={letterhead} onChange={(e) => setLetterhead(e.target.value)}>
           <option value="none">{tr("No letter head")}</option>
@@ -323,7 +334,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
         collisionDetection={collide} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
         <div className="pd">
           <aside className="pd-side" aria-label={tr("Fields and outline")}>
-            <Side layout={layout} cat={cat.data} catLoading={cat.isLoading} catError={cat.error} selected={selected} onSelect={(id) => (setSelected(id), setTab("selected"))} onAdd={addHere} readOnly={readOnly} onKey={onKey} />
+            <Side layout={layout} ghosts={ghosts} cat={cat.data} catLoading={cat.isLoading} catError={cat.error} selected={selected} onSelect={(id) => (setSelected(id), setTab("selected"))} onAdd={addHere} readOnly={readOnly} onKey={onKey} />
           </aside>
           <Canvas
             html={render.data?.content ?? drawn.current}
@@ -337,6 +348,7 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
             dragging={!!dragging}
             readOnly={readOnly}
             cat={cat.data}
+            onGhosts={setGhosts}
             onResize={(sec, i, delta) => {
               const next = resizeColumns(layout, sec, i, delta);
               if (next !== layout) act(next, tr("Columns of {name} are {widths}", { name: name(sec), widths: widthsOf(next.sections[locate(next, sec)!.s]).join(" : ") }));
@@ -360,6 +372,8 @@ export function Designer({ read, fresh }: { read?: FormatRead & { etag: string |
                   selected={selected}
                   cat={cat.data}
                   problems={problemsHere.filter((p) => p.id === selected)}
+                  ghost={!!selected && ghosts.has(selected)}
+                  showingAll={showAll}
                   letterheads={lhs.data ?? []}
                   pkg={readOnly}
                   onDef={(d, group) => change(d, group)}
@@ -437,9 +451,9 @@ function NarrowPreview({ def }: { def: PrintFormat }) {
 
 // ── the canvas ──
 
-function Canvas({ html, loading, error, page, zoom, layout, selected, onSelect, dragging, readOnly, cat, onResize, title }: {
+function Canvas({ html, loading, error, page, zoom, layout, selected, onSelect, dragging, readOnly, cat, onResize, onGhosts, title }: {
   html: string | null; loading: boolean; error: unknown; page?: PrintFormat["page"]; zoom: (typeof ZOOMS)[number]; layout: Layout; selected: Id | null; onSelect: (id: Id | null) => void;
-  dragging: boolean; readOnly: boolean; cat?: Catalogue; onResize: (section: Id, i: number, delta: number) => void; title: string;
+  dragging: boolean; readOnly: boolean; cat?: Catalogue; onResize: (section: Id, i: number, delta: number) => void; onGhosts: (ids: Set<Id>) => void; title: string;
 }) {
   const [wrap, width] = useWidth<HTMLDivElement>();
   const frame = useRef<HTMLIFrameElement>(null);
@@ -456,24 +470,9 @@ function Canvas({ html, loading, error, page, zoom, layout, selected, onSelect, 
     if (!doc?.body) return;
     const height = Math.max(ph, doc.documentElement.scrollHeight);
     if (frame.current) frame.current.style.height = `${height}px`;
-    const l = layoutRef.current;
-    const boxes: Box[] = [];
-    for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-b]"))) {
-      const id = el.dataset.b!;
-      const w = locate(l, id);
-      // A table column's id marks its heading and may mark its cells; a block repeats in every copy: the first one is the place.
-      if (!w || boxes.some((x) => x.id === id)) continue;
-      const r = el.getBoundingClientRect();
-      boxes.push({ id, kind: w.kind, x: r.left, y: r.top, w: r.width, h: r.height });
-    }
-    const slots: SlotBox[] = [];
-    for (const el of Array.from(doc.querySelectorAll<HTMLElement>("[data-slot]"))) {
-      const s = parseSlot(el.dataset.slot!);
-      if (!s || slots.some((x) => x.slot === el.dataset.slot)) continue;
-      const r = el.getBoundingClientRect();
-      slots.push({ slot: el.dataset.slot!, column: s.column, index: s.index, x: r.left, y: r.top, w: r.width, h: r.height });
-    }
+    const { boxes, slots, ghosts } = readMarks(doc, layoutRef.current);
     setMarks({ boxes, slots, height });
+    onGhosts(ghosts);
   }, [ph]);
   useEffect(() => {
     const f = frame.current;
@@ -534,7 +533,7 @@ function Canvas({ html, loading, error, page, zoom, layout, selected, onSelect, 
 }
 
 function Hit({ box, selected, onSelect }: { box: Box; selected: boolean; onSelect: (id: Id) => void }) {
-  return <div className="pd-hit" data-kind={box.kind} data-selected={selected} style={{ left: box.x, top: box.y, width: box.w, height: box.h }} onClick={(e) => (e.stopPropagation(), onSelect(box.id))} />;
+  return <div className="pd-hit" data-kind={box.kind} data-ghost={box.ghost || undefined} data-selected={selected} style={{ left: box.x, top: box.y, width: box.w, height: box.h }} onClick={(e) => (e.stopPropagation(), onSelect(box.id))} />;
 }
 
 function BlockHit({ box, layout, cat, selected, onSelect, readOnly }: { box: Box; layout: Layout; cat?: Catalogue; selected: boolean; onSelect: (id: Id) => void; readOnly: boolean }) {
@@ -542,7 +541,7 @@ function BlockHit({ box, layout, cat, selected, onSelect, readOnly }: { box: Box
   const label = w ? nodeName(nodeAt(layout, w), cat) : box.id;
   const d = useDraggable({ id: `block:${box.id}`, data: { from: "canvas", id: box.id, label } satisfies DragData, disabled: readOnly });
   return (
-    <div ref={d.setNodeRef} {...d.listeners} {...d.attributes} tabIndex={-1} role={undefined} className="pd-hit" data-kind="block" data-selected={selected} data-dragging={d.isDragging} title={label} style={{ left: box.x, top: box.y, width: box.w, height: Math.max(box.h, 8), zIndex: 2 }} onClick={(e) => (e.stopPropagation(), onSelect(box.id))}>
+    <div ref={d.setNodeRef} {...d.listeners} {...d.attributes} tabIndex={-1} role={undefined} className="pd-hit" data-kind="block" data-ghost={box.ghost || undefined} data-selected={selected} data-dragging={d.isDragging} title={label} style={{ left: box.x, top: box.y, width: box.w, height: Math.max(box.h, 8), zIndex: 2 }} onClick={(e) => (e.stopPropagation(), onSelect(box.id))}>
       {selected && !readOnly && <span className="pd-handle"><GripVertical size={14} /></span>}
     </div>
   );
@@ -599,8 +598,8 @@ function Chip({ id, label, hint, make, onAdd, disabled }: { id: string; label: s
 
 const BLOCK_TYPES: BlockType[] = ["heading", "text", "image", "table", "totals", "signature", "barcode", "copy_label", "divider", "spacer", "page_break"];
 
-function Side({ layout, cat, catLoading, catError, selected, onSelect, onAdd, readOnly, onKey }: {
-  layout: Layout; cat?: Catalogue; catLoading: boolean; catError: unknown; selected: Id | null; onSelect: (id: Id) => void; onAdd: (make: (l: Layout) => Block, label: string) => void; readOnly: boolean; onKey: (e: ReactKeyboardEvent) => void;
+function Side({ layout, ghosts, cat, catLoading, catError, selected, onSelect, onAdd, readOnly, onKey }: {
+  layout: Layout; ghosts: Set<Id>; cat?: Catalogue; catLoading: boolean; catError: unknown; selected: Id | null; onSelect: (id: Id) => void; onAdd: (make: (l: Layout) => Block, label: string) => void; readOnly: boolean; onKey: (e: ReactKeyboardEvent) => void;
 }) {
   const ids = useId();
   const [tab, setTab] = useState<"fields" | "outline">("fields");
@@ -652,14 +651,14 @@ function Side({ layout, cat, catLoading, catError, selected, onSelect, onAdd, re
         </div>
       ) : (
         <div className="pd-scroll" role="tabpanel" id={`${ids}-p-outline`} aria-labelledby={`${ids}-t-outline`}>
-          <Outline layout={layout} cat={cat} selected={selected} onSelect={onSelect} onKey={onKey} />
+          <Outline layout={layout} ghosts={ghosts} cat={cat} selected={selected} onSelect={onSelect} onKey={onKey} />
         </div>
       )}
     </>
   );
 }
 
-function Outline({ layout, cat, selected, onSelect, onKey }: { layout: Layout; cat?: Catalogue; selected: Id | null; onSelect: (id: Id) => void; onKey: (e: ReactKeyboardEvent) => void }) {
+function Outline({ layout, ghosts, cat, selected, onSelect, onKey }: { layout: Layout; ghosts: Set<Id>; cat?: Catalogue; selected: Id | null; onSelect: (id: Id) => void; onKey: (e: ReactKeyboardEvent) => void }) {
   const ids = useId();
   const tree = useRef<HTMLUListElement>(null);
   // The selection moves by keys (or a move re-renders the tree): focus follows it while it is in the tree.
@@ -667,9 +666,12 @@ function Outline({ layout, cat, selected, onSelect, onKey }: { layout: Layout; c
     if (!tree.current?.contains(document.activeElement) || !selected) return;
     document.getElementById(`${ids}-${selected}`)?.focus();
   }, [selected, layout, ids]);
-  const item = (id: Id, label: string, level: number, extra?: string) => (
+  // A part whose condition is false for the previewed record says so, and why (its condition).
+  const extraOf = (id: Id, when?: string) => (ghosts.has(id) ? tr("hidden here") : when ? tr("when …") : undefined);
+  const titleOf = (id: Id, when?: string) => (when ? (ghosts.has(id) ? tr("Hidden for this record: {condition} is false", { condition: when }) : tr("Prints when {condition}", { condition: when })) : undefined);
+  const item = (id: Id, label: string, level: number, extra?: string, title?: string) => (
     <li key={id} role="none">
-      <div role="treeitem" id={`${ids}-${id}`} aria-level={level} aria-selected={selected === id} tabIndex={selected === id || (!selected && id === layout.sections[0]?.id) ? 0 : -1} style={{ paddingInlineStart: 6 + (level - 1) * 14 }} onClick={() => onSelect(id)} onFocus={() => selected !== id && onSelect(id)}>
+      <div role="treeitem" id={`${ids}-${id}`} aria-level={level} aria-selected={selected === id} tabIndex={selected === id || (!selected && id === layout.sections[0]?.id) ? 0 : -1} data-ghost={ghosts.has(id) || undefined} title={title} aria-description={title} style={{ paddingInlineStart: 6 + (level - 1) * 14 }} onClick={() => onSelect(id)} onFocus={() => selected !== id && onSelect(id)}>
         <span>{isolate(label)}</span>
         {extra && <span className="muted-id">{extra}</span>}
       </div>
@@ -678,10 +680,10 @@ function Outline({ layout, cat, selected, onSelect, onKey }: { layout: Layout; c
   return (
     <ul ref={tree} role="tree" aria-label={tr("The layout, section by section")} className="pd-outline" onKeyDown={onKey}>
       {layout.sections.map((s, si) => [
-        item(s.id, s.title || tr("Section {n}", { n: si + 1 }), 1, s.columns.length > 1 ? tr("{n} columns", { n: s.columns.length }) : undefined),
+        item(s.id, s.title || tr("Section {n}", { n: si + 1 }), 1, extraOf(s.id, s.when) ?? (s.columns.length > 1 ? tr("{n} columns", { n: s.columns.length }) : undefined), titleOf(s.id, s.when)),
         ...s.columns.flatMap((c, ci) => [
           ...(s.columns.length > 1 ? [item(c.id, tr("Column {n}", { n: ci + 1 }), 2)] : []),
-          ...c.blocks.map((b) => item(b.id, nodeName(b, cat), s.columns.length > 1 ? 3 : 2, b.when ? tr("when …") : undefined)),
+          ...c.blocks.map((b) => item(b.id, nodeName(b, cat), s.columns.length > 1 ? 3 : 2, extraOf(b.id, b.when), titleOf(b.id, b.when))),
         ]),
       ])}
     </ul>
