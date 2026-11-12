@@ -1,374 +1,208 @@
-// The workspace's connections to outside systems, one card each. Every part of a connection's health
-// shows on its own, with what can be done about it beside it: there is no single "Connected".
+// Connections to outside services (Administration → Connections; BD-29 to BD-33): the workspace's list with each one's state,
+// the editor (structured and raw), and for a saved one the tools: try an operation, a timed capture, the call log, pulls and
+// the inbound address. `MyConnections` is a person's own: connect (the provider's page, by the broker's redirect), state,
+// disconnect. The logic is lib/connectionDraft.ts.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
-import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
-import { ago, connectionFacts, type ConnectionHealth, type Run, runWords } from "../lib/connections";
-import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
+import { useState } from "react";
 import { t, isolate } from "@ferrum/client";
+import { api, errorMessage } from "../lib/api";
+import { connectionState, personalState, STATE, type ConnectionRow, type PersonalConnection } from "../lib/connectionDraft";
+import { formatMoment } from "../lib/format";
+import { Alert, Badge, Button, confirmDialog, EmptyState, Tabs, TabPanel, toast } from "../ui/kit";
+import { ListSkeleton, LoadFailed } from "../ui/patterns";
+import { ConnectionEditor } from "./ConnectionEditor";
+import { Capture, InboundAddress, Log, PullsPanel, Try } from "./ConnectionTools";
 
-interface Connector {
-  provider: string;
-  label: string;
-  family?: string;
-  api_version?: string;
-  requirements?: string;
-  capabilities?: string[];
-  streams?: string[];
-}
+const TOOLS = () => [
+  { id: "try", label: t("Try") },
+  { id: "capture", label: t("Capture") },
+  { id: "log", label: t("Call log") },
+  { id: "pulls", label: t("Pulls") },
+  { id: "inbound", label: t("Inbound") },
+];
 
-interface ConnectionRow {
-  id: string;
-  provider: string;
-  name: string;
-  enabled: boolean;
-  linked?: number;
-  last_error?: string | null;
-  health: ConnectionHealth;
-}
-
-interface Drift {
-  id: string;
-  stream: string;
-  external_id: string;
-  kind: string;
-  resolved_at?: string | null;
-}
-
-const KINDS: Record<string, string> = {
-  get conflict() { return t("Changed on both sides"); },
-  get refused() { return t("Refused here"); },
-  get differs() { return t("Differs"); },
-  get missing_here() { return t("Only at the provider"); },
-  get missing_there() { return t("Only here"); },
-};
-
-const words = (capability: string) => capability.replace(/_/g, " ");
-
-function Differences({ id, onChange }: { id: string; onChange: () => void }) {
-  const q = useQuery({ queryKey: ["connection-drift", id], queryFn: ({ signal }) => api.get<{ drift: Drift[] }>(`/api/admin/connections/${id}/drift`, undefined, signal) });
-  if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  if (!q.data) return <PageLoading />;
-  const open = q.data.drift.filter((d) => !d.resolved_at);
-  if (!open.length) return <p className="muted">{t("Nothing is waiting for a person.")}</p>;
-  const resolve = async (d: Drift) => {
-    try {
-      await api.post(`/api/admin/connection-drift/${d.id}/resolve`, {});
-      await q.refetch();
-      onChange();
-    } catch (e) {
-      toast(errorMessage(e), "error");
-    }
-  };
+function Tools({ row, refresh }: { row: ConnectionRow; refresh: () => void }) {
+  const [tab, setTab] = useState("try");
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>{t("What")}</th>
-          <th>{t("Stream")}</th>
-          <th>{t("Their record")}</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        {open.map((d) => (
-          <tr key={d.id}>
-            <td>{KINDS[d.kind] ?? d.kind}</td>
-            <td>{isolate(d.stream)}</td>
-            <td className="mono">{isolate(d.external_id)}</td>
-            <td className="num">
-              <Button size="sm" onClick={() => void resolve(d)}>
-                {t("Dealt with")}
-              </Button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <section className="card stack" aria-label={t("Tools for {name}", { name: row.label })}>
+      <Tabs id="conn-tools" tabs={TOOLS()} value={tab} onChange={setTab} />
+      <TabPanel id="conn-tools" tab={tab}>
+        {tab === "try" && <Try row={row} />}
+        {tab === "capture" && <Capture row={row} onChange={refresh} />}
+        {tab === "log" && <Log row={row} />}
+        {tab === "pulls" && <PullsPanel row={row} />}
+        {tab === "inbound" && <InboundAddress row={row} />}
+      </TabPanel>
+    </section>
   );
 }
 
-/** What the connection did lately (each read, send and comparison, and how it went) with a failed
- * one tried again, and how many records each stream links. */
-function History({ id, onChange }: { id: string; onChange: () => void }) {
-  const q = useQuery({
-    queryKey: ["connection-activity", id],
-    queryFn: ({ signal }) => api.get<{ runs: Run[]; streams: { stream: string; entity: string; records: number; last_synced?: string | null }[] }>(`/api/admin/connections/${id}/activity`, undefined, signal),
-  });
-  const [busy, setBusy] = useState<string | null>(null);
-  if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  if (!q.data) return <PageLoading />;
-  const again = async (r: Run) => {
-    setBusy(r.id);
-    try {
-      await api.post(`/api/jobs/${r.id}/retry`, {});
-      toast(t("Tried again"));
-      await q.refetch();
-      onChange();
-    } catch (e) {
-      toast(errorMessage(e), "error");
-    } finally {
-      setBusy(null);
-    }
-  };
-  const now = new Date();
-  return (
-    <div className="stack">
-      {q.data.streams.length > 0 && (
-        <p className="muted">
-          {isolate(q.data.streams.map((s) => `${s.stream}: ${s.records.toLocaleString()} ${s.entity} ${s.records === 1 ? "record" : "records"}`).join(" · "))}
-        </p>
-      )}
-      {q.data.runs.length === 0 ? (
-        <p className="muted">{t("It has done nothing yet.")}</p>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t("What")}</th>
-              <th>{t("How it went")}</th>
-              <th>{t("When")}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {q.data.runs.map((r) => {
-              const w = runWords(r);
-              return (
-                <tr key={r.id}>
-                  <td>{isolate(w.what)}</td>
-                  <td>
-                    <Badge tone={w.tone}>{isolate(r.status)}</Badge>
-                    {r.last_error ? <span className="muted"> {isolate(r.last_error)}</span> : null}
-                  </td>
-                  <td>{isolate(ago(r.finished_at ?? r.created_at, now))}</td>
-                  <td className="num">
-                    {w.again && (
-                      <Button size="sm" loading={busy === r.id} onClick={() => void again(r)}>
-                        {t("Try again")}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
+function signInOf(c: ConnectionRow): "workspace" | "person" | null {
+  const a = c.description.auth;
+  return a?.type === "oauth" ? (a.owner === "person" ? "person" : "workspace") : null;
 }
 
-function ConnectionCard({ c, connector, refresh }: { c: ConnectionRow; connector?: Connector; refresh: () => void }) {
-  const [showing, setShowing] = useState(false);
-  const [history, setHistory] = useState(false);
+export function Connections() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "connections"], queryFn: ({ signal }) => api.get<{ connections: ConnectionRow[] }>("/api/admin/connections", undefined, signal) });
+  const [editing, setEditing] = useState<ConnectionRow | "new" | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const facts = connectionFacts(c.health, new Date());
-  const run = async (what: string, call: () => Promise<unknown>, done: string) => {
-    setBusy(what);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["admin", "connections"] });
+  if (q.isLoading) return <ListSkeleton rows={4} />;
+  if (q.error || !q.data) return <LoadFailed error={q.error} onRetry={() => void q.refetch()} />;
+  const rows = q.data.connections;
+  if (editing) {
+    return (
+      <ConnectionEditor
+        key={editing === "new" ? "new" : (editing.id ?? editing.name)}
+        row={editing === "new" ? null : editing}
+        onClose={() => setEditing(null)}
+        onSaved={(id) => {
+          setEditing(null);
+          if (id) setOpen(id);
+          refresh();
+          toast(t("Saved"));
+        }}
+      />
+    );
+  }
+  const act = async (key: string, call: () => Promise<unknown>, done?: string) => {
+    if (busy) return;
+    setBusy(key);
+    setError(null);
     try {
-      await call();
-      toast(done);
+      const r = await call();
+      if (done) toast(done);
+      return r;
     } catch (e) {
-      toast(errorMessage(e), "error");
+      setError(errorMessage(e));
     } finally {
       setBusy(null);
       refresh();
     }
   };
-  const disconnect = async () => {
-    const ok = await confirmDialog({
-      title: t("Disconnect {name}?", { name: c.name }),
-      message: t("It stops at once and its credentials are forgotten. What it brought in stays, and connecting again finds it."),
-      confirmLabel: t("Disconnect"),
-      danger: true,
+  const remove = async (c: ConnectionRow) => {
+    const ok = await confirmDialog({ title: t("Delete {name}?", { name: c.label }), message: t("Apps and buttons that call it stop working. Its secrets and sign-ins are forgotten."), confirmLabel: t("Delete"), danger: true });
+    if (ok) await act(`del:${c.id}`, () => api.del(`/api/admin/connections/${c.id}`), t("Deleted"));
+  };
+  const connect = (c: ConnectionRow) =>
+    void act(`connect:${c.id}`, async () => {
+      const { url } = await api.post<{ url: string }>(`/api/connections/${c.id}/connect`);
+      location.assign(url);
     });
-    if (ok) await run("disconnect", () => api.del(`/api/admin/connections/${c.id}`), t("{name} disconnected", { name: c.name }));
+  const disconnect = async (c: ConnectionRow) => {
+    const ok = await confirmDialog({ title: t("Disconnect {name}?", { name: c.label }), message: t("Its sign-in is forgotten, and revoked at the provider where it allows that."), confirmLabel: t("Disconnect"), danger: true });
+    if (ok) await act(`disconnect:${c.id}`, () => api.del(`/api/connections/${c.id}/connect`), t("Disconnected"));
   };
-  return (
-    <section className="card connection" aria-label={c.name}>
-      <header className="connection-head">
-        <div>
-          <h3>{isolate(c.name)}</h3>
-          <p className="muted">
-            {isolate(connector?.label ?? c.provider)}
-            {connector?.api_version ? t(" · API {api_version}", { api_version: connector.api_version }) : ""}
-            {c.linked ? (c.linked === 1 ? t(" · {value} record linked", { value: c.linked.toLocaleString() }) : t(" · {value} records linked", { value: c.linked.toLocaleString() })) : ""}
-          </p>
-        </div>
-        <div className="row">
-          <Button size="sm" loading={busy === "test"} onClick={() => void run("test", () => api.post(`/api/admin/connections/${c.id}/test`, {}), t("It works"))}>
-            {t("Test")}
-          </Button>
-          <Button size="sm" disabled={!c.enabled} loading={busy === "sync"} onClick={() => void run("sync", () => api.post(`/api/admin/connections/${c.id}/sync`, {}), t("Sync queued"))}>
-            {t("Sync now")}
-          </Button>
-          <Button size="sm" disabled={!c.enabled} loading={busy === "compare"} onClick={() => void run("compare", () => api.post(`/api/admin/connections/${c.id}/reconcile`, {}), t("Comparison queued"))}>
-            {t("Compare")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void disconnect()}>
-            {t("Disconnect")}
-          </Button>
-        </div>
-      </header>
-      <dl className="connection-facts">
-        {facts.map((f) => (
-          <div key={f.label} data-tone={f.tone} title={f.detail}>
-            <dt>{isolate(f.label)}</dt>
-            <dd>{isolate(f.value)}</dd>
-          </div>
-        ))}
-      </dl>
-      {c.last_error && <Alert tone="error">{isolate(c.last_error)}</Alert>}
-      {!!c.health.drift && (
-        <div className="connection-more">
-          <button type="button" className="link-btn" aria-expanded={showing} onClick={() => setShowing((s) => !s)}>
-            {showing ? t("Hide the differences") : (c.health.drift === 1 ? t("See the {drift} difference", { drift: c.health.drift }) : t("See the {drift} differences", { drift: c.health.drift }))}
-          </button>
-          {showing && <Differences id={c.id} onChange={refresh} />}
-        </div>
-      )}
-      <div className="connection-more">
-        <button type="button" className="link-btn" aria-expanded={history} onClick={() => setHistory((s) => !s)}>
-          {history ? t("Hide what it did") : t("See what it did lately")}
-        </button>
-        {history && <History id={c.id} onChange={refresh} />}
-      </div>
-      {!!connector?.capabilities?.length && (
-        <div className="connection-can">
-          <span className="faint">{t("Can")}</span>
-          {connector.capabilities.map((k) => (
-            <Badge key={k}>{isolate(words(k))}</Badge>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-const asJson = (text: string, field: string) => {
-  if (!text.trim()) return undefined;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    throw new ApiError(422, "invalid", t("{field} is not valid JSON", { field }), [{ field, message: t("is not valid JSON") }] as FieldError[]);
-  }
-};
-
-function AddConnection({ connector, onClose, onDone }: { connector: Connector; onClose: () => void; onDone: () => void }) {
-  const [name, setName] = useState(connector.label);
-  const [config, setConfig] = useState("{}");
-  const [credentials, setCredentials] = useState("{}");
-  const [mapping, setMapping] = useState("{}");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post("/api/admin/connections", { provider: connector.provider, name, config: asJson(config, "config"), credentials: asJson(credentials, "credentials"), mapping: asJson(mapping, "mapping") ?? {} });
-      onDone();
-    } catch (err) {
-      setError(errorMessage(err));
-      setBusy(false);
-    }
-  };
-  return (
-    <Dialog open onClose={onClose} title={t("Connect {label}", { label: connector.label })}>
-      <form className="stack" onSubmit={submit}>
-        {error && <Alert tone="error">{isolate(error)}</Alert>}
-        {connector.requirements && <Alert tone="warning">{isolate(connector.requirements)}</Alert>}
-        <Field label={t("Name")} htmlFor="connection-name" required>
-          <input id="connection-name" className="input" required value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label={t("Settings")} htmlFor="connection-config" hint={t("As this connector's guide describes them, in JSON.")}>
-          <textarea id="connection-config" className="textarea mono" rows={3} value={config} onChange={(e) => setConfig(e.target.value)} />
-        </Field>
-        <Field label={t("Credentials")} htmlFor="connection-credentials" hint={t("Sealed when saved and never shown again.")}>
-          <textarea id="connection-credentials" className="textarea mono" rows={3} autoComplete="off" spellCheck={false} value={credentials} onChange={(e) => setCredentials(e.target.value)} />
-        </Field>
-        <Field label={t("What goes where")} htmlFor="connection-mapping" hint={t("Which of its streams land in which records, in JSON (docs/connectors.md).")}>
-          <textarea id="connection-mapping" className="textarea mono" rows={5} value={mapping} onChange={(e) => setMapping(e.target.value)} />
-        </Field>
-        <p className="muted">{t("It stays off until a test proves it works.")}</p>
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={onClose}>{t("Cancel")}</Button>
-          <Button type="submit" variant="primary" loading={busy}>
-            {t("Save")}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-export function Connections() {
-  const qc = useQueryClient();
-  const [adding, setAdding] = useState<Connector | null>(null);
-  // Every few seconds while something waits to go (a queued sync or comparison), else twice a minute.
-  const connections = useQuery({
-    queryKey: ["connections"],
-    queryFn: ({ signal }) => api.get<{ connections: ConnectionRow[] }>("/api/admin/connections", undefined, signal),
-    refetchInterval: (q) => (q.state.data?.connections.some((c) => (c.health?.backlog ?? 0) > 0) ? 3000 : 30_000),
-  });
-  const connectors = useQuery({ queryKey: ["connectors"], queryFn: ({ signal }) => api.get<{ connectors: Connector[] }>("/api/admin/connectors", undefined, signal) });
-  const refresh = () => void qc.invalidateQueries({ queryKey: ["connections"] });
-  if (connections.error) return <ErrorState error={connections.error} onRetry={() => void connections.refetch()} />;
-  if (!connections.data || !connectors.data) return <PageLoading />;
-  const rows = connections.data.connections;
-  const offered = connectors.data.connectors;
   return (
     <div className="stack">
-      {rows.length ? (
-        rows.map((c) => <ConnectionCard key={c.id} c={c} connector={offered.find((o) => o.provider === c.provider)} refresh={refresh} />)
-      ) : (
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+        <p className="muted">{t("One described service the workspace calls, is called by, pulls from and signs in to.")}</p>
+        <Button variant="primary" onClick={() => setEditing("new")}>{t("New connection")}</Button>
+      </div>
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      {rows.length === 0 && (
         <EmptyState title={t("Nothing is connected yet")} icon="file">
-          <p className="muted">{t("A connection links this workspace to an account at another system.")}</p>
+          <p className="muted">{t("Describe a service, or install a package that offers one.")}</p>
         </EmptyState>
       )}
-      <section aria-labelledby="connectors-available">
-        <h3 id="connectors-available" className="connection-title">
-          {t("Available here")}
-        </h3>
-        {offered.length ? (
-          <ul className="connector-list">
-            {offered.map((o) => (
-              <li key={o.provider} className="card">
-                <div>
-                  <strong>{isolate(o.label)}</strong>
-                  <p className="muted">
-                    {t("{family} · API {api_version}", { family: o.family ?? "", api_version: o.api_version ?? "" })}
-                  </p>
-                  {o.requirements && <p className="muted">{isolate(o.requirements)}</p>}
-                  <p className="connection-can">
-                    {(o.capabilities ?? []).map((k) => (
-                      <Badge key={k}>{isolate(words(k))}</Badge>
-                    ))}
-                  </p>
+      <ul className="stack" aria-label={t("Connections")} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {rows.map((c) => {
+          const s = connectionState(c);
+          const who = signInOf(c);
+          const key = c.id ?? `offered:${c.name}`;
+          return (
+            <li key={key} className="stack">
+              <section className="card connection" aria-label={c.label}>
+                <header className="connection-head">
+                  <div>
+                    <h3>{isolate(c.label)}</h3>
+                    <p className="muted mono">{isolate(c.name)}{c.source ? <span className="faint"> · {isolate(c.source)}</span> : null}</p>
+                  </div>
+                  <div className="row" style={{ flexWrap: "wrap" }}>
+                    {c.offered ? <Badge>{t("Offered by a package")}</Badge> : <Badge tone={STATE[s].tone}>{STATE[s].label}</Badge>}
+                    {c.account?.account && <span className="muted">{isolate(c.account.account)}</span>}
+                    {c.account?.expires_at && <span className="faint">{t("Sign-in until {at}", { at: formatMoment(c.account.expires_at, { dateStyle: "medium", timeStyle: "short" }) })}</span>}
+                  </div>
+                </header>
+                <div className="row" style={{ flexWrap: "wrap" }}>
+                  <Button size="sm" onClick={() => setEditing(c)}>{c.offered ? t("Take it up") : t("Edit")}</Button>
+                  {!c.offered && <Button size="sm" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>{t("Try, log and pulls")}</Button>}
+                  {!c.offered && who === "workspace" && (
+                    <Button size="sm" loading={busy === `connect:${c.id}`} disabled={!!busy} onClick={() => connect(c)}>{s === "reconnect" ? t("Connect again") : c.account ? t("Reconnect") : t("Connect")}</Button>
+                  )}
+                  {!c.offered && who === "workspace" && c.account && (
+                    <Button size="sm" variant="ghost" loading={busy === `disconnect:${c.id}`} disabled={!!busy} onClick={() => void disconnect(c)}>{t("Disconnect")}</Button>
+                  )}
+                  {!c.offered && <Button size="sm" variant="danger" loading={busy === `del:${c.id}`} disabled={!!busy} onClick={() => void remove(c)}>{t("Delete")}</Button>}
                 </div>
-                <Button size="sm" onClick={() => setAdding(o)}>
-                  {t("Connect")}
+                {!c.offered && !!c.refused && <p className="muted">{t("{n} calls to its inbound address were refused.", { n: c.refused })}</p>}
+                {c.secrets.length > 0 && <p className="faint">{t("Secrets set: {names}", { names: c.secrets.join(", ") })}</p>}
+              </section>
+              {open === c.id && c.id && <Tools row={c} refresh={refresh} />}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** A person's own connections: the accounts they sign in to for themselves (their mailbox), connected from here. */
+export function MyConnections() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["connections", "mine"], queryFn: ({ signal }) => api.get<{ connections: PersonalConnection[] }>("/api/connections", undefined, signal) });
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (q.isLoading) return <ListSkeleton rows={2} />;
+  if (q.error || !q.data) return <LoadFailed error={q.error} onRetry={() => void q.refetch()} />;
+  const go = async (c: PersonalConnection, kind: "connect" | "disconnect") => {
+    if (busy) return;
+    if (kind === "disconnect" && !(await confirmDialog({ title: t("Disconnect {name}?", { name: c.label }), message: t("Your sign-in is forgotten, and revoked at the provider where it allows that."), confirmLabel: t("Disconnect"), danger: true }))) return;
+    setBusy(c.id);
+    setError(null);
+    try {
+      if (kind === "connect") {
+        const { url } = await api.post<{ url: string }>(`/api/connections/${c.id}/connect`);
+        location.assign(url);
+        return;
+      }
+      await api.del(`/api/connections/${c.id}/connect`);
+      toast(t("Disconnected"));
+      await qc.invalidateQueries({ queryKey: ["connections", "mine"] });
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (!q.data.connections.length) return <p className="muted">{t("Nothing here asks you to connect an account.")}</p>;
+  return (
+    <div className="stack">
+      {error && <Alert tone="error">{isolate(error)}</Alert>}
+      <ul className="stack" aria-label={t("My connections")} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {q.data.connections.map((c) => {
+          const s = personalState(c);
+          return (
+            <li key={c.id} className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+              <div>
+                <strong>{isolate(c.label)}</strong>{" "}
+                <Badge tone={s === "connected" ? "green" : s === "reconnect" ? "amber" : "neutral"}>{s === "connected" ? t("Connected") : s === "reconnect" ? t("Needs reconnecting") : t("Not connected")}</Badge>
+                {c.account && <span className="muted"> {isolate(c.account)}</span>}
+              </div>
+              <div className="row">
+                <Button size="sm" variant={s === "connected" ? "default" : "primary"} loading={busy === c.id} disabled={!!busy} onClick={() => void go(c, "connect")}>
+                  {s === "connected" ? t("Reconnect") : s === "reconnect" ? t("Connect again") : t("Connect")}
                 </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">{t("No connector is installed in this workspace. They come with apps and plugins.")}</p>
-        )}
-      </section>
-      {adding && (
-        <AddConnection
-          connector={adding}
-          onClose={() => setAdding(null)}
-          onDone={() => {
-            setAdding(null);
-            refresh();
-            toast(t("Saved. Test it to turn it on."));
-          }}
-        />
-      )}
+                {s !== "none" && <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => void go(c, "disconnect")}>{t("Disconnect")}</Button>}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
