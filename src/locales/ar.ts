@@ -4245,6 +4245,15 @@ const words: Record<string, string> = {
   "You have no away period set.": "لا توجد لديك فترة غياب محددة.",
   "Away periods": "فترات الغياب",
   "Now": "الآن",
+  "Not done": "لم يُنفَّذ",
+  "Everyone agreed, but it could not be done: {reason}": "وافق الجميع، لكن تعذّر التنفيذ: {reason}",
+  "no reason was given": "لم يُذكر سبب",
+  "Fix what it names and press {action} on the record again to ask again.": "أصلح ما ذُكر ثم اضغط {action} في السجل مجددًا لتطلب من جديد.",
+  "Fix what it names and take “{action}” again to ask again.": "أصلح ما ذُكر ثم نفّذ «{action}» مجددًا لتطلب من جديد.",
+  "The person who asked can ask again.": "يمكن لمن طلب أن يطلب مجددًا.",
+  "Reminded": "تم التذكير",
+  "Escalated": "تم التصعيد",
+  "waiting since": "في الانتظار منذ",
 };
 
 export default words;
