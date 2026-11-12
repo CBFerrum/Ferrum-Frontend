@@ -538,9 +538,10 @@
   font-size: var(--text-sm);
 }
 /* A part hidden for the previewed record (a thin dashed strip, or a column's hairline heading): selectable, said dashed. */
-.pd-hit[data-ghost="true"] {
-  outline: 1px dashed var(--warning);
-  outline-offset: 0;
+/* The platform draws a ghost as a dashed strip already: the overlay adds nothing at rest, only on hover and selection. */
+.pd-hit[data-ghost="true"]:hover {
+  outline: 1px dashed var(--primary);
+  outline-offset: 1px;
 }
 .pd-hit[data-ghost="true"][data-selected="true"] {
   outline: 2px dashed var(--primary);
