@@ -3,13 +3,13 @@
 // template editor's preview with `sandbox=""`; the designer's own canvas reads its marks and is in Designer.tsx.
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { t as tr } from "@ferrum/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, errorMessage, requestRaw, withPrintCsp } from "../../lib/api";
 import { useMe, useServerInfo } from "../../lib/meta";
-import { MM_PX, paperMm, type Catalogue, type PageSetup, type PrintFormat } from "../../lib/printLayout";
-import { Alert, Spinner } from "../../ui/kit";
+import { DEFAULT_MARGINS, MM_PX, paperMm, type Catalogue, type PageSetup, type PaperSize, type PrintFormat } from "../../lib/printLayout";
+import { Alert, Field, Spinner } from "../../ui/kit";
 import { StatePanel } from "../../ui/patterns";
 import "./print.css";
 
@@ -201,3 +201,47 @@ export function PaperFrame({ html, page, loading, error, title, maxScale = 1, fi
     </div>
   );
 }
+
+/** Paper and margins; none: the print settings' (a template with no page keeps its own @page). */
+export function PageFields({ page, onChange }: { page?: PageSetup; onChange: (p: Partial<PageSetup> | null) => void }) {
+  const ids = useId();
+  const m = page?.margin_mm ?? DEFAULT_MARGINS;
+  return (
+    <fieldset className="stack" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+      <legend className="field-label">{tr("Paper")}</legend>
+      <div className="pd-row">
+        <Field label={tr("Size")} htmlFor={`${ids}-size`}>
+          <select id={`${ids}-size`} className="select" value={page?.size ?? ""} onChange={(e) => onChange(e.target.value ? { size: e.target.value as PaperSize } : null)}>
+            <option value="">{tr("The print settings'")}</option>
+            {(["A4", "A5", "A3", "Letter", "Legal", "Custom"] as const).map((s) => <option key={s} value={s}>{s === "Custom" ? tr("Custom") : s}</option>)}
+          </select>
+        </Field>
+        {page && (
+          <Field label={tr("Orientation")} htmlFor={`${ids}-or`}>
+            <select id={`${ids}-or`} className="select" value={page.orientation} onChange={(e) => onChange({ orientation: e.target.value as PageSetup["orientation"] })}>
+              <option value="portrait">{tr("Portrait")}</option>
+              <option value="landscape">{tr("Landscape")}</option>
+            </select>
+          </Field>
+        )}
+      </div>
+      {page?.size === "Custom" && (
+        <div className="pd-row">
+          <Field label={tr("Width (mm)")} htmlFor={`${ids}-w`}><input id={`${ids}-w`} className="input" type="number" min={40} max={600} value={page.width_mm ?? 210} onChange={(e) => onChange({ width_mm: Number(e.target.value) })} /></Field>
+          <Field label={tr("Height (mm)")} htmlFor={`${ids}-h`}><input id={`${ids}-h`} className="input" type="number" min={40} max={600} value={page.height_mm ?? 297} onChange={(e) => onChange({ height_mm: Number(e.target.value) })} /></Field>
+        </div>
+      )}
+      {page && (
+        <div className="pd-row">
+          {(["top", "right", "bottom", "left"] as const).map((side) => (
+            <Field key={side} label={{ top: tr("Top"), right: tr("Right"), bottom: tr("Bottom"), left: tr("Left") }[side]} htmlFor={`${ids}-m-${side}`}>
+              <input id={`${ids}-m-${side}`} className="input" type="number" min={0} max={50} value={m[side]} onChange={(e) => onChange({ margin_mm: { ...m, [side]: Math.max(0, Math.min(50, Number(e.target.value))) } })} />
+            </Field>
+          ))}
+        </div>
+      )}
+      {page && <p className="field-hint">{tr("Margins in millimetres, 0 to 50.")}</p>}
+    </fieldset>
+  );
+}
+

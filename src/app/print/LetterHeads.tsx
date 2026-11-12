@@ -230,14 +230,17 @@ function Editor({ doc }: { doc: Doc | null }) {
       />
       {!read && <Alert tone="warning">{tr("This letter head was made another way. Saving here replaces its header and footer with what this form shows.")}</Alert>}
       {problems.length > 0 && <Alert tone="error"><strong>{tr("The letter head was not saved")}</strong><ul>{problems.map((p, i) => <li key={i}>{isolate(p)}</li>)}</ul></Alert>}
-      <div className="split-side">
+      <div className="split-2">
         <div className="stack">
           <section className="card">
             <div className="card-body stack">
               <Field label={tr("Name")} htmlFor={`${ids}-name`} required>
                 <input id={`${ids}-name`} className="input" maxLength={80} value={name} onChange={(e) => change(setName)(e.target.value)} />
               </Field>
-              <LinkInput to="Company" value={company} onChange={(v) => change(setCompany)(v)} label={tr("Company")} placeholder={tr("Empty: the workspace's")} />
+              <div className="field">
+                <span className="field-label" aria-hidden="true">{tr("Company")}</span>
+                <LinkInput to="Company" value={company} onChange={(v) => change(setCompany)(v)} label={tr("Company")} placeholder={tr("Empty: the workspace's")} />
+              </div>
               <fieldset className="stack" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
                 <legend className="field-label">{tr("Logo")}</legend>
                 {!doc ? (
