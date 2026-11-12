@@ -337,7 +337,7 @@ function LetterHeadPreview({ form, entities, id, company, heights }: { form: Let
     }),
     400,
   );
-  const q = useQuery({ queryKey: ["admin", "print", "lh-preview", ask], queryFn: ({ signal }) => preview(JSON.parse(ask) as PreviewAsk, signal), enabled: !!ent, placeholderData: keepPreviousData, retry: false });
+  const q = useQuery({ queryKey: ["admin", "print", "lh-preview", ask], queryFn: ({ signal }) => preview(JSON.parse(ask) as PreviewAsk, signal), enabled: !!ent && ask.includes(`"entity":${JSON.stringify(ent)}`), placeholderData: keepPreviousData, retry: false });
   return (
     <section className="card" aria-labelledby={`${ids}-h`}>
       <div className="card-head"><h2 id={`${ids}-h`}>{tr("Preview")}</h2></div>
