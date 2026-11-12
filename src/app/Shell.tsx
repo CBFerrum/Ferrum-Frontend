@@ -763,6 +763,14 @@ function UserMenu() {
             <MenuItem
               onSelect={() => {
                 close();
+                navigate("/approvals");
+              }}
+            >
+              {tr("Approvals")}
+            </MenuItem>
+            <MenuItem
+              onSelect={() => {
+                close();
                 setDialog("password");
               }}
             >
