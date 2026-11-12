@@ -89,7 +89,7 @@ export default function QueryInput(p: ControlProps) {
   if (disabled || asJson || noStudio)
     return (
       <div className="stack">
-        {noStudio && !disabled && <p className="field-hint">{t("Studio builds this query. Once Studio is installed (Apps, Store), it is built here; until then it is written as JSON.")}</p>}
+        {noStudio && !disabled && <p className="field-hint">{t("Studio builds this query. Once Studio is installed (Apps, Available), it is built here; until then it is written as JSON.")}</p>}
         <JsonInput {...p} />
         {!disabled && !noStudio && (
           <div>

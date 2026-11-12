@@ -88,6 +88,36 @@ interface Plan {
   licences?: LicenceNeed[];
 }
 
+/** What the server's refusal of a plan says when an installed app is too old for the one being installed
+ *  (crates/apps resolve.rs: "pos 0.7.3 requires erp >=0.26, but erp 0.24.1 is installed; upgrade erp first"). The plan route answers
+ *  422 with this text only, and the app lists carry no requirements, so the text is all there is to read it from. */
+export function unmetRequirement(message: string): { app: string; version: string; dep: string; need: string; have: string } | null {
+  const m = /(\S+) (\S+) requires (\S+) (.+?), but \3 (\S+) is installed; upgrade \3 first/.exec(message);
+  return m ? { app: m[1], version: m[2], dep: m[3], need: m[4], have: m[5] } : null;
+}
+
+/** The install dialog when the workspace's apps do not meet what the app needs: what must be updated first, and, where this
+ *  server has a newer release of it, the update to do first (then the plan is made again). No install button is offered. */
+export function UpdateFirst({ need, installed, onFirst }: { need: NonNullable<ReturnType<typeof unmetRequirement>>; installed?: { id: string; name: string; update?: AppUpdate | null }[]; onFirst?: (dep: { id: string; version?: string; packages?: string[] }) => void }) {
+  const dep = installed?.find((a) => a.id === need.dep);
+  const name = dep?.name ?? need.dep;
+  return (
+    <div className="stack">
+      <Alert tone="warning">
+        {tr("{app} {version} needs {dep} {need}, and this workspace has {dep} {have}.", { app: isolate(need.app), version: need.version, dep: isolate(name), need: isolate(need.need), have: need.have })}{" "}
+        {dep?.update && onFirst ? tr("Update {dep} first, then install it.", { dep: isolate(name) }) : tr("This server has no newer {dep} to update to, so {app} cannot be installed here yet.", { dep: isolate(name), app: isolate(need.app) })}
+      </Alert>
+      {dep?.update && onFirst && (
+        <div className="row">
+          <Button variant="primary" icon="upload" onClick={() => onFirst({ id: dep.id, version: dep.update!.version, packages: dep.update!.packages })}>
+            {tr("Update {dep} to {version}", { dep: isolate(name), version: dep.update.version })}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A sold app's licence, as its store last said of the one this workspace gave. */
 interface LicenceNeed {
   app: string;
@@ -255,7 +285,10 @@ export function AppsPage() {
   const [sp, setSp] = useSearchParams();
   const tab = ["installed", "store", "upload"].includes(sp.get("tab") ?? "") ? (sp.get("tab") as string) : "installed";
   const q = useQuery({ queryKey: ["apps"], queryFn: ({ signal }) => api.get<AppsResponse>("/api/admin/apps", undefined, signal) });
-  const [planFor, setPlanFor] = useState<{ id: string; version?: string; upgrade?: boolean; packages?: string[] } | null>(null);
+  type Request = { id: string; version?: string; upgrade?: boolean; packages?: string[] };
+  const [planFor, setPlanFor] = useState<Request | null>(null);
+  // What was being installed when an update had to come first: it is planned again once that update is done.
+  const [then, setThen] = useState<Request | null>(null);
 
   if (me.isLoading) return <PageLoading />;
   if (!me.data?.user.is_admin) {
@@ -267,7 +300,7 @@ export function AppsPage() {
   }
   const tabs = [
     { id: "installed", label: (q.data ? tr("Installed ({length})", { length: q.data.installed.length }) : tr("Installed")) },
-    { id: "store", label: tr("Store") },
+    { id: "store", label: tr("Available") },
     ...(q.data && q.data.uploads !== "off" ? [{ id: "upload", label: tr("Upload") }] : []),
   ];
   return (
@@ -292,7 +325,13 @@ export function AppsPage() {
           <Upload data={q.data} onUploaded={(id, version) => setPlanFor({ id, version })} />
         )}
       </TabPanel>
-      <InstallDialog request={planFor} onClose={() => setPlanFor(null)} />
+      <InstallDialog
+        request={planFor}
+        installed={q.data?.installed}
+        onClose={() => (setPlanFor(null), setThen(null))}
+        onFirst={(dep) => (setThen(planFor), setPlanFor({ ...dep, upgrade: true }))}
+        onInstalled={() => then && (setPlanFor(then), setThen(null))}
+      />
     </div>
   );
 }
@@ -369,7 +408,7 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   if (!data.installed.length) {
     return (
       <EmptyState title={tr("No apps installed")} icon="apps">
-        <p className="muted">{tr("Open the Store tab to add CRM, Helpdesk, HR, POS and more.")}</p>
+        <p className="muted">{tr("Open the Available tab to add CRM, Helpdesk, HR, POS and more.")}</p>
       </EmptyState>
     );
   }
@@ -536,10 +575,16 @@ export function InstallDialog({
   request,
   onClose,
   onInstalled,
+  installed,
+  onFirst,
 }: {
   request: { id: string; version?: string; upgrade?: boolean; packages?: string[] } | null;
   onClose: () => void;
   onInstalled?: () => void;
+  /** The installed apps, to name what must be updated first and to know whether a newer one is offered. */
+  installed?: { id: string; name: string; update?: AppUpdate | null }[];
+  /** Updates an installed app first; the page makes the plan again when that is done. */
+  onFirst?: (dep: { id: string; version?: string; packages?: string[] }) => void;
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
@@ -578,7 +623,10 @@ export function InstallDialog({
       {plan.isLoading ? (
         <PageLoading label={tr("Checking the app…")} />
       ) : plan.error ? (
-        <ErrorState error={plan.error} onRetry={() => plan.refetch()} />
+        (() => {
+          const unmet = unmetRequirement(errorMessage(plan.error, false));
+          return unmet ? <UpdateFirst need={unmet} installed={installed} onFirst={onFirst} /> : <ErrorState error={plan.error} onRetry={() => plan.refetch()} />;
+        })()
       ) : p ? (
         <div className="stack">
           {error && <Alert tone="error">{isolate(error)}</Alert>}

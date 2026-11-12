@@ -5,6 +5,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { t as tr, isolate } from "@ferrum/client";
+import { deviceZone, canonicalZones } from "../lib/zone";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import {
   addHolidays, checkCalendar, copyDay, dayName, DAYS, emptyDraft, fromCalendar, newException, parseDates, seedHours, toCalendar,
@@ -106,7 +107,7 @@ export function Calendars() {
 
 export function CalendarDialog({ value, onClose, onDone }: { value: Calendar | null; onClose: () => void; onDone: () => void }) {
   const isNew = !value;
-  const [d, setD] = useState<Draft>(() => (value ? fromCalendar(value) : emptyDraft(Intl.DateTimeFormat().resolvedOptions().timeZone)));
+  const [d, setD] = useState<Draft>(() => (value ? fromCalendar(value) : emptyDraft(deviceZone())));
   const [tried, setTried] = useState(false);
   const [server, setServer] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
@@ -115,7 +116,7 @@ export function CalendarDialog({ value, onClose, onDone }: { value: Calendar | n
   const [notDates, setNotDates] = useState<string[]>([]);
   const [exDate, setExDate] = useState("");
   // The browser's list may lack the saved zone (an alias such as Asia/Kolkata), so it is always offered.
-  const zones = [...new Set(["UTC", d.zone, ...Intl.supportedValuesOf("timeZone")])].sort();
+  const zones = [...new Set([d.zone, ...canonicalZones(["UTC", ...Intl.supportedValuesOf("timeZone")])])].sort();
   const problems = tried ? checkCalendar(d, isNew) : [];
   const about = (field: string) => problems.find((p) => p.field === field)?.message ?? server.find((f) => f.field === field)?.message;
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));

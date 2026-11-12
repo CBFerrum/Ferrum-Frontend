@@ -2,7 +2,7 @@
 // pages (/x/<app>/<page>), settings pages (/apps/<app>/settings), widgets on Home, panels on forms.
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { getSession, request } from "../lib/api";
 import { useMe } from "../lib/meta";
 import { SCREEN_PROTOCOL, screenTheme, screenUrl, serveScreen, useContributions, type Contribution, type Slot } from "../lib/screens";
@@ -81,7 +81,7 @@ function ScreenRoute({ slot, title, find }: { slot: Slot; title: string; find: (
     return (
       <EmptyState title={t("{title} is not available", { title })} icon="apps">
         <p className="muted">
-          {t("The app that adds it may be disabled or removed.")} <Link to="/apps">{t("Open Apps")}</Link>
+          {t("The app that adds it may be disabled or removed.")} <a href="/store/">{t("Open Apps")}</a>
         </p>
       </EmptyState>
     );
