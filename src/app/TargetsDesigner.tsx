@@ -117,7 +117,10 @@ function Targets({ meta }: { meta: EntityMeta }) {
                     <tr key={t.name}>
                       <td>{isolate(t.label)}</td>
                       <td>{isolate(withinWords(t, meta.fields))}</td>
-                      <td>{t.calendar ? isolate(t.calendar) : tr("Plain time")}</td>
+                      <td>
+                        {t.calendar_field ? tr("From {field}", { field: t.calendar_field }) + (t.calendar ? ` (${t.calendar})` : "") : t.calendar ? isolate(t.calendar) : tr("Plain time")}
+                        {t.start_field ? <span className="muted"> · {tr("starts at {field}", { field: t.start_field })}</span> : null}
+                      </td>
                       <td className="nowrap">
                         <div className="row-actions">
                           <Button size="sm" onClick={() => setEditing(fromTarget(t as unknown as Record<string, unknown>, meta.fields))} aria-label={tr("Edit {name}", { name: t.label })}>{tr("Edit")}</Button>
@@ -310,6 +313,19 @@ function TargetForm({ meta, start, taken, onClose }: { meta: EntityMeta; start: 
           <option value="">{tr("Plain time")}</option>
           {(calendars.data ?? []).map((c) => <option key={c.name} value={c.name}>{isolate(c.name)}</option>)}
           {d.calendar && !calendars.data?.some((c) => c.name === d.calendar) && <option value={d.calendar}>{isolate(d.calendar)}</option>}
+        </select>
+      </Field>
+
+      <Field label={tr("Calendar taken from the record")} htmlFor="tg-calendar-field" hint={tr("Optional: a field of the record that names its calendar, or a link and a field of the record it links to (agreement.calendar). Where it is empty, the calendar above counts.")}>
+        <input id="tg-calendar-field" className="input mono" list="tg-calendar-fields" spellCheck={false} autoCapitalize="none" value={d.calendarField} onChange={(e) => set({ ...d, calendarField: e.target.value })} />
+        <datalist id="tg-calendar-fields">
+          {fields.filter((f) => f.type === "data" || f.type === "select").map((f) => <option key={f.name} value={f.name}>{f.label}</option>)}
+        </datalist>
+      </Field>
+      <Field label={tr("Clock starts at")} htmlFor="tg-start-field" hint={tr("Optional: a date and time field of the record. An imported record is then due by its own opening, and breached at once when that is long past. Empty: the save that starts the clock.")}>
+        <select id="tg-start-field" className="select" value={d.startField} onChange={(e) => set({ ...d, startField: e.target.value })}>
+          <option value="">{tr("The save that starts it")}</option>
+          {fields.filter((f) => f.type === "datetime").map((f) => <option key={f.name} value={f.name}>{isolate(f.label)}</option>)}
         </select>
       </Field>
 
