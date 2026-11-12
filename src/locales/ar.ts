@@ -4241,6 +4241,10 @@ const words: Record<string, string> = {
   "say who it is escalated to.": "حدّد إلى من يُصعَّد.",
   "set when it is escalated, or take the escalation off.": "حدّد متى يُصعَّد، أو أزل التصعيد.",
   "Action “{action}”: {message}": "الإجراء «{action}»: {message}",
+  "{person} is deciding for you today, until {end}.": "{person} يقرر نيابةً عنك اليوم، حتى {end}.",
+  "You have no away period set.": "لا توجد لديك فترة غياب محددة.",
+  "Away periods": "فترات الغياب",
+  "Now": "الآن",
 };
 
 export default words;
