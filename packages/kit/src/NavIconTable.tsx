@@ -3,7 +3,7 @@
 // It is loaded as one lazy chunk by NavIcon.tsx (about 23 KB), never imported statically from anything in an entry.
 
 import {
-  Activity, AppWindow, Archive, ArrowLeftRight, AtSign, Award, BadgeCheck, BadgePercent, Banknote, BanknoteArrowUp, BedDouble, Bell, BellRing, Blocks,
+  Activity, AppWindow, Archive, ArrowLeftRight, AtSign, Award, BadgeCheck, BadgePercent, Banknote, BanknoteArrowDown, BanknoteArrowUp, BedDouble, Bell, BellRing, Blocks,
   BookOpen, Bookmark, Box, Boxes, Briefcase, Building2, Calculator, Calendar, CalendarCheck, CalendarClock, CalendarCog, CalendarHeart, CalendarOff,
   CalendarPlus, CalendarRange, CalendarSync, Camera, Car, ChartColumn, ChartGantt, ChartLine, ChartPie, CheckCheck, ChefHat, CircleAlert, CircleHelp,
   CirclePlus, CircleX, ClipboardCheck, ClipboardList, ClipboardPen, Clock, Cloud, Cog, Coins, Contact, Container, Cpu, CreditCard, Database, Diff,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 export const NAV_ICONS: Record<string, LucideIcon> = {
   activity: Activity, "app-window": AppWindow, archive: Archive, "arrow-left-right": ArrowLeftRight, "at-sign": AtSign, award: Award,
-  "badge-check": BadgeCheck, "badge-percent": BadgePercent, banknote: Banknote, "banknote-arrow-up": BanknoteArrowUp, "bed-double": BedDouble,
+  "badge-check": BadgeCheck, "badge-percent": BadgePercent, banknote: Banknote, "banknote-arrow-down": BanknoteArrowDown, "banknote-arrow-up": BanknoteArrowUp, "bed-double": BedDouble,
   bell: Bell, "bell-ring": BellRing, blocks: Blocks, "book-open": BookOpen, bookmark: Bookmark, box: Box, boxes: Boxes, briefcase: Briefcase,
   "building-2": Building2, calculator: Calculator, calendar: Calendar, "calendar-check": CalendarCheck, "calendar-clock": CalendarClock,
   "calendar-cog": CalendarCog, "calendar-heart": CalendarHeart, "calendar-off": CalendarOff, "calendar-plus": CalendarPlus,
