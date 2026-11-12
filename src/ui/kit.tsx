@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
 import { PortalContainer } from "../lib/portal";
+import { rememberFocus, trackFocus } from "../lib/focusReturn";
 import { placeMenu } from "./menuPlacement";
 import { cn } from "../lib/utils";
 import { knownStatusTone } from "../lib/statusTones";
@@ -220,22 +221,32 @@ export function Dialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [self, setSelf] = useState<HTMLDialogElement | null>(null);
-  const opener = useRef<HTMLElement | null>(null);
+  useEffect(() => trackFocus(), []);
+  // A dialog that is mounted only while it is wanted (`{asking && <Dialog open …/>}`) never sees `open` turn false: it is removed, and focus is given back as it goes.
+  useEffect(
+    () => () => {
+      giveBack.current?.();
+      giveBack.current = null;
+    },
+    [],
+  );
+  const giveBack = useRef<(() => void) | null>(null);
   const titleId = useId();
   const descId = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
+    if (open && !giveBack.current) giveBack.current = rememberFocus(); // (React's strict mode runs the unmount cleanup below once at mount: remember again)
     if (open && !d.open) {
-      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       d.showModal();
       // showModal() would focus the header's close button; prefer the marked or first field instead.
       const first = d.querySelector<HTMLElement>("[data-autofocus]") ?? d.querySelector<HTMLElement>(".dialog-body :is(input, select, textarea):not([disabled])");
       first?.focus();
     } else if (!open && d.open) {
       d.close();
-      // The browser returns focus to what had it when the dialog opened; where that is gone (a menu that closed) or it is lost, to the opener.
-      if (opener.current?.isConnected && document.activeElement !== opener.current) opener.current.focus();
+      // The browser returns focus to what had it; where that is gone (the menu a dialog was opened from has unmounted) focus goes to the menu's trigger, else to the page's heading, never the body.
+      giveBack.current?.();
+      giveBack.current = null;
     }
   }, [open]);
   // Opened over a Radix sheet or dialog (a confirmation from inside one): that layer marks every sibling of itself aria-hidden, this <dialog>
