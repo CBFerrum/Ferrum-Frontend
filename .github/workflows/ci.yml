@@ -36,12 +36,19 @@ jobs:
           repository: CBFerrum/Ferrum
           path: ferrum
       - uses: docker/setup-buildx-action@v3
+      # The server knows the date of the commit it was built from (Ferrum's docs/operations.md, "Rolling back and
+      # the two-version window"); the image build has no git, so it is passed in.
+      - name: The date of Ferrum's commit
+        id: ferrum
+        run: echo "date=$(git -C ferrum log -1 --format=%ct)" >> "$GITHUB_OUTPUT"
       # Ferrum's server image with this checkout as the source of the interfaces it carries (its
       # Dockerfile's `frontend` stage), deployed with its Compose stack and checked by its smoke test.
       - uses: docker/build-push-action@v6
         with:
           context: ferrum
           build-contexts: frontend=web
+          build-args: |
+            BUILD_DATE=${{ steps.ferrum.outputs.date }}
           load: true
           tags: ferrum:ci
           cache-from: type=gha,scope=server
