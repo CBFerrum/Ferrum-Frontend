@@ -7,7 +7,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { t, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage } from "../lib/api";
 import {
-  at, AUTH_KINDS, checkConnection, connectionBody, entries, lines, makePick, METHODS, NAME, number, parseDescription, PICK_KINDS, put, readPick, secretNames, secretsPatch, signatureNeedsDelivery, tidy, typedSecrets, type PickKind, type ResultPick, type AuthKind, type ConnectionRow, type Desc,
+  at, AUTH_KINDS, checkConnection, connectionBody, entries, lines, makePick, METHODS, NAME, number, parseDescription, PICK_KINDS, put, readPick, secretNames, secretsPatch, signatureNeedsDelivery, typedSecrets, undrawn, type PickKind, type ResultPick, type AuthKind, type ConnectionRow, type Desc,
 } from "../lib/connectionDraft";
 import { Alert, Button, confirmDialog, Field, toast } from "../ui/kit";
 
@@ -347,7 +347,7 @@ function Pulls({ d, set }: { d: Desc; set: Set }) {
               </select>
             </Field>
             <Text id={`${id}-every`} label={t("Every (minutes)")} type="number" value={p.every_minutes} onChange={(v) => s("every_minutes", number(v))} />
-            <Text id={`${id}-items`} label={t("Items at")} value={p.items_at} onChange={(v) => s("items_at", v)} mono hint={t("A JSON pointer to a list in each answer.")} />
+            <Text id={`${id}-items`} label={t("Items at")} value={p.items_at} onChange={(v) => change(i, { ...p, items_at: v })} mono hint={t("A JSON pointer to a list in each answer; empty: the whole answer is the list.")} />
             <Field label={t("Cursor")} htmlFor={`${id}-cursor`}>
               <select id={`${id}-cursor`} className="select" value={p.cursor ?? "token"} onChange={(e) => s("cursor", e.target.value)}>
                 <option value="token">{t("A token the answer gives")}</option>
@@ -486,7 +486,24 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
   </section>
 );
 
-export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow | null; onClose: () => void; onSaved: (id: string | null) => void }) {
+/** After a package's description was taken up: what is still to do before it is turned on. */
+function NextSteps({ row, referenced }: { row: ConnectionRow; referenced: string[] }) {
+  const missing = referenced.filter((n) => !row.secrets.includes(n));
+  const kind = at(row.description, "auth", "type");
+  return (
+    <section className="card stack" aria-label={t("Next steps")}>
+      <h3 className="h3">{t("Taken up. Next steps")}</h3>
+      <ol className="stack">
+        {missing.length > 0 && <li>{t("Set the secrets it names, below: {names}", { names: missing.join(", ") })}</li>}
+        {kind === "oauth" && <li>{t("Back in the list, press Connect to sign in to the account.")}</li>}
+        {kind === "session" && <li>{t("Back in the list, press Sign in again to log in.")}</li>}
+        <li>{row.enabled ? t("It is on.") : t("Turn it on here (On, then Save) when you have tried an operation.")}</li>
+      </ol>
+    </section>
+  );
+}
+
+export function ConnectionEditor({ row, onClose, onSaved, tookUp }: { row: ConnectionRow | null; onClose: () => void; onSaved: (id: string | null) => void; tookUp?: boolean }) {
   const fresh = !row || row.id === null;
   const [name, setName] = useState(row?.name ?? "");
   const [label, setLabel] = useState(row?.label ?? "");
@@ -498,14 +515,16 @@ export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow
   const [extra, setExtra] = useState<string[]>([]);
   const [problems, setProblems] = useState<string[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const set: Set = (path, v) => setD((cur) => put(cur, path, v));
   const setNow = row?.secrets ?? [];
   const referenced = secretNames(d);
+  const more = undrawn(d);
   const names = [...new globalThis.Set([...referenced, ...setNow, ...extra])];
 
   const show = (next: "form" | "json") => {
-    if (next === "json") setRaw(JSON.stringify(tidy(d), null, 2));
+    if (next === "json") setRaw(JSON.stringify(d, null, 2));
     else {
       const r = parseDescription(raw);
       if (!r.ok) return setProblems([r.error]);
@@ -532,6 +551,7 @@ export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow
     const secrets = { send: fresh ? typedSecrets(typed) : undefined };
     setProblems(fault);
     setRefused(null);
+    setFieldErrors({});
     if (fault.length) return;
     setBusy(true);
     try {
@@ -542,7 +562,8 @@ export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow
       onSaved(id);
     } catch (err) {
       // The server's plain refusal, on the description or on a name, as it says it.
-      setRefused(err instanceof ApiError && err.fields?.length ? err.fields.map((f) => `${f.field}: ${f.message}`).join(" · ") : errorMessage(err));
+      setRefused(err instanceof ApiError && err.fields?.length ? null : errorMessage(err));
+      setFieldErrors(err instanceof ApiError ? Object.fromEntries(err.fields.map((f) => [f.field, f.message])) : {});
     } finally {
       for (const el of Array.from(form.elements)) if (el instanceof HTMLInputElement && el.type === "password") el.value = "";
       setBusy(false);
@@ -566,11 +587,13 @@ export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow
         </Alert>
       )}
       {refused && <Alert tone="error">{isolate(refused)}</Alert>}
+      {Object.entries(fieldErrors).filter(([f]) => f !== "name" && f !== "label").map(([f, m]) => <Alert key={f} tone="error">{f === "description" ? t("The description: {why}", { why: m }) : `${f}: ${m}`}</Alert>)}
+      {tookUp && row?.id && <NextSteps row={row} referenced={referenced} />}
       <Section title={t("Connection")}>
-        <Field label={t("Name")} htmlFor="c-name" required hint={t("Lower case letters, digits and _. Apps and buttons call it by this name.")}>
+        <Field label={t("Name")} htmlFor="c-name" required error={fieldErrors.name} hint={t("Lower case letters, digits and _. Apps and buttons call it by this name.")}>
           <input id="c-name" className="input mono" value={name} onChange={(e) => setName(e.target.value)} disabled={!fresh && !!row?.source?.startsWith("package")} />
         </Field>
-        <Field label={t("Label")} htmlFor="c-label" required>
+        <Field label={t("Label")} htmlFor="c-label" required error={fieldErrors.label}>
           <input id="c-label" className="input" value={label} onChange={(e) => setLabel(e.target.value)} />
         </Field>
         <label className="check-field">
@@ -618,6 +641,20 @@ export function ConnectionEditor({ row, onClose, onSaved }: { row: ConnectionRow
           <Section title={t("Notes")}>
             <Meta d={d} set={set} />
           </Section>
+          {more.length > 0 && (
+            <Section title={t("More in this description")}>
+              <p className="muted">{t("The form has no control for these. They are kept as they are when you save. Edit the whole description in the JSON view to change them.")}</p>
+              <ul className="stack" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {more.map((m) => (
+                  <li key={m.path}>
+                    <span className="mono">{isolate(m.path)}</span>
+                    <pre className="mono faint" style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "8rem", overflow: "auto" }}>{isolate(JSON.stringify(m.value))}</pre>
+                  </li>
+                ))}
+              </ul>
+              <div><Button onClick={() => show("json")}>{t("Edit the whole description as JSON")}</Button></div>
+            </Section>
+          )}
         </div>
       )}
       {fresh && (

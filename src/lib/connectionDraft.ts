@@ -1,6 +1,6 @@
 // A connection as the administration screen edits it (docs/api.md "Connections"; BD-29 to BD-33). The description is kept as
 // the server's own JSON, so a property this screen has no control for survives an edit; the helpers here read and change one
-// place in it, drop what is empty on the way out, and say what the server would refuse before anything is sent. Secrets are
+// place in it and say what the server would refuse before anything is sent. Secrets are
 // write-only: this file never holds a value, only names.
 
 import { t } from "@ferrum/client";
@@ -48,21 +48,6 @@ export const personalState = (c: PersonalConnection): "connected" | "reconnect" 
 
 const isEmpty = (v: unknown) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0) || (typeof v === "object" && v !== null && !Array.isArray(v) && Object.keys(v).length === 0);
 
-/** The value without what is empty (text, lists, objects), so a saved description says only what was chosen. An operation
- * with nothing in it is still an operation; booleans and numbers are always meant. */
-export function tidy<T>(v: T): T {
-  if (Array.isArray(v)) return v.map((x) => tidy(x)).filter((x) => !isEmpty(x)) as T;
-  if (v && typeof v === "object") {
-    const out: Desc = {};
-    for (const [k, x] of Object.entries(v as Desc)) {
-      const clean = k === "operations" && x && typeof x === "object" ? Object.fromEntries(Object.entries(x as Desc).map(([n, o]) => [n, tidy(o)])) : tidy(x);
-      if (!isEmpty(clean)) out[k] = clean;
-    }
-    return out as T;
-  }
-  return v;
-}
-
 /** `d` with `path` set to `value` (a copy); an empty value takes the property away. */
 export function put(d: Desc, path: string[], value: unknown): Desc {
   const [head, ...rest] = path;
@@ -96,10 +81,45 @@ export function parseDescription(text: string): { ok: true; value: Desc } | { ok
 /** A map as rows; a value that is not text (a pick, a file part) stays as it is. */
 export const entries = (m: unknown): [string, unknown][] => Object.entries((m && typeof m === "object" ? m : {}) as Record<string, unknown>);
 
-/** Every secret the description names: the ones calls, the signing and the sign-in use. */
+/** Every secret the description names: the ones calls, the signing and the sign-in use, and any a template reads as `secret.<name>`. */
 export function secretNames(d: Desc): string[] {
   const names = [at(d, "auth", "secret"), at(d, "auth", "provider", "client_secret"), at(d, "inbound", "verify", "secret")].filter((n): n is string => typeof n === "string" && n !== "");
+  for (const m of JSON.stringify(d).matchAll(/secret\.([a-z][a-z0-9_]*)/g)) names.push(m[1]);
   return [...new Set(names)];
+}
+
+export interface Undrawn { path: string; value: unknown }
+const own = (o: unknown): o is Desc => !!o && typeof o === "object" && !Array.isArray(o);
+const DRAWN = {
+  description: ["base", "auth", "headers", "allowed_hosts", "timeout_ms", "max_bytes", "test", "roles", "apps", "operations", "inbound", "pulls", "meta"],
+  operation: ["method", "path", "inputs", "body", "form", "result", "error_at", "idempotency_header", "fixture"],
+  pull: ["name", "operation", "every_minutes", "items_at", "cursor", "next_at", "cursor_input", "max_pages", "map"],
+  mapping: ["entity", "items_at", "by", "set", "create", "update_only", "outside"],
+  inbound: ["verify", "delivery_header", "delivery_at", "handler", "map"],
+  verify: ["type", "header", "secret", "timestamp_header", "prefix", "window_secs"],
+  provider: ["dpop", "registration_url", "authorize_url", "token_url", "revoke_url", "client_id", "account_at", "client_secret", "scopes"],
+  auth: {
+    none: [], header: ["header", "prefix", "secret"], basic: ["username", "secret"], bearer: ["secret"], signed: ["header", "secret", "timestamp_header", "encoding"],
+    session: ["login", "refresh", "token_at", "refresh_at", "expires_at", "header", "prefix"], oauth: ["owner", "provider"],
+  } as Record<string, string[]>,
+};
+
+/** What the form has no control for, at every level (the description, its sign-in, each operation, pull, mapping and the inbound
+ * side): shown read-only, kept as it is, edited in the JSON view. */
+export function undrawn(d: Desc): Undrawn[] {
+  const rest = (o: unknown, drawn: string[], path: string): Undrawn[] => (own(o) ? Object.keys(o).filter((k) => !drawn.includes(k)).map((k) => ({ path: path ? `${path}.${k}` : k, value: o[k] })) : []);
+  const kind = typeof at(d, "auth", "type") === "string" ? (at(d, "auth", "type") as string) : "none";
+  const map = (m: unknown, path: string) => rest(m, DRAWN.mapping, path);
+  return [
+    ...rest(d, DRAWN.description, ""),
+    ...rest(d.auth, ["type", ...(DRAWN.auth[kind] ?? [])], "auth"),
+    ...(kind === "oauth" ? rest(at(d, "auth", "provider"), DRAWN.provider, "auth.provider") : []),
+    ...entries(d.operations).flatMap(([n, op]) => rest(op, DRAWN.operation, `operations.${n}`)),
+    ...(Array.isArray(d.pulls) ? d.pulls : []).flatMap((p, i) => [...rest(p, DRAWN.pull, `pulls[${i}]`), ...map(own(p) ? p.map : undefined, `pulls[${i}].map`)]),
+    ...rest(d.inbound, DRAWN.inbound, "inbound"),
+    ...rest(at(d, "inbound", "verify"), DRAWN.verify, "inbound.verify"),
+    ...map(at(d, "inbound", "map"), "inbound.map"),
+  ];
 }
 
 /** A secret's name: lower case letters, digits and `_`, starting with a letter (what the server takes). */
@@ -136,9 +156,9 @@ export const makePick = (p: ResultPick): unknown => (p.kind === "at" && !p.requi
 /** The inbound signature may leave the timestamp out only when the caller's delivery id is named. */
 export const signatureNeedsDelivery = (d: Desc): boolean => at(d, "inbound", "verify", "type") === "signature" && !at(d, "inbound", "verify", "timestamp_header") && !at(d, "inbound", "delivery_header") && !at(d, "inbound", "delivery_at");
 
-/** The body of `POST /api/admin/connections` and `PUT …/{id}`: the description tidied, `secrets` only when given. */
+/** The body of `POST /api/admin/connections` and `PUT …/{id}`: the description exactly as held (an empty value can mean something, as a root pointer `""` does; the controls take a property away themselves when it is cleared), `secrets` only when given. */
 export function connectionBody(f: { name: string; label: string; enabled: boolean; description: Desc }, secrets?: Record<string, string>) {
-  return { name: f.name.trim(), label: f.label.trim(), enabled: f.enabled, description: tidy(f.description), ...(secrets ? { secrets } : {}) };
+  return { name: f.name.trim(), label: f.label.trim(), enabled: f.enabled, description: f.description, ...(secrets ? { secrets } : {}) };
 }
 
 /** What can be said before sending: the name and label, in the server's terms. The description's own faults are the server's to say. */
