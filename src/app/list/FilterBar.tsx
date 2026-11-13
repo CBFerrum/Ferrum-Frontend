@@ -43,7 +43,7 @@ function ChipValue({ field: f, value }: { field: Field; value: string }): ReactN
   return f.type === "link" && !isWord(value) ? <LinkText to={f.to ?? ""} id={value} /> : chipText(f, value);
 }
 
-export function FilterControl({ field: f, value, onChange }: { field: Field; value: string; onChange: (v: string) => void }) {
+export function FilterControl({ field: f, value, onChange, others }: { field: Field; value: string; onChange: (v: string) => void; others?: FilterState }) {
   const id = `flt-${f.name}`;
   switch (f.type) {
     case "select":
@@ -72,7 +72,7 @@ export function FilterControl({ field: f, value, onChange }: { field: Field; val
     case "link":
       return (
         <FieldWrap label={isolate(f.label)} htmlFor={id}>
-          <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} placeholder={tr("Any")} onChange={(v) => onChange(v ?? "")} />
+          <LinkInput to={f.to ?? ""} id={id} value={isWord(value) ? null : value || null} linkFilters={f.link_filters} scope={others ? { doc: others } : undefined} placeholder={tr("Any")} onChange={(v) => onChange(v ?? "")} />
         </FieldWrap>
       );
     case "date":
@@ -162,7 +162,7 @@ function TextFilter({ id, label, value, onChange }: { id: string; label: string;
   );
 }
 
-function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: string; open: boolean; onOpen: (open: boolean) => void; onChange: (v: string) => void }) {
+function Chip({ field, value, open, onOpen, onChange, others }: { field: Field; value: string; others?: FilterState; open: boolean; onOpen: (open: boolean) => void; onChange: (v: string) => void }) {
   return (
     <span className="chip chip-field" data-empty={value === "" || undefined}>
       <Popover open={open} onOpenChange={onOpen}>
@@ -177,7 +177,7 @@ function Chip({ field, value, open, onOpen, onChange }: { field: Field; value: s
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="chip-popover">
-          <FilterControl field={field} value={value} onChange={onChange} />
+          <FilterControl field={field} value={value} onChange={onChange} others={others} />
           {field.type !== "check" && <Presence value={value} onChange={onChange} />}
         </PopoverContent>
       </Popover>
@@ -203,6 +203,7 @@ export function FilterChips({ fields, state, onChange }: { fields: Field[]; stat
           key={f.name}
           field={f}
           value={state[f.name] ?? ""}
+          others={state}
           open={editing === f.name}
           onOpen={(open) => {
             setEditing(open ? f.name : null);

@@ -20,6 +20,7 @@ import {
 import { Link } from "react-router";
 import { api, ApiError, docPath, download, errorMessage, newKey, type FieldError } from "../lib/api";
 import { asRows } from "../lib/doc";
+import { comparedFields, isFrom, resolveLinkFilters, type LinkScope } from "../lib/linkFilters";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { stateTone, stateWords } from "../lib/targetDraft";
@@ -33,6 +34,7 @@ import {
   recordTitle,
   useEntityMeta,
   type ChildTable,
+  type EntityMeta,
   type Doc,
   type Field,
   type ListResponse,
@@ -58,6 +60,8 @@ export interface ControlProps {
   /** Owning record, for attachment uploads. */
   entity?: string;
   recordId?: string;
+  /** The record in the form (and the parent's, in a child table's row): what a link's `{ from }` filter reads. */
+  scope?: LinkScope;
 }
 
 const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
@@ -171,6 +175,7 @@ export function FieldControl(p: ControlProps) {
           title={isolate(p.title)}
           onChange={onChange}
           linkFilters={f.link_filters}
+          scope={p.scope}
           id={p.id}
           disabled={disabled}
           invalid={p.invalid}
@@ -414,6 +419,7 @@ export function LinkInput({
   label,
   required,
   placeholder,
+  scope,
 }: {
   to: string;
   value: string | null;
@@ -427,6 +433,8 @@ export function LinkInput({
   label?: string;
   required?: boolean;
   placeholder?: string;
+  /** The form this picker is in: what a `{ from }` link filter reads (see lib/linkFilters.ts). */
+  scope?: LinkScope;
 }) {
   const target = useEntityMeta(to || undefined);
   const resolved = useLinkTitle(to, value, title);
@@ -439,13 +447,16 @@ export function LinkInput({
   const listStyle = useAnchoredStyle(input, open);
   const q = useDebounced(typed ?? "", 250);
   const titleField = target.data?.title_field;
-  const filters = linkFilters && Object.keys(linkFilters).length ? JSON.stringify(linkFilters) : undefined;
+  const rf = resolveLinkFilters(linkFilters, scope);
+  const filters = Object.keys(rf.applied).length ? JSON.stringify(rf.applied) : undefined;
+  // The fields a `from` filter compares (the company): shown under each choice, so same names can be told apart.
+  const compared = comparedFields(linkFilters).filter((k) => target.data?.fields.some((f) => f.name === k));
   const results = useQuery({
-    queryKey: ["link-search", to, q.trim(), filters],
+    queryKey: ["link-search", to, q.trim(), filters, compared.join(",")],
     queryFn: ({ signal }) =>
       api.get<ListResponse>(
         docPath(to),
-        { search: q.trim() || undefined, limit: 10, filters, fields: ["id", "number", ...(titleField ? [titleField] : [])].join(",") },
+        { search: q.trim() || undefined, limit: 10, filters, fields: ["id", "number", ...(titleField ? [titleField] : []), ...compared].join(",") },
         signal,
       ),
     enabled: open && !disabled && !!to && !target.isLoading,
@@ -457,6 +468,31 @@ export function LinkInput({
     setTyped(null);
   };
   useDismiss(wrap, open, close);
+
+  // The field a filter reads changed: a chosen record that no longer matches it is cleared, with a line saying so.
+  const requiredKey = JSON.stringify(rf.required);
+  const seen = useRef(requiredKey);
+  const [cleared, setCleared] = useState<string | null>(null);
+  useEffect(() => {
+    if (seen.current === requiredKey) return;
+    seen.current = requiredKey;
+    setCleared(null);
+    if (!value || disabled || requiredKey === "{}") return;
+    let live = true;
+    api
+      .get<Doc>(docPath(to, value), { titles: false })
+      .then((rec) => {
+        if (live && Object.entries(rf.required).some(([k, v]) => String(rec[k] ?? "") !== String(v))) {
+          onChange(null, "");
+          setCleared(tr("{value} was cleared: it does not belong to the {field} now chosen.", { value: resolved ?? label ?? name, field: rf.waiting[0]?.label ?? sourceLabel(linkFilters, scope) }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requiredKey]);
 
   const choose = (row: Doc | undefined) => {
     if (!row?.id) return;
@@ -481,7 +517,10 @@ export function LinkInput({
   };
 
   const name = target.data?.label ?? humanize(to);
+  const hintId = `${listId}-hint`;
+  const hint = rf.waiting.length ? tr("Choose {field} first to see only its {name}.", { field: rf.waiting.map((w) => w.label).join(", "), name }) : null;
   return (
+    <>
     <div className="combo" ref={wrap}>
       <input
         ref={input}
@@ -493,7 +532,7 @@ export function LinkInput({
         aria-controls={listId}
         aria-activedescendant={open && rows[active] ? `${listId}-${active}` : undefined}
         aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
+        aria-describedby={[describedBy, hint || cleared ? hintId : ""].filter(Boolean).join(" ") || undefined}
         aria-label={label}
         aria-required={required || undefined}
         readOnly={disabled || undefined}
@@ -561,7 +600,11 @@ export function LinkInput({
                   onMouseEnter={() => setActive(i)}
                 >
                   <span>{isolate(t)}</span>
-                  {r.number && r.number !== t ? <small>{isolate(String(r.number))}</small> : null}
+                  {compared.length ? (
+                    <small>{compared.map((k, j) => <Fragment key={k}>{j > 0 && " · "}<ComparedValue entity={target.data} field={k} value={r[k]} /></Fragment>)}</small>
+                  ) : r.number && r.number !== t ? (
+                    <small>{isolate(String(r.number))}</small>
+                  ) : null}
                 </li>
               );
             })
@@ -569,8 +612,56 @@ export function LinkInput({
         </ul>
       )}
     </div>
+    {(hint || cleared) && (
+      <p className="field-hint" id={hintId}>
+        {isolate(cleared ?? hint ?? "")}
+      </p>
+    )}
+    </>
   );
 }
+
+/** A field of the linked record a link filter compares (its company), as the second line of a choice: a link as its title. */
+export function ComparedValue({ entity, field, value }: { entity?: EntityMeta; field: string; value: unknown }) {
+  const f = entity?.fields.find((x) => x.name === field);
+  const to = f?.type === "link" ? f.to : undefined;
+  const title = useLinkTitle(to ?? "", typeof value === "string" ? value : null);
+  if (value === null || value === undefined || value === "") return null;
+  return <>{isolate(to ? (title ?? "…") : String(value))}</>;
+}
+
+/** A link in a list column whose picker compares a field of the linked record (its company): that value under the title. */
+function LinkWithCompared({ to, id, title, fields }: { to: string; id: string; title: string; fields: string[] }) {
+  const target = useEntityMeta(to);
+  const rec = useQuery({
+    queryKey: ["record-title", to, id],
+    queryFn: ({ signal }) => api.get<Doc>(docPath(to, id), { titles: false }, signal),
+    staleTime: 10 * 60_000,
+    retry: false,
+  }).data;
+  const known = fields.filter((k) => rec && rec[k] != null && rec[k] !== "");
+  return (
+    <>
+      {title}
+      {known.length > 0 && (
+        <small className="faint" style={{ display: "block" }}>
+          {known.map((k, j) => (
+            <Fragment key={k}>
+              {j > 0 && " · "}
+              <ComparedValue entity={target.data} field={k} value={rec![k]} />
+            </Fragment>
+          ))}
+        </small>
+      )}
+    </>
+  );
+}
+
+/** The label a hint names when the source is not in the form's own words. */
+const sourceLabel = (filters: Record<string, unknown> | undefined, scope: LinkScope | undefined) => {
+  const from = Object.values(filters ?? {}).find(isFrom)?.from ?? "";
+  return scope?.labelOf?.(from) ?? from.replace(/^parent\./, "");
+};
 
 // ── attachments ──
 
@@ -711,8 +802,11 @@ export function CellValue({
   if (field.kept_by_target && field.type !== "datetime") return <Badge tone={stateTone(String(value))}>{isolate(stateWords()[String(value)] ?? String(value))}</Badge>;
   if (field.name === "status" || field.name === "workflow_state") return <StatusBadge value={value} />;
   switch (field.type) {
-    case "link":
-      return <>{title ?? shortId(value)}</>;
+    case "link": {
+      const shown = title ?? shortId(value);
+      const cmp = comparedFields(field.link_filters);
+      return cmp.length && field.to ? <LinkWithCompared to={field.to} id={String(value)} title={shown} fields={cmp} /> : <>{shown}</>;
+    }
     case "check":
       return value === true ? (
         <>
@@ -781,6 +875,7 @@ export function TableGrid({
   entity,
   recordId,
   within,
+  parentFields,
 }: {
   child: ChildTable;
   rows: Doc[];
@@ -795,6 +890,8 @@ export function TableGrid({
   recordId?: string;
   /** Set on the grid of a line's own lines: which line it belongs to ("Tests, row 1"). It has no lines of its own to edit. */
   within?: string;
+  /** The parent record's fields, for naming the field a row's picker waits for (`parent.company`). */
+  parentFields?: Field[];
 }) {
   const gridId = useId();
   const name = within ? tr("{within}: {label}", { within, label: child.label }) : child.label;
@@ -826,6 +923,12 @@ export function TableGrid({
     pendingFocus.current = cellId(i, f ?? cols[0]?.name ?? "");
   };
 
+  // A row's pickers read the row, and `parent.` the record the table is in.
+  const scopeOf = (row: Doc): LinkScope => ({
+    doc: row,
+    parent,
+    labelOf: (path) => (path.startsWith("parent.") ? parentFields?.find((f) => f.name === path.slice(7))?.label : child.fields.find((f) => f.name === path)?.label),
+  });
   const update = (i: number, name: string, value: unknown, title?: string) =>
     onChange(
       rows.map((r, j) => (j === i ? withValue(r, name, value, title) : r)),
@@ -885,6 +988,7 @@ export function TableGrid({
           precisionOf={precisionOf}
           entity={entity}
           recordId={recordId}
+          parentFields={parentFields}
           within={lineName}
         />
       </div>
@@ -1011,6 +1115,7 @@ export function TableGrid({
                                   currencyPrecision={precisionOf(f, r)}
                                   entity={entity}
                                   recordId={recordId}
+                                  scope={scopeOf(r)}
                                   onChange={(v, t) => update(i, f.name, v, t)}
                                 />
                                 {err && <div className="cell-error">{isolate(err.message)}</div>}
@@ -1118,6 +1223,7 @@ export function TableGrid({
                   currencyPrecision={precisionOf(f, r)}
                   entity={entity}
                   recordId={recordId}
+                  scope={scopeOf(r)}
                   onChange={(v, t) => update(editing, f.name, v, t)}
                 />
               );
