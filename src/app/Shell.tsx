@@ -9,7 +9,7 @@ import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
 import { notificationPath } from "../lib/links";
 import { humanize, initials, relativeTime } from "../lib/format";
-import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
+import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MenuPage, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useInstall, useOnline, useOutdated } from "../lib/pwa";
@@ -40,7 +40,7 @@ const TwoFactorSettings = lazy(() => import("./TwoFactor").then((m) => ({ defaul
 const ApiKeys = lazy(() => import("./Admin").then((m) => ({ default: m.ApiKeys })));
 const CalendarApps = lazy(() => import("./Admin").then((m) => ({ default: m.CalendarApps })));
 
-type NavItem = { label: string; to: string; icon?: string; entity?: string; kind?: string; submittable?: boolean };
+type NavItem = { label: string; to: string; icon?: string; entity?: string; kind?: string; submittable?: boolean; /** Another app's or route's page: loaded, not routed to. */ href?: string };
 
 /** The Studio app (package and module): its records open in their builders, not the generic list and form. */
 export const STUDIO = "studio";
@@ -67,18 +67,34 @@ export const meetNav: NavItem = { get label() { return tr("Meet"); }, to: "/meet
 export const DOCS_MODULE = "docs";
 export const docsNav: NavItem = { get label() { return tr("Documents"); }, to: "/docs", icon: "doc" };
 
-/** A module's links (sidebar group, home card): its readable entities and reports; `meet` when
+/** A row for a page of an app's own interface (`shell.menu`): routed to inside this page's app and route, loaded
+ *  from anywhere else (another app's frame, today's web app). Its label is the app's English, in the page's words. */
+export function pageLink(p: MenuPage): NavItem {
+  const app = bootstrap()?.app;
+  const [route, ...rest] = p.path.split("/");
+  const own = frameMode === "app" && app?.id === p.app && app.entry === route;
+  return own ? { to: `/${rest.join("/")}`, label: p.label, icon: p.icon ?? undefined, kind: "page" } : { to: `/${p.path}`, href: `/${p.path}`, label: p.label, icon: p.icon ?? undefined, kind: "page" };
+}
+
+/** A module's links (sidebar group, home card): its readable entities and reports, and the rows of its app's own pages
+ *  the server gave this person, each after the item it names (first when it names none or one not shown); `meet` when
  *  video meetings are set up. */
 export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false, me?: Me | null): NavItem[] {
   if (m.name === STUDIO) return studioLinks(me);
-  const links = m.items.flatMap((item) => {
+  const keyed = m.items.flatMap((item): [string, NavItem][] => {
     if (item.startsWith("report:")) {
       const name = item.slice(7);
-      return [{ to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), kind: "report" }];
+      return [[item, { to: `/r/${name}`, label: reportLabel.get(name) ?? humanize(name), kind: "report" }]];
     }
     const e = readable.get(item);
-    return e ? [{ to: `/e/${e.name}`, label: e.label_plural, icon: e.icon ?? undefined, entity: e.name, kind: e.kind, submittable: e.submittable }] : [];
+    return e ? [[item, { to: `/e/${e.name}`, label: e.label_plural, icon: e.icon ?? undefined, entity: e.name, kind: e.kind, submittable: e.submittable }]] : [];
   });
+  let first = 0;
+  for (const p of m.pages ?? []) {
+    const at = p.after ? keyed.findIndex(([k]) => k === p.after) : -1;
+    keyed.splice(at >= 0 ? at + 1 : first++, 0, [p.id, pageLink(p)]);
+  }
+  const links = keyed.map(([, l]) => l);
   if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
   if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
   if (m.name === DOCS_MODULE && readable.has("DocsTemplate")) return [docsNav, ...links];
@@ -385,12 +401,19 @@ function Sidebar() {
             <span>{isolate(g.label)}</span>
             <Icon name="chevronRight" size={12} />
           </summary>
-          {g.items.map((i) => (
-            <NavLink key={i.to} to={i.to} className="nav-link">
-              <NavIcon {...i} />
-              <span className="nav-label">{isolate(i.label)}</span>
-            </NavLink>
-          ))}
+          {g.items.map((i) =>
+            i.href ? (
+              <a key={i.to} href={i.href} className="nav-link">
+                <NavIcon {...i} />
+                <span className="nav-label">{isolate(i.label)}</span>
+              </a>
+            ) : (
+              <NavLink key={i.to} to={i.to} className="nav-link">
+                <NavIcon {...i} />
+                <span className="nav-label">{isolate(i.label)}</span>
+              </NavLink>
+            ),
+          )}
         </details>
       ))}
       {pages.length > 0 && (

@@ -87,9 +87,15 @@ export function Home() {
                   {studio && <SpaceLink module={m.name} />}
                   {links.map((l) => (
                     <li key={l.to}>
-                      <Link className="home-link" to={l.to}>
-                        {isolate(l.label)}
-                      </Link>
+                      {l.href ? (
+                        <a className="home-link" href={l.href}>
+                          {isolate(l.label)}
+                        </a>
+                      ) : (
+                        <Link className="home-link" to={l.to}>
+                          {isolate(l.label)}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>
