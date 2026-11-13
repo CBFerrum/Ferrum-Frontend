@@ -11,3 +11,6 @@ export { AppSettingsPage, ScreenPage } from "../../../../src/app/Screen";
 // so: setFrameMode("app", packages, { pages: true }).
 export { recordsRoutes } from "../../../../src/app/recordsRoutes";
 export { Home as ModulesHome } from "../../../../src/app/Home";
+// The router for an app's routes, with the wait page React Router wants on the first load: use it instead of
+// createBrowserRouter(routes, { basename }).
+export { createAppRouter, withHydrateFallback } from "../../../../src/app/appRouter";

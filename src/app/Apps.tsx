@@ -26,6 +26,60 @@ export interface AppSummary {
   private?: boolean;
   /** The app this one is an add-on of. */
   parent?: string | null;
+  /** What it is (`app`, `suite`, `country_pack`, `addon`), when the server says. */
+  kind?: string;
+}
+
+/** Each category the store knows, in words. Acronyms are upper-case; a category not here is shown as the server wrote it. */
+const CATEGORY_WORDS = {
+  get crm() { return tr("CRM"); },
+  get pos() { return tr("POS"); },
+  get hr() { return tr("HR"); },
+  get finance() { return tr("Finance"); },
+  get sales() { return tr("Sales"); },
+  get support() { return tr("Support"); },
+  get inventory() { return tr("Inventory"); },
+  get manufacturing() { return tr("Manufacturing"); },
+  get projects() { return tr("Projects"); },
+  get commerce() { return tr("Commerce"); },
+  get communication() { return tr("Communication"); },
+  get productivity() { return tr("Productivity"); },
+  get marketing() { return tr("Marketing"); },
+  get integrations() { return tr("Integrations"); },
+  get connector() { return tr("Connectors"); },
+  get localization() { return tr("Localisation"); },
+  get energy() { return tr("Energy"); },
+  get industry() { return tr("Industry"); },
+  get analytics() { return tr("Analytics"); },
+  get education() { return tr("Education"); },
+  get developer() { return tr("Developer tools"); },
+  get suite() { return tr("Suites"); },
+} as Record<string, string>;
+
+/** A category's label: the server's own (`labels`, when its answer carries them), else the translated word; an unknown one as written. */
+export function categoryLabel(c: string, labels?: Record<string, string>): string {
+  return labels?.[c] ?? (Object.hasOwn(CATEGORY_WORDS, c) ? CATEGORY_WORDS[c] : c);
+}
+
+/** What an app is, for its card: the server's `kind` when it says, else a suite by its category, an add-on by its parent. */
+export function appKind(a: Pick<AppSummary, "kind" | "parent" | "categories">): string {
+  const k = a.kind ?? (a.categories?.includes("suite") ? "suite" : a.parent ? "addon" : "app");
+  switch (k) {
+    case "suite": return tr("Suite");
+    case "country_pack": return tr("Country pack");
+    case "addon": return tr("Add-on");
+    case "app": return tr("App");
+    default: return k;
+  }
+}
+
+/** A tile's fallback mark: initials (the first letters of the first two words, else its first two letters) and a colour from the app's id. */
+export function appMark(a: Pick<AppSummary, "id" | "name">): { initials: string; tone: number } {
+  const words = a.name.trim().split(/\s+/).filter((w) => w.length > 2); // "of", "&" and the like do not make an initial
+  const initials = (words.length > 1 ? words[0][0] + words[1][0] : a.name.trim().slice(0, 2)).toUpperCase();
+  let h = 2166136261;
+  for (const ch of a.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; // FNV-1a
+  return { initials, tone: ((h >>> 13) % 8) + 1 };
 }
 
 /** Apps in order with their add-ons under them (`parent`), and how deep each sits. */
@@ -232,9 +286,10 @@ export function PermissionList({ permissions }: { permissions: Permissions }) {
 
 function AppIcon({ app }: { app: AppSummary }) {
   if (app.icon_url) return <img className="app-icon" src={app.icon_url} alt="" />;
+  const m = appMark(app);
   return (
-    <span className="app-icon app-icon-letter" aria-hidden="true">
-      {isolate(app.name.slice(0, 2))}
+    <span className="app-icon app-icon-letter" aria-hidden="true" style={{ background: `color-mix(in srgb, var(--chart-${m.tone}) 16%, transparent)`, color: `var(--chart-${m.tone})` }}>
+      {isolate(m.initials)}
     </span>
   );
 }
@@ -269,10 +324,11 @@ export function AppCard({ app, children, onOpen, addonOf }: { app: AppSummary; c
       {addonOf && <div className="faint app-meta">{tr("Add-on of {addonOf}", { addonOf })}</div>}
       <p className="muted app-summary">{isolate(app.summary)}</p>
       <div className="chips">
+        <Badge tone="blue">{isolate(appKind(app))}</Badge>
         <Badge tone={RUNTIME_TONE[app.runtime] ?? "neutral"}>{RUNTIME_LABEL[app.runtime] ?? app.runtime}</Badge>
         {app.private && <Badge tone="amber">{tr("Private")}</Badge>}
         {(app.categories ?? []).slice(0, 2).map((c) => (
-          <Badge key={c}>{isolate(c)}</Badge>
+          <Badge key={c}>{isolate(categoryLabel(c))}</Badge>
         ))}
       </div>
       {children && <div className="row app-actions">{children}</div>}
@@ -499,9 +555,9 @@ function Store({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: s
         <button type="button" className="chip" aria-pressed={!category} onClick={() => setCategory("")}>
           {tr("All")}
         </button>
-        {CATEGORIES.map((c) => (
+        {[...CATEGORIES, ...[...data.available, ...data.installed].flatMap((a) => a.categories ?? []).filter((c, i, all) => !CATEGORIES.includes(c) && all.indexOf(c) === i)].map((c) => (
           <button key={c} type="button" className="chip" aria-pressed={category === c} onClick={() => setCategory(category === c ? "" : c)}>
-            {isolate(sectionLabel(c))}
+            {isolate(categoryLabel(c))}
           </button>
         ))}
       </div>
