@@ -761,6 +761,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
             precisionOf={(cf, row) => currencyPrecision(cf, row, doc)}
             entity={E}
             recordId={id}
+            parentFields={meta.fields}
           />
           {err && <p className="field-error">{isolate(tr("{table}: {message}", { table: f.label, message: err }))}</p>}
         </div>
@@ -779,6 +780,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         currencyPrecision={currencyPrecision(f, doc)}
         entity={E}
         recordId={id}
+        scope={{ doc, labelOf: (path) => meta.fields.find((x) => x.name === path)?.label }}
         onChange={(v, t) => setField(f.name, v, t)}
       />
     );

@@ -61,6 +61,7 @@ function EditValue({ field, doc, onDone, save }: { field: Field; doc: Doc; onDon
         title={doc._titles?.[field.name]}
         compact
         label={isolate(field.label)}
+        scope={{ doc }}
         onChange={(v: unknown) => {
           setValue(v);
           if (savesOnChange(field)) void finish(v);

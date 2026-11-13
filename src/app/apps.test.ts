@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
-import { byParent, permissionLines, sectionLabel, unmetRequirement, UpdateFirst, updateBrings, updateLabel } from "./Apps";
+import { appKind, appMark, AppCard, byParent, categoryLabel, permissionLines, sectionLabel, unmetRequirement, UpdateFirst, updateBrings, updateLabel } from "./Apps";
 
 describe("add-ons", () => {
   it("follow the app they extend, at any depth", () => {
@@ -73,5 +73,30 @@ describe("an app the workspace's installed apps are too old for", () => {
     const html = renderToString(createElement(UpdateFirst, { need: unmetRequirement(said)!, installed: [{ id: "erp", name: "ERP", update: null }], onFirst: () => {} }));
     expect(html).toContain("This server has no newer ERP to update to");
     expect(html).not.toContain("<button");
+  });
+});
+
+describe("the Apps page's labels and marks", () => {
+  it("labels a category: acronyms upper-case, the server's own first, an unknown one as written", () => {
+    expect([categoryLabel("crm"), categoryLabel("pos"), categoryLabel("hr"), categoryLabel("finance")]).toEqual(["CRM", "POS", "HR", "Finance"]);
+    expect(categoryLabel("crm", { crm: "Customer relations" })).toBe("Customer relations");
+    expect(categoryLabel("zz_new-thing")).toBe("zz_new-thing");
+    expect(categoryLabel("constructor")).toBe("constructor");
+  });
+  it("says what a card is: the app and the suite both named Retail differ", () => {
+    expect(appKind({ categories: ["commerce", "inventory"] })).toBe("App");
+    expect(appKind({ categories: ["suite", "commerce", "pos"] })).toBe("Suite");
+    expect(appKind({ categories: ["finance"], parent: "erp" })).toBe("Add-on");
+    expect(appKind({ kind: "country_pack", parent: "erp" })).toBe("Country pack");
+    const html = renderToString(createElement(AppCard, { app: { id: "retail", name: "Retail", version: "0.1.0", runtime: "meta", summary: "", categories: ["suite", "pos"] } }));
+    expect(html).toContain("Suite");
+    expect(html).toContain("POS");
+    expect(html).not.toContain("Pos<");
+  });
+  it("gives Poland, Portugal and Point of Sale marks that differ", () => {
+    const m = [{ id: "pl", name: "Poland" }, { id: "pt", name: "Portugal" }, { id: "pos", name: "Point of Sale" }].map(appMark);
+    expect(m.map((x) => x.initials)).toEqual(["PO", "PO", "PS"]);
+    expect(m[0].tone).not.toBe(m[1].tone); // same initials, told apart by colour
+    expect(appMark({ id: "pl", name: "Poland" })).toEqual(m[0]);
   });
 });
