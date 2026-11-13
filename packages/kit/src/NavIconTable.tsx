@@ -15,7 +15,7 @@ import {
   NotebookText, Package, PackageCheck, PackageOpen, PackagePlus, PanelTop, Percent, PiggyBank, Play, Plug, Presentation, Puzzle, Radio, Receipt,
   ReceiptText, RefreshCw, Replace, Rocket, RotateCcw, Route, Rss, Ruler, Scale, ScanSearch, School, Scroll, Search, SearchCheck, Send, Server,
   Settings, Share2, Sheet, Shield, ShieldCheck, Ship, ShoppingBag, ShoppingCart, Signature, Siren, SlidersHorizontal, Sparkles, Split, SprayCan,
-  SquareCheck, Stamp, Star, Stethoscope, Store, Table2, Tag, Tags, Target, TicketPercent, Timer, TrendingDown, TrendingUp, TriangleAlert, Truck,
+  SquareCheck, SquarePen, Stamp, Star, Stethoscope, Store, Table2, Tag, Tags, Target, TicketPercent, Timer, TrendingDown, TrendingUp, TriangleAlert, Truck,
   Undo2, User, UserCheck, UserCog, UserMinus, UserPen, UserPlus, UserSearch, Users, Utensils, Video, Wallet, Warehouse, Workflow, Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -46,7 +46,7 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   "receipt-text": ReceiptText, "refresh-cw": RefreshCw, replace: Replace, rocket: Rocket, "rotate-ccw": RotateCcw, route: Route, rss: Rss,
   ruler: Ruler, scale: Scale, "scan-search": ScanSearch, school: School, scroll: Scroll, search: Search, "search-check": SearchCheck, send: Send,
   server: Server, settings: Settings, "share-2": Share2, sheet: Sheet, shield: Shield, "shield-check": ShieldCheck, ship: Ship,
-  "shopping-bag": ShoppingBag, "shopping-cart": ShoppingCart, signature: Signature, siren: Siren, "sliders-horizontal": SlidersHorizontal,
+  "shopping-bag": ShoppingBag, "shopping-cart": ShoppingCart, signature: Signature, siren: Siren, "sliders-horizontal": SlidersHorizontal, "square-pen": SquarePen,
   sparkles: Sparkles, split: Split, "spray-can": SprayCan, "square-check": SquareCheck, stamp: Stamp, star: Star, stethoscope: Stethoscope,
   store: Store, "table-2": Table2, tag: Tag, tags: Tags, target: Target, "ticket-percent": TicketPercent, timer: Timer, "trending-down": TrendingDown,
   "trending-up": TrendingUp, "triangle-alert": TriangleAlert, truck: Truck, "undo-2": Undo2, user: User, "user-check": UserCheck, "user-cog": UserCog,

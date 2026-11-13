@@ -218,6 +218,17 @@ export interface EntitySummary {
   permissions: Perms;
 }
 
+/** A left-menu row an app declares for a page of its own interface: `path` starts with the app's route. */
+export interface MenuPage {
+  app: string;
+  id: string;
+  path: string;
+  label: string;
+  icon?: string | null;
+  /** The module's item (entity, `report:<name>`, another row's id) it follows; first without one. */
+  after?: string | null;
+}
+
 export interface Module {
   name: string;
   label: string;
@@ -226,6 +237,8 @@ export interface Module {
   items: string[];
   /** The package that defines it (`tenant`: a workspace's own menu). */
   package?: string;
+  /** Rows for pages of its app's own interface this person sees (`shell.menu`, BD-63). */
+  pages?: MenuPage[];
   /** A workspace's own menu: what its tile says, its colour, the entities offered in "+", the assistant's notes. */
   description?: string;
   color?: string;

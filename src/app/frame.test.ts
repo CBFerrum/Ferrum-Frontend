@@ -3,6 +3,13 @@ import type { MetaIndex, Module } from "../lib/meta";
 import type { EntitySummary } from "../lib/meta";
 import { navIcon } from "../../packages/kit/src/navIconName";
 import { moduleLinks, ownModule, setFrameMode, STUDIO, studioLinks } from "./Shell";
+import { resetBootstrap } from "@ferrum/client";
+
+/** The page's bootstrap as the server hands it (`__FERRUM_BOOTSTRAP__`); null: none. */
+function setBootstrap(b: unknown) {
+  (globalThis as { __FERRUM_BOOTSTRAP__?: unknown }).__FERRUM_BOOTSTRAP__ = b ?? undefined;
+  resetBootstrap();
+}
 
 const meta = { entities: [{ name: "Lead", package: "crm" }, { name: "Customer", package: "parties" }] } as unknown as MetaIndex;
 const mod = (name: string, items: string[], pkg?: string): Module => ({ name, label: name, order: 0, items, package: pkg });
@@ -55,5 +62,37 @@ describe("the sidebar's rows carry what their icon is chosen from", () => {
   it("uses the icon an entity declares", () => {
     const readable = new Map([["Lead", { name: "Lead", label_plural: "Leads", kind: "master", submittable: false, icon: "bell" }]] as unknown as [string, EntitySummary][]);
     expect(navIcon(moduleLinks(mod("crm", ["Lead"]), readable, new Map())[0]!)).toBe("bell");
+  });
+});
+
+describe("an app's own pages in its module", () => {
+  const readable = new Map([["SocialPost", { name: "SocialPost", label_plural: "Posts", kind: "document", submittable: false }], ["SocialFeed", { name: "SocialFeed", label_plural: "Feeds", kind: "master", submittable: false }]] as unknown as [string, EntitySummary][]);
+  const social: Module = {
+    ...mod("social", ["SocialPost", "SocialFeed"], "social"),
+    pages: [
+      { app: "social", id: "compose", path: "social/compose", label: "Compose", icon: "square-pen" },
+      { app: "social", id: "calendar", path: "social/calendar", label: "Calendar", icon: "calendar" },
+      { app: "social", id: "numbers", path: "social/numbers", label: "Numbers", icon: "bar-chart-3", after: "SocialFeed" },
+      { app: "social", id: "library", path: "social/library", label: "Library", icon: "no-such-icon", after: "Gone" },
+    ],
+  };
+
+  it("puts each row after the item it names, else first in the order given, routed inside the app's own frame", () => {
+    setBootstrap({ app: { id: "social", entry: "social", routes: { social: "/social/" } } });
+    setFrameMode("app", ["social"]);
+    const rows = moduleLinks(social, readable, new Map());
+    expect(rows.map((r) => r.label)).toEqual(["Compose", "Calendar", "Library", "Posts", "Feeds", "Numbers"]);
+    expect(rows[0]).toMatchObject({ to: "/compose", kind: "page" });
+    expect(rows[0]!.href).toBeUndefined();
+    // Every row has an icon; an unknown one falls back to a page's, an older name to its current one.
+    expect(rows.map((r) => navIcon(r))).toEqual(["square-pen", "calendar", "app-window", "share-2", "rss", "chart-column"]);
+  });
+
+  it("loads the page from anywhere else, and a module without rows is as it was", () => {
+    setBootstrap({ app: { id: "crm", entry: "crm", routes: { crm: "/crm/" } } });
+    setFrameMode("classic");
+    expect(moduleLinks(social, readable, new Map())[0]).toMatchObject({ to: "/social/compose", href: "/social/compose" });
+    expect(moduleLinks({ ...social, pages: undefined }, readable, new Map()).map((r) => r.to)).toEqual(["/e/SocialPost", "/e/SocialFeed"]);
+    setBootstrap(null);
   });
 });
