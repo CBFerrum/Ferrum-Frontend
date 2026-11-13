@@ -131,7 +131,14 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
       await sleep(Number.isFinite(after) && after > 0 ? Math.min(after, 10) * 1000 : 500 * 2 ** attempt, o.signal);
       continue;
     }
-    const data: unknown = await res.json().catch(() => null);
+    // A refusal that is not JSON (the framework's own, for a body it could not read) is shown in its own words, as long as it is words.
+    const raw = await res.text().catch(() => "");
+    let data: unknown = null;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (res.status < 500 && raw.trim() && raw.length <= 500 && !raw.trimStart().startsWith("<")) data = { message: raw.trim() };
+    }
     const err = parseApiError(unreachable ? 502 : res.status, data);
     bodies.set(err, data);
     if (res.status === 401 && !o.noAuthRedirect) {

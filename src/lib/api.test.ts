@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { ApiError, errorMessage, isStale, parseApiError, queryString, withPrintCsp } from "./api";
+import { describe, expect, it, vi } from "vitest";
+import { api, ApiError, errorMessage, isStale, parseApiError, queryString, withPrintCsp } from "./api";
 
 describe("parseApiError", () => {
   it("parses validation errors with child rows", () => {
@@ -94,5 +94,16 @@ describe("helpers", () => {
     const out = withPrintCsp("<!doctype html><html><head><script>alert(1)</script></head></html>");
     expect(out.startsWith("<!doctype html><meta http-equiv=\"Content-Security-Policy\"")).toBe(true);
     expect(withPrintCsp("<p>hi</p>").startsWith("<!doctype html><meta")).toBe(true);
+  });
+});
+
+describe("a refusal that is not JSON", () => {
+  it("is shown in its own words, not as the generic fallback", async () => {
+    const say = (status: number, body: string) => vi.stubGlobal("fetch", async () => new Response(body, { status, headers: { "content-type": "text/plain" } }));
+    say(422, "Failed to deserialize the JSON body into the target type: description: missing field 'items_at' at line 1 column 7428");
+    await expect(api.post("/x", {})).rejects.toThrow("missing field 'items_at'");
+    say(422, "<html>nope</html>");
+    await expect(api.post("/x", {})).rejects.toThrow("Please check your input.");
+    vi.unstubAllGlobals();
   });
 });

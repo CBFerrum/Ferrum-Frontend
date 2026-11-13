@@ -66,6 +66,18 @@ describe("the editor", () => {
     expect(html).not.toContain('name="secret:');
     expect(await violations(html)).toEqual([]);
   });
+  it("lists what the form does not draw, and after a take-up says what is left", () => {
+    const social: ConnectionRow = { ...carrier, id: "44444444-4444-7444-8444-444444444444", name: "mastodon", enabled: false, secrets: [],
+      description: { base: "https://m.example", any_host: true, auth: { type: "oauth", owner: "workspace", provider: { authorize_url: "https://m.example/a", never_expires: true } }, operations: { post: { path: "/p", steps: [{ wait: 1 }], body: "{{ secret.app_key }}" } }, pulls: [{ name: "p", operation: "post", items_at: "" }] } };
+    const h = text(render(<ConnectionEditor row={social} tookUp onClose={() => {}} onSaved={() => {}} />));
+    expect(h).toContain("More in this description");
+    expect(h).toContain("operations.post.steps");
+    expect(h).toContain("auth.provider.never_expires");
+    expect(h).toContain("Edit the whole description as JSON");
+    expect(h).toContain("Set the secrets it names, below: app_key");
+    expect(h).toContain("press Connect");
+    expect(h).toContain("Turn it on here");
+  });
   it("starts a new connection with nothing set", () => {
     const fresh = render(<ConnectionEditor row={null} onClose={() => {}} onSaved={() => {}} />);
     expect(text(fresh)).toContain("No secret is named yet.");
