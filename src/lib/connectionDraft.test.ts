@@ -1,7 +1,8 @@
 // The connection editor's logic: what a description keeps when edited, what is sent for secrets, and the states.
 
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { at, captureMinutes, changes, checkConnection, connectionBody, connectionState, parseDescription, parseInputs, personalState, put, secretNames, secretsPatch, typedSecrets, readPick, makePick, signatureNeedsDelivery, tidy } from "./connectionDraft";
+import { at, captureMinutes, changes, checkConnection, connectionBody, connectionState, parseDescription, parseInputs, personalState, put, secretNames, secretsPatch, typedSecrets, readPick, makePick, signatureNeedsDelivery, undrawn } from "./connectionDraft";
 
 const description = {
   base: "https://api.carrier.example/v2",
@@ -13,12 +14,12 @@ const description = {
 };
 
 describe("a description", () => {
-  it("keeps what this screen has no control for, and drops what is empty", () => {
+  it("keeps what this screen has no control for, and what is empty but meant", () => {
     const next = put(put(description, ["headers", "x-account"], ""), ["timeout_ms"], undefined);
     expect(next.future_property).toEqual({ kept: true });
-    expect(tidy(next).headers).toBeUndefined();
-    expect(tidy({ ...next, allowed_hosts: [""], operations: { ping: { path: "" } } }).operations).toEqual({ ping: {} });
-    expect(tidy({ a: false, b: 0 })).toEqual({ a: false, b: 0 });
+    expect(next.headers).toEqual({});
+    const pulled = { ...description, pulls: [{ name: "p", operation: "track", items_at: "", every_minutes: 5 }] };
+    expect(connectionBody({ name: "a", label: "A", enabled: false, description: pulled }).description).toEqual(pulled);
   });
   it("names the secrets it uses", () => {
     expect(secretNames(description).sort()).toEqual(["api_key", "hook"]);
@@ -92,5 +93,34 @@ describe("states", () => {
     expect(connectionState({ enabled: false })).toBe("off");
     expect(connectionState({ enabled: true, account: { status: "needs_reconnecting" } })).toBe("reconnect");
     expect([personalState({ id: "1", name: "m", label: "M", status: null, account: null }), personalState({ id: "1", name: "m", label: "M", status: "connected", account: "a@x" })]).toEqual(["none", "connected"]);
+  });
+});
+
+describe("what the form does not draw", () => {
+  const rich = {
+    base: "https://x.example", any_host: true, handshake: { type: "echo" },
+    auth: { type: "oauth", owner: "workspace", provider: { authorize_url: "a", never_expires: true, keep: ["account_id"], scope_separator: " " } },
+    operations: { go: { path: "/x", steps: [{ confirm: "sure" }], url: "{{ inputs.u }}", credentials: false, headers_from: "h", result: { a: { at: "/a", as: "text" } } } },
+    pulls: [{ name: "p", operation: "go", items_at: "", inputs: { a: "1" }, each: "x", map: { entity: "post", as: "y" } }],
+    inbound: { verify: { type: "token", secret: "hook", header: "h", not_secret: ["a"] }, wait: 1 },
+  };
+  it("is listed at every level, and kept whole in what is sent", () => {
+    expect(undrawn(rich).map((u) => u.path).sort()).toEqual([
+      "any_host", "auth.provider.keep", "auth.provider.never_expires", "auth.provider.scope_separator", "handshake", "inbound.verify.not_secret", "inbound.wait",
+      "operations.go.credentials", "operations.go.headers_from", "operations.go.steps", "operations.go.url", "pulls[0].each", "pulls[0].inputs", "pulls[0].map.as",
+    ]);
+    expect(connectionBody({ name: "a", label: "A", enabled: false, description: rich }).description).toEqual(rich);
+    expect(secretNames({ ...rich, operations: { go: { body: "{{ secret.token_x }}" } } })).toContain("token_x");
+  });
+  it("lists a property it has never heard of, and nothing else", () => expect(undrawn(description).map((u) => u.path)).toEqual(["future_property"]));
+
+  // Every description a package offers: load, save untouched, and the body is the description (skipped where the packages are not checked out).
+  const dir = "/Users/chinmoybhuyan/Desktop/Personal/ERP/core/social/docs/connectors";
+  const files = existsSync(dir) ? [dir, `${dir}/services`].filter(existsSync).flatMap((d) => readdirSync(d).filter((f) => f.endsWith(".json")).map((f) => `${d}/${f}`)) : [];
+  it.skipIf(!files.length)("round-trips every offered description untouched", () => {
+    for (const f of files) {
+      const d = JSON.parse(readFileSync(f, "utf8"));
+      expect(connectionBody({ name: "n", label: "L", enabled: false, description: d }).description, f).toEqual(d);
+    }
   });
 });

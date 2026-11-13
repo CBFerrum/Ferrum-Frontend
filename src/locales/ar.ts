@@ -5484,6 +5484,18 @@ const words: Record<string, string> = {
   "Add-on": "إضافة",
   "{value} was cleared: it does not belong to the {field} now chosen.": "تم مسح {value}: فهو لا يخص {field} المختار الآن.",
   "Choose {field} first to see only its {name}.": "اختر {field} أولاً لعرض {name} الخاصة به فقط.",
+  "A JSON pointer to a list in each answer; empty: the whole answer is the list.": "A JSON pointer to a list in each answer; empty: the whole answer is the list.",
+  "Next steps": "Next steps",
+  "Taken up. Next steps": "Taken up. Next steps",
+  "Set the secrets it names, below: {names}": "Set the secrets it names, below: {names}",
+  "Back in the list, press Connect to sign in to the account.": "Back in the list, press Connect to sign in to the account.",
+  "Back in the list, press Sign in again to log in.": "Back in the list, press Sign in again to log in.",
+  "It is on.": "It is on.",
+  "Turn it on here (On, then Save) when you have tried an operation.": "Turn it on here (On, then Save) when you have tried an operation.",
+  "The description: {why}": "The description: {why}",
+  "More in this description": "More in this description",
+  "The form has no control for these. They are kept as they are when you save. Edit the whole description in the JSON view to change them.": "The form has no control for these. They are kept as they are when you save. Edit the whole description in the JSON view to change them.",
+  "Edit the whole description as JSON": "Edit the whole description as JSON",
 };
 
 export default words;

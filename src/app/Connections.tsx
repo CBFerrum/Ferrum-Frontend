@@ -48,6 +48,7 @@ export function Connections() {
   const q = useQuery({ queryKey: ["admin", "connections"], queryFn: ({ signal }) => api.get<{ connections: ConnectionRow[] }>("/api/admin/connections", undefined, signal) });
   const [editing, setEditing] = useState<ConnectionRow | "new" | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [tookUp, setTookUp] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ["admin", "connections"] });
@@ -58,10 +59,12 @@ export function Connections() {
     return (
       <ConnectionEditor
         key={editing === "new" ? "new" : (editing.id ?? editing.name)}
+        tookUp={tookUp}
         row={editing === "new" ? null : editing}
-        onClose={() => setEditing(null)}
+        onClose={() => { setEditing(null); setTookUp(false); }}
         onSaved={(id) => {
           setEditing(null);
+          setTookUp(false);
           if (id) setOpen(id);
           refresh();
           toast(t("Saved"));
@@ -84,6 +87,13 @@ export function Connections() {
       refresh();
     }
   };
+  // What the package offers is saved exactly as offered, off; then it opens for secrets and turning on. The form never rebuilds it.
+  const takeUp = (c: ConnectionRow) =>
+    void act(`take:${c.name}`, async () => {
+      const { id } = await api.post<{ id: string }>("/api/admin/connections", { name: c.name, label: c.label, enabled: false, description: c.description });
+      const saved = (await api.get<{ connections: ConnectionRow[] }>("/api/admin/connections")).connections.find((x) => x.id === id);
+      if (saved) { setTookUp(true); setEditing(saved); }
+    });
   const remove = async (c: ConnectionRow) => {
     const ok = await confirmDialog({ title: t("Delete {name}?", { name: c.label }), message: t("Apps and buttons that call it stop working. Its secrets and sign-ins are forgotten."), confirmLabel: t("Delete"), danger: true });
     if (ok) await act(`del:${c.id}`, () => api.del(`/api/admin/connections/${c.id}`), t("Deleted"));
@@ -129,7 +139,7 @@ export function Connections() {
                   </div>
                 </header>
                 <div className="row" style={{ flexWrap: "wrap" }}>
-                  <Button size="sm" onClick={() => setEditing(c)}>{c.offered ? t("Take it up") : t("Edit")}</Button>
+                  <Button size="sm" loading={busy === `take:${c.name}`} disabled={!!busy} onClick={() => (c.offered ? takeUp(c) : setEditing(c))}>{c.offered ? t("Take it up") : t("Edit")}</Button>
                   {!c.offered && <Button size="sm" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>{t("Try, log and pulls")}</Button>}
                   {!c.offered && who === "workspace" && (
                     <Button size="sm" loading={busy === `connect:${c.id}`} disabled={!!busy} onClick={() => connect(c)}>{s === "reconnect" ? t("Connect again") : c.account ? t("Reconnect") : t("Connect")}</Button>
