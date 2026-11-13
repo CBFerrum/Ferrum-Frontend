@@ -6,8 +6,8 @@ What was checked, how, and what was not. Evidence classes are kept apart: **sour
 
 | Item | Value |
 |---|---|
-| Ferrum-Frontend | `e065883` (main; also the `FRONTEND_REV` the platform's Dockerfile pins). The audit this work started from named `e0658836…`: the same commit |
-| Platform | main `88fb749`; the server used for captures is a local debug build of 10 Nov from a development branch, not a released image |
+| Ferrum-Frontend | `56e3e0b` (main; also the `FRONTEND_REV` the platform's Dockerfile pins). The audit this work started from named `56e3e0b5…`: the same commit |
+| Platform | main `ae88e16`; the server used for captures is a local debug build of 10 Nov from a development branch, not a released image |
 | Libraries | React 19.2.9, Vite 7.3.7, Tailwind 4.3.3, radix-ui 1.8.1, lucide-react 1.57.0, TipTap 3.32.0, Yjs 13.6.33, pdfjs-dist 6.4.299 |
 | Editor engines (pinned in the platform's `deploy/editors/builds.txt`) | gridcraft 0.13.0, wordcraft 0.12.0, pdfcraft 0.15.0. The editors server was not running; no editor was opened |
 | Workspace used | `demo` in a private copy of the local development database; signed in as its seeded administrator. Installed releases there: comms 0.12.0, drive 0.12.0, docs 0.6.0, erp 0.5.0, studio 0.2.0 |
