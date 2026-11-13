@@ -251,13 +251,13 @@ const LONGEST = Math.max(...[...DICTIONARY.keys(), ...REPORT_BOOK.keys()].map((k
 /** Icons a row may declare besides the dictionary's: Home, the kinds, and the app tiles' own set. */
 const EXTRA = [
   "house", "chart-column", "app-window", "list", "external-link", "layout-grid", "calendar", "circle-help", "hard-drive", "headset", "presentation", "server", "sheet", "signature", "store", "video", "inbox", "search",
-  "bell", "shield", "puzzle", "play", "bookmark", "panel-top", "sliders-horizontal",
+  "bell", "shield", "puzzle", "play", "bookmark", "panel-top", "sliders-horizontal", "square-pen",
 ];
 /** Every name the drawing (NavIcon.tsx) has: what a declared name must be to be used. */
 export const NAV_ICON_NAMES: ReadonlySet<string> = new Set([...DICTIONARY.values(), ...REPORT_BOOK.values(), ...KIND_BOOK.values(), ...EXTRA]);
 
 /** Names the shell's older icon registry used on rows, as lucide names. `file` and `chart` were kind markers, not choices. */
-const LEGACY: Record<string, string> = { chart: "chart-column", dashboard: "layout-dashboard", space: "panel-top", doc: "file-text", apps: "layout-grid", check: "square-check", chat: "message-square", home: "house", external: "external-link", board: "folder-kanban" };
+const LEGACY: Record<string, string> = { chart: "chart-column", dashboard: "layout-dashboard", space: "panel-top", doc: "file-text", apps: "layout-grid", check: "square-check", chat: "message-square", home: "house", external: "external-link", board: "folder-kanban", "bar-chart-3": "chart-column" };
 
 export type NavKind = "home" | "report" | "page" | "settings" | "document" | "list" | "master" | "child" | "ledger";
 export interface NavIconInput {
