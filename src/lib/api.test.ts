@@ -114,9 +114,11 @@ describe("403 step_up", () => {
     let proved = false;
     const fetchMock = vi.fn(async () => (proved ? new Response("{}", { status: 200, headers: { "content-type": "application/json" } }) : new Response(JSON.stringify({ error: "step_up", message: "confirm it is you" }), { status: 403, headers: { "content-type": "application/json" } })));
     vi.stubGlobal("fetch", fetchMock);
-    setStepUpHandler(async () => ((proved = true), true));
+    const asked: unknown[] = [];
+    setStepUpHandler(async (refusal) => (asked.push(refusal), (proved = true), true));
     await api.patch("/api/v1/Employee/e1", { a: 1 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(asked).toEqual([{ error: "step_up", message: "confirm it is you" }]);
     proved = false;
     setStepUpHandler(async () => false);
     await expect(api.del("/api/v1/Employee/e1")).rejects.toMatchObject({ status: 403, code: "step_up", message: "confirm it is you" });

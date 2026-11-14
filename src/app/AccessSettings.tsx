@@ -239,7 +239,7 @@ export function AccessSettings({ initial }: { initial: Access }) {
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="field-label">{tr("Ask again before sensitive work")}</legend>
         <p className="field-hint">
-          {tr("Staff must enter their password again (and the code from their authenticator app) before the work you mark here. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.")}
+          {tr("Staff confirm it is them again before the work you mark here: with a passkey, their password (and the code from their authenticator app when they have one), or by signing in again with their identity provider. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.")}
         </p>
         <div className="stack" style={{ gap: 12 }}>
           <label className="row" style={{ gap: 8 }}>

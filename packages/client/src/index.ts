@@ -448,19 +448,21 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
   });
 
-type StepUpHandler = () => Promise<boolean>;
+type StepUpHandler = (refusal: unknown) => Promise<boolean>;
 let stepUpHandler: StepUpHandler | null = null;
 let stepUpAsking: Promise<boolean> | null = null;
 
-/** The page's way to ask the person to confirm it is them (the kit's `ConfirmHost` sets it while it is on the page); null: none. */
+/** The page's way to ask the person to confirm it is them (the kit's `ConfirmHost` sets it while it is on the page), given the
+ *  refusal's body (its `message` and the person's `ways`); null: none. */
 export function setStepUpHandler(fn: StepUpHandler | null): void {
   stepUpHandler = fn;
 }
 
-/** Asks once however many requests were refused: they all wait for the same answer. True when the person proved themselves. */
-export function askStepUp(): Promise<boolean> {
+/** Asks once however many requests were refused: they all wait for the same answer, asked with the first refusal (the server's
+ *  body: why, and the ways the person has to confirm it is them). True when the person proved themselves. */
+export function askStepUp(refusal?: unknown): Promise<boolean> {
   if (!stepUpHandler) return Promise.resolve(false);
-  stepUpAsking ??= stepUpHandler()
+  stepUpAsking ??= stepUpHandler(refusal)
     .catch(() => false)
     .finally(() => {
       stepUpAsking = null;
@@ -519,7 +521,7 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
     // request is sent again whatever its method, with or without an idempotency key: nothing was done the first time.
     if (res.status === 403 && err.code === "step_up" && !askedAgain) {
       askedAgain = true;
-      if ((await askStepUp()) && !init.signal?.aborted) continue;
+      if ((await askStepUp(data)) && !init.signal?.aborted) continue;
       throw err;
     }
     if (res.status === 401 && !init.noAuthRedirect && !isPublicPage()) shell().session.reauthenticate();
