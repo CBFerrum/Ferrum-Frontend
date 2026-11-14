@@ -39,6 +39,15 @@ export interface Address {
   label: string | null;
   base_name: string | null;
   can: { edit: boolean; remove: boolean; make_primary: boolean };
+  // Each of these is left out by an older server, and the screen then shows what it did before.
+  /** A domain of its own that does not work yet waits for this: to point here, then (where a record is asked) its DNS record. */
+  waiting?: "domain" | "record" | null;
+  /** The DNS record that proves a domain of its own, while it has not proven it. */
+  record?: { name: string; type: string; value: string } | null;
+  /** It opens nothing and sends people on to the main address (`home` still says where `/` lands there). */
+  forward?: boolean;
+  /** A removed address: true while it still sends visitors on, false once it no longer answers; null for a live one. */
+  redirecting?: boolean | null;
 }
 
 export interface Listing {
@@ -54,10 +63,17 @@ export interface Listing {
   homes: { id: string; name: string; route: string }[];
   limits: { addresses: number; paths: number };
   used: { addresses: number; paths: number };
+  /** What a domain of the workspace's own needs before it works: to point here, or its DNS record as well. */
+  proof?: "points" | "record";
+  /** Why every change is refused now, or null. */
+  read_only?: "closed" | "restricted" | null;
+  /** How many days a removed address keeps serving the people signed in there (0: it stops at once). */
+  leaving_days?: number;
 }
 
 interface PathList {
-  paths: { alias: string; target: string; works: boolean }[];
+  /** `taken_by`: the app that took a short path's word (`works: false`), when the server may name it. */
+  paths: { alias: string; target: string; works: boolean; taken_by?: string | null }[];
   limit: number;
   /** First parts of a path that a short path may not take: the service's own and every app's. */
   taken: string[];
@@ -98,9 +114,17 @@ export function domainProblem(host: string, base: string | null): string | null 
   return null;
 }
 
-/** Changes are refused (403) while the workspace is closed or restricted, and GET /api/admin/domains does not say so: its account state does. */
-function useFrozen() {
-  const usage = useQuery({ queryKey: ["admin", "usage"], queryFn: ({ signal }) => api.get<{ state?: string }>("/api/admin/usage", undefined, signal), retry: false });
+/** Changes are refused (403) while the workspace is closed or restricted: GET /api/admin/domains says so (`read_only`); from an
+ *  older server that does not, the account state does. */
+function useFrozen(q: UseQueryResult<Listing>) {
+  const said = q.data?.read_only !== undefined;
+  const usage = useQuery({
+    queryKey: ["admin", "usage"],
+    queryFn: ({ signal }) => api.get<{ state?: string }>("/api/admin/usage", undefined, signal),
+    retry: false,
+    enabled: !q.isPending && !said,
+  });
+  if (said) return { frozen: !!q.data!.read_only, canChange: !q.data!.read_only };
   const frozen = usage.data?.state === "restricted" || usage.data?.state === "closed";
   // Changes are offered once the state is known; when it cannot be read the server's refusal says it.
   return { frozen, canChange: usage.isError || (usage.isSuccess && !frozen) };
@@ -109,14 +133,14 @@ function useFrozen() {
 export function Addresses() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["admin", "domains"], queryFn: ({ signal }) => api.get<Listing>("/api/admin/domains", undefined, signal) });
-  const { frozen, canChange } = useFrozen();
+  const { frozen, canChange } = useFrozen(q);
   // Refused outright (not an administrator, or a zone that keeps administration out): one panel, never what exists.
   if (q.error && !q.data && failureKind(q.error) === "denied") return <LoadFailed error={q.error} />;
   return (
     <div className="stack">
       {frozen && <Alert tone="info">{tr("While this workspace is closed or restricted, its addresses and short paths keep working and cannot be changed.")}</Alert>}
       <AddressList q={q} canChange={canChange} refresh={() => qc.invalidateQueries({ queryKey: ["admin", "domains"] })} />
-      <ShortPaths canChange={canChange} />
+      <ShortPaths canChange={canChange} homes={q.data?.homes} />
     </div>
   );
 }
@@ -166,8 +190,14 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   };
   const check = (d: Address) =>
     change(d, async () => {
-      const r = await api.post<{ answers: boolean }>(`${at(d.host)}/check`);
-      toast(r.answers ? tr("{host} now opens this workspace", { host: isolate(d.host) }) : tr("{host} does not point here yet", { host: isolate(d.host) }), r.answers ? "success" : "info");
+      const r = await api.post<{ answers: boolean; points?: boolean }>(`${at(d.host)}/check`);
+      const host = isolate(d.host);
+      toast(
+        r.answers ? tr("{host} now opens this workspace", { host })
+        : r.points ? tr("{host} points here, but its DNS record is not there yet", { host })
+        : tr("{host} does not point here yet", { host }),
+        r.answers ? "success" : "info",
+      );
     });
   const primary = (d: Address) =>
     change(d, async () => {
@@ -178,8 +208,13 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   const remove = async (d: Address) => {
     const others = rows.some((r) => r.host !== d.host && r.target === d.target && !r.released_at && (r.kind === "subdomain" || r.verified_at));
     const main = mainOf(d.target, d.host);
+    // The day it stops, from the server's leaving period (an older server does not say it: then "its leaving period").
+    const days = data?.leaving_days;
+    const date = days ? formatMoment(Date.now() + days * 86_400_000, { dateStyle: "medium" }) : "";
     const message =
       d.kind === "custom" && !d.verified_at ? tr("It has never reached this workspace, so it is removed at once.")
+      : days === 0 ? (main ? tr("It stops at once, and for 90 days only sends visitors on to {main}.", { main: isolate(main) }) : others ? tr("It stops at once. Another of the workspace's addresses becomes the main one, and for 90 days this one only sends visitors on to it.") : tr("It stops at once. No other address can take its place, so visitors are told the workspace has moved."))
+      : date ? (main ? tr("People already signed in on it keep working there until {date}, and new visitors go to {main} from now on. Then it stops, and for 90 days only sends visitors on.", { date, main: isolate(main) }) : others ? tr("People already signed in on it keep working there until {date}. Another of the workspace's addresses becomes the main one, and new visitors go there. Then it stops, and for 90 days only sends visitors on.", { date }) : tr("People already signed in on it keep working there until {date}. No other address can take its place, so new visitors are told the workspace has moved.", { date }))
       : main ? tr("People already signed in on it keep working there until its leaving period ends, and new visitors go to {main} from now on. Then it stops, and for 90 days only sends visitors on.", { main: isolate(main) })
       : others ? tr("People already signed in on it keep working there until its leaving period ends. Another of the workspace's addresses becomes the main one, and new visitors go there. Then it stops, and for 90 days only sends visitors on.")
       : tr("People already signed in on it keep working there until its leaving period ends. No other address can take its place, so new visitors are told the workspace has moved.");
@@ -210,16 +245,29 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   );
   const accounts = !!bootstrap()?.api.accounts;
   const appName = (id: string) => data?.homes.find((h) => h.id === id)?.name ?? id;
-  const opens = (d: Address) =>
-    d.target === "shell" ? (d.home ? tr("The workspace, landing on {app}", { app: appName(d.home) }) : tr("The whole workspace"))
-    : d.target === "portal" ? tr("The portal")
-    : tr("{title}'s public site", { title: data?.sites.find((s) => `site:${s.app}` === d.target)?.title ?? d.target.slice(5) });
+  const opens = (d: Address) => {
+    if (d.forward) {
+      const to = mainOf(d.target, d.host);
+      const app = d.home ? appName(d.home) : null;
+      if (!to) return tr("Sends people on to the main address");
+      return app ? placed(tr("Sends people on to {address}, landing on {app}"), { address: code(to), app: isolate(app) }) : placed(tr("Sends people on to {address}"), { address: code(to) });
+    }
+    return d.target === "shell" ? (d.home ? tr("The workspace, landing on {app}", { app: appName(d.home) }) : tr("The whole workspace"))
+      : d.target === "portal" ? tr("The portal")
+      : tr("{title}'s public site", { title: data?.sites.find((s) => `site:${s.app}` === d.target)?.title ?? d.target.slice(5) });
+  };
   const detail = (d: Address) => {
-    if (d.status === "pending" || d.status === "failing")
+    if (d.status === "pending" || d.status === "failing") {
+      if (d.waiting === "record") return tr("It points here. It works once its DNS record is added and checked.");
       return data?.point_to ? placed(tr("Point it at {address} with a CNAME record, then check it."), { address: code(data.point_to) }) : tr("Point it at this server, then check it.");
-    if (d.status === "verified") return null;
+    }
     const main = mainOf(d.target);
     const date = d.leaving_until ? formatMoment(d.leaving_until, { dateStyle: "medium" }) : "";
+    // A live address that has started forwarding still serves those signed in there for its leaving period.
+    if (d.status === "verified" && d.forward && d.leaving_until && new Date(d.leaving_until).getTime() > Date.now())
+      return tr("Until {date} people signed in there keep working there. Then it only sends people on to the main address.", { date });
+    if (d.status === "verified") return null;
+    if (d.status === "released" && d.redirecting === false) return tr("It no longer answers.");
     if (d.status === "leaving")
       return main
         ? placed(tr("Stops on {date}: until then people signed in there keep working, and new visitors go to {address}."), { date, address: code(main) })
@@ -290,6 +338,7 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
                           {d.kind === "subdomain" && !d.base_name && <div className="faint">{tr("Made with the workspace; it stays.")}</div>}
                           {d.kind === "operator" && <div className="faint">{tr("Added by whoever runs the installation, who alone can change or remove it.")}</div>}
                           {d.zone && <div className="faint">{tr("In the zone {zone}, which only whoever runs the installation can change.", { zone: isolate(d.zone) })}</div>}
+                          {d.record && (d.status === "pending" || d.status === "failing") && <DnsRecord record={d.record} />}
                         </td>
                         <td data-label={tr("What it opens")}>
                           <div>
@@ -299,7 +348,7 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
                         </td>
                         <td data-label={tr("Status")}>
                           <div>
-                            <Badge tone={TONE[d.status]}>{STATUS()[d.status]}</Badge>
+                            <Badge tone={TONE[d.status]}>{d.status === "pending" && d.waiting === "record" ? tr("Waiting for its DNS record") : STATUS()[d.status]}</Badge>
                             {more && <div className="muted">{more}</div>}
                           </div>
                         </td>
@@ -352,6 +401,41 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   );
 }
 
+/** The DNS record that proves a domain of the workspace's own: its name, type and value, each with a button that copies it. */
+function DnsRecord({ record }: { record: { name: string; type: string; value: string } }) {
+  const copy = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(tr("Copied to the clipboard"));
+    } catch {
+      toast(tr("Copy failed: select the text and copy it manually"), "error");
+    }
+  };
+  const parts: [string, string, string][] = [
+    [tr("Name"), record.name, tr("Copy the record's name")],
+    [tr("Type"), record.type, tr("Copy the record's type")],
+    [tr("Value"), record.value, tr("Copy the record's value")],
+  ];
+  return (
+    <div className="stack" style={{ gap: 4, marginTop: 8 }}>
+      <div>{tr("Add this DNS record at the domain's DNS provider, where its other records are. Then check it again.")}</div>
+      <dl className="kv" style={{ margin: 0 }}>
+        {parts.map(([label, value, action]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
+              <span className="mono" dir="ltr" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                {value}
+              </span>
+              <Button size="sm" variant="ghost" icon="copy" aria-label={action} title={action} onClick={() => void copy(value)} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** Adds an address (`row` null) or changes what one shows: where it lands, the apps it lists, its label. A refusal keeps what was typed
  *  and has the list read again (the count beside it may have moved). */
 function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: Listing; row: Address | null; onClose: () => void; onDone: (host: string) => void; onRefused: () => void }) {
@@ -364,6 +448,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
   const [only, setOnly] = useState(row?.apps != null);
   const [apps, setApps] = useState<string[]>(row?.apps ?? []);
   const [label, setLabel] = useState(row?.label ?? "");
+  const [forward, setForward] = useState(row?.forward ?? false);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
   const [tries, setTries] = useState(0);
@@ -379,6 +464,10 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
   const typedName = name.trim().toLowerCase();
   const typedHost = host.trim().replace(/\.$/, "").toLowerCase();
   const shell = target === "shell";
+  // Forwarding, offered where the server knows it (an older one sends no `forward`) on a `shell` address that is not the main one.
+  const main = listing.domains.find((d) => d.primary && d.target === "shell" && !d.released_at)?.host;
+  const forwardable = shell && listing.domains.some((d) => typeof d.forward === "boolean") && !row?.primary;
+  const forwards = forwardable && forward;
   const choices = shell && listing.homes.length > 0;
   /** What is wrong before asking the server: as it is typed, and on Add for what is still missing. */
   const local = (strict: boolean): FieldError[] => {
@@ -386,11 +475,11 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     const note = (field: string, message: string | null) => void (message && out.push({ field, message }));
     if (!row && way === "name") note("name", typedName ? nameProblem(typedName, listing.name_form ?? "{name}", listing.reserved_names ?? []) : strict ? tr("Give a name.") : null);
     if (!row && way === "host") note("host", typedHost ? domainProblem(typedHost, listing.base) : strict ? tr("Give a domain.") : null);
-    if (choices && only && !apps.length && strict) note("apps", tr("Tick at least one app, or list every app."));
+    if (choices && !forwards && only && !apps.length && strict) note("apps", tr("Tick at least one app, or list every app."));
     return out;
   };
   const live = local(false);
-  const visible = [...(row ? [] : [way, "target"]), ...(choices ? ["home", "apps"] : []), ...(shell ? ["label"] : [])];
+  const visible = [...(row ? [] : [way, "target"]), ...(forwardable ? ["forward"] : []), ...(choices ? ["home"] : []), ...(choices && !forwards ? ["apps"] : []), ...(shell && !forwards ? ["label"] : [])];
   const error = (field: string) => (live.find((e) => e.field === field) ?? errors.find((e) => e.field === field))?.message;
   const elsewhere = errors.filter((e) => !visible.includes(e.field));
   useEffect(() => {
@@ -399,7 +488,8 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     document.getElementById(elsewhere.length || !first ? `${id}-said` : `${id}-${first}`)?.focus();
   }, [tries]); // eslint-disable-line react-hooks/exhaustive-deps -- once per try
 
-  const shape = { home: home || null, apps: only ? apps : null, label: label.trim() || null };
+  // A forwarding address shows no bar, so it lists no apps and has no label: the server refuses them together with `forward`.
+  const shape = { home: home || null, apps: only && !forwards ? apps : null, label: forwards ? null : label.trim() || null };
   const sorted = (l: string[] | null) => JSON.stringify(l && [...l].sort());
   // A change sends only what changed: someone else's change to another part stands.
   const patch: Record<string, unknown> = {};
@@ -407,6 +497,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     if (shape.home !== (row.home ?? null)) patch.home = shape.home;
     if (sorted(shape.apps) !== sorted(row.apps)) patch.apps = shape.apps;
     if (shape.label !== (row.label ?? null)) patch.label = shape.label;
+    if (forwardable && forwards !== (row.forward ?? false)) patch.forward = forwards;
   }
 
   const submit = async (e: FormEvent) => {
@@ -424,12 +515,21 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
       let r: Address;
       if (row) {
         r = await api.patch<Address>(at(row.host), patch);
-        toast(tr("{host} is saved", { host: isolate(r.host) }));
+        toast(
+          patch.forward && r.leaving_until
+            ? tr("{host} is saved: people signed in there keep working there until {date}, then it only sends people on", { host: isolate(r.host), date: formatMoment(r.leaving_until, { dateStyle: "medium" }) })
+            : tr("{host} is saved", { host: isolate(r.host) }),
+        );
       } else {
         const body: Record<string, unknown> = way === "name" ? { name: typedName, target } : { host: typedHost, target };
         if (shell) for (const [k, v] of Object.entries(shape)) if (v !== null) body[k] = v;
+        if (forwards) body.forward = true;
         r = await api.post<Address>("/api/admin/domains", body);
-        toast(r.status === "verified" ? tr("{host} is added and works now", { host: isolate(r.host) }) : tr("{host} is added: it works once the domain points here and is checked", { host: isolate(r.host) }));
+        toast(
+          r.status === "verified" ? tr("{host} is added and works now", { host: isolate(r.host) })
+          : r.record ? tr("{host} is added: it works once the domain points here and its DNS record is added", { host: isolate(r.host) })
+          : tr("{host} is added: it works once the domain points here and is checked", { host: isolate(r.host) }),
+        );
       }
       onDone(r.host);
     } catch (err) {
@@ -490,6 +590,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
               <input id={`${id}-host`} data-autofocus className="input mono" dir="ltr" value={host} autoComplete="off" spellCheck={false} autoCapitalize="none" placeholder="erp.example.com" onChange={(e) => edit(setHost)(e.target.value)} />
             </Field>
             <p className="field-hint">{pointHere}</p>
+            {listing.proof === "record" && <p className="field-hint">{tr("This installation also asks for a DNS record that proves the domain is yours. Once the domain is added, the list of addresses shows the record to add at the domain's DNS provider.")}</p>}
           </>
         )}
         {!row && (
@@ -505,6 +606,26 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
             </select>
           </Field>
         )}
+        {forwardable && (
+          <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend className="field-label">{tr("What this address does")}</legend>
+            <div className="stack" style={{ gap: 8 }}>
+              <label className="row" style={{ gap: 8 }}>
+                <input id={`${id}-forward`} type="radio" name={`${id}-forward`} checked={!forward} aria-invalid={error("forward") ? true : undefined} onChange={() => edit(setForward)(false)} />
+                {tr("Opens the workspace here")}
+              </label>
+              <label className="row" style={{ gap: 8 }}>
+                <input type="radio" name={`${id}-forward`} checked={forward} onChange={() => edit(setForward)(true)} />
+                {main ? placed(tr("Only sends people on to the main address, {address}"), { address: code(main) }) : tr("Only sends people on to the main address")}
+              </label>
+            </div>
+            {error("forward") && <p className="field-error">{isolate(error("forward")!)}</p>}
+            {forwards && row && !row.forward && row.status === "verified" && !!listing.leaving_days && (
+              <p className="field-hint">{tr("People signed in there keep working there until {date}. Then it only sends people on.", { date: formatMoment(Date.now() + listing.leaving_days * 86_400_000, { dateStyle: "medium" }) })}</p>
+            )}
+            <p className="field-hint">{tr("Sending people on means one sign-in, on the main address, and nothing kept separately on this address. It then lists no apps and shows no label; where people land still applies.")}</p>
+          </fieldset>
+        )}
         {choices && (
           <>
             <Field label={tr("The app it lands on")} error={error("home")} hint={tr("Whoever cannot open that app lands on Home instead.")}>
@@ -517,34 +638,36 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
                 ))}
               </select>
             </Field>
-            <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
-              <legend className="field-label">{tr("Apps listed there")}</legend>
-              <div className="stack" style={{ gap: 8 }}>
-                <label className="row" style={{ gap: 8 }}>
-                  <input type="radio" name={`${id}-only`} checked={!only} onChange={() => edit(setOnly)(false)} />
-                  {tr("Every app")}
-                </label>
-                <label className="row" style={{ gap: 8 }}>
-                  <input id={`${id}-apps`} type="radio" name={`${id}-only`} checked={only} aria-invalid={error("apps") ? true : undefined} onChange={() => edit(setOnly)(true)} />
-                  {tr("Only these apps")}
-                </label>
-                {only && (
-                  <div className="stack" style={{ gap: 4, paddingInlineStart: 24 }}>
-                    {listing.homes.map((h) => (
-                      <label key={h.id} className="row" style={{ gap: 8 }}>
-                        <input type="checkbox" checked={apps.includes(h.id)} onChange={(e) => edit(setApps)(e.target.checked ? [...apps, h.id] : apps.filter((a) => a !== h.id))} />
-                        {isolate(h.name)}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {error("apps") && <p className="field-error">{isolate(error("apps")!)}</p>}
-              <p className="field-hint">{tr("Listing only some apps is a convenience, not a lock: other apps still open there through a link. Only whoever runs the installation can keep an app away from an address.")}</p>
-            </fieldset>
+            {!forwards && (
+              <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className="field-label">{tr("Apps listed there")}</legend>
+                <div className="stack" style={{ gap: 8 }}>
+                  <label className="row" style={{ gap: 8 }}>
+                    <input type="radio" name={`${id}-only`} checked={!only} onChange={() => edit(setOnly)(false)} />
+                    {tr("Every app")}
+                  </label>
+                  <label className="row" style={{ gap: 8 }}>
+                    <input id={`${id}-apps`} type="radio" name={`${id}-only`} checked={only} aria-invalid={error("apps") ? true : undefined} onChange={() => edit(setOnly)(true)} />
+                    {tr("Only these apps")}
+                  </label>
+                  {only && (
+                    <div className="stack" style={{ gap: 4, paddingInlineStart: 24 }}>
+                      {listing.homes.map((h) => (
+                        <label key={h.id} className="row" style={{ gap: 8 }}>
+                          <input type="checkbox" checked={apps.includes(h.id)} onChange={(e) => edit(setApps)(e.target.checked ? [...apps, h.id] : apps.filter((a) => a !== h.id))} />
+                          {isolate(h.name)}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {error("apps") && <p className="field-error">{isolate(error("apps")!)}</p>}
+                <p className="field-hint">{tr("Listing only some apps is a convenience, not a lock: other apps still open there through a link. Only whoever runs the installation can keep an app away from an address.")}</p>
+              </fieldset>
+            )}
           </>
         )}
-        {shell && (
+        {shell && !forwards && (
           <Field label={tr("Label")} error={error("label")} hint={tr("A short name shown beside the workspace's name in the bar, such as Sales.")}>
             <input id={`${id}-label`} className="input" value={label} maxLength={40} autoComplete="off" onChange={(e) => edit(setLabel)(e.target.value)} />
           </Field>
@@ -557,18 +680,22 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
 // ── short paths ──
 
 const ALIAS = /^[a-z][a-z0-9-]{1,29}$/;
-type PathRow = { key: number; alias: string; target: string; works: boolean; saved: string };
+type PathRow = { key: number; alias: string; target: string; works: boolean; saved: string; by?: string | null }; // `by`: the app that took it
+
+/** What a short path an app took does now; `by`: that app's name, when the server names it. */
+const shadowed = (alias: string, by?: string | null) =>
+  by ? tr("{app} now uses {path}, so its page opens there and this short path does nothing.", { app: isolate(by), path: isolate(`/${alias}`) }) : tr("An app now uses {path}, so its page opens there and this short path does nothing.", { path: isolate(`/${alias}`) });
 let rowKey = 0;
 
 /** Why a short path cannot be saved as written, or null; a blank row is dropped. As the server checks it (`put_paths` in
  *  server/src/controllers/domains.rs, `alias_shaped` and `target_shaped` in crates/kernel/src/shell.rs), except which pages a target may
  *  lead to: here only that its first part is the service's or an app's (`taken` holds them all); the server says the rest. */
-export function pathProblem(r: { alias: string; target: string; works?: boolean; saved?: string }, i: number, rows: { alias: string }[], taken: string[]): string | null {
+export function pathProblem(r: { alias: string; target: string; works?: boolean; saved?: string; by?: string | null }, i: number, rows: { alias: string }[], taken: string[]): string | null {
   const alias = r.alias.trim();
   const target = r.target.trim();
   if (!alias && !target) return null;
   if (!ALIAS.test(alias)) return tr("Use 2 to 30 lowercase letters, digits or hyphens, starting with a letter.");
-  if (r.works === false && alias === r.saved) return `${tr("An app now uses {path}, so its page opens there and this short path does nothing.", { path: isolate(`/${alias}`) })} ${tr("Change it or remove it to save.")}`;
+  if (r.works === false && alias === r.saved) return `${shadowed(alias, r.by)} ${tr("Change it or remove it to save.")}`;
   if (taken.includes(alias)) return tr("{path} is already the address of an app or of the service itself.", { path: isolate(`/${alias}`) });
   if (rows.findIndex((x) => x.alias.trim() === alias) !== i) return tr("{path} is given twice.", { path: isolate(`/${alias}`) });
   const first = target.slice(1).split(/[/?]/)[0] ?? "";
@@ -576,11 +703,13 @@ export function pathProblem(r: { alias: string; target: string; works?: boolean;
   return null;
 }
 
-function ShortPaths({ canChange }: { canChange: boolean }) {
+function ShortPaths({ canChange, homes }: { canChange: boolean; homes?: Listing["homes"] }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["admin", "paths"], queryFn: ({ signal }) => api.get<PathList>("/api/admin/paths", undefined, signal) });
   const head = useRef<HTMLHeadingElement>(null);
   const data = q.data;
+  // The app that took a short path's word, by its name where the list of addresses has it.
+  const appName = (id?: string | null) => (id ? (homes?.find((h) => h.id === id)?.name ?? id) : null);
   const saved = async () => {
     await Promise.all([qc.invalidateQueries({ queryKey: ["admin", "paths"] }), qc.invalidateQueries({ queryKey: ["admin", "domains"] })]);
     head.current?.focus();
@@ -600,7 +729,7 @@ function ShortPaths({ canChange }: { canChange: boolean }) {
         ) : !data ? (
           <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
         ) : canChange ? (
-          <PathsForm key={JSON.stringify(data.paths)} list={data} onSaved={saved} />
+          <PathsForm key={JSON.stringify(data.paths)} list={data} appName={appName} onSaved={saved} />
         ) : !data.paths.length ? (
           <p className="muted">{tr("No short paths yet.")}</p>
         ) : (
@@ -612,7 +741,7 @@ function ShortPaths({ canChange }: { canChange: boolean }) {
                   <Icon name="chevronRight" />
                   {code(p.target)}
                 </span>
-                {!p.works && <p className="field-hint">{tr("An app now uses {path}, so its page opens there and this short path does nothing.", { path: isolate(`/${p.alias}`) })}</p>}
+                {!p.works && <p className="field-hint">{shadowed(p.alias, appName(p.taken_by))}</p>}
               </li>
             ))}
           </ul>
@@ -623,9 +752,9 @@ function ShortPaths({ canChange }: { canChange: boolean }) {
 }
 
 /** The short paths as one list, saved together (PUT replaces it whole). */
-function PathsForm({ list, onSaved }: { list: PathList; onSaved: () => Promise<void> }) {
+function PathsForm({ list, appName, onSaved }: { list: PathList; appName: (id?: string | null) => string | null; onSaved: () => Promise<void> }) {
   const id = useId();
-  const [rows, setRows] = useState<PathRow[]>(() => list.paths.map((p) => ({ key: ++rowKey, alias: p.alias, target: p.target, works: p.works, saved: p.alias })));
+  const [rows, setRows] = useState<PathRow[]>(() => list.paths.map((p) => ({ key: ++rowKey, alias: p.alias, target: p.target, works: p.works, saved: p.alias, by: p.taken_by })));
   const [refusal, setRefusal] = useState<{ at: number; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
@@ -637,7 +766,7 @@ function PathsForm({ list, onSaved }: { list: PathList; onSaved: () => Promise<v
   }, [focus]);
   const kept = rows.filter((r) => r.alias.trim() || r.target.trim()).map((r) => ({ alias: r.alias.trim(), target: r.target.trim() }));
   const changed = JSON.stringify(kept) !== JSON.stringify(list.paths.map(({ alias, target }) => ({ alias, target })));
-  const problems = rows.map((r, i) => pathProblem(r, i, rows, list.taken));
+  const problems = rows.map((r, i) => pathProblem({ ...r, by: appName(r.by) }, i, rows, list.taken));
   const full = rows.length >= list.limit;
   const set = (i: number, change: Partial<PathRow>) => {
     setRows(rows.map((r, j) => (j === i ? { ...r, ...change } : r)));
@@ -666,9 +795,14 @@ function PathsForm({ list, onSaved }: { list: PathList; onSaved: () => Promise<v
       await onSaved();
     } catch (err) {
       const text = err instanceof ApiError && err.fields.length ? err.fields.map((f) => f.message).join(" ") : errorMessage(err);
-      // The server names the short path at fault first ("/help must lead to …"): its row shows it.
+      // The server says the place of the short path at fault in the list sent (`row`), which leaves out blank rows; an older
+      // one only names it first ("/help must lead to …"). Its row shows it.
+      const at = err instanceof ApiError ? err.fields.find((f) => f.row?.[0] === "paths")?.row?.[1] : undefined;
       const alias = /^\/([a-z][a-z0-9-]*)/.exec(text)?.[1];
-      const i = alias ? rows.findIndex((r) => r.alias.trim() === alias) : -1;
+      const i =
+        at !== undefined ? (rows.flatMap((r, j) => (r.alias.trim() || r.target.trim() ? [j] : []))[at] ?? -1)
+        : alias ? rows.findIndex((r) => r.alias.trim() === alias)
+        : -1;
       setRefusal({ at: i, text });
       setFocus(i >= 0 ? `${id}-alias-${i}` : `${id}-said`);
     } finally {
