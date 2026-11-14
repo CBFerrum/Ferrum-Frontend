@@ -5539,7 +5539,7 @@ const words: Record<string, string> = {
   "Who": "किसने",
   "Zone": "ज़ोन",
   "Audit topics": "ऑडिट विषय",
-  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.": "ऑडिट विषय कार्यक्षेत्र की ऑडिट घटनाएँ (साइन-इन, प्रशासन, रिकॉर्ड में बदलाव, या तीनों) इस पते पर भेजते हैं, अन्य वेबहुक की तरह हस्ताक्षरित।",
+  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, who read what, or all of them) to the address, signed like other webhooks.": "ऑडिट विषय कार्यक्षेत्र की ऑडिट घटनाएँ (साइन-इन, प्रशासन, रिकॉर्ड में बदलाव, किसने क्या पढ़ा, या सभी) इस पते पर भेजते हैं, अन्य वेबहुक की तरह हस्ताक्षरित।",
   "{address}, zone {zone}": "{address}, ज़ोन {zone}",
   "This workspace only allows staff to work from its listed networks.": "यह कार्यक्षेत्र कर्मचारियों को सिर्फ़ अपने सूचीबद्ध नेटवर्क से काम करने देता है।",
   "This part of the workspace opens at its staff address, not here.": "कार्यक्षेत्र का यह हिस्सा यहाँ नहीं, अपने कर्मचारी पते पर खुलता है।",
@@ -5567,6 +5567,17 @@ const words: Record<string, string> = {
   "What is recorded for record type {n}": "रिकॉर्ड प्रकार {n} के लिए क्या दर्ज होता है",
   "Stop recording record type {n}": "रिकॉर्ड प्रकार {n} दर्ज करना बंद करें",
   "Each record opened: every time one record's fields are returned. Everything: that, and every list, search, report and export, one event per request, so a long list screen writes many.": "खोला गया हर रिकॉर्ड: हर बार जब एक रिकॉर्ड के फ़ील्ड लौटाए जाते हैं। सब कुछ: वह, और हर सूची, खोज, रिपोर्ट और निर्यात, प्रति अनुरोध एक घटना; इसलिए लंबी सूची वाली स्क्रीन कई घटनाएँ लिखती है।",
+  "Opened a {entity} record": "{entity} का एक रिकॉर्ड खोला",
+  "Listed {entity}": "{entity} की सूची देखी",
+  "Searched {entity}": "{entity} में खोज की",
+  "Report on {entity}": "{entity} पर रिपोर्ट",
+  "Exported {entity}": "{entity} निर्यात किया",
+  "Record {id}": "रिकॉर्ड {id}",
+  "Filtered on {fields}": "{fields} पर फ़िल्टर किया",
+  "With a search text": "खोज के शब्दों के साथ",
+  "Rows: {n}": "पंक्तियाँ: {n}",
+  "Sent to {to}": "{to} में भेजा गया",
+  "Through {via}": "{via} के माध्यम से",
 };
 
 export default words;

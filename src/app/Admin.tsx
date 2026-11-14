@@ -2378,7 +2378,7 @@ interface Webhook {
 }
 
 /** The topics that send the workspace's audit events (docs/operations.md, "Sending the audit log elsewhere"); `*` does not include them. */
-export const AUDIT_TOPICS = ["audit.sign_in", "audit.administration", "audit.records", "audit.*"];
+export const AUDIT_TOPICS = ["audit.sign_in", "audit.administration", "audit.records", "audit.access", "audit.*"];
 
 /** `topic` added to what was typed, once. */
 export const withTopic = (typed: string, topic: string): string => {
@@ -2697,7 +2697,7 @@ function Webhooks() {
                 </Button>
               ))}
             </div>
-            <p className="field-hint">{tr("The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.")}</p>
+            <p className="field-hint">{tr("The audit topics send the workspace's audit events (sign-ins, administration, record changes, who read what, or all of them) to the address, signed like other webhooks.")}</p>
           </div>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={() => setCreating(false)}>{tr("Cancel")}</Button>

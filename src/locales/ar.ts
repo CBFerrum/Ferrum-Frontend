@@ -5539,7 +5539,7 @@ const words: Record<string, string> = {
   "Who": "من",
   "Zone": "المنطقة",
   "Audit topics": "مواضيع التدقيق",
-  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.": "ترسل مواضيع التدقيق أحداث التدقيق في مساحة العمل (تسجيلات الدخول والإدارة وتغييرات السجلات، أو الثلاثة معًا) إلى العنوان، موقّعة مثل بقية الويب هوك.",
+  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, who read what, or all of them) to the address, signed like other webhooks.": "ترسل مواضيع التدقيق أحداث التدقيق في مساحة العمل (تسجيلات الدخول والإدارة وتغييرات السجلات ومن قرأ ماذا، أو الكل معًا) إلى العنوان، موقّعة مثل بقية الويب هوك.",
   "{address}, zone {zone}": "{address}، المنطقة {zone}",
   "This workspace only allows staff to work from its listed networks.": "لا تسمح مساحة العمل هذه للموظفين بالعمل إلا من الشبكات المدرجة فيها.",
   "This part of the workspace opens at its staff address, not here.": "يُفتح هذا الجزء من مساحة العمل على عنوان الموظفين الخاص به، وليس هنا.",
@@ -5567,6 +5567,17 @@ const words: Record<string, string> = {
   "What is recorded for record type {n}": "ما يُسجَّل لنوع السجل {n}",
   "Stop recording record type {n}": "إيقاف تسجيل نوع السجل {n}",
   "Each record opened: every time one record's fields are returned. Everything: that, and every list, search, report and export, one event per request, so a long list screen writes many.": "كل سجل يُفتح: في كل مرة تُعاد فيها حقول سجل واحد. كل شيء: ذلك، وكل قائمة وبحث وتقرير وتصدير، بحدث واحد لكل طلب، لذا تكتب شاشة قائمة طويلة أحداثًا كثيرة.",
+  "Opened a {entity} record": "فتح سجلًّا من {entity}",
+  "Listed {entity}": "عرض قائمة {entity}",
+  "Searched {entity}": "بحث في {entity}",
+  "Report on {entity}": "تقرير عن {entity}",
+  "Exported {entity}": "تصدير {entity}",
+  "Record {id}": "السجل {id}",
+  "Filtered on {fields}": "مُرشَّح حسب {fields}",
+  "With a search text": "مع نص بحث",
+  "Rows: {n}": "الصفوف: {n}",
+  "Sent to {to}": "أُرسل إلى {to}",
+  "Through {via}": "عبر {via}",
 };
 
 export default words;
