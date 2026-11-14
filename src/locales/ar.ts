@@ -5541,6 +5541,9 @@ const words: Record<string, string> = {
   "Audit topics": "مواضيع التدقيق",
   "The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.": "ترسل مواضيع التدقيق أحداث التدقيق في مساحة العمل (تسجيلات الدخول والإدارة وتغييرات السجلات، أو الثلاثة معًا) إلى العنوان، موقّعة مثل بقية الويب هوك.",
   "{address}, zone {zone}": "{address}، المنطقة {zone}",
+  "This workspace only allows staff to work from its listed networks.": "لا تسمح مساحة العمل هذه للموظفين بالعمل إلا من الشبكات المدرجة فيها.",
+  "This part of the workspace opens at its staff address, not here.": "يُفتح هذا الجزء من مساحة العمل على عنوان الموظفين الخاص به، وليس هنا.",
+  "This part of the workspace opens at its staff address:": "يُفتح هذا الجزء من مساحة العمل على عنوان الموظفين الخاص به:",
 };
 
 export default words;

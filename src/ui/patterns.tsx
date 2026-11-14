@@ -7,7 +7,7 @@ import { Children, useEffect, useId, useLayoutEffect, useRef, useState, type Rea
 import { Link } from "react-router";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { errorMessage } from "../lib/api";
+import { ApiError, errorBody, errorMessage } from "../lib/api";
 import { formatMoment } from "../lib/format";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
@@ -122,12 +122,41 @@ export function failureKind(error: unknown): Extract<StateKind, "denied" | "offl
 }
 
 /**
+ * What a 403 of the workspace's own reach says (docs/operations.md, "Zones", "Staff networks"), in place of the generic "no access":
+ * `zone` (a staff credential where the zone admits no staff, with `staff_address`, a host or none) and `network` (outside the
+ * networks staff may work from; the server names none of them). Nothing for any other refusal.
+ */
+export function reachRefusal(error: unknown): ReactNode {
+  if (!(error instanceof ApiError) || error.status !== 403) return undefined;
+  if (error.code === "network") return t("This workspace only allows staff to work from its listed networks.");
+  if (error.code !== "zone") return undefined;
+  const host = errorBody(error)?.staff_address;
+  if (typeof host !== "string" || !host) return t("This part of the workspace opens at its staff address, not here.");
+  const link = /^[a-z0-9.-]+(:\d{1,5})?$/i.test(host) ? (
+    <a className="underline" href={`https://${host}/`}>
+      {host}
+    </a>
+  ) : (
+    host
+  );
+  return (
+    <>
+      {t("This part of the workspace opens at its staff address:")} {link}
+    </>
+  );
+}
+
+/**
  * The panel for a request that failed, so every screen tells refused, offline and failed apart the
  * same way. Denied offers no retry and shows no server text; failed shows the reason and "Try again".
  */
 export function LoadFailed({ error, onRetry, className }: { error: unknown; onRetry?: () => void; className?: string }) {
   const kind = failureKind(error);
-  return <StatePanel kind={kind} error={kind === "failed" ? error : undefined} onRetry={kind === "denied" ? undefined : onRetry} className={className} />;
+  return (
+    <StatePanel kind={kind} error={kind === "failed" ? error : undefined} onRetry={kind === "denied" ? undefined : onRetry} className={className}>
+      {kind === "denied" ? reachRefusal(error) : undefined}
+    </StatePanel>
+  );
 }
 
 // ── content-shaped loading ──
