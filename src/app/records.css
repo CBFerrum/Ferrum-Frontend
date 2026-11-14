@@ -485,6 +485,8 @@ button.peek-value:hover {
     background: var(--surface-2);
   }
   .list-table td {
+    height: auto; /* a table cell's height is a minimum; a block's is exact, and a cell of two lines ran into the next */
+    min-height: var(--row-h);
     padding: 2px 16px;
     border: 0;
     overflow-wrap: anywhere;
