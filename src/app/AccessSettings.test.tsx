@@ -26,20 +26,27 @@ const users = { users: [
 ] };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-async function open(put: (body: unknown) => Response | Promise<Response> = () => json(200, {})) {
+const meta = { entities: [
+  { name: "Employee", label: "Employee", kind: "master" },
+  { name: "Payslip", label: "Payslip", kind: "document" },
+  { name: "PayslipLine", label: "Payslip Line", kind: "child" },
+] };
+
+async function open(put: (body: unknown) => Response | Promise<Response> = () => json(200, {}), start: Record<string, unknown> = {}) {
   const puts: unknown[] = [];
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === "PUT") {
       puts.push(JSON.parse(String(init.body)));
       return put(puts.at(-1));
     }
+    if (String(url).startsWith("/api/meta")) return json(200, meta);
     if (String(url).startsWith("/_zone")) return json(200, { zone: null, staff: "all", admin: true, address: "203.0.113.7" });
     return json(200, users);
   }));
   const host = document.createElement("div");
   document.body.append(host);
   await act(async () => {
-    createRoot(host).render(<QueryClientProvider client={new QueryClient()}><AccessSettings initial={initial} /></QueryClientProvider>);
+    createRoot(host).render(<QueryClientProvider client={new QueryClient()}><AccessSettings initial={{ ...initial, ...start }} /></QueryClientProvider>);
   });
   await act(async () => void (await new Promise((r) => setTimeout(r, 20))));
   return { host, puts };
@@ -95,5 +102,46 @@ describe("the access settings", () => {
     await click(host.querySelector('input[name="net-mode"][type="radio"]:not(:checked)')!);
     await submit(host);
     expect(host.querySelector("fieldset p.field-error")?.textContent).toBe(message);
+  });
+
+  it("marks work that asks again: picks record types from the workspace's list, and sends the setting the server takes", async () => {
+    const { host, puts } = await open();
+    expect(host.textContent).toContain("Nothing is marked: nobody is asked again.");
+    await click([...host.querySelectorAll("button")].filter((b) => b.textContent === "Add a record type")[0]);
+    await act(async () => void (await new Promise((r) => setTimeout(r, 20))));
+    const pick = host.querySelector('select[aria-label="Record type 1"]') as HTMLSelectElement;
+    expect([...pick.options].map((o) => o.textContent)).toEqual(["Choose a record type…", "Employee", "Payslip"]); // not the child table
+    await act(async () => {
+      pick.value = "Employee";
+      pick.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click([...host.querySelectorAll('[aria-label="Rule 1"] input[type="checkbox"]')].find((c) => c.parentElement?.textContent === "Export")!);
+    await click([...host.querySelectorAll('[aria-label="Rule 1"] input[type="checkbox"]')].find((c) => c.parentElement?.textContent?.startsWith("Refuse API keys"))!);
+    await type(host.querySelector('input[aria-label="Minutes a confirmation counts for"]')!, "15");
+    expect(await violations(host.innerHTML)).toEqual([]);
+    await submit(host);
+    expect(puts).toEqual([{ step_up: { minutes: 15, entities: { Employee: { work: ["write", "delete", "read"], keys: false } } } }]);
+  });
+
+  it("shows the server's refusal of an unknown record type by the step-up list, and records reads of a level", async () => {
+    const message = "Nope is not an entity of this workspace";
+    const { host, puts } = await open(
+      (body) => ((body as { step_up?: unknown }).step_up ? json(422, { error: "validation_failed", message: "Please check your input.", fields: [{ field: "step_up", message }] }) : json(200, {})),
+      { step_up: { minutes: 10, entities: { Nope: { work: ["read", "write"], keys: true } } }, record_reads: { Payslip: "open" } },
+    );
+    expect((host.querySelector('select[aria-label="Record type 1"]') as HTMLSelectElement).value).toBe("Nope");
+    expect(host.textContent).toContain("A read fails if its event cannot be written");
+    await click([...host.querySelectorAll('[aria-label="Rule 1"] input[type="checkbox"]')][2]); // Export
+    await submit(host);
+    expect(puts).toEqual([{ step_up: { minutes: 10, entities: { Nope: { work: ["write", "export", "read"], keys: true } } } }]);
+    expect(host.textContent).toContain(message);
+    const level = host.querySelector('select[aria-label="What is recorded for record type 1"]') as HTMLSelectElement;
+    await act(async () => {
+      level.value = "all";
+      level.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click(host.querySelector('[aria-label="Remove rule 1"]')!);
+    await submit(host);
+    expect(puts.at(-1)).toEqual({ step_up: null, record_reads: { Payslip: "all" } });
   });
 });

@@ -746,6 +746,8 @@ interface WorkspaceSettings {
   idle_minutes: number;
   break_glass: string[] | null;
   new_device_notice: boolean;
+  step_up?: { minutes: number; entities: Record<string, { work: string[]; keys: boolean }> } | null;
+  record_reads?: Record<string, "open" | "all"> | null;
   /** What devices may keep for people to work offline, and for how many hours (docs/offline.md). */
   offline?: { allowed?: boolean; hours?: number };
 }
@@ -756,7 +758,7 @@ function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
   return (
     <div className="stack">
-      <Loaded q={q}>{(s) => <><WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} /><AccessSettings key={JSON.stringify([s.staff_networks, s.idle_minutes, s.break_glass, s.new_device_notice])} initial={s} /></>}</Loaded>
+      <Loaded q={q}>{(s) => <><WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} /><AccessSettings key={JSON.stringify([s.staff_networks, s.idle_minutes, s.break_glass, s.new_device_notice, s.step_up, s.record_reads])} initial={s} /></>}</Loaded>
       <PlanAndUsage />
       <WorkspaceExport />
       <CloseWorkspace />
