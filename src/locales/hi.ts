@@ -5517,6 +5517,14 @@ const words: Record<string, string> = {
   "Only the ones I pick": "सिर्फ़ वे जिन्हें मैं चुनूँ",
   "New devices": "नए डिवाइस",
   "E-mail staff when they sign in from a device they had not used": "जब कर्मचारी ऐसे डिवाइस से साइन इन करें जो उन्होंने पहले इस्तेमाल नहीं किया, तो उन्हें ई-मेल भेजें",
+  "anywhere": "कहीं से भी",
+  "Networks saved": "नेटवर्क सहेजे गए",
+  "Networks of {name}": "{name} के नेटवर्क",
+  "Works only from": "सिर्फ़ यहाँ से काम करती है",
+  "From any other address the key is refused. With none listed it works from anywhere.": "किसी और पते से कुंजी को मना कर दिया जाता है। कोई नेटवर्क न होने पर यह कहीं से भी काम करती है।",
+  "Only from these networks (optional)": "सिर्फ़ इन नेटवर्क से (वैकल्पिक)",
+  "Empty: from anywhere. From any other address the key is refused.": "खाली: कहीं से भी। किसी और पते से कुंजी को मना कर दिया जाता है।",
+  "Networks": "नेटवर्क",
 };
 
 export default words;

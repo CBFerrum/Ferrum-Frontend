@@ -5517,6 +5517,14 @@ const words: Record<string, string> = {
   "Only the ones I pick": "من أختارهم فقط",
   "New devices": "الأجهزة الجديدة",
   "E-mail staff when they sign in from a device they had not used": "إرسال بريد إلى الموظفين عند تسجيل دخولهم من جهاز لم يستخدموه من قبل",
+  "anywhere": "من أي مكان",
+  "Networks saved": "تم حفظ الشبكات",
+  "Networks of {name}": "شبكات {name}",
+  "Works only from": "يعمل من هذه الشبكات فقط",
+  "From any other address the key is refused. With none listed it works from anywhere.": "يُرفض المفتاح من أي عنوان آخر. وإن لم تُدرج أي شبكة فهو يعمل من أي مكان.",
+  "Only from these networks (optional)": "من هذه الشبكات فقط (اختياري)",
+  "Empty: from anywhere. From any other address the key is refused.": "فارغ: من أي مكان. يُرفض المفتاح من أي عنوان آخر.",
+  "Networks": "الشبكات",
 };
 
 export default words;
