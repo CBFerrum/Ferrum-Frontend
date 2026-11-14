@@ -142,10 +142,11 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
     }
     const err = parseApiError(unreachable ? 502 : res.status, data);
     bodies.set(err, data);
-    // Refused before anything was done (the rights check, in memory): sent again once whatever the method, after the person confirms it is them.
+    // Refused before anything was done (the rights check, in memory): sent again once whatever the method, after the person confirms it is them
+    // in one of the ways the refusal lists.
     if (res.status === 403 && err.code === "step_up" && !askedAgain) {
       askedAgain = true;
-      if ((await askStepUp()) && !o.signal?.aborted) continue;
+      if ((await askStepUp(data)) && !o.signal?.aborted) continue;
       throw err;
     }
     if (res.status === 401 && !o.noAuthRedirect) {
@@ -185,6 +186,12 @@ export function newKey(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Passkeys travel as base64url; the browser speaks ArrayBuffers. */
+export const b64 = {
+  decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
+  encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+};
 
 // ── downloads & print ──
 

@@ -9,7 +9,7 @@ import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { MyConnections } from "@/app/Connections";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
 import { TwoFactorSettings } from "@/app/TwoFactor";
-import { api, ApiError, errorMessage } from "@/lib/api";
+import { api, ApiError, b64, errorMessage } from "@/lib/api";
 import { formatDate, formatDateTime, relativeTime } from "@/lib/format";
 import { useMe, useMetaIndex } from "@/lib/meta";
 import { Alert, Badge, Button, confirmDialog, ConfirmItsYou, Dialog, Field, Spinner, toast } from "@/ui/kit";
@@ -130,12 +130,6 @@ interface CreationOptions {
     excludeCredentials: { type: "public-key"; id: string }[];
   };
 }
-
-/** Passkeys travel as base64url; the browser speaks ArrayBuffers. */
-export const b64 = {
-  decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
-  encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
-};
 
 /** The passkeys the person keeps: each signs them in, on the address it was made on, without an
  *  email or a password; the device checks it is them (a fingerprint, a face, the device's PIN). */
@@ -264,7 +258,7 @@ export function Passkeys() {
         )}
       </div>
       <ConfirmItsYou
-        message={t("Changing how you sign in needs your password, as you signed in a while ago.")}
+        message={t("Changing how you sign in needs you to confirm it is you, as you signed in a while ago.")}
         open={confirming}
         onClose={() => setConfirming(false)}
         onDone={() => {

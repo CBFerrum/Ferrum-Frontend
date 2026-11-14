@@ -167,14 +167,14 @@ describe("@ferrum/client", () => {
       expect([handler.mock.calls.length, state.calls]).toEqual([1, 2]);
     });
 
-    it("shows one dialog for requests refused together, and all go on after it", async () => {
+    it("shows one dialog for requests refused together, asked with the refusal (its ways), and all go on after it", async () => {
       const state = server();
       let answer: (ok: boolean) => void = () => {};
-      const handler = vi.fn(() => new Promise<boolean>((r) => (answer = r)));
+      const handler = vi.fn((_refusal: unknown) => new Promise<boolean>((r) => (answer = r)));
       setStepUpHandler(handler);
       const all = Promise.all([request("/api/v1/Employee"), request("/api/v1/Payslip"), request("/api/v1/Employee/e1", { method: "DELETE" })]);
       await new Promise((r) => setTimeout(r, 20));
-      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler.mock.calls).toEqual([[asked]]);
       state.proved = true;
       answer(true);
       expect(await all).toEqual([{ ok: true }, { ok: true }, { ok: true }]);

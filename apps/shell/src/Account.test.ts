@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { b64, browserName } from "./Account";
+import { b64 } from "@/lib/api";
+import { browserName } from "./Account";
 
 describe("passkeys' base64url", () => {
   it("round-trips any bytes, without padding", () => {
