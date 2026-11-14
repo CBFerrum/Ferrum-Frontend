@@ -4,7 +4,7 @@
 import { NavIcon } from "../../packages/kit/src/NavIcon";
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { lazy, Suspense, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Ellipsis } from "lucide-react";
 import { Button as UiButton } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -20,6 +20,8 @@ import { ConnectorHub } from "./ConnectorHub";
 import { HideDialog } from "./RuleHide";
 import { permissionBody } from "../lib/ruleHide";
 import { InterfaceWords } from "./InterfaceWords";
+import { AccessSettings, NetworkList } from "./AccessSettings";
+import { cleanNetworks } from "../lib/access";
 import { Services } from "./Services";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
@@ -43,6 +45,7 @@ import { canonicalZones, deviceZone } from "../lib/zone";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
 const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ default: m.ApprovalPoliciesPage })));
+const AuditLog = lazy(() => import("./AuditLog").then((m) => ({ default: m.AuditLog })));
 const Messaging = lazy(() => import("./Messaging").then((m) => ({ default: m.Messaging })));
 
 export const TABS = [
@@ -65,10 +68,11 @@ export const TABS = [
   { id: "words", get label() { return tr("Interface words"); } },
   { id: "exceptions", get label() { return tr("Needs a person"); } },
   { id: "services", get label() { return tr("Services"); } },
+  { id: "audit", get label() { return tr("Audit log"); } },
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server", audit: "clipboard-list" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -89,7 +93,7 @@ export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
   { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
   { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "approvals", "webhooks", "automations", "messaging", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
-  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services"] },
+  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services", "audit"] },
 ];
 
 /** Section navigation that scales: a column of groups beside the page, a scrolling strip on narrow screens. One tablist per group, arrow keys move across all. */
@@ -199,6 +203,11 @@ export function AdminPage() {
         {tab === "words" && <InterfaceWords />}
         {tab === "exceptions" && <Exceptions />}
         {tab === "services" && <Services />}
+        {tab === "audit" && (
+          <Suspense fallback={<ListSkeleton rows={6} />}>
+            <AuditLog />
+          </Suspense>
+        )}
       </TabPanel>
       </div>
     </div>
@@ -733,6 +742,10 @@ interface WorkspaceSettings {
   fiscal_year_start_month: number;
   require_two_factor: boolean;
   require_sso: boolean;
+  staff_networks: { networks: string[]; mode: "enforce" | "report" } | null;
+  idle_minutes: number;
+  break_glass: string[] | null;
+  new_device_notice: boolean;
   /** What devices may keep for people to work offline, and for how many hours (docs/offline.md). */
   offline?: { allowed?: boolean; hours?: number };
 }
@@ -743,7 +756,7 @@ function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
   return (
     <div className="stack">
-      <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} />}</Loaded>
+      <Loaded q={q}>{(s) => <><WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} /><AccessSettings key={JSON.stringify([s.staff_networks, s.idle_minutes, s.break_glass, s.new_device_notice])} initial={s} /></>}</Loaded>
       <PlanAndUsage />
       <WorkspaceExport />
       <CloseWorkspace />
@@ -989,7 +1002,9 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
     setBusy(true);
     setErrors([]);
     try {
-      await api.put("/api/admin/settings", form);
+      // Only this form's own settings: the others (access, messages) are saved by their own forms, and a stale copy here must not undo them.
+      const { timezone, language, fiscal_year_start_month, require_two_factor, require_sso, offline } = form;
+      await api.put("/api/admin/settings", { timezone, language, fiscal_year_start_month, require_two_factor, require_sso, offline });
       toast(tr("Workspace settings saved"));
       // `me` carries the zone that today's date follows (lib/format todayIso).
       await Promise.all(["admin", "me"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
@@ -2360,6 +2375,15 @@ interface Webhook {
   app?: string | null;
 }
 
+/** The topics that send the workspace's audit events (docs/operations.md, "Sending the audit log elsewhere"); `*` does not include them. */
+export const AUDIT_TOPICS = ["audit.sign_in", "audit.administration", "audit.records", "audit.*"];
+
+/** `topic` added to what was typed, once. */
+export const withTopic = (typed: string, topic: string): string => {
+  const have = typed.split(/[\s,]+/).filter(Boolean);
+  return have.includes(topic) ? typed : [...have, topic].join(", ");
+};
+
 // ── domains ──
 
 interface Domain {
@@ -2663,6 +2687,16 @@ function Webhooks() {
           <FieldWrap label={tr("Topics")} htmlFor="wh-topics" required hint={tr("Separated by commas or spaces, e.g. SalesInvoice.submitted, SalesInvoice.*, *")}>
             <input id="wh-topics" className="input mono" value={form.topics} onChange={(e) => setForm({ ...form, topics: e.target.value })} required />
           </FieldWrap>
+          <div className="stack" style={{ gap: 8 }} role="group" aria-label={tr("Audit topics")}>
+            <div className="chips">
+              {AUDIT_TOPICS.map((topic) => (
+                <Button key={topic} size="sm" className="mono" aria-pressed={form.topics.split(/[\s,]+/).includes(topic)} onClick={() => setForm({ ...form, topics: withTopic(form.topics, topic) })}>
+                  {topic}
+                </Button>
+              ))}
+            </div>
+            <p className="field-hint">{tr("The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.")}</p>
+          </div>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={() => setCreating(false)}>{tr("Cancel")}</Button>
             <Button type="submit" variant="primary" loading={busy}>
@@ -3588,6 +3622,58 @@ interface ApiKey {
   /** `dav`: an app password for calendar and contacts apps; `records:…`: a key to the records it
    * names; none: a key to the whole API. */
   scope?: string | null;
+  /** Where it works from (`10.0.0.0/8`); none: anywhere. */
+  networks?: string[];
+}
+
+/** Where a key works from, in words. */
+export function keyFrom(networks?: string[]): string {
+  return networks?.length ? networks.join(", ") : tr("anywhere");
+}
+
+/** A key's own networks, edited after the fact (PATCH /api/auth/api_keys/{id}); the server's refusal is shown as it is. */
+function KeyNetworksDialog({ value, onClose, onDone }: { value: ApiKey | null; onClose: () => void; onDone: () => void }) {
+  const [rows, setRows] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
+  const [shown, setShown] = useState<string | null>(null);
+  if ((value?.id ?? null) !== shown) {
+    setShown(value?.id ?? null);
+    setRows(value?.networks ?? []);
+    setError(null);
+  }
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!value || sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.patch(`/api/auth/api_keys/${value.id}`, { networks: cleanNetworks(rows) });
+      toast(tr("Networks saved"));
+      onDone();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={!!value} onClose={onClose} title={tr("Networks of {name}", { name: value?.name ?? "" })}>
+      <form className="stack" onSubmit={save}>
+        {error && <Alert tone="error">{isolate(error)}</Alert>}
+        <NetworkList label={tr("Works only from")} value={rows} onChange={setRows} hint={tr("From any other address the key is refused. With none listed it works from anywhere.")} />
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <Button onClick={onClose}>{tr("Cancel")}</Button>
+          <Button type="submit" variant="primary" loading={busy}>
+            {tr("Save")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
 }
 
 /** A records key's scope from what someone typed ("Customer=read; SalesInvoice=read+write"), or
@@ -3614,6 +3700,8 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
   const [name, setName] = useState("");
   const [expires, setExpires] = useState("");
   const [records, setRecords] = useState("");
+  const [networks, setNetworks] = useState<string[]>([]);
+  const [editing, setEditing] = useState<ApiKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -3628,11 +3716,13 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
         name: name.trim(),
         expires_at: expires ? new Date(`${expires}T23:59:59`).toISOString() : undefined,
         scope: app ? scope : recordsScope(records),
+        networks: cleanNetworks(networks),
       });
       setCreated(res.key);
       setName("");
       setExpires("");
       setRecords("");
+      setNetworks([]);
       void refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -3679,6 +3769,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
             />
           </FieldWrap>
         )}
+        <NetworkList label={tr("Only from these networks (optional)")} value={networks} onChange={setNetworks} hint={tr("Empty: from anywhere. From any other address the key is refused.")} />
         <div className="field-row-action">
           <Button type="submit" variant="primary" icon="plus" loading={busy}>
             {app ? tr("Create app password") : tr("Create key")}
@@ -3703,6 +3794,7 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
                     <th scope="col">{tr("Name")}</th>
                     <th scope="col">{tr("Key")}</th>
                     {!app && <th scope="col">{tr("Reaches")}</th>}
+                    <th scope="col">{tr("From")}</th>
                     <th scope="col">{tr("Created")}</th>
                     <th scope="col">{tr("Expires")}</th>
                     <th scope="col">{tr("Last used")}</th>
@@ -3719,14 +3811,20 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
                       </td>
                       <td className="mono">{isolate(k.prefix)}</td>
                       {!app && <td>{isolate(keyReaches(k.scope))}</td>}
+                      <td className="mono" style={{ overflowWrap: "anywhere" }}>{isolate(keyFrom(k.networks))}</td>
                       <td className="nowrap">{isolate(formatDateTime(k.created_at))}</td>
                       <td className="nowrap">{k.expires_at ? formatDateTime(k.expires_at) : <span className="faint">{tr("never")}</span>}</td>
                       <td className="nowrap">{k.last_used_at ? relativeTime(k.last_used_at) : <span className="faint">{tr("never")}</span>}</td>
                       <td>
                         {!k.revoked_at && (
-                          <Button size="sm" variant="danger" onClick={() => void revoke(k)}>
-                            {tr("Revoke")}
-                          </Button>
+                          <div className="row" style={{ gap: 8 }}>
+                            <Button size="sm" aria-label={tr("Networks of {name}", { name: k.name })} onClick={() => setEditing(k)}>
+                              {tr("Networks")}
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={() => void revoke(k)}>
+                              {tr("Revoke")}
+                            </Button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -3737,6 +3835,14 @@ export function ApiKeys({ scope }: { scope?: "dav" }) {
           );
         }}
       </Loaded>
+      <KeyNetworksDialog
+        value={editing}
+        onClose={() => setEditing(null)}
+        onDone={() => {
+          setEditing(null);
+          void refresh();
+        }}
+      />
       <SecretDialog
         secret={created}
         title={app ? tr("Your new app password") : tr("Your new API key")}

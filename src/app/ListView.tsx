@@ -27,7 +27,7 @@ import {
 } from "../lib/meta";
 import { Ellipsis } from "lucide-react";
 import { Button, ErrorState, Icon, Menu, MenuItem, PageLoading, toast, useDebounced } from "../ui/kit";
-import { StatePanel } from "../ui/patterns";
+import { reachRefusal, StatePanel } from "../ui/patterns";
 import { pageState, togglePage, toggleRow } from "./list/bulk";
 import { BulkBar, SelectBox } from "./list/BulkBar";
 import { ColumnChooser, ColumnResizer } from "./list/ColumnChooser";
@@ -85,7 +85,7 @@ const usePhone = () =>
 /** Why a list shows no rows, one state per reason: refused (never what exists), failed (try again), a search or filter hid
  *  the rows (clear it), or there are none yet (create the first when allowed). */
 export function ListNothing({ error, onRetry, filtered, onClear, label, labelPlural, newHref }: { error?: unknown; onRetry?: () => void; filtered?: boolean; onClear?: () => void; label?: string; labelPlural?: string; newHref?: string }) {
-  if (error) return error instanceof ApiError && error.status === 403 ? <StatePanel kind="denied" /> : <StatePanel kind="failed" error={error} onRetry={onRetry} />;
+  if (error) return error instanceof ApiError && error.status === 403 ? <StatePanel kind="denied">{reachRefusal(error)}</StatePanel> : <StatePanel kind="failed" error={error} onRetry={onRetry} />;
   if (filtered)
     return (
       <StatePanel kind="no-matches" onClear={onClear}>

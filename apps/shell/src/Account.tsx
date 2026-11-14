@@ -21,6 +21,8 @@ interface Device {
   last_seen_at: string;
   user_agent: string;
   ip: string;
+  /** The zone it was opened in (docs/operations.md, "Zones"), when the workspace has zones. */
+  zone?: string | null;
   current: boolean;
 }
 
@@ -90,7 +92,7 @@ export function Devices({
             <tr key={d.id}>
               <td>
                 {isolate(browserName(d.user_agent))} {d.current && <Badge tone="green">{t("This one")}</Badge>}
-                <div className="faint">{isolate(d.ip)}</div>
+                <div className="faint">{isolate(d.zone ? t("{address}, zone {zone}", { address: d.ip, zone: d.zone }) : d.ip)}</div>
               </td>
               <td title={formatDateTime(d.last_seen_at)}>{isolate(relativeTime(d.last_seen_at))}</td>
               <td>{isolate(formatDateTime(d.created_at))}</td>

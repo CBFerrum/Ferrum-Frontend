@@ -2,8 +2,8 @@
 
 import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
-import { ApiError } from "../lib/api";
+import { describe, expect, it, vi } from "vitest";
+import { api, ApiError } from "../lib/api";
 import { ErrorSummary } from "./FormView";
 import { ListNothing } from "./ListView";
 
@@ -56,5 +56,34 @@ describe("a list with nothing to show", () => {
     const failed = list({ error: new Error("Gateway timeout"), onRetry: () => {} });
     expect(kind(failed)).toBe("failed");
     expect(failed).toContain("Try again");
+  });
+});
+
+describe("a 403 of the workspace's reach", () => {
+  // Bodies as server/src/error.rs answers them: `zone` carries `staff_address`; `network` names nothing.
+  // The error is the one the client raises for the real answer (it keeps the body, where `staff_address` is).
+  const refused = async (body: Record<string, unknown>) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status: 403, headers: { "content-type": "application/json" } })));
+    const error = await api.get("/api/x").catch((e: unknown) => e);
+    vi.unstubAllGlobals();
+    return list({ error });
+  };
+  it("says where staff work, as a link, when the zone names the address", async () => {
+    const html = await refused({ error: "zone", message: "this part of the workspace is opened at its staff address, staff.acme.test, not here", staff_address: "staff.acme.test" });
+    expect(kind(html)).toBe("denied");
+    expect(html).toContain('href="https://staff.acme.test/"');
+    expect(html).toContain("opens at its staff address");
+  });
+  it("says so without a link when the zone names none, or a name that is not a host", async () => {
+    expect(await refused({ error: "zone", message: "x", staff_address: null })).toContain("opens at its staff address, not here");
+    const odd = await refused({ error: "zone", message: "x", staff_address: "javascript:alert(1)" });
+    expect(odd).not.toContain("href=");
+  });
+  it("says the workspace allows staff only from its networks, naming none", async () => {
+    const html = await refused({ error: "network", message: "this workspace cannot be used from this network" });
+    expect(html).toContain("only allows staff to work from its listed networks");
+  });
+  it("leaves any other 403 as plain denied", async () => {
+    expect(await refused({ error: "forbidden", message: "administrator access required" })).not.toContain("staff address");
   });
 });
