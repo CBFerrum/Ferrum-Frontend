@@ -5559,7 +5559,7 @@ const words: Record<string, string> = {
   "Each record opened": "كل سجل يُفتح",
   "Everything: records, lists, searches, reports, exports": "كل شيء: السجلات والقوائم وعمليات البحث والتقارير والتصديرات",
   "Ask again before sensitive work": "السؤال مجددًا قبل العمل الحساس",
-  "Staff must enter their password again (and the code from their authenticator app) before the work you mark here. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.": "على الموظفين إدخال كلمة المرور مرة أخرى (والرمز من تطبيق المصادقة) قبل العمل الذي تحدده هنا. يُطلب منهم ذلك عند محاولته؛ ومن لا يجوز له القيام به يُبلَّغ بذلك بدلًا من ذلك. ويُحتسب تسجيل الدخول تأكيدًا.",
+  "Staff confirm it is them again before the work you mark here: with a passkey, their password (and the code from their authenticator app when they have one), or by signing in again with their identity provider. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.": "يؤكد الموظفون أنهم هم مرة أخرى قبل العمل الذي تحدده هنا: بمفتاح مرور، أو بكلمة مرورهم (والرمز من تطبيق المصادقة إن كان لديهم واحد)، أو بتسجيل الدخول مجددًا لدى مزوّد الهوية الخاص بهم. يُطلب منهم ذلك عند محاولته؛ ومن لا يجوز له القيام به يُبلَّغ بذلك بدلًا من ذلك. ويُحتسب تسجيل الدخول تأكيدًا.",
   "A confirmation counts for": "يُحتسب التأكيد لمدة",
   "Minutes a confirmation counts for": "عدد دقائق احتساب التأكيد",
   "minutes ({min} to {max})": "دقيقة (من {min} إلى {max})",

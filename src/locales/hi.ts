@@ -5559,7 +5559,7 @@ const words: Record<string, string> = {
   "Each record opened": "खोला गया हर रिकॉर्ड",
   "Everything: records, lists, searches, reports, exports": "सब कुछ: रिकॉर्ड, सूचियाँ, खोज, रिपोर्ट, निर्यात",
   "Ask again before sensitive work": "संवेदनशील काम से पहले दोबारा पूछें",
-  "Staff must enter their password again (and the code from their authenticator app) before the work you mark here. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.": "यहाँ चिह्नित काम से पहले कर्मचारियों को अपना पासवर्ड (और ऑथेंटिकेटर ऐप का कोड) दोबारा दर्ज करना होगा। उनसे यह तब पूछा जाता है जब वे वह काम करने का प्रयास करते हैं; जिसे वह काम करने की अनुमति नहीं है, उसे इसके बजाय यही बताया जाता है। साइन इन करना भी पुष्टि माना जाता है।",
+  "Staff confirm it is them again before the work you mark here: with a passkey, their password (and the code from their authenticator app when they have one), or by signing in again with their identity provider. They are asked when they try it; whoever may not do it is told so instead. Signing in counts as confirming.": "यहाँ चिह्नित काम से पहले कर्मचारी दोबारा पुष्टि करते हैं कि वे ही हैं: पासकी से, अपने पासवर्ड से (और ऑथेंटिकेटर ऐप होने पर उसके कोड से), या अपने पहचान प्रदाता से फिर से साइन इन करके। उनसे यह तब पूछा जाता है जब वे वह काम करने का प्रयास करते हैं; जिसे वह काम करने की अनुमति नहीं है, उसे इसके बजाय यही बताया जाता है। साइन इन करना भी पुष्टि माना जाता है।",
   "A confirmation counts for": "पुष्टि इतनी देर मान्य रहती है",
   "Minutes a confirmation counts for": "पुष्टि कितने मिनट मान्य रहती है",
   "minutes ({min} to {max})": "मिनट ({min} से {max})",
