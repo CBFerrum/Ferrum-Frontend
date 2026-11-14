@@ -5525,6 +5525,19 @@ const words: Record<string, string> = {
   "Only from these networks (optional)": "من هذه الشبكات فقط (اختياري)",
   "Empty: from anywhere. From any other address the key is refused.": "فارغ: من أي مكان. يُرفض المفتاح من أي عنوان آخر.",
   "Networks": "الشبكات",
+  "Audit log": "سجل التدقيق",
+  "All events": "كل الأحداث",
+  "Sign-ins": "عمليات تسجيل الدخول",
+  "Record changes": "تغييرات السجلات",
+  "Sign-in failed": "فشل تسجيل الدخول",
+  "Sign-in refused": "رُفض تسجيل الدخول",
+  "Failed sign-ins, summarised": "محاولات تسجيل الدخول الفاشلة (ملخّص)",
+  "Signed in with a password under single sign-on": "سجّل الدخول بكلمة مرور رغم اشتراط الدخول الموحّد",
+  "Session ended": "انتهت الجلسة",
+  "No events of this kind yet": "لا أحداث من هذا النوع بعد",
+  "No events yet": "لا أحداث بعد",
+  "Who": "من",
+  "Zone": "المنطقة",
 };
 
 export default words;

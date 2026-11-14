@@ -45,6 +45,7 @@ import { canonicalZones, deviceZone } from "../lib/zone";
 
 const Calendars = lazy(() => import("./Calendars").then((m) => ({ default: m.Calendars })));
 const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ default: m.ApprovalPoliciesPage })));
+const AuditLog = lazy(() => import("./AuditLog").then((m) => ({ default: m.AuditLog })));
 const Messaging = lazy(() => import("./Messaging").then((m) => ({ default: m.Messaging })));
 
 export const TABS = [
@@ -67,10 +68,11 @@ export const TABS = [
   { id: "words", get label() { return tr("Interface words"); } },
   { id: "exceptions", get label() { return tr("Needs a person"); } },
   { id: "services", get label() { return tr("Services"); } },
+  { id: "audit", get label() { return tr("Audit log"); } },
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server", audit: "clipboard-list" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -91,7 +93,7 @@ export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
   { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
   { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "approvals", "webhooks", "automations", "messaging", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
-  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services"] },
+  { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services", "audit"] },
 ];
 
 /** Section navigation that scales: a column of groups beside the page, a scrolling strip on narrow screens. One tablist per group, arrow keys move across all. */
@@ -201,6 +203,11 @@ export function AdminPage() {
         {tab === "words" && <InterfaceWords />}
         {tab === "exceptions" && <Exceptions />}
         {tab === "services" && <Services />}
+        {tab === "audit" && (
+          <Suspense fallback={<ListSkeleton rows={6} />}>
+            <AuditLog />
+          </Suspense>
+        )}
       </TabPanel>
       </div>
     </div>

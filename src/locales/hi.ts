@@ -5525,6 +5525,19 @@ const words: Record<string, string> = {
   "Only from these networks (optional)": "सिर्फ़ इन नेटवर्क से (वैकल्पिक)",
   "Empty: from anywhere. From any other address the key is refused.": "खाली: कहीं से भी। किसी और पते से कुंजी को मना कर दिया जाता है।",
   "Networks": "नेटवर्क",
+  "Audit log": "ऑडिट लॉग",
+  "All events": "सभी घटनाएँ",
+  "Sign-ins": "साइन-इन",
+  "Record changes": "रिकॉर्ड में बदलाव",
+  "Sign-in failed": "साइन-इन विफल",
+  "Sign-in refused": "साइन-इन मना किया गया",
+  "Failed sign-ins, summarised": "विफल साइन-इन (सारांश)",
+  "Signed in with a password under single sign-on": "सिंगल साइन-ऑन के बावजूद पासवर्ड से साइन इन किया",
+  "Session ended": "सत्र समाप्त हुआ",
+  "No events of this kind yet": "इस प्रकार की कोई घटना अभी नहीं",
+  "No events yet": "अभी कोई घटना नहीं",
+  "Who": "किसने",
+  "Zone": "ज़ोन",
 };
 
 export default words;
