@@ -20,6 +20,7 @@ import { ConnectorHub } from "./ConnectorHub";
 import { HideDialog } from "./RuleHide";
 import { permissionBody } from "../lib/ruleHide";
 import { InterfaceWords } from "./InterfaceWords";
+import { AccessSettings } from "./AccessSettings";
 import { Services } from "./Services";
 import { LinkInput, LinkTitle } from "./widgets";
 import {
@@ -733,6 +734,10 @@ interface WorkspaceSettings {
   fiscal_year_start_month: number;
   require_two_factor: boolean;
   require_sso: boolean;
+  staff_networks: { networks: string[]; mode: "enforce" | "report" } | null;
+  idle_minutes: number;
+  break_glass: string[] | null;
+  new_device_notice: boolean;
   /** What devices may keep for people to work offline, and for how many hours (docs/offline.md). */
   offline?: { allowed?: boolean; hours?: number };
 }
@@ -743,7 +748,7 @@ function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
   return (
     <div className="stack">
-      <Loaded q={q}>{(s) => <WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} />}</Loaded>
+      <Loaded q={q}>{(s) => <><WorkspaceForm key={`${s.timezone}|${s.language}|${s.fiscal_year_start_month}|${s.require_two_factor}|${s.require_sso}|${JSON.stringify(s.offline)}`} initial={s} /><AccessSettings key={JSON.stringify([s.staff_networks, s.idle_minutes, s.break_glass, s.new_device_notice])} initial={s} /></>}</Loaded>
       <PlanAndUsage />
       <WorkspaceExport />
       <CloseWorkspace />
@@ -989,7 +994,9 @@ function WorkspaceForm({ initial }: { initial: WorkspaceSettings }) {
     setBusy(true);
     setErrors([]);
     try {
-      await api.put("/api/admin/settings", form);
+      // Only this form's own settings: the others (access, messages) are saved by their own forms, and a stale copy here must not undo them.
+      const { timezone, language, fiscal_year_start_month, require_two_factor, require_sso, offline } = form;
+      await api.put("/api/admin/settings", { timezone, language, fiscal_year_start_month, require_two_factor, require_sso, offline });
       toast(tr("Workspace settings saved"));
       // `me` carries the zone that today's date follows (lib/format todayIso).
       await Promise.all(["admin", "me"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
