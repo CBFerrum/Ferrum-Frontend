@@ -5572,7 +5572,6 @@ const words: Record<string, string> = {
   "Searched {entity}": "{entity} में खोज की",
   "Report on {entity}": "{entity} पर रिपोर्ट",
   "Exported {entity}": "{entity} निर्यात किया",
-  "Record {id}": "रिकॉर्ड {id}",
   "Filtered on {fields}": "{fields} पर फ़िल्टर किया",
   "With a search text": "खोज के शब्दों के साथ",
   "Rows: {n}": "पंक्तियाँ: {n}",
