@@ -9,6 +9,33 @@ export interface StaffNetworks {
   mode: NetworkMode;
 }
 
+/** The kinds of work a step-up rule can name, in the order they are shown (crates/kernel/src/controls.rs WORK). */
+export const WORK = ["write", "delete", "export", "read"] as const;
+export type Work = (typeof WORK)[number];
+
+/** `step_up` as the server keeps it: `{"minutes": 10, "entities": {"Employee": {"work": ["write"], "keys": true}}}`. */
+export interface StepUp {
+  minutes: number;
+  entities: Record<string, { work: string[]; keys: boolean }>;
+}
+export type ReadLevel = "open" | "all";
+
+export const STEP_UP_MINUTES = { min: 1, max: 60, standard: 10 } as const;
+/** At most this many entities in either list. */
+export const ENTITIES_MAX = 200;
+
+/** One entity of the step-up list, as edited. An empty `entity` is a row not yet filled in. */
+export interface StepUpRow {
+  entity: string;
+  work: Work[];
+  /** The server's `keys: false`: API keys and service accounts are refused this work. By default (`keys: true`) they are let through. */
+  refuseKeys: boolean;
+}
+export interface ReadRow {
+  entity: string;
+  level: ReadLevel;
+}
+
 /** The access part of `GET /api/admin/settings`. */
 export interface AccessSettings {
   staff_networks: StaffNetworks | null;
@@ -16,6 +43,9 @@ export interface AccessSettings {
   /** The ids of the administrators who keep password sign-in under single sign-on; none: all of them. */
   break_glass: string[] | null;
   new_device_notice: boolean;
+  /** Absent from servers that do not have the setting. */
+  step_up?: StepUp | null;
+  record_reads?: Record<string, ReadLevel> | null;
 }
 
 export const IDLE_MIN = 5;
@@ -47,10 +77,35 @@ export const staffNetworksValue = (networks: string[], mode: NetworkMode): Staff
   return list.length ? { networks: list, mode } : null;
 };
 
+/** The step-up list as the form holds it, from the setting as read. */
+export function stepUpRows(setting: StepUp | null | undefined): StepUpRow[] {
+  return Object.entries(setting?.entities ?? {}).map(([entity, r]) => ({ entity, work: WORK.filter((w) => r.work.includes(w)), refuseKeys: r.keys === false }));
+}
+export const stepUpMinutes = (setting: StepUp | null | undefined): string => String(setting?.minutes ?? STEP_UP_MINUTES.standard);
+
+export const readRows = (setting: Record<string, ReadLevel> | null | undefined): ReadRow[] => Object.entries(setting ?? {}).map(([entity, level]) => ({ entity, level }));
+
+/** The value `step_up` is saved as: none, when no entity is named. Work is in the order shown, so that equal rules compare equal. */
+export function stepUpValue(minutes: string, rows: StepUpRow[]): StepUp | null {
+  const named = rows.filter((r) => r.entity !== "");
+  if (!named.length) return null;
+  const m = minutes.trim() === "" ? STEP_UP_MINUTES.standard : Number(minutes);
+  return { minutes: m, entities: Object.fromEntries(named.map((r) => [r.entity, { work: WORK.filter((w) => r.work.includes(w)), keys: !r.refuseKeys }])) };
+}
+
+/** The value `record_reads` is saved as: none, when no entity is named. */
+export const readsValue = (rows: ReadRow[]): Record<string, ReadLevel> | null => {
+  const named = rows.filter((r) => r.entity !== "");
+  return named.length ? Object.fromEntries(named.map((r) => [r.entity, r.level])) : null;
+};
+
+/** Same content, whatever the order the entities were listed in. */
+const canon = (v: unknown): string => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x));
+
 /** What changed between the settings as read and the form, as the body of `PUT /api/admin/settings`. */
 export function accessPatch(
   initial: AccessSettings,
-  form: { networks: string[]; mode: NetworkMode; idle: string; breakGlass: string[] | null; notice: boolean },
+  form: { networks: string[]; mode: NetworkMode; idle: string; breakGlass: string[] | null; notice: boolean; stepUp?: { minutes: string; rows: StepUpRow[] }; reads?: ReadRow[] },
 ): Partial<AccessSettings> {
   const patch: Partial<AccessSettings> = {};
   const nets = staffNetworksValue(form.networks, form.mode);
@@ -59,5 +114,15 @@ export function accessPatch(
   if (idle !== initial.idle_minutes) patch.idle_minutes = idle;
   if (JSON.stringify(form.breakGlass) !== JSON.stringify(initial.break_glass ?? null)) patch.break_glass = form.breakGlass;
   if (form.notice !== initial.new_device_notice) patch.new_device_notice = form.notice;
+  if (form.stepUp) {
+    const value = stepUpValue(form.stepUp.minutes, form.stepUp.rows);
+    // A kept rule is compared as the form would write it back (the server keeps `work` sorted by name, not as shown).
+    const kept = stepUpValue(stepUpMinutes(initial.step_up), stepUpRows(initial.step_up));
+    if (canon(value) !== canon(kept)) patch.step_up = value;
+  }
+  if (form.reads) {
+    const value = readsValue(form.reads);
+    if (canon(value) !== canon(initial.record_reads ?? null)) patch.record_reads = value;
+  }
   return patch;
 }

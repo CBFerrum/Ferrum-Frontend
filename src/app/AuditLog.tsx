@@ -13,13 +13,13 @@ export interface AuditEvent {
   /** The installation-wide id, as text. */
   id: string;
   at: string;
-  category: "sign_in" | "administration" | "records" | string;
+  category: "sign_in" | "administration" | "records" | "access" | string;
   entity: string;
   record: string;
   action: string;
   actor: string | null;
   request_id: string | null;
-  /** A sign-in's: `{address, user_agent, zone, method}`; any other event's: what changed. */
+  /** A sign-in's: `{address, user_agent, zone, method}`; an access event's: `{entity, record | query, rows, to?, via?, address, zone, credential}`, never a field's value; any other event's: what changed. */
   details: Record<string, unknown> | null;
 }
 
@@ -35,6 +35,7 @@ const CATEGORIES = () => [
   { id: "sign_in", label: tr("Sign-ins") },
   { id: "administration", label: tr("Administration") },
   { id: "records", label: tr("Record changes") },
+  { id: "access", label: tr("Access") },
 ];
 
 const SIGN_IN = () => ({
@@ -47,12 +48,37 @@ const SIGN_IN = () => ({
 }) as Record<string, string>;
 
 /** What happened, in words: a sign-in's action named for people, anything else as the platform names it (entity and action). */
-export function eventWords(e: Pick<AuditEvent, "category" | "entity" | "action">): string {
+export function eventWords(e: Pick<AuditEvent, "category" | "entity" | "action"> & { details?: AuditEvent["details"] }): string {
   if (e.category === "sign_in") return SIGN_IN()[e.action] ?? e.action.replaceAll("_", " ");
+  if (e.category === "access") {
+    const entity = text(e.details?.entity) || e.entity;
+    const words: Record<string, string> = {
+      open: tr("Opened a {entity} record", { entity: isolate(entity) }),
+      list: tr("Listed {entity}", { entity: isolate(entity) }),
+      search: tr("Searched {entity}", { entity: isolate(entity) }),
+      report: tr("Report on {entity}", { entity: isolate(entity) }),
+      export: tr("Exported {entity}", { entity: isolate(entity) }),
+    };
+    return words[e.action] ?? `${entity} ${e.action.replaceAll("_", " ")}`;
+  }
   return `${e.entity} ${e.action.replaceAll("_", " ")}`;
 }
 
 const text = (v: unknown): string => (typeof v === "string" ? v : "");
+
+/** The rest of an access event, one short line each: the record, the fields filtered on (never the values), the rows, where an export went. */
+export function accessDetails(d: Record<string, unknown>): string[] {
+  const query = d.query && typeof d.query === "object" ? (d.query as { filters?: { field?: unknown; op?: unknown }[]; search?: unknown }) : null;
+  const filters = (query?.filters ?? []).map((f) => `${text(f.field)} ${text(f.op)}`.trim()).filter(Boolean);
+  return [
+    text(d.record) && tr("Record {id}", { id: isolate(text(d.record)) }),
+    filters.length && tr("Filtered on {fields}", { fields: isolate(filters.join(", ")) }),
+    query?.search === true && tr("With a search text"),
+    typeof d.rows === "number" && tr("Rows: {n}", { n: d.rows }),
+    text(d.to) && tr("Sent to {to}", { to: isolate(text(d.to)) }),
+    text(d.via) && tr("Through {via}", { via: isolate(text(d.via)) }),
+  ].filter((x): x is string => typeof x === "string" && x !== "");
+}
 
 export function AuditLog() {
   const [category, setCategory] = useState("");
@@ -118,10 +144,15 @@ export function AuditLog() {
                             <Badge tone="amber">{isolate(text(d.by))}</Badge>
                           </>
                         ) : null}
+                        {e.category === "access" && accessDetails(d).map((line, i) => (
+                          <div key={i} className="faint">
+                            {line}
+                          </div>
+                        ))}
                       </td>
                       <td className="mono">{isolate(text(d.address))}</td>
                       <td>{isolate(text(d.zone))}</td>
-                      <td>{e.category === "sign_in" ? isolate(text(d.method)) : ""}</td>
+                      <td>{e.category === "sign_in" ? isolate(text(d.method)) : e.category === "access" ? isolate(text(d.credential)) : ""}</td>
                     </tr>
                   );
                 })}

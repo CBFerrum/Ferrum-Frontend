@@ -2,7 +2,7 @@
 // errors (the dev server restarts now and then), authenticated downloads and print previews.
 
 export { ApiError, errorMessage, isStale, parseApiError, type FieldError } from "@ferrum/client";
-import { parseApiError, t as tr } from "@ferrum/client";
+import { askStepUp, parseApiError, t as tr } from "@ferrum/client";
 
 // ── session ──
 
@@ -111,6 +111,7 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   // Safe to repeat: reads, and writes that carry an idempotency key.
   const retryable = method === "GET" || !!o.idempotencyKey;
   const url = path + queryString(o.query);
+  let askedAgain = false;
   for (let attempt = 0; ; attempt++) {
     let res: Response;
     try {
@@ -141,6 +142,12 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
     }
     const err = parseApiError(unreachable ? 502 : res.status, data);
     bodies.set(err, data);
+    // Refused before anything was done (the rights check, in memory): sent again once whatever the method, after the person confirms it is them.
+    if (res.status === 403 && err.code === "step_up" && !askedAgain) {
+      askedAgain = true;
+      if ((await askStepUp()) && !o.signal?.aborted) continue;
+      throw err;
+    }
     if (res.status === 401 && !o.noAuthRedirect) {
       setSession(null);
       onUnauthorized();

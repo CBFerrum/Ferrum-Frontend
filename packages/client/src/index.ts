@@ -427,6 +427,8 @@ export interface RequestOptions {
   /** What the request does, said by the client, for one whose body is rebuilt on each try (an offline
    * change made again on the record as it stands): the server binds the key to this instead of the body. */
   idempotencyDigest?: string;
+  /** A 401 is this call's answer (a wrong password), not an ended session: the shell is not asked to sign in again. */
+  noAuthRedirect?: boolean;
 }
 
 export function queryString(query?: Record<string, QueryValue>): string {
@@ -446,11 +448,32 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
   });
 
+type StepUpHandler = () => Promise<boolean>;
+let stepUpHandler: StepUpHandler | null = null;
+let stepUpAsking: Promise<boolean> | null = null;
+
+/** The page's way to ask the person to confirm it is them (the kit's `ConfirmHost` sets it while it is on the page); null: none. */
+export function setStepUpHandler(fn: StepUpHandler | null): void {
+  stepUpHandler = fn;
+}
+
+/** Asks once however many requests were refused: they all wait for the same answer. True when the person proved themselves. */
+export function askStepUp(): Promise<boolean> {
+  if (!stepUpHandler) return Promise.resolve(false);
+  stepUpAsking ??= stepUpHandler()
+    .catch(() => false)
+    .finally(() => {
+      stepUpAsking = null;
+    });
+  return stepUpAsking;
+}
+
 /**
  * A request to the API with the browser's session (the cookie). Retries reads (and writes with
  * an idempotency key) on connection errors and on 429, 502–504 (with `Retry-After`); waits while
  * the app is being upgraded (503 `app_upgrading`); asks the shell to sign in again on 401; tells
- * the shell on 409 `ui_outdated`.
+ * the shell on 409 `ui_outdated`; on 403 `step_up` asks the person to confirm it is them (one dialog for
+ * all the refused requests) and sends the request again once.
  */
 async function send(path: string, init: RequestOptions = {}): Promise<Response> {
   const method = init.method ?? "GET";
@@ -468,6 +491,7 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
   }
   const url = path + queryString(init.query);
   const retryable = method === "GET" || !!init.idempotencyKey;
+  let askedAgain = false;
   for (let attempt = 0; ; attempt++) {
     let res: Response;
     try {
@@ -491,7 +515,14 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
       await sleep(wait, init.signal);
       continue;
     }
-    if (res.status === 401 && !isPublicPage()) shell().session.reauthenticate();
+    // A step-up refusal comes from the rights check, before the request does anything (Ctx::check_step_up, in memory), so the
+    // request is sent again whatever its method, with or without an idempotency key: nothing was done the first time.
+    if (res.status === 403 && err.code === "step_up" && !askedAgain) {
+      askedAgain = true;
+      if ((await askStepUp()) && !init.signal?.aborted) continue;
+      throw err;
+    }
+    if (res.status === 401 && !init.noAuthRedirect && !isPublicPage()) shell().session.reauthenticate();
     // The runtime checks the version when the page becomes visible: the same check, now.
     if (res.status === 409 && err.code === "ui_outdated" && typeof document !== "undefined") document.dispatchEvent(new Event("visibilitychange"));
     throw err;

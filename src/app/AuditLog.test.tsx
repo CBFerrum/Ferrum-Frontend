@@ -83,4 +83,34 @@ describe("the audit log", () => {
   it("names a sign-in's action for people", () => {
     expect([eventWords({ category: "sign_in", entity: "SignIn", action: "failed_summary" }), eventWords({ category: "records", entity: "Customer", action: "update" })]).toEqual(["Failed sign-ins, summarised", "Customer update"]);
   });
+
+  // Shapes from crates/kernel/src/controls.rs record_read and server/tests/controls_it.rs: entity "Access", the action the kind of read.
+  const access = (id: number, action: string, details: Record<string, unknown>) => ({
+    id: String(id), workspace: "w", at: "2026-11-14T10:00:00Z", category: "access", entity: "Access", record: "018f", action, actor: "u1", request_id: "r1",
+    details: { entity: "Payslip", address: "10.1.2.3", zone: "office", credential: "session", ...details }, hash: "cd",
+  });
+
+  it("filters on the access category and says who read what: the record, the fields searched on, the rows, where an export went", async () => {
+    const events = [
+      access(61, "open", { record: "0190-aaaa" }),
+      access(60, "list", { query: { filters: [{ field: "title", op: "like" }], search: true }, rows: 50 }),
+      access(59, "export", { query: { filters: [] }, rows: 4, to: "download, csv" }),
+      access(58, "open", { record: "0190-bbbb", via: "link" }),
+    ];
+    const { host, urls } = await open((u) => json(200, { events: u.searchParams.get("category") === "access" ? events : [signIn(1)], next_before: null }));
+    const select = host.querySelector("select")!;
+    expect([...select.options].map((o) => o.value)).toEqual(["", "sign_in", "administration", "records", "access"]);
+    await act(async () => {
+      select.value = "access";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    expect(urls.at(-1)!.searchParams.get("category")).toBe("access");
+    const rows = [...host.querySelectorAll("tbody tr")].map((r) => [...r.children].map((c) => c.textContent));
+    expect(rows[0]!.slice(1)).toEqual(["Ana", "Opened a Payslip recordRecord 0190-aaaa", "10.1.2.3", "office", "session"]);
+    expect(rows[1]![2]).toBe("Listed PayslipFiltered on title likeWith a search textRows: 50");
+    expect(rows[2]![2]).toBe("Exported PayslipRows: 4Sent to download, csv");
+    expect(rows[3]![2]).toBe("Opened a Payslip recordRecord 0190-bbbbThrough link");
+    expect(await violations(host.innerHTML)).toEqual([]);
+  });
 });
