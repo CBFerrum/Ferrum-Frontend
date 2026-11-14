@@ -1,6 +1,6 @@
 // The design system: small, accessible building blocks styled by styles.css.
 
-import { isolate } from "@ferrum/client";
+import { isolate, setStepUpHandler } from "@ferrum/client";
 import {
   cloneElement,
   Component,
@@ -12,6 +12,7 @@ import {
   useState,
   useSyncExternalStore,
   type ButtonHTMLAttributes,
+  type FormEvent,
   type ErrorInfo,
   type KeyboardEvent,
   type ReactElement,
@@ -19,7 +20,7 @@ import {
   type RefObject,
 } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { errorMessage } from "../lib/api";
+import { api, ApiError, errorMessage } from "../lib/api";
 import { arrowStep, t } from "../lib/i18n";
 import { PortalContainer } from "../lib/portal";
 import { rememberFocus, trackFocus } from "../lib/focusReturn";
@@ -626,6 +627,93 @@ export function confirmDialog(o: Omit<ConfirmRequest, "resolve">): Promise<boole
   return new Promise((resolve) => confirmStore.set({ ...o, resolve }));
 }
 
+/**
+ * The person proves who they are again (`POST /api/auth/step-up`: their password, and the code from their authenticator app when
+ * they use one, which the server asks for by refusing without it). `message` says why where the caller knows; the default is neutral.
+ */
+export function ConfirmItsYou({ open, onClose, onDone, message }: { open: boolean; onClose: () => void; onDone: () => void; message?: string }) {
+  const formId = useId();
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [needsCode, setNeedsCode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const sending = useRef(false);
+  useEffect(() => {
+    if (open) return;
+    setPassword("");
+    setCode("");
+    setNeedsCode(false);
+    setError(null);
+  }, [open]);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (sending.current) return;
+    sending.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      // A wrong password is a 401 here, this call's answer, not an ended session.
+      await api.post("/api/auth/step-up", { password, code: needsCode ? code : undefined }, { noAuthRedirect: true });
+      setPassword("");
+      setCode("");
+      onDone();
+    } catch (err) {
+      if (err instanceof ApiError && err.fields.some((f) => f.field === "code")) setNeedsCode(true);
+      setError(errorMessage(err));
+    } finally {
+      sending.current = false;
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t("Confirm it is you")}
+      footer={
+        <>
+          <Button onClick={onClose}>{t("Cancel")}</Button>
+          <Button variant="primary" type="submit" form={formId} loading={busy}>
+            {t("Confirm")}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} className="stack" onSubmit={submit}>
+        <p className="muted">{message ?? t("To continue, confirm it is you.")}</p>
+        <Field label={t("Password")} htmlFor={`${formId}-password`} error={needsCode ? undefined : (error ?? undefined)}>
+          <input id={`${formId}-password`} className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
+        </Field>
+        {needsCode && (
+          <Field label={t("Code from your authenticator app")} htmlFor={`${formId}-code`} error={error ?? undefined}>
+            <input id={`${formId}-code`} className="input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} required />
+          </Field>
+        )}
+      </form>
+    </Dialog>
+  );
+}
+
+/** Answers the client's step-up refusals (403 `step_up`) with one dialog, however many requests were refused; true when the person proved it. */
+function StepUpHost() {
+  const [waiting, setWaiting] = useState<((ok: boolean) => void) | null>(null);
+  const resolve = useRef(waiting);
+  resolve.current = waiting;
+  useEffect(() => {
+    setStepUpHandler(() => new Promise<boolean>((done) => setWaiting(() => done)));
+    return () => {
+      setStepUpHandler(null);
+      resolve.current?.(false);
+    };
+  }, []);
+  const close = (ok: boolean) => {
+    waiting?.(ok);
+    setWaiting(null);
+  };
+  return <ConfirmItsYou open={!!waiting} onClose={() => close(false)} onDone={() => close(true)} />;
+}
+
 export function ConfirmHost() {
   const req = useSyncExternalStore(confirmStore.subscribe, confirmStore.get, confirmStore.get);
   const close = (ok: boolean) => {
@@ -633,6 +721,7 @@ export function ConfirmHost() {
     confirmStore.set(null);
   };
   return (
+    <>
     <Dialog
       open={!!req}
       onClose={() => close(false)}
@@ -648,6 +737,8 @@ export function ConfirmHost() {
     >
       {req?.message && <div className="confirm-message">{req.message}</div>}
     </Dialog>
+    <StepUpHost />
+    </>
   );
 }
 

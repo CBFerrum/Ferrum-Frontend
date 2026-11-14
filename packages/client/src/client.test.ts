@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeBootstrap, installFakeShell, removeFakeShell } from "@ferrum/testing";
-import { ApiError, bootstrap, request, resetBootstrap, routeBase, shell, shownTimeZone } from "./index";
+import { ApiError, bootstrap, request, resetBootstrap, routeBase, setStepUpHandler, shell, shownTimeZone } from "./index";
 
 afterEach(() => {
+  setStepUpHandler(null);
   vi.unstubAllGlobals();
   removeFakeShell();
 });
@@ -143,5 +144,64 @@ describe("@ferrum/client", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(await p).toEqual({ ok: true });
     vi.useRealTimers();
+  });
+
+  describe("403 step_up (a marked entity needs a fresh proof)", () => {
+    const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+    const asked = { error: "step_up", message: "confirm it is you: enter your password again to do this" };
+    /** A server that refuses every call until `proved`, as the platform does until POST /api/auth/step-up. */
+    const server = () => {
+      const state = { proved: false, calls: 0 };
+      vi.stubGlobal("fetch", async () => {
+        state.calls++;
+        return state.proved ? json(200, { ok: true }) : json(403, asked);
+      });
+      return state;
+    };
+
+    it("asks, then sends a write without a key again once", async () => {
+      const state = server();
+      const handler = vi.fn(async () => ((state.proved = true), true));
+      setStepUpHandler(handler);
+      expect(await request("/api/v1/Employee/e1", { method: "PATCH", body: { a: 1 } })).toEqual({ ok: true });
+      expect([handler.mock.calls.length, state.calls]).toEqual([1, 2]);
+    });
+
+    it("shows one dialog for requests refused together, and all go on after it", async () => {
+      const state = server();
+      let answer: (ok: boolean) => void = () => {};
+      const handler = vi.fn(() => new Promise<boolean>((r) => (answer = r)));
+      setStepUpHandler(handler);
+      const all = Promise.all([request("/api/v1/Employee"), request("/api/v1/Payslip"), request("/api/v1/Employee/e1", { method: "DELETE" })]);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(handler).toHaveBeenCalledTimes(1);
+      state.proved = true;
+      answer(true);
+      expect(await all).toEqual([{ ok: true }, { ok: true }, { ok: true }]);
+      expect(state.calls).toBe(6);
+    });
+
+    it("fails with the server's own message when the person cancels, and does not send again", async () => {
+      const state = server();
+      setStepUpHandler(async () => false);
+      const e = (await request("/api/v1/Employee").catch((x: unknown) => x)) as ApiError;
+      expect([e.status, e.code, e.message]).toEqual([403, "step_up", asked.message]);
+      expect(state.calls).toBe(1);
+    });
+
+    it("asks only once for a request: a second refusal after proving is the answer", async () => {
+      const state = server();
+      const handler = vi.fn(async () => true);
+      setStepUpHandler(handler);
+      const e = (await request("/api/v1/Employee").catch((x: unknown) => x)) as ApiError;
+      expect(e.code).toBe("step_up");
+      expect([handler.mock.calls.length, state.calls]).toEqual([1, 2]);
+    });
+
+    it("is the server's refusal where the page has no way to ask", async () => {
+      const state = server();
+      const e = (await request("/api/v1/Employee").catch((x: unknown) => x)) as ApiError;
+      expect([e.code, state.calls]).toEqual(["step_up", 1]);
+    });
   });
 });

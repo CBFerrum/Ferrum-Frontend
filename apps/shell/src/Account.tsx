@@ -12,7 +12,7 @@ import { TwoFactorSettings } from "@/app/TwoFactor";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { formatDate, formatDateTime, relativeTime } from "@/lib/format";
 import { useMe, useMetaIndex } from "@/lib/meta";
-import { Alert, Badge, Button, confirmDialog, Dialog, Field, Spinner, toast } from "@/ui/kit";
+import { Alert, Badge, Button, confirmDialog, ConfirmItsYou, Dialog, Field, Spinner, toast } from "@/ui/kit";
 import "./shell.css";
 
 interface Device {
@@ -136,58 +136,6 @@ export const b64 = {
   decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
   encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
 };
-
-/** The person confirms their password (and authenticator code) before changing how they sign in. */
-function ConfirmItsYou({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [needsCode, setNeedsCode] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api.post("/api/auth/step-up", { password, code: needsCode ? code : undefined });
-      setPassword("");
-      setCode("");
-      onDone();
-    } catch (err) {
-      if (err instanceof ApiError && err.fields.some((f) => f.field === "code")) setNeedsCode(true);
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={t("Confirm it is you")}
-      footer={
-        <>
-          <Button onClick={onClose}>{t("Cancel")}</Button>
-          <Button variant="primary" type="submit" form="step-up-form" loading={busy}>
-            {t("Confirm")}
-          </Button>
-        </>
-      }
-    >
-      <form id="step-up-form" className="stack" onSubmit={submit}>
-        <p className="muted">{t("Changing how you sign in needs your password, as you signed in a while ago.")}</p>
-        <Field label={t("Password")} htmlFor="step-up-password" error={error ?? undefined}>
-          <input id="step-up-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
-        </Field>
-        {needsCode && (
-          <Field label={t("Code from your authenticator app")} htmlFor="step-up-code">
-            <input id="step-up-code" className="input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} required />
-          </Field>
-        )}
-      </form>
-    </Dialog>
-  );
-}
 
 /** The passkeys the person keeps: each signs them in, on the address it was made on, without an
  *  email or a password; the device checks it is them (a fingerprint, a face, the device's PIN). */
@@ -316,6 +264,7 @@ export function Passkeys() {
         )}
       </div>
       <ConfirmItsYou
+        message={t("Changing how you sign in needs your password, as you signed in a while ago.")}
         open={confirming}
         onClose={() => setConfirming(false)}
         onDone={() => {

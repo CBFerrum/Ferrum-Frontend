@@ -107,3 +107,21 @@ describe("a refusal that is not JSON", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("403 step_up", () => {
+  it("is sent again once after the person confirms, whatever the method, and is the refusal when they do not", async () => {
+    const { setStepUpHandler } = await import("@ferrum/client");
+    let proved = false;
+    const fetchMock = vi.fn(async () => (proved ? new Response("{}", { status: 200, headers: { "content-type": "application/json" } }) : new Response(JSON.stringify({ error: "step_up", message: "confirm it is you" }), { status: 403, headers: { "content-type": "application/json" } })));
+    vi.stubGlobal("fetch", fetchMock);
+    setStepUpHandler(async () => ((proved = true), true));
+    await api.patch("/api/v1/Employee/e1", { a: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    proved = false;
+    setStepUpHandler(async () => false);
+    await expect(api.del("/api/v1/Employee/e1")).rejects.toMatchObject({ status: 403, code: "step_up", message: "confirm it is you" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    setStepUpHandler(null);
+    vi.unstubAllGlobals();
+  });
+});

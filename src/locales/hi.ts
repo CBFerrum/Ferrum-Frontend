@@ -5544,6 +5544,7 @@ const words: Record<string, string> = {
   "This workspace only allows staff to work from its listed networks.": "यह कार्यक्षेत्र कर्मचारियों को सिर्फ़ अपने सूचीबद्ध नेटवर्क से काम करने देता है।",
   "This part of the workspace opens at its staff address, not here.": "कार्यक्षेत्र का यह हिस्सा यहाँ नहीं, अपने कर्मचारी पते पर खुलता है।",
   "This part of the workspace opens at its staff address:": "कार्यक्षेत्र का यह हिस्सा अपने कर्मचारी पते पर खुलता है:",
+  "To continue, confirm it is you.": "आगे बढ़ने के लिए पुष्टि करें कि आप ही हैं।",
 };
 
 export default words;
