@@ -2375,6 +2375,15 @@ interface Webhook {
   app?: string | null;
 }
 
+/** The topics that send the workspace's audit events (docs/operations.md, "Sending the audit log elsewhere"); `*` does not include them. */
+export const AUDIT_TOPICS = ["audit.sign_in", "audit.administration", "audit.records", "audit.*"];
+
+/** `topic` added to what was typed, once. */
+export const withTopic = (typed: string, topic: string): string => {
+  const have = typed.split(/[\s,]+/).filter(Boolean);
+  return have.includes(topic) ? typed : [...have, topic].join(", ");
+};
+
 // ── domains ──
 
 interface Domain {
@@ -2678,6 +2687,16 @@ function Webhooks() {
           <FieldWrap label={tr("Topics")} htmlFor="wh-topics" required hint={tr("Separated by commas or spaces, e.g. SalesInvoice.submitted, SalesInvoice.*, *")}>
             <input id="wh-topics" className="input mono" value={form.topics} onChange={(e) => setForm({ ...form, topics: e.target.value })} required />
           </FieldWrap>
+          <div className="stack" style={{ gap: 8 }} role="group" aria-label={tr("Audit topics")}>
+            <div className="chips">
+              {AUDIT_TOPICS.map((topic) => (
+                <Button key={topic} size="sm" className="mono" aria-pressed={form.topics.split(/[\s,]+/).includes(topic)} onClick={() => setForm({ ...form, topics: withTopic(form.topics, topic) })}>
+                  {topic}
+                </Button>
+              ))}
+            </div>
+            <p className="field-hint">{tr("The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.")}</p>
+          </div>
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <Button onClick={() => setCreating(false)}>{tr("Cancel")}</Button>
             <Button type="submit" variant="primary" loading={busy}>

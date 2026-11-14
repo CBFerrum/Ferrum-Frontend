@@ -5538,6 +5538,9 @@ const words: Record<string, string> = {
   "No events yet": "अभी कोई घटना नहीं",
   "Who": "किसने",
   "Zone": "ज़ोन",
+  "Audit topics": "ऑडिट विषय",
+  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.": "ऑडिट विषय कार्यक्षेत्र की ऑडिट घटनाएँ (साइन-इन, प्रशासन, रिकॉर्ड में बदलाव, या तीनों) इस पते पर भेजते हैं, अन्य वेबहुक की तरह हस्ताक्षरित।",
+  "{address}, zone {zone}": "{address}, ज़ोन {zone}",
 };
 
 export default words;

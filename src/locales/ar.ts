@@ -5538,6 +5538,9 @@ const words: Record<string, string> = {
   "No events yet": "لا أحداث بعد",
   "Who": "من",
   "Zone": "المنطقة",
+  "Audit topics": "مواضيع التدقيق",
+  "The audit topics send the workspace's audit events (sign-ins, administration, record changes, or all three) to the address, signed like other webhooks.": "ترسل مواضيع التدقيق أحداث التدقيق في مساحة العمل (تسجيلات الدخول والإدارة وتغييرات السجلات، أو الثلاثة معًا) إلى العنوان، موقّعة مثل بقية الويب هوك.",
+  "{address}, zone {zone}": "{address}، المنطقة {zone}",
 };
 
 export default words;

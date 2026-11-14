@@ -39,3 +39,13 @@ describe("the administration navigation", () => {
     expect(new Set(grouped).size).toBe(grouped.length);
   });
 });
+
+describe("webhook audit topics", () => {
+  it("adds a suggested topic to what was typed, once, in the form the server reads (commas or spaces)", async () => {
+    const { AUDIT_TOPICS, withTopic } = await import("./Admin");
+    expect(AUDIT_TOPICS).toEqual(["audit.sign_in", "audit.administration", "audit.records", "audit.*"]);
+    expect(withTopic("", "audit.sign_in")).toBe("audit.sign_in");
+    expect(withTopic("SalesInvoice.submitted audit.records", "audit.sign_in")).toBe("SalesInvoice.submitted, audit.records, audit.sign_in");
+    expect(withTopic("audit.*", "audit.*")).toBe("audit.*");
+  });
+});
