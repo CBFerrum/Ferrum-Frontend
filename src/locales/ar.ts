@@ -5572,7 +5572,6 @@ const words: Record<string, string> = {
   "Searched {entity}": "بحث في {entity}",
   "Report on {entity}": "تقرير عن {entity}",
   "Exported {entity}": "تصدير {entity}",
-  "Record {id}": "السجل {id}",
   "Filtered on {fields}": "مُرشَّح حسب {fields}",
   "With a search text": "مع نص بحث",
   "Rows: {n}": "الصفوف: {n}",
