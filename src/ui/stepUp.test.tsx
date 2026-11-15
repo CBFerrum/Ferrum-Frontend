@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 // Asking again, everywhere: a 403 `step_up` (crates/kernel/src/controls.rs `needed()`) opens one "confirm it is you" dialog, which
-// offers the ways the refusal lists (or `GET /api/auth/step-up/ways` gives a page that opens it itself): a passkey, the password (and
-// the code when the server asks for it), signing in again with the identity provider in a small window (server/src/controllers/auth.rs
-// `step_up`, `step_up_passkey`, `step_up_provider`, `step_up_provider_finish`); then the refused request goes on once. Request and
-// answer shapes from server/tests/controls_it.rs and the bar's own dialog (server/shell/runtime.js).
+// offers the ways the refusal lists (or `GET /api/auth/step-up/ways` gives a page that opens it itself): a passkey, here or in a small
+// window at the accounts host, the password (and the code when the server asks for it), signing in again with the identity provider in a
+// small window (server/src/controllers/auth.rs `step_up`, `step_up_passkey`, `step_up_accounts`, `step_up_accounts_finish`,
+// `step_up_provider`, `step_up_provider_finish`); then the refused request goes on once. Request and answer shapes from
+// server/tests/controls_it.rs and the bar's own dialog (server/shell/runtime.js).
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -55,7 +56,7 @@ const confirm = () => click("Confirm");
 const said = () => host.querySelector("[role=alert]")?.textContent;
 
 type Body = Record<string, unknown> | undefined;
-const PROOFS = ["/api/auth/step-up", "/api/auth/step-up/passkey", "/api/auth/step-up/provider/finish"];
+const PROOFS = ["/api/auth/step-up", "/api/auth/step-up/passkey", "/api/auth/step-up/provider/finish", "/api/auth/step-up/accounts/finish"];
 /** The platform's side: the step-up routes answered by `routes` (by path, given the body sent); every other request is refused with
  *  `refusal` until a proof is accepted. Each request is logged, and each body kept by path. */
 function server(refusal: unknown, routes: Record<string, (body: Body) => Response | Promise<Response>>) {
@@ -104,7 +105,8 @@ class Channel {
     act(() => this.onmessage?.({ data, origin } as MessageEvent));
   }
 }
-/** The small window the provider's way opens, and what is done to it; `log` gets its opening in order with the requests. */
+/** The small window a way opens (the provider's, a passkey at the accounts host), and what is done to it; `log` gets its opening in
+ *  order with the requests. */
 function popup(log: string[]) {
   vi.stubGlobal("BroadcastChannel", Channel);
   const win = { closed: false, opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn(() => void (win.closed = true)) };
@@ -347,6 +349,151 @@ describe("the ways to confirm it is you", () => {
     channel.post({ ...proof, dialog: bodies["/api/auth/step-up/provider"][0]!.dialog });
     await flush();
     expect(log.filter((l) => l.endsWith("/finish"))).toEqual([]);
+  });
+
+  // A passkey of the person's Ferrum account, which only the accounts host may ask for (`accounts_passkey`): asked for in a small
+  // window there, whose last page on this host hands the proof back, as after signing in again.
+  const ACCOUNTS = "https://accounts.example/step-up?state=sa.AbCdEf0123456789-_xyz";
+  const atAccounts = (finish: () => Response = () => new Response(null, { status: 204 })) =>
+    server(ways({ way: "accounts_passkey" }, { way: "password", code: false }), {
+      "/api/auth/step-up/accounts": () => json(200, { url: ACCOUNTS }),
+      "/api/auth/step-up/accounts/finish": finish,
+    });
+
+  it("a passkey at the accounts host: offered only where this browser can use passkeys, else said as a passkey is", async () => {
+    const listing = async (...listed: unknown[]) => {
+      act(() => root.unmount());
+      root = createRoot(host);
+      server(ways(...listed), {});
+      await open();
+      return controls();
+    };
+    expect(await listing({ way: "accounts_passkey" }, { way: "password", code: false })).toEqual(["password field"]);
+    expect(await listing({ way: "accounts_passkey" })).toEqual([]);
+    expect(host.textContent).toContain("This browser cannot use a passkey, your only way to confirm it is you here.");
+    webauthn(async () => null);
+    expect(await listing({ way: "accounts_passkey" }, { way: "password", code: false })).toEqual(["Use a passkey", "Or", "password field"]);
+    expect(document.activeElement).toBe(button("Use a passkey"));
+    expect(button("Use a passkey")!.className.includes("btn-primary")).toBe(true);
+    expect(await violations(host.innerHTML)).toEqual([]);
+  });
+
+  it("a passkey both here and at the accounts host (the server lists one or the other): one button, the first listed", async () => {
+    webauthn(async () => null);
+    const { log } = server(ways({ way: "passkey" }, { way: "accounts_passkey" }, { way: "password", code: false }), { "/api/auth/step-up/passkey/options": () => json(200, offer) });
+    const opened = vi.spyOn(window, "open").mockReturnValue(null);
+    await open();
+    expect(controls()).toEqual(["Use a passkey", "Or", "password field"]);
+    await click("Use a passkey");
+    expect([log.at(-1), opened.mock.calls.length, said()]).toEqual(["POST /api/auth/step-up/passkey/options", 0, "No passkey was used."]);
+  });
+
+  it("a passkey at the accounts host: a window the click opens there, a proof taken only for this dialog and finished with it, then the request goes on", async () => {
+    const device = webauthn(async () => credential);
+    const { log, bodies } = atAccounts();
+    const win = popup(log);
+    const { read } = await open();
+    await act(async () => {
+      button("Use a passkey")!.click();
+      // In the click itself, before anything is awaited: the click is what lets a page open a window.
+      expect(window.open).toHaveBeenCalledTimes(1);
+      button("Use a passkey")!.click();
+    });
+    await flush();
+    expect(log).toEqual(["GET /api/v1/Employee", "open about:blank ferrum-step-up popup,width=520,height=680", "POST /api/auth/step-up/accounts"]);
+    expect(win.opener).toBeNull();
+    const dialog = bodies["/api/auth/step-up/accounts"][0]!.dialog as string;
+    expect(dialog).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+    expect(win.location.replace.mock.calls).toEqual([[ACCOUNTS]]);
+    expect(host.textContent).toContain("Confirm it is you in the window that opened.");
+    // The device is asked in the window, by the accounts host, never by this page.
+    expect(device).not.toHaveBeenCalled();
+    const [channel] = Channel.all;
+    expect([Channel.all.length, channel.name]).toEqual([1, "ferrum-step-up"]);
+    channel.post({ ...proof, dialog: "another-dialogs-value-0123" });
+    channel.post({ ...proof, dialog }, "https://accounts.example");
+    channel.post({ ...proof, dialog }, "https://evil.example");
+    channel.post({ ...proof, dialog, state: "su.x" });
+    channel.post({ ...proof });
+    await flush();
+    expect(log.filter((l) => l.endsWith("/finish"))).toEqual([]);
+    expect(host.querySelector("dialog[open]")).not.toBeNull();
+    channel.post({ ...proof, dialog });
+    await flush();
+    expect(await read).toEqual({ rows: [] });
+    expect(bodies["/api/auth/step-up/accounts/finish"]).toEqual([{ ...proof, dialog }]);
+    expect(log.slice(3)).toEqual(["POST /api/auth/step-up/accounts/finish", "GET /api/v1/Employee"]);
+    expect([channel.closed, host.querySelector("dialog[open]")]).toEqual([true, null]);
+  });
+
+  it("a passkey at the accounts host: nothing but a web address goes to the window, which closes, and the failure is said", async () => {
+    webauthn(async () => null);
+    let start = () => json(200, {});
+    const { log } = server(ways({ way: "accounts_passkey" }), { "/api/auth/step-up/accounts": () => start() });
+    const win = popup(log);
+    await open();
+    for (const url of ["javascript:alert(document.domain)", "data:text/html,<script>alert(1)</script>", "//accounts.example/step-up", "/step-up", null]) {
+      start = () => json(200, { url });
+      win.closed = false;
+      await click("Use a passkey");
+      expect([said(), win.closed, button("Use a passkey")!.disabled], String(url)).toEqual(["Could not confirm it is you. Try again.", true, false]);
+    }
+    start = () => json(422, { error: "invalid", message: "this server keeps no passkeys at an accounts host" });
+    win.closed = false;
+    await click("Use a passkey");
+    expect([said(), win.closed]).toEqual(["this server keeps no passkeys at an accounts host", true]);
+    expect([win.location.replace.mock.calls, Channel.all, host.querySelector("dialog[open]") !== null]).toEqual([[], [], true]);
+  });
+
+  it("a passkey at the accounts host: a window closed before a proof is said, never taken for one, and trying again asks anew", async () => {
+    webauthn(async () => null);
+    const { log, bodies } = atAccounts();
+    const win = popup(log);
+    const { read } = await open();
+    await click("Use a passkey");
+    win.closed = true;
+    await act(() => new Promise((r) => setTimeout(r, 800)));
+    expect(said()).toBe("If you closed the window before confirming it is you, try again.");
+    expect([host.querySelector("dialog[open]") !== null, button("Use a passkey")!.disabled, log.filter((l) => l.endsWith("/finish"))]).toEqual([true, false, []]);
+    win.closed = false;
+    await click("Use a passkey");
+    const [first, again] = bodies["/api/auth/step-up/accounts"].map((b) => b!.dialog);
+    expect(again).not.toBe(first);
+    Channel.all.at(-1)!.post({ ...proof, dialog: first });
+    await flush();
+    expect(log.filter((l) => l.endsWith("/finish"))).toEqual([]);
+    Channel.all.at(-1)!.post({ ...proof, dialog: again });
+    await flush();
+    expect(await read).toEqual({ rows: [] });
+  });
+
+  it("a passkey at the accounts host: a finish the server refuses is said, and the dialog can be used again", async () => {
+    webauthn(async () => null);
+    const ended = vi.fn();
+    setUnauthorizedHandler(ended);
+    const finishes = [
+      json(429, { error: "too_many_requests", message: "too many tries: wait a minute and try again" }),
+      json(401, { error: "unauthorized", message: "confirming it is you did not finish; try again" }),
+      new Response(null, { status: 204 }),
+    ];
+    const { log, bodies } = atAccounts(() => finishes.shift()!);
+    popup(log);
+    const { read } = await open();
+    const confirmThere = async () => {
+      await click("Use a passkey");
+      Channel.all.at(-1)!.post({ ...proof, dialog: bodies["/api/auth/step-up/accounts"].at(-1)!.dialog });
+      await flush();
+    };
+    await confirmThere();
+    expect(said()).toBe("too many tries: wait a minute and try again");
+    await confirmThere();
+    expect(said()).toBe("Confirming it is you did not finish. Try again.");
+    expect([host.querySelector("dialog[open]") !== null, button("Use a passkey")!.disabled, ended.mock.calls.length]).toEqual([true, false, 0]);
+    expect(document.activeElement).toBe(button("Use a passkey"));
+    await confirmThere();
+    expect(await read).toEqual({ rows: [] });
+    // Each finish carried the value of its own try.
+    expect(bodies["/api/auth/step-up/accounts/finish"].map((b) => b!.dialog)).toEqual(bodies["/api/auth/step-up/accounts"].map((b) => b!.dialog));
   });
 
   it("sends one proof however often it is asked to, and the other ways wait meanwhile", async () => {

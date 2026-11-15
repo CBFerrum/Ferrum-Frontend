@@ -5693,6 +5693,9 @@ const words: Record<string, string> = {
   "People signed in there keep working there until {date}. Then it only sends people on.": "يواصل من سجّلوا الدخول هناك العمل فيه حتى {date}. ثم يحوّل الناس فقط.",
   "Sending people on means one sign-in, on the main address, and nothing kept separately on this address. It then lists no apps and shows no label; where people land still applies.": "التحويل يعني تسجيل دخول واحدًا، على العنوان الرئيسي، ولا شيء يُحفظ على حدة في هذا العنوان. عندها لا يعرض تطبيقات ولا تسمية؛ ويبقى مكان الوصول كما هو.",
   "{app} now uses {path}, so its page opens there and this short path does nothing.": "يستخدم {app} الآن {path}، لذا تُفتح صفحته هناك ولا يفعل هذا المسار المختصر شيئًا.",
+  "Confirm it is you in the window that opened.": "أكّد أنه أنت في النافذة التي فُتحت.",
+  "If you closed the window before confirming it is you, try again.": "إن كنت أغلقت النافذة قبل تأكيد أنه أنت، فحاول مرة أخرى.",
+  "Confirming it is you did not finish. Try again.": "لم يكتمل تأكيد أنه أنت. حاول مرة أخرى.",
 };
 
 export default words;

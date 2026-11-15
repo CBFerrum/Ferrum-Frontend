@@ -628,28 +628,36 @@ export function confirmDialog(o: Omit<ConfirmRequest, "resolve">): Promise<boole
   return new Promise((resolve) => confirmStore.set({ ...o, resolve }));
 }
 
-/** A way the person can confirm it is them, as the server lists theirs (docs/operations.md, "Asking again before sensitive work"). */
-type StepUpWay = { way: "passkey" } | { way: "password"; code: boolean } | { way: "provider"; name: string };
+/** A way the person can confirm it is them, as the server lists theirs (docs/operations.md, "Asking again before sensitive work"):
+ *  `accounts_passkey` is a passkey of their Ferrum account, which only the accounts host may ask for, in a small window there. */
+type StepUpWay = { way: "passkey" } | { way: "accounts_passkey" } | { way: "password"; code: boolean } | { way: "provider"; name: string };
+/** The ways that open a small window: signing in again at the provider, a passkey at the accounts host. */
+type WindowWay = "provider" | "accounts_passkey";
 
-/** The ways to offer, in the server's order: a passkey only where this browser can use one (`webauthn`), the password (`code`: the code
- *  from an authenticator app is asked too), signing in again with the provider by its name. Anything else, and a way said twice, is left
- *  out; no list at all (an older server's refusal): the password, as before. As the bar's runtime chooses (server/shell/runtime.js
- *  `stepUpChoices`). */
+/** A way as the person sees it: a passkey at the accounts host is a passkey ("Use a passkey"). */
+const shownAs = (way: unknown) => (way === "accounts_passkey" ? "passkey" : way);
+
+/** The ways to offer, in the server's order: a passkey, here or at the accounts host, only where this browser can use one (`webauthn`),
+ *  the password (`code`: the code from an authenticator app is asked too), signing in again with the provider by its name. Anything else,
+ *  and a way said twice, is left out; so is a second passkey (the server lists one or the other, and both would be two "Use a passkey"
+ *  buttons: the first listed is offered). No list at all (an older server's refusal): the password, as before. As the bar's runtime
+ *  chooses (server/shell/runtime.js `stepUpChoices`). */
 function stepUpChoices(ways: unknown, webauthn: boolean): StepUpWay[] {
   if (!Array.isArray(ways)) return [{ way: "password", code: false }];
   const out: StepUpWay[] = [];
   for (const w of ways as ({ way?: unknown; code?: unknown; name?: unknown } | null)[]) {
-    if (out.some((o) => o.way === w?.way)) continue;
-    if (w?.way === "passkey" && webauthn) out.push({ way: "passkey" });
+    if (out.some((o) => shownAs(o.way) === shownAs(w?.way))) continue;
+    if ((w?.way === "passkey" || w?.way === "accounts_passkey") && webauthn) out.push({ way: w.way });
     else if (w?.way === "password") out.push({ way: "password", code: w.code === true });
     else if (w?.way === "provider" && typeof w.name === "string" && w.name.trim()) out.push({ way: "provider", name: w.name.trim() });
   }
   return out;
 }
 
-/** The proof the small window's last page (`/api/auth/step-up/provider/done`) posts on the "ferrum-step-up" channel: `{state, code}` only
- *  when it comes from this page's own origin and names the request this dialog made (`dialog`, a value only the server and that page are
- *  told, never the provider), else null. What the bar's runtime checks (server/shell/runtime.js `providerProof`), no less. */
+/** The proof the small window's last page (`/api/auth/step-up/provider/done`, where both ways that open one end) posts on the
+ *  "ferrum-step-up" channel: `{state, code}` only when it comes from this page's own origin and names the request this dialog made
+ *  (`dialog`, a value only the server and that page are told, never the provider), else null. What the bar's runtime checks
+ *  (server/shell/runtime.js `providerProof`), no less. */
 function providerProof(e: MessageEvent, dialog: string): { state: string; code: string } | null {
   const data: unknown = e.data;
   if (dialog.length < 16 || e.origin !== location.origin || data === null || typeof data !== "object") return null;
@@ -664,17 +672,24 @@ interface PasskeyOffer {
   publicKey: Omit<PublicKeyCredentialRequestOptions, "challenge" | "allowCredentials"> & { challenge: string; allowCredentials?: (Omit<PublicKeyCredentialDescriptor, "id"> & { id: string })[] };
 }
 
-/** Only a web address goes to the provider's window: until then it is this page's own (about:blank), where another kind would run as it. */
+/** Only a web address goes to the small window: until then it is this page's own (about:blank), where another kind would run as it. */
 const webAddress = (u: unknown): u is string => typeof u === "string" && /^https?:\/\//i.test(u);
+
+/** A way that opens a small window, as the bar's runtime has them (server/shell/runtime.js `windowWay`): where it starts (`{dialog}` →
+ *  `{url}`), what the dialog says while it waits, and when the window was closed before a proof came. */
+const windowWay = (way: WindowWay) =>
+  way === "provider"
+    ? { start: "/api/auth/step-up/provider", waiting: t("Finish signing in again in the window that opened."), closed: t("If you closed the window before signing in again, try again.") }
+    : { start: "/api/auth/step-up/accounts", waiting: t("Confirm it is you in the window that opened."), closed: t("If you closed the window before confirming it is you, try again.") };
 
 /**
  * The person proves who they are again (docs/operations.md, "Asking again before sensitive work"), in the ways the server says they have,
- * in its order: a passkey, their password (with the code from their authenticator app when the server asks for it), or signing in again
- * with their identity provider in a small window. The ways come from `refusal`, the body of the `403` `step_up` being answered (the
- * kit's `ConfirmHost` passes it), or, opened without one, from `GET /api/auth/step-up/ways`. One way: just that; none: the server's
- * message and Close. While one way is tried the others wait; what went wrong is said in the dialog and every way can be used again.
- * Every step-up call's 401 is its own answer (`noAuthRedirect`), not an ended session. `message` says why where the caller knows; the
- * default is neutral. `onDone` once the server accepted a proof.
+ * in its order: a passkey (here, or in a small window at the accounts host where their Ferrum account keeps it), their password (with the
+ * code from their authenticator app when the server asks for it), or signing in again with their identity provider in a small window. The
+ * ways come from `refusal`, the body of the `403` `step_up` being answered (the kit's `ConfirmHost` passes it), or, opened without one,
+ * from `GET /api/auth/step-up/ways`. One way: just that; none: the server's message and Close. While one way is tried the others wait;
+ * what went wrong is said in the dialog and every way can be used again. Every step-up call's 401 is its own answer (`noAuthRedirect`),
+ * not an ended session. `message` says why where the caller knows; the default is neutral. `onDone` once the server accepted a proof.
  */
 export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { open: boolean; onClose: () => void; onDone: () => void; message?: string; refusal?: unknown }) {
   const formId = useId();
@@ -686,7 +701,7 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<StepUpWay["way"] | null>(null);
   const [fetched, setFetched] = useState<{ ways?: unknown; message?: unknown } | null>(null);
-  const [waiting, setWaiting] = useState<{ dialog: string; win: Window } | null>(null);
+  const [waiting, setWaiting] = useState<{ way: WindowWay; dialog: string; win: Window } | null>(null);
   const sending = useRef(false);
   const life = useRef<AbortController | null>(null);
   const popup = useRef<Window | null>(null);
@@ -765,9 +780,10 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
     return () => asking.abort();
   }, [open, given]);
 
-  // Signing in again: the proof comes on this origin's channel, whether or not the provider's pages cut the window off from this page.
-  // Waiting does not hold the dialog (the person can try again, or another way). A closed window is said, and the channel is still heard
-  // until the dialog closes: a window cut off from this page reads as closed while the person is still signing in.
+  // A way that opens a window (signing in again, a passkey at the accounts host): the proof comes on this origin's channel, whether or not
+  // the pages in the window cut it off from this page. Waiting does not hold the dialog (the person can try again, or another way). A closed
+  // window is said, and the channel is still heard until the dialog closes: a window cut off from this page reads as closed while the
+  // person is still in it.
   useEffect(() => {
     if (!waiting) return;
     let channel: BroadcastChannel | null = null;
@@ -777,9 +793,20 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
         const proof = providerProof(e, waiting.dialog);
         if (!proof) return;
         setWaiting(null);
-        void attempt("provider", async (signal) => {
-          await api.post("/api/auth/step-up/provider/finish", proof, { noAuthRedirect: true, signal });
-          return true;
+        void attempt(waiting.way, async (signal) => {
+          if (waiting.way === "provider") {
+            await api.post("/api/auth/step-up/provider/finish", proof, { noAuthRedirect: true, signal });
+            return true;
+          }
+          // The accounts host's proof is good only for the dialog that asked. A refusal is said as the bar's runtime says it: too many
+          // tries in the server's words, anything else that it did not finish.
+          try {
+            await api.post("/api/auth/step-up/accounts/finish", { ...proof, dialog: waiting.dialog }, { noAuthRedirect: true, signal });
+            return true;
+          } catch (err) {
+            if (err instanceof ApiError && err.status === 429) throw err;
+            return t("Confirming it is you did not finish. Try again.");
+          }
         });
       };
     } catch {
@@ -789,7 +816,7 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
       if (!waiting.win.closed) return;
       clearInterval(watch);
       setNote(null);
-      say(t("If you closed the window before signing in again, try again."));
+      say(windowWay(waiting.way).closed);
     }, 700);
     return () => {
       channel?.close();
@@ -813,10 +840,10 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
   const askCode = needsCode || !!pwd?.code;
   const listed = answer && Array.isArray(answer.ways) ? (answer.ways as unknown[]) : [];
   const server = typeof answer?.message === "string" && answer.message.trim() ? isolate(answer.message) : null;
-  // None to offer: why, in the server's words, unless what it lists is a passkey this browser cannot use.
+  // None to offer: why, in the server's words, unless what it lists is a passkey (here or at the accounts host) this browser cannot use.
   const why =
     choices?.length !== 0 ? (message ?? t("To continue, confirm it is you."))
-    : listed.some((w) => (w as { way?: unknown } | null)?.way === "passkey") ? t("This browser cannot use a passkey, your only way to confirm it is you here. Use another browser, or ask an administrator.")
+    : listed.some((w) => shownAs((w as { way?: unknown } | null)?.way) === "passkey") ? t("This browser cannot use a passkey, your only way to confirm it is you here. Use another browser, or ask an administrator.")
     : (server ?? t("You have no way to confirm it is you here. Ask an administrator to set one up for you."));
 
   const submit = (e: FormEvent) => {
@@ -849,9 +876,10 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
       await api.post("/api/auth/step-up/passkey", { request: offer.request, credential: { id: cred.id, rawId: b64.encode(cred.rawId), type: cred.type, response } }, { noAuthRedirect: true, signal });
       return true;
     });
-  // The window is opened by the click itself, before anything is awaited (the click is what lets a page open one), and cut off from this
-  // page before it goes anywhere. `dialog` is this dialog's own value, which the proof must carry back.
-  const trySignInAgain = () => {
+  // A way that opens a small window (signing in again at the provider, a passkey at the accounts host): the window is opened by the click
+  // itself, before anything is awaited (the click is what lets a page open one), and cut off from this page before it goes anywhere.
+  // `dialog` is this dialog's own value, which the proof must carry back.
+  const tryWindow = (way: WindowWay) => {
     if (sending.current) return;
     const w = window.open("about:blank", "ferrum-step-up", "popup,width=520,height=680");
     if (!w) {
@@ -865,18 +893,19 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
     }
     popup.current = w;
     const dialog = b64.encode(crypto.getRandomValues(new Uint8Array(18)).buffer);
-    void attempt("provider", async (signal) => {
+    const says = windowWay(way);
+    void attempt(way, async (signal) => {
       let url: unknown;
       try {
-        url = (await api.post<{ url?: unknown }>("/api/auth/step-up/provider", { dialog }, { noAuthRedirect: true, signal }))?.url;
+        url = (await api.post<{ url?: unknown }>(says.start, { dialog }, { noAuthRedirect: true, signal }))?.url;
       } finally {
         if (!webAddress(url)) w.close();
       }
       if (!webAddress(url)) return t("Could not confirm it is you. Try again.");
-      if (w.closed) return t("If you closed the window before signing in again, try again.");
+      if (w.closed) return says.closed;
       w.location.replace(url);
-      setWaiting({ dialog, win: w });
-      setNote(t("Finish signing in again in the window that opened."));
+      setWaiting({ way, dialog, win: w });
+      setNote(says.waiting);
       return false;
     });
   };
@@ -923,8 +952,8 @@ export function ConfirmItsYou({ open, onClose, onDone, message, refusal }: { ope
                   )}
                 </div>
               ) : (
-                <Button id={`${formId}-${c.way}`} className="w-full" variant={i === 0 ? "primary" : "default"} loading={busy === c.way} disabled={!!busy} onClick={c.way === "passkey" ? tryPasskey : trySignInAgain} data-autofocus={i === 0 || undefined}>
-                  {c.way === "passkey" ? t("Use a passkey") : t("Sign in again with {name}", { name: c.name })}
+                <Button id={`${formId}-${c.way}`} className="w-full" variant={i === 0 ? "primary" : "default"} loading={busy === c.way} disabled={!!busy} onClick={() => (c.way === "passkey" ? tryPasskey() : tryWindow(c.way))} data-autofocus={i === 0 || undefined}>
+                  {c.way === "provider" ? t("Sign in again with {name}", { name: c.name }) : t("Use a passkey")}
                 </Button>
               )}
             </Fragment>
