@@ -64,6 +64,8 @@ export interface RequestOptions {
   noAuthRedirect?: boolean;
   /** A bearer token instead of the session's (the steps of signing in). */
   token?: string;
+  /** Not sent again on a 503 or a dropped connection: a refusal that waits on a person (a closed vault) is shown at once. */
+  once?: boolean;
   /** Further request headers (X-Ferrum-App for the calls of an app's screen). */
   headers?: Record<string, string>;
 }
@@ -109,7 +111,7 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
     body = JSON.stringify(o.body);
   }
   // Safe to repeat: reads, and writes that carry an idempotency key.
-  const retryable = method === "GET" || !!o.idempotencyKey;
+  const retryable = (method === "GET" || !!o.idempotencyKey) && !o.once;
   const url = path + queryString(o.query);
   let askedAgain = false;
   for (let attempt = 0; ; attempt++) {
