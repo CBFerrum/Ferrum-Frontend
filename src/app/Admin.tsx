@@ -1,4 +1,4 @@
-// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, addresses, personal data, workspace settings,
+// Administration: users, roles & permissions, packages, webhooks, automations, plugins, API keys, single sign-on, secrets, addresses, personal data, workspace settings,
 // and what needs a person: events, webhook deliveries and jobs that gave up.
 
 import { NavIcon } from "../../packages/kit/src/NavIcon";
@@ -48,6 +48,7 @@ const ApprovalPolicies = lazy(() => import("./ApprovalPolicies").then((m) => ({ 
 const AuditLog = lazy(() => import("./AuditLog").then((m) => ({ default: m.AuditLog })));
 const Messaging = lazy(() => import("./Messaging").then((m) => ({ default: m.Messaging })));
 const Addresses = lazy(() => import("./Addresses").then((m) => ({ default: m.Addresses })));
+const Secrets = lazy(() => import("./Secrets").then((m) => ({ default: m.Secrets })));
 
 export const TABS = [
   { id: "users", get label() { return tr("Users"); } },
@@ -62,6 +63,7 @@ export const TABS = [
   { id: "plugins", get label() { return tr("Plugins"); } },
   { id: "keys", get label() { return tr("API keys"); } },
   { id: "sso", get label() { return tr("Single sign-on"); } },
+  { id: "secrets", get label() { return tr("Secrets"); } },
   { id: "domains", get label() { return tr("Addresses"); } },
   { id: "privacy", get label() { return tr("Personal data"); } },
   { id: "workspace", get label() { return tr("Workspace"); } },
@@ -73,7 +75,7 @@ export const TABS = [
 ];
 
 /** Each section's icon in the side navigation (the kit's menu icon names). */
-const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server", audit: "clipboard-list" };
+const TAB_ICONS: Record<string, string> = { users: "users", roles: "shield-check", packages: "package", connections: "plug", connectors: "refresh-cw", approvals: "circle-check", webhooks: "share-2", automations: "workflow", messaging: "message-square", plugins: "puzzle", keys: "key", sso: "id-card", secrets: "shield", domains: "globe", privacy: "lock", workspace: "building-2", calendars: "calendar", words: "languages", exceptions: "triangle-alert", services: "server", audit: "clipboard-list" };
 
 /** The row's overflow menu: the first actions stay visible, the rest are here, destructive last and separated. Portaled: the table's scroll frame would clip an inline menu on the last rows. */
 function RowMenu({ label, children }: { label: string; children: ReactNode }) {
@@ -91,7 +93,7 @@ function RowMenu({ label, children }: { label: string; children: ReactNode }) {
 
 /** The sections, grouped for the side navigation. Ids are the `?tab=` values and the tab/panel ids: they do not change. */
 export const GROUPS: { id: string; label: () => string; ids: string[] }[] = [
-  { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys"] },
+  { id: "access", label: () => tr("People and access"), ids: ["users", "roles", "sso", "keys", "secrets"] },
   { id: "apps", label: () => tr("Apps and integrations"), ids: ["packages", "connections", "connectors", "approvals", "webhooks", "automations", "messaging", "plugins"] },
   { id: "setup", label: () => tr("Setup"), ids: ["workspace", "domains", "calendars", "words"] },
   { id: "data", label: () => tr("Data and review"), ids: ["privacy", "exceptions", "services", "audit"] },
@@ -186,6 +188,11 @@ export function AdminPage() {
         {tab === "domains" && (
           <Suspense fallback={<ListSkeleton rows={4} />}>
             <Addresses />
+          </Suspense>
+        )}
+        {tab === "secrets" && (
+          <Suspense fallback={<ListSkeleton rows={4} />}>
+            <Secrets />
           </Suspense>
         )}
         {tab === "privacy" && <PersonalData />}
