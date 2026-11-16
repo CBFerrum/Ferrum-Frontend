@@ -16,11 +16,11 @@ import { defineConfig } from "vite";
 /** This checkout of Ferrum-Frontend (ends with a separator). */
 export const web = fileURLToPath(new URL("../../", import.meta.url));
 
-/** Ferrum-Frontend's modules that act as they load: the page's bootstrap and words, its appearance,
- *  its offline worker and the shell's guard on leaving. Every other module of it only declares, so a
- *  build leaves out one nothing is imported from: an app that takes one primitive from a barrel
- *  (@ferrum/kit/primitives, @ferrum/records) does not carry the rest. vite.test.ts keeps the list in step. */
-export const ACTS_ON_LOAD = ["packages/client/src/index.ts", "src/app/Shell.tsx", "src/lib/pwa.ts", "src/lib/theme.ts"];
+/** Ferrum-Frontend's modules that act as they load: the page's bootstrap and words. Every other module
+ *  of it only declares, so a build leaves out one nothing is imported from: an app that takes one
+ *  primitive from a barrel (@ferrum/kit/primitives, @ferrum/records) does not carry the rest.
+ *  vite.test.ts keeps the list in step. */
+export const ACTS_ON_LOAD = ["packages/client/src/index.ts"];
 
 /** Whether a module is kept when nothing is imported from it: the app's own and the libraries' (as
  *  their package.json says), style sheets, and those of Ferrum-Frontend's that act as they load. */

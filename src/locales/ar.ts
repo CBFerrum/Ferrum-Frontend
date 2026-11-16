@@ -206,7 +206,6 @@ const words: Record<string, string> = {
   "A merge cannot be undone. Everything linked to “{meta}” moves to “{meta2}”.": "لا يمكن التراجع عن الدمج. وينتقل كل ما يرتبط بـ «{meta}» إلى «{meta2}».",
   "A name you own, such as erp.example.com": "اسم تملكه، مثل erp.example.com",
   "A new draft is created from this cancelled document; the original stays cancelled.": "تُنشأ مسودة جديدة من هذا المستند الملغى؛ ويبقى الأصل ملغى.",
-  "A new version of Ferrum is available.": "يتوفر إصدار جديد من Ferrum.",
   "A new {label}": "{label} جديد",
   "A number card shows one count or total, with its change since the last period.": "تعرض بطاقة الرقم عددًا أو إجماليًا واحدًا، مع تغيّره منذ الفترة السابقة.",
   "A number chart shows one measure.": "يعرض الرسم البياني الرقمي مقياسًا واحدًا.",

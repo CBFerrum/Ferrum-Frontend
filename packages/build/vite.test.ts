@@ -30,7 +30,8 @@ describe("modules an app's build keeps", () => {
     expect(sideEffects("/home/a/ferrum-app-x/ui/src/main.tsx")).toBe(true);
     expect(sideEffects(`${web}node_modules/vaul/dist/index.mjs`)).toBe(true);
     expect(sideEffects(`${web}src/index.css`)).toBe(true);
-    expect(sideEffects(`${web}src/lib/theme.ts`)).toBe(true);
+    expect(sideEffects(`${web}packages/client/src/index.ts`)).toBe(true);
+    expect(sideEffects(`${web}src/lib/theme.ts`)).toBe(false);
     expect(sideEffects(`${web}src/components/ui/drawer.tsx`)).toBe(false);
     expect(sideEffects(`${web}packages/kit/primitives/src/index.ts`)).toBe(false);
   });

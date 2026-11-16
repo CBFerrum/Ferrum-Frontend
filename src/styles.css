@@ -387,8 +387,7 @@ html[data-ferrum-host] .topbar {
   }
 }
 
-.offline-banner,
-.update-banner {
+.offline-banner {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -397,11 +396,6 @@ html[data-ferrum-host] .topbar {
   color: var(--warning);
   font-size: var(--text-sm);
   border-bottom: 1px solid var(--border);
-}
-.update-banner {
-  flex-wrap: wrap;
-  background: var(--primary-soft);
-  color: var(--text);
 }
 
 main {
@@ -4067,7 +4061,6 @@ a.queue-name:focus-visible::after {
   .scrim,
   .topbar,
   .skip-link,
-  .update-banner,
   .offline-banner,
   .toaster,
   .page-actions,

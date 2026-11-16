@@ -103,9 +103,9 @@ Keyboard focus is always visible and is one indicator everywhere: a 2px solid ou
 
 ## Theming
 
-- Every colour is defined once with `light-dark()`; `lib/theme.ts` writes `data-theme` (which pins `color-scheme`) and `data-contrast`.
+- Every colour is defined once with `light-dark()`; the shell's runtime (`server/shell/runtime.js`) writes `data-theme` (which pins `color-scheme`), `data-contrast` and `data-density`.
 - High contrast (`:root[data-contrast="more"]`) overrides text, borders, `--border-control` and the focus ring. New text tokens must be added to the test and to this block if they need it.
-- A brand accent is set inline by `lib/theme.ts` (`--primary`, `--primary-hover`, `--primary-soft`, `--primary-text`, `--focus-ring`, `--chart-1`). It adjusts the colour until it passes 4.5:1 with its text and 3:1 on the dark surface; keep the constants in that file in step with `--surface` and `--primary-text` in dark mode.
+- There is no brand accent yet: nothing sets one.
 - Fonts are the system stack (`--font`, `--mono`); no font files are shipped.
 
 ## What must not use UI tokens

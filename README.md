@@ -246,8 +246,8 @@ src/
     studio.ts         Studio's API and its saved records
     live.ts           live updates (/ws/live), one socket per tab
     files.ts          uploads, through the API or straight to object storage
-    prefs.ts          per-user preferences; theme.ts theme, contrast and density
-    pwa.ts            install prompt, online state, a newer version deployed
+    prefs.ts          per-user preferences; theme.ts the theme in effect and WCAG contrast
+    pwa.ts            online state
     *.test.ts         unit tests
   app/
     Shell.tsx         the records frame: sidebar from metadata modules under the platform's bar

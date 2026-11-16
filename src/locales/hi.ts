@@ -206,7 +206,6 @@ const words: Record<string, string> = {
   "A merge cannot be undone. Everything linked to “{meta}” moves to “{meta2}”.": "विलय पूर्ववत नहीं किया जा सकता। “{meta}” से जुड़ा सब कुछ “{meta2}” में चला जाता है।",
   "A name you own, such as erp.example.com": "आपका अपना नाम, जैसे erp.example.com",
   "A new draft is created from this cancelled document; the original stays cancelled.": "इस रद्द दस्तावेज़ से एक नया ड्राफ़्ट बनता है; मूल रद्द ही रहता है।",
-  "A new version of Ferrum is available.": "Ferrum का नया संस्करण उपलब्ध है।",
   "A new {label}": "नया {label}",
   "A number card shows one count or total, with its change since the last period.": "संख्या कार्ड एक गिनती या कुल दिखाता है, पिछली अवधि से उसके बदलाव के साथ।",
   "A number chart shows one measure.": "संख्या चार्ट एक माप दिखाता है।",

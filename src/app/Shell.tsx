@@ -9,11 +9,10 @@ import { api, errorMessage, setUnauthorizedHandler } from "../lib/api";
 import { humanize } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MenuPage, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { live } from "../lib/live";
-import { useOnline, useOutdated } from "../lib/pwa";
+import { useOnline } from "../lib/pwa";
 import {
   Alert,
   Button,
-  confirmDialog,
   Dialog,
   ErrorBoundary,
   ErrorState,
@@ -232,7 +231,6 @@ function Shell() {
           <span className="spacer" />
         </div>
         <OfflineBanner />
-        <UpdateBanner />
         <main id="main" tabIndex={-1}>
           {meta.error ? (
             <ErrorState error={meta.error} onRetry={() => meta.refetch()} title={tr("Could not load the application metadata")} />
@@ -254,37 +252,6 @@ function OfflineBanner() {
   return (
     <div className="offline-banner" role="status">
       <Icon name="alert" size={14} /> {tr("You are offline. Pages you open need a connection, and nothing can be saved until it is back.")}
-    </div>
-  );
-}
-
-// Once the user agreed to discard unsaved edits, the forms' beforeunload guards stay quiet. Added at startup,
-// before any guard, so it runs first even in engines that call a target's listeners in the order added.
-// Not where there is no window: @ferrum/records re-exports this module, and apps' tests import it in Node.
-let discarding = false;
-if (typeof window !== "undefined") window.addEventListener("beforeunload", (e) => discarding && e.stopImmediatePropagation(), { capture: true });
-
-function UpdateBanner() {
-  const [dismissed, setDismissed] = useState(false);
-  if (!useOutdated() || dismissed) return null;
-  const reload = async () => {
-    // A form with unsaved edits objects to unloading (FormView); ask here, as iOS never shows that prompt.
-    if (!window.dispatchEvent(new Event("beforeunload", { cancelable: true }))) {
-      const ok = await confirmDialog({ title: tr("Discard your changes?"), message: tr("Reloading discards your unsaved edits."), confirmLabel: tr("Reload"), danger: true });
-      if (!ok) return;
-      discarding = true; // asked already
-    }
-    window.location.reload();
-  };
-  return (
-    <div className="update-banner" role="status">
-      <Icon name="refresh" size={14} /> {tr("A new version of Ferrum is available.")}
-      <Button size="sm" variant="primary" onClick={() => void reload()}>
-        {tr("Reload")}
-      </Button>
-      <button type="button" className="icon-btn icon-btn-sm" aria-label={tr("Dismiss")} onClick={() => setDismissed(true)}>
-        <Icon name="x" size={14} />
-      </button>
     </div>
   );
 }
