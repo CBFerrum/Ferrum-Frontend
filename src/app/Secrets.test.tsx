@@ -272,4 +272,80 @@ describe("the workspace's secrets", () => {
     expect(rowOf(host, "mail_token")).toBeUndefined();
     expect(reads.n).toBe(2);
   });
+  it("says which app manages a secret, offers no change of it, and names who changed one", async () => {
+    const listed = {
+      owners: [
+        {
+          owner: "crm",
+          secrets: [
+            secret("crm", "feed_key", { kind: "ed25519", managed_by: "crm" }),
+            secret("crm", "mail_token", { set_by: "0195b6d8-7c2e-7000-8000-0000000000aa", set_by_name: "Asha Rao" }),
+            secret("crm", "old_token", { set_by: "0195b6d8-7c2e-7000-8000-0000000000bb", set_by_name: null }),
+          ],
+        },
+      ],
+    };
+    const { host } = await open({ "GET /api/admin/secrets": listed });
+    const managed = rowOf(host, "feed_key");
+    expect(managed.textContent).toContain("CRM manages it, so it is changed there, not here.");
+    expect(managed.querySelectorAll("button")).toHaveLength(0);
+    expect(rowOf(host, "mail_token").textContent).toContain("by Asha Rao");
+    expect(button(rowOf(host, "mail_token"), "Change how it is used")).toBeTruthy();
+    expect(host.textContent).not.toContain("0195b6d8-7c2e-7000-8000-0000000000");
+    expect(rowOf(host, "old_token").querySelector('[data-label="Changed"]')!.textContent).not.toContain(", by ");
+  });
+
+  it("shows the server's sentence and reads the list again when its app took a secret over meanwhile", async () => {
+    const sentence = "mail_token is managed by its app, crm: it is changed there, not here";
+    let listed: object = LISTED;
+    const { host, reads } = await open({
+      "GET /api/admin/secrets": () => json(200, listed),
+      "PUT /api/admin/secrets/crm/mail_token/rule": () => ((listed = { owners: [{ owner: "crm", secrets: [secret("crm", "mail_token", { managed_by: "crm" })] }] }), json(409, { error: "conflict", message: sentence })),
+    });
+    await click(button(rowOf(host, "mail_token"), "Change how it is used"));
+    await click(field("Its owner may read the value (otherwise the server only uses it)"));
+    await submit();
+    await settle();
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(host.querySelector("[role=alert]")?.textContent ?? host.textContent).toContain(sentence);
+    expect(rowOf(host, "mail_token").querySelectorAll("button")).toHaveLength(0);
+    expect(reads.n).toBe(2);
+  });
+
+  it("changes only the rule, prefilled from the secret, after confirming it is the person, and says a field's refusal beside it", async () => {
+    let proved = false;
+    let refuse = true;
+    const { host, sent } = await open({
+      "GET /api/admin/secrets": LISTED,
+      "POST /api/auth/step-up": () => ((proved = true), new Response(null, { status: 204 })),
+      "PUT /api/admin/secrets/crm/mail_token/rule": () =>
+        !proved ? json(403, { error: "step_up", message: "confirm it is you to do this" })
+        : refuse ? json(422, { error: "validation_failed", message: "Please correct the highlighted fields", fields: [{ field: "hosts", message: "\"bad host\" is not a host's name in lowercase" }] })
+        : json(200, { secret: secret("crm", "mail_token") }),
+    });
+    await click(button(rowOf(host, "mail_token"), "Change how it is used"));
+    expect(dialog().textContent).toContain("Its value and version stay.");
+    expect(dialog().querySelector("input[type=password]")).toBeNull();
+    expect(field("Hosts it may be sent to").value).toBe("api.mail.example");
+    expect((field("After a change, the version before still checks for") as unknown as HTMLSelectElement).value).toBe("86400");
+    // Nothing to save until something changes.
+    expect(button(dialog(), "Save")!.disabled).toBe(true);
+    await type(field("Hosts it may be sent to"), "api.mail.example, bad host");
+    await submit();
+    await type([...document.querySelectorAll<HTMLInputElement>("input[type=password]")].at(-1)!, "right");
+    await click(button(document.body, "Confirm"));
+    await settle();
+    const rule = { reveal: false, hosts: ["api.mail.example", "bad", "host"], sandbox: "blank", overlap_secs: 86_400, expires_at: null };
+    expect(sent.map((s) => `${s.method} ${s.path}`)).toEqual(["PUT /api/admin/secrets/crm/mail_token/rule", "POST /api/auth/step-up", "PUT /api/admin/secrets/crm/mail_token/rule"]);
+    expect(sent[2]!.body).toEqual({ rule });
+    const hosts = field("Hosts it may be sent to");
+    expect(hosts.getAttribute("aria-invalid")).toBe("true");
+    expect(hosts.closest(".field")!.textContent).toContain("is not a host's name");
+    refuse = false;
+    await type(hosts, "api.mail.example");
+    await submit();
+    expect(sent.at(-1)!.body).toEqual({ rule: { ...rule, hosts: ["api.mail.example"] } });
+    expect(document.querySelector("dialog[open]")).toBeNull();
+    expect(host.textContent).toContain("How mail_token may be used is saved");
+  });
 });
