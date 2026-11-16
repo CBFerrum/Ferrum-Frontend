@@ -19,7 +19,7 @@ Start with `docs/design/README.md`; for any interface change use the `ferrum-ui-
 ## Commands
 - `npm run typecheck`
 - `npm test`
-- `npm run lint:ui` (ratchet against `ui-lint-baseline.json`; `-- --update-baseline` only lowers it; explain an exception with `ui-lint-allow <rule>: <reason>`)
+- `npm run lint:ui` (fails on any finding; explain an exception with `ui-lint-allow <rule>: <reason>`)
 - `npm run build:apps`
 
 Never run prettier here: the repository is not formatted by it, and a reformat buries real changes. Match the surrounding style.

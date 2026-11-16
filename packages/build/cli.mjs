@@ -14,14 +14,11 @@
 //              and unless its built CSS carries the kit's base (packages/build/basecss.mjs: an app that forgets the @import of index.css ships unstyled);
 //              and unless its own catalogs (src/locales/*.json) hold only words it asks for,
 //              each keeping its {places}, as its names (src/locales/names/*.json) keep theirs; and unless it keeps the size budgets (budgets.mjs: entry JavaScript ≤ 200 KB
-//              compressed, CSS ≤ 50 KB); and runs `lint` below: against ui-lint-baseline.json when
-//              it exists, else it only reports the counts and how to adopt it
+//              compressed, CSS ≤ 50 KB); and runs `lint` below
 //   lint       the design system's guard over the sources (packages/build/uilint.mjs): raw colors,
 //              text under 12px, arbitrary text sizes, blank loading fallbacks, zoom locks, forked
-//              Radix/cva primitives; fails when a file has more findings of a rule than
-//              ui-lint-baseline.json allows. --update-baseline writes the current counts there
-//              (the baseline only goes down). Explain an exception in a comment on the same or the
-//              previous line: ui-lint-allow <rule>: <reason>
+//              Radix/cva primitives; fails on any finding. Explain an exception in a comment on the
+//              same or the previous line: ui-lint-allow <rule>: <reason>
 //   dev        Vite's development server for the interface (--port N, default 5173): on a
 //              Ferrum server with FERRUM_DEV_UI=true, `ferrum-app dev --ui http://localhost:5173`
 //              serves the app's pages from it, behind the real session, bar and bootstrap
@@ -83,8 +80,8 @@ const webCommit = () => {
   return r.status === 0 ? r.stdout.trim() : null;
 };
 
-/** The design-system lint over ui/ against its ui-lint-baseline.json; true when over it. */
-const lint = (update = false) => runLint(ui, join(ui, "ui-lint-baseline.json"), { app: true, update }) !== 0;
+/** The design-system lint over ui/; true when it found something. */
+const lint = () => runLint(ui, { app: true }) !== 0;
 
 switch (process.argv[2]) {
   case "build": {
@@ -121,11 +118,11 @@ switch (process.argv[2]) {
     const size = measure(join(ui, "dist"), "ferrum-ui: dist/");
     console.log(size.line);
     if (size.over) fail("over the size budget (docs/plan/apps-ui.md §12.9): load pages when they are opened (lazy routes)");
-    if (lint()) fail("the interface lint is over its baseline (above)");
+    if (lint()) fail("the interface lint found something (above)");
     break;
   }
   case "lint":
-    if (lint(process.argv.includes("--update-baseline"))) process.exit(1);
+    if (lint()) process.exit(1);
     break;
   case "dev": {
     const { createServer } = await tool("vite/dist/node/index.js");

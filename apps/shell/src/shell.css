@@ -318,7 +318,7 @@ a.shell-work-link:focus-visible {
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--card);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  box-shadow: var(--shadow-sm);
 }
 .acct-card-head {
   display: flex;
@@ -385,10 +385,10 @@ a.shell-work-link:focus-visible {
   flex-shrink: 0;
   place-items: center;
   border-radius: 28%;
-  color: #fff;
+  color: #fff; /* ui-lint-allow raw-color: initials on a monogram coloured by the workspace's name, the same in both themes */
   font-weight: 700;
   letter-spacing: 0.01em;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); /* ui-lint-allow raw-color: the monogram's own edge, on its own colour */
 }
 .acct-step {
   box-sizing: border-box;
@@ -406,7 +406,7 @@ a.shell-work-link:focus-visible {
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--card);
-  box-shadow: 0 12px 32px -16px rgb(0 0 0 / 0.22);
+  box-shadow: var(--shadow);
 }
 .acct-step-head {
   display: flex;
@@ -457,7 +457,7 @@ a.shell-work-link:focus-visible {
 
 /* The help center (/data/help/). */
 .help { max-width: 860px; }
-.help-search { display: flex; align-items: center; gap: 8px; margin: 12px 0 20px; padding: 8px 12px; border: 1px solid var(--border, #d1d5db); border-radius: 8px; }
+.help-search { display: flex; align-items: center; gap: 8px; margin: 12px 0 20px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; }
 .help-search input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; }
 .help-module h2 { font-size: var(--text-base); margin: 20px 0 8px; }
 .help-module ul { list-style: none; padding: 0; margin: 0; }

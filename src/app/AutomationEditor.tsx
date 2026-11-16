@@ -62,6 +62,7 @@ export type PreviewState = { phase: "loading" } | { phase: "error"; error: unkno
 export function PreviewResult({ entity, data }: { entity: string; data: MailPreview }) {
   return (
     <div className="stack">
+      {/* ui-lint-allow raw-color: a mail is drawn on white, as a mail program shows it */}
       <iframe sandbox="" srcDoc={data.html} title={tr("The mail as it would look")} style={{ width: "100%", height: 360, border: "1px solid var(--border)", background: "#fff" }} />
       <p className="faint">
         {data.record_id ? (

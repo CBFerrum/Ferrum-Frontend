@@ -251,6 +251,7 @@ function MenuForm({ start, taken, onClose, onSaved }: { start: MenuDraft; taken:
       </fieldset>
       <div className="row" style={{ alignItems: "center", gap: 8 }}>
         <label className="field-label" htmlFor="mn-color">{tr("Colour")}</label>
+        {/* ui-lint-allow raw-color: a colour input holds a colour, and this is the one it starts at */}
         <input id="mn-color" type="color" value={/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : "#336699"} onChange={(e) => set({ ...d, color: e.target.value })} />
         <span className="mono">{d.color || tr("none")}</span>
         {d.color && <Button size="sm" onClick={() => set({ ...d, color: "" })}>{tr("No colour")}</Button>}

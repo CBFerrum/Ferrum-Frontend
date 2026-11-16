@@ -2615,6 +2615,7 @@ const words: Record<string, string> = {
   "Updated By": "द्वारा अपडेट",
   "Updating": "अपडेट हो रहा है",
   "Upload an app bundle ({p1}) built with {p2}.": "{p2} से बना ऐप बंडल ({p1}) अपलोड करें।",
+  // ui-lint-allow raw-color: a sentence naming a colour as an example
   "Use a color such as #2f5bea or teal": "#2f5bea या teal जैसा रंग उपयोग करें",
   "Use a date (YYYY-MM-DD) or an expression such as today-30d or start_of_month": "एक तिथि (YYYY-MM-DD) या today-30d या start_of_month जैसी अभिव्यक्ति उपयोग करें",
   "Use a lower-case name such as company or period": "company या period जैसा छोटे अक्षरों वाला नाम उपयोग करें",

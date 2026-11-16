@@ -441,7 +441,7 @@ main:focus {
     position: fixed;
     inset: 0;
     z-index: 40;
-    background: rgb(10 14 20 / 0.45); /* as the dialogs' backdrop */
+    background: rgb(10 14 20 / 0.45); /* ui-lint-allow raw-color: a backdrop dims the page behind it, the same in both themes, as the dialogs' does */
   }
   /* The page behind the open drawer stays put. */
   body:has(.shell[data-nav-open="true"]) {
@@ -1590,7 +1590,7 @@ input[type="color"] {
   width: min(860px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
 }
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(0 0 0 / 0.45); /* ui-lint-allow raw-color: a backdrop dims the page behind it, the same in both themes */
 }
 .dialog-inner {
   display: flex;
@@ -2424,7 +2424,7 @@ input[type="color"] {
 /* two-factor sign-in: the QR code stays light (scanners want dark on light) */
 .qr {
   align-self: center;
-  background: #fff;
+  background: #fff; /* ui-lint-allow raw-color: scanners want the code dark on light, in both themes */
   border-radius: 8px;
   padding: 8px;
 }

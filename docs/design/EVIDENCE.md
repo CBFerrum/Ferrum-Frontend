@@ -128,7 +128,7 @@ Two full builds were run as a real server on a seeded workspace and photographed
 ## Release and rollback
 
 - Order: this repository first; then the platform's `FRONTEND_REV`; then each app rebuilds its `ui/` against the new revision and releases. An app keeps its old look until it is rebuilt, so the shell and an app can differ for a while; only the bar is shared, and its height did not change.
-- An app adopts the lint with `cli.mjs lint --update-baseline`; without a baseline `check` only reports.
+- An app's `check` fails on any lint finding; there is no baseline to adopt.
 - Rollback is per line (`MIGRATION.md`): the spacing unit, the type scale and the palette each revert on their own.
 - `statusTone` turns 107 of 187 known status values neutral that used to be guessed. The lasting owner is a per-option tone in the platform's field metadata; that server change is not made.
 

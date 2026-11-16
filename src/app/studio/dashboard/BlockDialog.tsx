@@ -207,6 +207,7 @@ function ShortcutForm({ b, onChange, id }: { b: ShortcutBlock; onChange: (b: Sho
       )}
       {target === "url" && <Input aria-label={tr("Address")} placeholder="/app/e/Lead or https://…" value={b.url ?? ""} onChange={(e) => onChange({ ...b, url: e.target.value })} />}
       <Label className="flex w-fit items-center gap-2 font-normal">
+        {/* ui-lint-allow raw-color: a colour input holds a colour, and this is the one it starts at */}
         <input type="color" aria-label={tr("Colour")} value={b.color && /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : "#2f5bea"} onChange={(e) => onChange({ ...b, color: e.target.value.toLowerCase() })} className="size-8 cursor-pointer rounded border-0 bg-transparent p-0" />
         {b.color ? tr("Colour") : tr("Colour (the theme's)")}
         {b.color && (

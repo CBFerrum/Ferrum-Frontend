@@ -478,7 +478,7 @@ function inlines(list: Inline[]): ReactNode {
         return <br key={i} />;
       case "code":
         return (
-          <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-[0.9em]">
+          <code key={i} className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
             {isolate(x.v)}
           </code>
         );
