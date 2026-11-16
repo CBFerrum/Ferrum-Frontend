@@ -5760,6 +5760,13 @@ const words: Record<string, string> = {
   "No time: it stops at once": "कोई समय नहीं: तुरंत बंद हो जाता है",
   "Stops working on": "इस दिन काम करना बंद करता है",
   "Empty: it does not stop.": "खाली: यह बंद नहीं होता।",
+  // Administration → Secrets: a secret its app manages, its rule changed alone, who changed it.
+  "{date}, by {name}": "{date}, {name} द्वारा",
+  "{app} manages it, so it is changed there, not here.": "इसे {app} संभालता है, इसलिए यह वहीं बदला जाता है, यहाँ नहीं।",
+  "Change how it is used": "इस्तेमाल का तरीका बदलें",
+  "How {name} may be used is saved": "{name} के इस्तेमाल का तरीका सहेजा गया",
+  "How {name} may be used": "{name} का इस्तेमाल कैसे हो सकता है",
+  "Only how it may be used changes. Its value and version stay.": "केवल इसके इस्तेमाल का तरीका बदलता है। इसका मान और संस्करण वही रहते हैं।",
 };
 
 export default words;

@@ -1,9 +1,10 @@
 // Administration → Secrets: the workspace's secrets in the vault, by owner (the platform, each app, each plugin), described and never
 // shown (docs/api.md, "Secrets — /api/admin/secrets"; docs/operations.md, "The vault"). GET /api/admin/secrets, PUT and DELETE
-// /api/admin/secrets/{owner}/{name}, POST …/rotate, in the shapes of server/src/controllers/secrets.rs and crates/kernel/src/vault/secrets.rs.
+// /api/admin/secrets/{owner}/{name}, POST …/rotate, PUT …/rule (the rule alone), in the shapes of server/src/controllers/secrets.rs and crates/kernel/src/vault/secrets.rs.
 // A value the server makes is shown once, in the dialog that asked for it, and lives only in that dialog's state: never in the query
 // cache, the URL, storage, a toast or a log. Changing needs a confirmed identity: the client's step-up flow asks and sends the request
-// again once (src/lib/api.ts). The list is read again after every change, whatever its answer.
+// again once (src/lib/api.ts). The list is read again after every change, whatever its answer. A secret its app manages
+// (`managed_by`) is changed there: no action is offered, and a 409 (marked meanwhile) shows the server's sentence.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
@@ -32,6 +33,10 @@ export interface Secret {
   rule: Rule;
   set_at: string;
   set_by: string | null;
+  /** The name of the person who set it, while they are the workspace's (none: code, or someone no longer there). */
+  set_by_name?: string | null;
+  /** The app that made it and keeps it: every change of it is refused (409), it is changed there. */
+  managed_by?: string | null;
   /** A day. */
   last_used: string | null;
   public_key?: string;
@@ -85,7 +90,7 @@ export function Secrets() {
   const owners = q.data?.owners.filter((o) => o.secrets.length) ?? [];
   const choices = [...new Set(["platform", ...(apps.data?.installed.map((a) => a.id) ?? []), ...(plugins.data?.plugins.map((p) => `plugin:${p.name}`) ?? []), ...owners.map((o) => o.owner)])];
 
-  const [dialog, setDialog] = useState<{ secret: Secret | null } | null>(null);
+  const [dialog, setDialog] = useState<{ secret: Secret | null; rule?: boolean } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const said = useRef<HTMLDivElement>(null);
@@ -105,7 +110,7 @@ export function Secrets() {
       await api.del(at(s.owner, s.name));
       toast(tr("{name} is removed", { name: isolate(s.name) }));
     } catch (e) {
-      setProblem(e instanceof ApiError && e.status === 404 ? gone(s) : tr("{name} was not removed: {reason}", { name: isolate(s.name), reason: isolate(errorMessage(e)) }));
+      setProblem(e instanceof ApiError && e.status === 404 ? gone(s) : e instanceof ApiError && e.status === 409 ? errorMessage(e) : tr("{name} was not removed: {reason}", { name: isolate(s.name), reason: isolate(errorMessage(e)) }));
     }
     await refresh();
     setBusy(null);
@@ -191,7 +196,11 @@ export function Secrets() {
                         </td>
                         <td data-label={tr("Changed")}>
                           <div>
-                            <div>{formatMoment(s.set_at, { dateStyle: "medium", timeStyle: "short" })}</div>
+                            <div>
+                              {s.set_by_name
+                                ? tr("{date}, by {name}", { date: formatMoment(s.set_at, { dateStyle: "medium", timeStyle: "short" }), name: isolate(s.set_by_name) })
+                                : formatMoment(s.set_at, { dateStyle: "medium", timeStyle: "short" })}
+                            </div>
                             <div className="muted">{lastUsed(s.last_used)}</div>
                             {s.previous_until && Date.parse(s.previous_until) > Date.now() && (
                               <div className="muted">{tr("The version before checks until {date}", { date: formatMoment(s.previous_until, { dateStyle: "medium", timeStyle: "short" }) })}</div>
@@ -199,14 +208,23 @@ export function Secrets() {
                           </div>
                         </td>
                         <td>
-                          <div className="row-actions">
-                            <Button size="sm" aria-describedby={id} disabled={busy === `${s.owner}/${s.name}`} onClick={() => setDialog({ secret: s })}>
-                              {tr("New version")}
-                            </Button>
-                            <Button size="sm" icon="trash" aria-describedby={id} loading={busy === `${s.owner}/${s.name}`} onClick={() => void remove(s)}>
-                              {tr("Remove…")}
-                            </Button>
-                          </div>
+                          {s.managed_by ? (
+                            <p className="muted" style={{ margin: 0 }}>
+                              {tr("{app} manages it, so it is changed there, not here.", { app: ownerName(s.managed_by) })}
+                            </p>
+                          ) : (
+                            <div className="row-actions">
+                              <Button size="sm" aria-describedby={id} disabled={busy === `${s.owner}/${s.name}`} onClick={() => setDialog({ secret: s })}>
+                                {tr("New version")}
+                              </Button>
+                              <Button size="sm" aria-describedby={id} disabled={busy === `${s.owner}/${s.name}`} onClick={() => setDialog({ secret: s, rule: true })}>
+                                {tr("Change how it is used")}
+                              </Button>
+                              <Button size="sm" icon="trash" aria-describedby={id} loading={busy === `${s.owner}/${s.name}`} onClick={() => void remove(s)}>
+                                {tr("Remove…")}
+                              </Button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -220,10 +238,11 @@ export function Secrets() {
       {dialog && (
         <SecretDialog
           secret={dialog.secret}
+          ruleOnly={dialog.rule}
           owners={choices.map((o) => ({ id: o, name: ownerName(o) }))}
           taken={(owner, name) => !!q.data?.owners.find((o) => o.owner === owner)?.secrets.some((s) => s.name === name)}
           onChanged={() => void refresh()}
-          onGone={(s) => (setDialog(null), setProblem(gone(s)))}
+          onStop={(text) => (setDialog(null), setProblem(text))}
           onClose={() => setDialog(null)}
         />
       )}
@@ -231,20 +250,30 @@ export function Secrets() {
   );
 }
 
-/** Adds a secret (`secret` null) or makes a new version of one. A value the server made is shown here once; it goes with the dialog. */
+/** A time as a datetime-local field holds it, in the page's time zone. */
+const localTime = (iso: string) => {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
+
+/** Adds a secret (`secret` null), makes a new version of one, or changes only its rule (`ruleOnly`: no value asked for). A value the
+ *  server made is shown here once; it goes with the dialog. */
 function SecretDialog({
   secret,
+  ruleOnly,
   owners,
   taken,
   onChanged,
-  onGone,
+  onStop,
   onClose,
 }: {
   secret: Secret | null;
+  ruleOnly?: boolean;
   owners: { id: string; name: string }[];
   taken: (owner: string, name: string) => boolean;
   onChanged: () => void;
-  onGone: (s: Secret) => void;
+  /** The change cannot go on (someone else removed it; its app manages it now): the dialog closes and the screen says why. */
+  onStop: (text: string) => void;
   onClose: () => void;
 }) {
   const id = useId();
@@ -254,11 +283,12 @@ function SecretDialog({
   const [value, setValue] = useState("");
   const [visible, setVisible] = useState(false);
   const [bytes, setBytes] = useState("32");
-  const [reveal, setReveal] = useState(false);
-  const [hosts, setHosts] = useState("");
-  const [sandbox, setSandbox] = useState<Rule["sandbox"]>("blank");
-  const [overlap, setOverlap] = useState(0);
-  const [expires, setExpires] = useState("");
+  const was = ruleOnly ? secret?.rule : undefined;
+  const [reveal, setReveal] = useState(was?.reveal ?? false);
+  const [hosts, setHosts] = useState(was?.hosts.join(", ") ?? "");
+  const [sandbox, setSandbox] = useState<Rule["sandbox"]>(was?.sandbox ?? "blank");
+  const [overlap, setOverlap] = useState(was?.overlap_secs ?? 0);
+  const [expires, setExpires] = useState(was?.expires_at ? localTime(was.expires_at) : "");
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [tries, setTries] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -293,11 +323,22 @@ function SecretDialog({
       else if (problem) out.push({ field: "name", message: problem });
       else if (taken(owner, name)) out.push({ field: "name", message: tr("This owner already has a secret with this name: make a new version of it instead.") });
     }
+    if (ruleOnly) return out;
     if (way === "value" && !value) out.push({ field: "value", message: tr("Type the value.") });
     const n = Number(bytes);
     if (way === "random" && !(Number.isInteger(n) && n >= 16 && n <= 64)) out.push({ field: "random", message: tr("Between 16 and 64.") });
     return out;
   };
+
+  const rule: Rule = {
+    reveal,
+    hosts: hosts.split(/[\s,]+/).map((h) => h.trim().toLowerCase()).filter(Boolean),
+    sandbox,
+    overlap_secs: overlap,
+    expires_at: expires ? new Date(expires).toISOString() : null,
+  };
+  // Nothing to save while the rule is as it was (the expiry compared as the field shows it).
+  const same = !!was && JSON.stringify({ ...rule, expires_at: expires }) === JSON.stringify({ ...was, expires_at: was.expires_at ? localTime(was.expires_at) : "" });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -313,30 +354,28 @@ function SecretDialog({
     sending.current = true;
     setBusy(true);
     try {
-      const r = secret
-        ? await api.post<{ shown?: string }>(`${at(secret.owner, secret.name)}/rotate`, what)
-        : await api.put<{ shown?: string }>(at(owner, name), {
-            ...what,
-            rule: {
-              reveal,
-              hosts: hosts.split(/[\s,]+/).map((h) => h.trim().toLowerCase()).filter(Boolean),
-              sandbox,
-              overlap_secs: overlap,
-              expires_at: expires ? new Date(expires).toISOString() : null,
-            },
-          });
+      const r =
+        secret && ruleOnly ? await api.put<{ shown?: string }>(`${at(secret.owner, secret.name)}/rule`, { rule })
+        : secret ? await api.post<{ shown?: string }>(`${at(secret.owner, secret.name)}/rotate`, what)
+        : await api.put<{ shown?: string }>(at(owner, name), { ...what, rule });
       setValue("");
       onChanged();
       if (r.shown) setShown({ name: target.name, value: r.shown });
       else {
-        toast(secret ? tr("{name} has a new version", { name: isolate(target.name) }) : tr("{name} is saved", { name: isolate(target.name) }));
+        toast(
+          ruleOnly ? tr("How {name} may be used is saved", { name: isolate(target.name) })
+          : secret ? tr("{name} has a new version", { name: isolate(target.name) })
+          : tr("{name} is saved", { name: isolate(target.name) }),
+        );
         onClose();
       }
     } catch (err) {
       // What was typed goes on any failure: it is typed again, never kept.
       setValue("");
       onChanged();
-      if (secret && err instanceof ApiError && err.status === 404) return onGone(secret);
+      if (secret && err instanceof ApiError && err.status === 404) return onStop(tr("Someone else removed {name} meanwhile. The list now shows what is there.", { name: isolate(secret.name) }));
+      // Its app manages it now (marked meanwhile): the server's sentence names the app.
+      if (secret && err instanceof ApiError && err.status === 409) return onStop(errorMessage(err));
       setErrors(
         err instanceof ApiError && err.fields.length ? err.fields
         : err instanceof ApiError && err.status === 503 ? [{ field: "", message: tr("The vault is closed. Whoever runs the installation must give it its root to open it.") }]
@@ -358,6 +397,38 @@ function SecretDialog({
     }
   };
 
+  const ruleFields = (
+    <div className="stack" style={{ marginTop: ruleOnly ? 0 : 8 }}>
+      <label className="row" style={{ gap: 8 }}>
+        <input type="checkbox" checked={reveal} onChange={(e) => edit(setReveal)(e.target.checked)} />
+        {tr("Its owner may read the value (otherwise the server only uses it)")}
+      </label>
+      <Field label={tr("Hosts it may be sent to")} error={error("hosts")} hint={tr("Separated by commas, such as api.example.com or *.example.com. Empty: it is not sent anywhere.")}>
+        <input id={`${id}-hosts`} className="input mono" dir="ltr" value={hosts} autoComplete="off" spellCheck={false} autoCapitalize="none" onChange={(e) => edit(setHosts)(e.target.value)} />
+      </Field>
+      <Field label={tr("In a sandbox")} error={error("sandbox")}>
+        <select id={`${id}-sandbox`} className="select" value={sandbox} onChange={(e) => edit(setSandbox)(e.target.value as Rule["sandbox"])}>
+          {(["blank", "regenerate", "keep"] as const).map((k) => (
+            <option key={k} value={k}>
+              {SANDBOX()[k]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={tr("After a change, the version before still checks for")} error={error("overlap_secs")}>
+        <select id={`${id}-overlap_secs`} className="select" value={overlap} onChange={(e) => edit(setOverlap)(Number(e.target.value))}>
+          {[...new Set([...OVERLAPS, overlap])].sort((a, b) => a - b).map((s) => (
+            <option key={s} value={s}>
+              {s ? duration(s) : tr("No time: it stops at once")}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={tr("Stops working on")} error={error("expires_at")} hint={tr("Empty: it does not stop.")}>
+        <input id={`${id}-expires_at`} className="input" type="datetime-local" value={expires} onChange={(e) => edit(setExpires)(e.target.value)} />
+      </Field>
+    </div>
+  );
   const overlapSaid = secret
     ? secret.rule.overlap_secs > 0
       ? tr("The version before still checks for {time} after the change.", { time: duration(secret.rule.overlap_secs) })
@@ -367,8 +438,13 @@ function SecretDialog({
     <Dialog
       open
       onClose={onClose}
-      title={shown ? tr("The value of {name}", { name: isolate(shown.name) }) : secret ? tr("New version of {name}", { name: isolate(secret.name) }) : tr("Add a secret")}
-      description={shown ? undefined : (overlapSaid ?? undefined)}
+      title={
+        shown ? tr("The value of {name}", { name: isolate(shown.name) })
+        : ruleOnly && secret ? tr("How {name} may be used", { name: isolate(secret.name) })
+        : secret ? tr("New version of {name}", { name: isolate(secret.name) })
+        : tr("Add a secret")
+      }
+      description={shown ? undefined : ruleOnly ? tr("Only how it may be used changes. Its value and version stay.") : (overlapSaid ?? undefined)}
       footer={
         shown ? (
           <Button variant="primary" onClick={onClose}>
@@ -377,8 +453,8 @@ function SecretDialog({
         ) : (
           <>
             <Button onClick={onClose}>{tr("Cancel")}</Button>
-            <Button variant="primary" type="submit" form={`${id}-form`} loading={busy}>
-              {secret ? tr("Make the new version") : tr("Add")}
+            <Button variant="primary" type="submit" form={`${id}-form`} loading={busy} disabled={same}>
+              {ruleOnly ? tr("Save") : secret ? tr("Make the new version") : tr("Add")}
             </Button>
           </>
         )
@@ -417,7 +493,7 @@ function SecretDialog({
               </Field>
             </>
           )}
-          {secret?.kind === "ed25519" ? (
+          {ruleOnly ? null : secret?.kind === "ed25519" ? (
             <p>{tr("The server makes a new signing key pair. Its private half is never shown.")}</p>
           ) : (
             <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -440,7 +516,7 @@ function SecretDialog({
               </div>
             </fieldset>
           )}
-          {way === "value" && (
+          {!ruleOnly && way === "value" && (
             <Field label={tr("Value")} required error={error("value")} htmlFor={`${id}-value`}>
               <div className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
                 <input
@@ -462,7 +538,7 @@ function SecretDialog({
               </div>
             </Field>
           )}
-          {way === "random" && (
+          {!ruleOnly && way === "random" && (
             <Field label={tr("Length in bytes")} error={error("random")} hint={tr("From 16 to 64.")}>
               <input id={`${id}-random`} className="input" type="number" min={16} max={64} value={bytes} onChange={(e) => edit(setBytes)(e.target.value)} />
             </Field>
@@ -470,38 +546,10 @@ function SecretDialog({
           {!secret && (
             <details>
               <summary>{tr("How it may be used")}</summary>
-              <div className="stack" style={{ marginTop: 8 }}>
-                <label className="row" style={{ gap: 8 }}>
-                  <input type="checkbox" checked={reveal} onChange={(e) => edit(setReveal)(e.target.checked)} />
-                  {tr("Its owner may read the value (otherwise the server only uses it)")}
-                </label>
-                <Field label={tr("Hosts it may be sent to")} error={error("hosts")} hint={tr("Separated by commas, such as api.example.com or *.example.com. Empty: it is not sent anywhere.")}>
-                  <input id={`${id}-hosts`} className="input mono" dir="ltr" value={hosts} autoComplete="off" spellCheck={false} autoCapitalize="none" onChange={(e) => edit(setHosts)(e.target.value)} />
-                </Field>
-                <Field label={tr("In a sandbox")} error={error("sandbox")}>
-                  <select id={`${id}-sandbox`} className="select" value={sandbox} onChange={(e) => edit(setSandbox)(e.target.value as Rule["sandbox"])}>
-                    {(["blank", "regenerate", "keep"] as const).map((k) => (
-                      <option key={k} value={k}>
-                        {SANDBOX()[k]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label={tr("After a change, the version before still checks for")} error={error("overlap_secs")}>
-                  <select id={`${id}-overlap_secs`} className="select" value={overlap} onChange={(e) => edit(setOverlap)(Number(e.target.value))}>
-                    {OVERLAPS.map((s) => (
-                      <option key={s} value={s}>
-                        {s ? duration(s) : tr("No time: it stops at once")}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label={tr("Stops working on")} error={error("expires_at")} hint={tr("Empty: it does not stop.")}>
-                  <input id={`${id}-expires_at`} className="input" type="datetime-local" value={expires} onChange={(e) => edit(setExpires)(e.target.value)} />
-                </Field>
-              </div>
+              {ruleFields}
             </details>
           )}
+          {ruleOnly && ruleFields}
         </form>
       )}
     </Dialog>
