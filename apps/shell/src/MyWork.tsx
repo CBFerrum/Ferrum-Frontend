@@ -6,13 +6,14 @@
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AtSign, CalendarClock, Check, ClipboardCheck, Inbox, Stamp } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { routeBase, shell, t, isolate } from "@ferrum/client";
+import { routeBase, shell, t, isolate, todayIso } from "@ferrum/client";
 import { AppIcon } from "@ferrum/kit";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { api, errorMessage } from "@/lib/api";
+import { addDays } from "@/lib/views";
 import { Badge, Button, toast } from "@/ui/kit";
 
 /** An app's provider, as /api/shell lists them. */
@@ -64,13 +65,9 @@ const FIRST = 8;
 /** A same-site page to open, or null (an app's answer is not trusted further). */
 const sitePath = (url: unknown) => (typeof url === "string" && url.startsWith("/") && !url.startsWith("//") ? url : null);
 
-/** Today in the person's own calendar, as `YYYY-MM-DD`. */
-export function localDay(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Overdue, then due today, then decisions, mentions, the rest by due date; newest first within. */
-export function byUrgency(items: WorkItem[], today = localDay()): WorkItem[] {
+/** Overdue, then due today, then decisions, mentions, the rest by due date; newest first within. Today is
+ *  the workspace's day, as the server counts due dates. */
+export function byUrgency(items: WorkItem[], today = todayIso()): WorkItem[] {
   const tier = (i: WorkItem) => {
     if (i.due && i.due < today) return 0;
     if (i.due === today) return 1;
@@ -84,10 +81,9 @@ export function byUrgency(items: WorkItem[], today = localDay()): WorkItem[] {
 function dueLabel(due: string, today: string): { text: string; tone: "red" | "amber" | "neutral" } {
   if (due < today) return { text: t("Overdue"), tone: "red" };
   if (due === today) return { text: t("Today"), tone: "amber" };
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (due === localDay(tomorrow)) return { text: t("Tomorrow"), tone: "neutral" };
+  if (due === addDays(today, 1)) return { text: t("Tomorrow"), tone: "neutral" };
   const d = new Date(`${due}T00:00:00`);
+  // ui-lint-allow browser-zone: a due date is a day, read and written on the same local calendar
   return { text: Number.isNaN(d.getTime()) ? due : d.toLocaleDateString(undefined, { day: "numeric", month: "short" }), tone: "neutral" };
 }
 
@@ -122,7 +118,7 @@ export function MyWork({ providers, apps }: { providers: WorkProvider[]; apps: A
   const [filter, setFilter] = useState("all");
   const [all, setAll] = useState(false);
   const [done, setDone] = useState<Set<string>>(new Set());
-  const today = localDay();
+  const today = todayIso();
 
   const sources: Source[] = [];
   let items: WorkItem[] = [];

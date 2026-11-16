@@ -5,9 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AppIcon } from "@ferrum/kit";
 import { FirstRun } from "@/app/FirstRun";
 import { api, errorMessage } from "@/lib/api";
-import { formatMoment } from "@/lib/format";
+import { formatMoment, toZonedInput } from "@/lib/format";
 import { EmptyState, Spinner } from "@/ui/kit";
-import { localDay, MyWork, type WorkProvider } from "./MyWork";
+import { MyWork, type WorkProvider } from "./MyWork";
 import "./shell.css";
 import { t, isolate } from "@ferrum/client";
 
@@ -46,7 +46,9 @@ export function tileColour(e: Pick<LauncherEntry, "color" | "title">): string {
 
 export function ShellHome() {
   const info = useQuery({ queryKey: ["shell"], queryFn: ({ signal }) => api.get<ShellInfo>("/api/shell", undefined, signal) });
-  const hour = new Date().getHours();
+  // Now, on the clock the page shows times on: the greeting and the day agree with every time shown.
+  const now = toZonedInput(new Date().toISOString());
+  const hour = Number(now.slice(11, 13));
   const greeting = hour < 12 ? t("Good morning") : hour < 18 ? t("Good afternoon") : t("Good evening");
   const first = info.data?.person.name.split(" ")[0];
   return (
@@ -58,7 +60,7 @@ export function ShellHome() {
         </h1>
         <p>
           {info.data?.workspace.name && <span>{isolate(info.data.workspace.name)}</span>}
-          <time dateTime={localDay()}>{formatMoment(new Date(), { weekday: "long", day: "numeric", month: "long" })}</time>
+          <time dateTime={now.slice(0, 10)}>{formatMoment(new Date(), { weekday: "long", day: "numeric", month: "long" })}</time>
         </p>
       </header>
       <FirstRun />

@@ -2,7 +2,8 @@
 // that drift silently, over an interface's sources (.ts, .tsx, .css, .html).
 //
 // Rules: raw-color, small-text, arbitrary-text-size, blank-fallback, zoom-lock, forked-primitive
-// (apps only), allow-reason. A finding is suppressed by `ui-lint-allow <rule>: <reason>` in a
+// (apps only), browser-zone (not apps yet: their own pages still write dates on the browser's clock),
+// allow-reason. A finding is suppressed by `ui-lint-allow <rule>: <reason>` in a
 // comment on the same or the previous line; an allow without a reason is a finding itself.
 //
 // A baseline (ui-lint-baseline.json: { rule: { file: count } }) is a ratchet: a file may not have
@@ -18,6 +19,7 @@ const HINTS = {
   "blank-fallback": "show a content-shaped loading state",
   "zoom-lock": "do not block browser zoom: remove user-scalable=no and maximum-scale=1",
   "forked-primitive": "compose from @ferrum/kit or @ferrum/kit/primitives; add a governed pattern to the kit instead of forking one",
+  "browser-zone": "show a moment on the workspace's clock: formatMoment or formatDateTime, or pass timeZone: shownTimeZone()",
   "allow-reason": "write why: ui-lint-allow <rule>: <reason>",
 };
 
@@ -26,6 +28,8 @@ const SKIP_FILE = /\.(test|spec|gen|generated)\.|\.d\.ts$/;
 const COLOR_CONTEXT = /color|colour|fill|stroke|background|border|shadow|outline|gradient|\bstop\b|\b(?:bg|text|from|via|to|ring|decoration|accent|caret|border|shadow|outline|fill|stroke)-\[/i;
 const HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z_-])/gi;
 const FUNC_COLOR = /\b(?:rgba?|hsla?|oklch)\(\s*[\d.]/g;
+// A date written in the browser's zone: a line naming no timeZone that formats one.
+const BROWSER_ZONE = /\.toLocale(?:Date|Time)String\(|\bIntl\.DateTimeFormat\(\s*[^)\s]|\bDate\b.*\.toLocaleString\(|\.toLocaleString\(.*\b(?:weekday|month|hour|minute|dateStyle|timeStyle)\s*:/;
 
 function walk(dir, root, out) {
   for (const name of readdirSync(dir).sort()) {
@@ -78,6 +82,8 @@ function scan(file, text, app) {
     if (/fallback=\{\s*(null|<span\s*\/>|<span>\s*<\/span>|<div\s*\/>|<>\s*<\/>)\s*\}/.test(raw)) add("blank-fallback", i, raw);
     if (!css && (html || file.endsWith(".tsx")) && /user-scalable\s*=\s*(no|0)\b|maximum-scale\s*=\s*1(\.0)?(?![\d.])/.test(raw)) add("zoom-lock", i, raw);
     if (app && !css && !html && /(?:\bfrom\s+|^\s*import\s+|\bimport\(\s*)["'](radix-ui|@radix-ui\/[^"']+|class-variance-authority)["']/.test(raw)) add("forked-primitive", i, raw);
+    // An options object opened at the line's end may name its zone on the next line.
+    if (!app && !css && !html && BROWSER_ZONE.test(raw) && !/\btimeZone\b/.test(/[{(]\s*$/.test(raw) ? `${raw}${lines[i + 1] ?? ""}` : raw)) add("browser-zone", i, raw);
   });
   return { found, lines };
 }

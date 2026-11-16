@@ -73,6 +73,29 @@ describe("forked-primitive", () => {
   });
 });
 
+describe("browser-zone", () => {
+  const files = {
+    "src/A.tsx": [
+      "const a = new Date(at).toLocaleString();",
+      'const b = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });',
+      'const c = d.toLocaleTimeString([], { hour: "2-digit", timeZone: zone });',
+      'const e = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);',
+      'const f = new Intl.DateTimeFormat("en-US", {',
+      "  timeZone: shownTimeZone(),",
+      "});",
+      "const g = count.toLocaleString();",
+      'const h = d.toLocaleString("en", { weekday: "long" });',
+      "const i = Intl.DateTimeFormat().resolvedOptions().timeZone;",
+    ].join("\n"),
+  };
+  it("flags a date written on the browser's clock in Ferrum-Frontend's sources, not a number or a named zone", () => {
+    expect(rules(files)).toEqual(["browser-zone src/A.tsx:1", "browser-zone src/A.tsx:2", "browser-zone src/A.tsx:4", "browser-zone src/A.tsx:9"]);
+  });
+  it("leaves apps alone until their pages pass it", () => {
+    expect(rules(files, { app: true })).toEqual([]);
+  });
+});
+
 describe("allow comments", () => {
   it("suppress on the same or previous line when they give a reason", () => {
     expect(

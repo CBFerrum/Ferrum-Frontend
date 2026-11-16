@@ -10,7 +10,7 @@ import { Button as UiButton } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useSearchParams } from "react-router";
 import { api, ApiError, download as downloadFile, errorMessage, saveBlob, type FieldError } from "../lib/api";
-import { formatDate, formatDateTime, relativeTime } from "../lib/format";
+import { formatDate, formatDateTime, fromZonedInput, relativeTime, toZonedInput } from "../lib/format";
 import { LANGUAGES } from "../lib/i18n";
 import { ssoRedirectUri } from "../lib/sso";
 import { useEntityMeta, useMe, useMetaIndex, type Field } from "../lib/meta";
@@ -764,7 +764,7 @@ interface WorkspaceSettings {
   offline?: { allowed?: boolean; hours?: number };
 }
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" }));
+const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleString("en", { month: "long" })); // ui-lint-allow browser-zone: month names, not moments
 
 function Workspace() {
   const q = useQuery({ queryKey: ["admin", "settings"], queryFn: ({ signal }) => api.get<WorkspaceSettings>("/api/admin/settings", undefined, signal) });
@@ -1236,19 +1236,18 @@ const useUsers = () =>
 const useRoles = () =>
   useQuery({ queryKey: ["admin", "roles"], queryFn: ({ signal }) => api.get<{ roles: Role[] }>("/api/admin/roles", undefined, signal) });
 
-/** The day, in this browser's time, that a role given until `iso` is held through. */
+/** The day, on the workspace's clock, that a role given until `iso` is held through. */
 export function throughDay(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return toZonedInput(iso).slice(0, 10);
 }
 
-/** What is sent for the days the roles kept are held through: each day's close in this browser's
- * time, or the moment a role already ends at when its day was left as it was. */
+/** What is sent for the days the roles kept are held through: each day's close on the workspace's
+ * clock, or the moment a role already ends at when its day was left as it was. */
 export function roleEnds(roles: string[], through: Record<string, string>, held: Record<string, string> = {}): Record<string, string> {
   const out: Record<string, string> = {};
   for (const r of roles) {
     const day = through[r];
-    if (day) out[r] = held[r] && throughDay(held[r]) === day ? held[r] : new Date(`${day}T23:59:59`).toISOString();
+    if (day) out[r] = held[r] && throughDay(held[r]) === day ? held[r] : (fromZonedInput(`${day}T23:59:59`) ?? day);
   }
   return out;
 }

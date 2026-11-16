@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byUrgency, localDay, type WorkItem } from "./MyWork";
+import { byUrgency, type WorkItem } from "./MyWork";
 
 const item = (key: string, o: Partial<WorkItem> = {}): WorkItem => ({ key, source: "s", kind: "app", title: key, url: `/${key}`, ...o });
 
@@ -20,9 +20,5 @@ describe("byUrgency", () => {
       today,
     ).map((i) => i.key);
     expect(order).toEqual(["overdue", "today", "approval", "mention", "sooner", "later", "new", "old"]);
-  });
-
-  it("names the local day", () => {
-    expect(localDay(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
   });
 });

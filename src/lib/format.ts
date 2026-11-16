@@ -122,6 +122,7 @@ export function formatDate(value: unknown, locale?: string): string {
   const m = typeof value === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
   if (!m) return value == null ? "" : String(value);
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  // ui-lint-allow browser-zone: a day with no time, built and written on the same local calendar, so never shifted
   return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium" }).format(d);
 }
 

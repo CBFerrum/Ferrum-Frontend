@@ -992,6 +992,7 @@ export function formatBucket(value: unknown, bucket: Bucket, fyStartMonth = 1, l
     case "week":
       return tr("Week of {value}", { value: formatDate(value, locale) });
     case "month":
+      // ui-lint-allow browser-zone: a day with no time, built and written on the same local calendar, so never shifted
       return new Intl.DateTimeFormat(locale, { month: "short", year: "numeric" }).format(date);
     case "quarter":
       return `Q${Math.floor((mo - 1) / 3) + 1} ${y}`;
