@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conditionValues, exportGone, GROUPS, size, TABS } from "./Admin";
+import { conditionValues, effectLine, exportGone, GROUPS, size, TABS } from "./Admin";
 
 describe("permission conditions", () => {
   it("types the values typed for a field", () => {
@@ -47,5 +47,12 @@ describe("webhook audit topics", () => {
     expect(withTopic("", "audit.sign_in")).toBe("audit.sign_in");
     expect(withTopic("SalesInvoice.submitted audit.records", "audit.sign_in")).toBe("SalesInvoice.submitted, audit.records, audit.sign_in");
     expect(withTopic("audit.*", "audit.*")).toBe("audit.*");
+  });
+});
+
+describe("an operation's effects", () => {
+  it("name the app whose call it was, and nothing more when it was nobody's", () => {
+    expect(effectLine({ capability: "commerce.sales_invoice.request_payment", status: "completed", caller: "bookings" })).toBe("Effect commerce.sales_invoice.request_payment: completed, by bookings");
+    expect(effectLine({ capability: "commerce.sales_invoice.request_payment", status: "completed", caller: null })).toBe("Effect commerce.sales_invoice.request_payment: completed");
   });
 });

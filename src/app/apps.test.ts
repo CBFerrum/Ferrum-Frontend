@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
-import { appKind, appMark, AppCard, byParent, categoryLabel, permissionLines, sectionLabel, unmetRequirement, UpdateFirst, updateBrings, updateLabel } from "./Apps";
+import { appKind, appMark, AppCard, AppConnectionsView, PermissionList, byParent, categoryLabel, permissionLines, sectionLabel, unmetRequirement, UpdateFirst, updateBrings, updateLabel } from "./Apps";
 
 describe("add-ons", () => {
   it("follow the app they extend, at any depth", () => {
@@ -29,6 +29,42 @@ describe("permission summaries", () => {
     expect(permissionLines(null)).toEqual([]);
     expect([permissionLines(true, "native"), permissionLines(false, "native"), permissionLines(true, "other")]).toEqual([["It runs in the server itself, not in a sandbox"], [], ["Yes"]]);
     expect(permissionLines([{ path: "/status", public: true }])).toEqual(["/status — public"]);
+  });
+});
+
+describe("how apps use each other", () => {
+  it("shows what an app uses as its own section of a consent, and the same in an upgrade's increases", () => {
+    expect(sectionLabel("uses")).toBe("Uses other apps' operations");
+    const html = renderToString(createElement(PermissionList, { permissions: { uses: ["commerce.sales_invoice.request_payment"] } }));
+    expect(html).toContain("Uses other apps&#x27; operations");
+    expect(html).toContain("commerce.sales_invoice.request_payment");
+    expect(renderToString(createElement(PermissionList, { permissions: { uses: [] } }))).toContain("asks for no access");
+  });
+  it("lists uses, hooks and calls, and says when an operation is not installed here", () => {
+    const html = renderToString(
+      createElement(AppConnectionsView, {
+        data: {
+          uses: [
+            { app: "bookings", package: "bookings", capability: "commerce.sales_invoice.request_payment", range: "^0.6", installed: "0.6.2" },
+            { app: "bookings", package: "bookings", capability: "commerce.refund", range: "^1", installed: null },
+          ],
+          hooks: [{ app: "crm", entity: "*", hook: "before_save" }],
+          calls: [{ app: "bookings", capability: "commerce.sales_invoice.request_payment", count: 12, latest: "2026-11-01T10:00:00Z" }],
+        },
+      }),
+    );
+    expect(html).toContain("Apps using each other");
+    expect(html).toContain("built for ^0.6, installed 0.6.2");
+    expect(html).toContain("built for ^1, which is not installed here: the call would be refused");
+    expect(html).toContain("crm runs before_save on every record");
+    expect(html).toContain("12 in all, latest");
+  });
+  it("hides a list with nothing in it, and the card when all three are empty", () => {
+    expect(renderToString(createElement(AppConnectionsView, { data: { uses: [], hooks: [], calls: [] } }))).toBe("");
+    const html = renderToString(createElement(AppConnectionsView, { data: { uses: [], hooks: [{ app: "crm", entity: "Customer", hook: "after_save" }], calls: [] } }));
+    expect(html).toContain("Hooks on other apps&#x27; records");
+    expect(html).not.toContain("What each app uses");
+    expect(html).not.toContain("Calls in the last 30 days");
   });
 });
 

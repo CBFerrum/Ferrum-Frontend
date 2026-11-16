@@ -9,7 +9,7 @@ import { api, errorMessage } from "../lib/api";
 import { formatDate, formatDateTime } from "../lib/format";
 import { useMe } from "../lib/meta";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
-import { t as tr, isolate } from "@ferrum/client";
+import { t as tr, isolate, formatMoment } from "@ferrum/client";
 
 export interface AppSummary {
   id: string;
@@ -242,6 +242,7 @@ const RUNTIME_TONE = { native: "purple", wasm: "green", meta: "neutral", service
 /** Words for a permission section key: `entities` → "Entities". */
 export function sectionLabel(key: string): string {
   if (key === "native") return tr("Built into the server");
+  if (key === "uses") return tr("Uses other apps' operations");
   if (key === "services") return tr("Runs outside Ferrum, as an account of its own, at");
   const s = key.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -373,7 +374,10 @@ export function AppsPage() {
         ) : !q.data ? (
           <PageLoading />
         ) : tab === "installed" ? (
-          <InstalledApps data={q.data} onInstall={setPlanFor} />
+          <div className="stack">
+            <InstalledApps data={q.data} onInstall={setPlanFor} />
+            <AppConnectionsCard />
+          </div>
         ) : tab === "store" ? (
           <Store data={q.data} onInstall={setPlanFor} />
         ) : (
@@ -389,6 +393,79 @@ export function AppsPage() {
       />
     </div>
   );
+}
+
+/** How the installed apps use each other (GET /api/admin/apps/connections). */
+export interface AppConnections {
+  uses: { app: string | null; package: string; capability: string; range: string; installed: string | null }[];
+  hooks: { app: string | null; entity: string; hook: string }[];
+  calls: { app: string; capability: string; count: number; latest: string | null }[];
+}
+
+export function AppConnectionsView({ data }: { data: AppConnections }) {
+  if (!data.uses.length && !data.hooks.length && !data.calls.length) return null;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>{tr("Apps using each other")}</h2>
+      </div>
+      <div className="card-body stack">
+        {!!data.uses.length && (
+          <div>
+            <h3>{tr("What each app uses")}</h3>
+            <ul className="stack" style={{ gap: 4 }}>
+              {data.uses.map((u) => {
+                const v = { app: isolate(u.app ?? u.package), capability: isolate(u.capability), range: isolate(u.range), installed: isolate(u.installed ?? "") };
+                return (
+                  <li key={`${u.package}/${u.capability}`} style={{ overflowWrap: "anywhere" }}>
+                    {u.installed === null
+                      ? tr("{app} uses {capability}, built for {range}, which is not installed here: the call would be refused", v)
+                      : tr("{app} uses {capability}, built for {range}, installed {installed}", v)}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {!!data.hooks.length && (
+          <div>
+            <h3>{tr("Hooks on other apps' records")}</h3>
+            <ul className="stack" style={{ gap: 4 }}>
+              {data.hooks.map((h) => (
+                <li key={`${h.app}/${h.entity}/${h.hook}`} style={{ overflowWrap: "anywhere" }}>
+                  {tr("{app} runs {hook} on {entity}", { app: isolate(h.app ?? ""), hook: isolate(h.hook), entity: h.entity === "*" ? tr("every record") : isolate(h.entity) })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {!!data.calls.length && (
+          <div>
+            <h3>{tr("Calls in the last 30 days")}</h3>
+            <ul className="stack" style={{ gap: 4 }}>
+              {data.calls.map((c) => (
+                <li key={`${c.app}/${c.capability}`} style={{ overflowWrap: "anywhere" }}>
+                  {tr("{app} called {capability}, {count} in all, latest {when}", {
+                    app: isolate(c.app),
+                    capability: isolate(c.capability),
+                    count: c.count,
+                    when: c.latest ? formatMoment(c.latest, { dateStyle: "medium", timeStyle: "short" }) : "",
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function AppConnectionsCard() {
+  const q = useQuery({ queryKey: ["apps", "connections"], queryFn: ({ signal }) => api.get<AppConnections>("/api/admin/apps/connections", undefined, signal) });
+  if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
+  if (!q.data) return <p className="muted">{tr("Loading…")}</p>;
+  return <AppConnectionsView data={q.data} />;
 }
 
 function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r: { id: string; version?: string; upgrade?: boolean; packages?: string[] }) => void }) {
