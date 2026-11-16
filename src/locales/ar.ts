@@ -5760,6 +5760,13 @@ const words: Record<string, string> = {
   "No time: it stops at once": "لا وقت: يتوقف فورًا",
   "Stops working on": "يتوقف عن العمل في",
   "Empty: it does not stop.": "فارغ: لا يتوقف.",
+  // Administration → Secrets: a secret its app manages, its rule changed alone, who changed it.
+  "{date}, by {name}": "{date}، بواسطة {name}",
+  "{app} manages it, so it is changed there, not here.": "يديره {app}، لذا يُغيَّر هناك لا هنا.",
+  "Change how it is used": "تغيير طريقة استخدامه",
+  "How {name} may be used is saved": "تم حفظ طريقة استخدام {name}",
+  "How {name} may be used": "كيف يمكن استخدام {name}",
+  "Only how it may be used changes. Its value and version stay.": "تتغير طريقة استخدامه فقط. وتبقى قيمته وإصداره كما هما.",
 };
 
 export default words;
