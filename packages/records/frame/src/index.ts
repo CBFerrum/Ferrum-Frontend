@@ -14,3 +14,6 @@ export { Home as ModulesHome } from "../../../../src/app/Home";
 // The router for an app's routes, with the wait page React Router wants on the first load: use it instead of
 // createBrowserRouter(routes, { basename }).
 export { createAppRouter } from "../../../../src/app/appRouter";
+// An app's whole start: its words, that router at its address, and the page under the platform's toasts and
+// confirmations once the words are in. The last call of an app's entry file.
+export { mountApp } from "../../../../src/app/mountApp";
