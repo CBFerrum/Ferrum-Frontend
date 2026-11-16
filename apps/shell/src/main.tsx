@@ -13,7 +13,6 @@ import { createBrowserRouter, Link, Outlet, RouterProvider, useParams, useRouteE
 import { bootstrap, routeBase, shell, t, wordsReady } from "@ferrum/client";
 import { recordsRoutes } from "@/app/recordsRoutes";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
-import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, PageLoading, Toaster } from "@/ui/kit";
 
@@ -135,9 +134,6 @@ const router = entry === "accounts"
       [{ path: "/", HydrateFallback: Loading, element: <Page />, errorElement: <Page><RouteError /></Page>, children: [...(pages[entry] ?? pages[""]), { path: "*", element: <NotFound /> }] }],
       { basename: routeBase(entry) },
     );
-
-// An ended session: sign in again, then back here.
-setUnauthorizedHandler(() => shell().session.reauthenticate());
 
 // Drawn once the page's words are in (its language's catalogs, fetched as the page starts).
 void wordsReady().then(() =>

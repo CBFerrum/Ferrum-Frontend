@@ -9,7 +9,7 @@ import { api, ApiError, docPath, download, errorMessage, isStale, newKey, openPr
 import { asRows, calcBody, carryTitles, createBody, diffDoc, errorAtCell, hasInvalidNumbers, mergeCalc, missingRequired } from "../lib/doc";
 import { actionButtons, transitionOffered, type ButtonState } from "../lib/actionButtons";
 import { evaluate, evaluateValue } from "../lib/expr";
-import { useLiveEntity, type LiveEvent } from "../lib/live";
+import { useLiveEntity, type LiveEvent } from "../../packages/kit/src/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
 import { t } from "../lib/i18n";

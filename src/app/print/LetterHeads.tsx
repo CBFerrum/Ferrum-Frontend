@@ -6,9 +6,8 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { Link, useBlocker, useLocation, useNavigate, useParams } from "react-router";
-import { t as tr, isolate } from "@ferrum/client";
+import { t as tr, isolate, uploadFile } from "@ferrum/client";
 import { api, ApiError, docPath, errorMessage } from "../../lib/api";
-import { uploadFile } from "../../lib/files";
 import { useMetaIndex, type Doc } from "../../lib/meta";
 import { EMPTY_LETTERHEAD, letterHeadBlocks, letterHeadForm, validate, type Align, type LetterHeadForm, type PrintFormat } from "../../lib/printLayout";
 import { Alert, Button, confirmDialog, Field, toast, useDebounced } from "../../ui/kit";

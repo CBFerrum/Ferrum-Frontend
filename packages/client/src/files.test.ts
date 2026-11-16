@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { megabytes, uploadRoute } from "./files";
+import { megabytes, uploadRoute } from "./index";
 
 const MB = 1024 * 1024;
 

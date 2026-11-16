@@ -9,13 +9,17 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, setUnauthorizedHandler } from "../lib/api";
+import { api } from "../lib/api";
 import { violations } from "../test/axe";
 import { ConfirmHost, ConfirmItsYou } from "./kit";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
+/** The shell's signing in again, which the client asks for on a 401 that is not the call's own answer. */
+const onSignInAgain = (reauthenticate: () => void) =>
+  void ((globalThis as { ferrum?: unknown }).ferrum = { shell: { session: { reauthenticate, signOut: () => {}, on: () => {} } } });
 beforeEach(() => {
+  onSignInAgain(() => {});
   // jsdom has no showModal: it only has to set `open`.
   HTMLDialogElement.prototype.showModal = function () {
     this.setAttribute("open", "");
@@ -33,7 +37,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   Channel.all = [];
   delete (navigator as { credentials?: unknown }).credentials;
-  setUnauthorizedHandler(() => {});
+  delete (globalThis as { ferrum?: unknown }).ferrum;
 });
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -470,7 +474,7 @@ describe("the ways to confirm it is you", () => {
   it("a passkey at the accounts host: a finish the server refuses is said, and the dialog can be used again", async () => {
     webauthn(async () => null);
     const ended = vi.fn();
-    setUnauthorizedHandler(ended);
+    onSignInAgain(ended);
     const finishes = [
       json(429, { error: "too_many_requests", message: "too many tries: wait a minute and try again" }),
       json(401, { error: "unauthorized", message: "confirming it is you did not finish; try again" }),
@@ -517,7 +521,7 @@ describe("the ways to confirm it is you", () => {
 
   it("are asked of the server by a page that opens the dialog itself, and a 401 there is the dialog's answer, not an ended session", async () => {
     const ended = vi.fn();
-    setUnauthorizedHandler(ended);
+    onSignInAgain(ended);
     const { log } = server(null, {
       "/api/auth/step-up/ways": () => json(200, { ways: [{ way: "password", code: false }, { way: "provider", name: "Okta" }] }),
       "/api/auth/step-up": () => json(401, { error: "unauthorized", message: "wrong password" }),

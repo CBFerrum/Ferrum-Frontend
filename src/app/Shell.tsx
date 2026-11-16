@@ -1,14 +1,12 @@
 // The records frame of an app's interface under the platform's bar: the sidebar built from metadata
 // modules, and on a phone the button that opens it. Search, notifications and the account are the bar's.
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
-import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
-import { api, errorMessage, setUnauthorizedHandler } from "../lib/api";
+import { bootstrap, t as tr, isolate } from "@ferrum/client";
+import { api, errorMessage } from "../lib/api";
 import { humanize } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MenuPage, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
-import { live } from "../lib/live";
 import { useOnline } from "../lib/pwa";
 import {
   Alert,
@@ -96,13 +94,12 @@ let frameModules: Set<string> | null = null;
 let frameHasPages = false;
 
 /** Set once, before the first render. An app's interface runs under the shell, which signs the
- *  person in again when the session ends; `pages` when its routes are `recordsRoutes`. The mode is
+ *  person in again when the session ends (the client asks it on a 401); `pages` when its routes are `recordsRoutes`. The mode is
  *  always `"app"` (the only one there is; apps still name it). */
 export function setFrameMode(_mode: "app", packages?: string[], { pages = false, modules }: { pages?: boolean; modules?: string[] } = {}): void {
   framePackages = packages ? new Set(packages) : null;
   frameModules = modules ? new Set(modules) : null;
   frameHasPages = pages;
-  setUnauthorizedHandler(() => shell().session.reauthenticate());
 }
 
 /** Whether the frame shows Studio's pages: they are among its routes, and Studio is its app's. */
@@ -123,7 +120,7 @@ export function ownModule(m: Module): boolean {
   return !framePackages || framePackages.has(m.package ?? "");
 }
 
-/** The frame around an app's routes; the shell signs the person in (a 401 asks it to, see setFrameMode). */
+/** The frame around an app's routes; the shell signs the person in (the client asks it on a 401). */
 export function RequireAuth() {
   return <Shell />;
 }
@@ -137,49 +134,9 @@ export function reportItems(meta: MetaIndex | undefined, catalog: ReportDef[] | 
   return [...names].map((name) => ({ name, label: labels.get(name) ?? humanize(name) }));
 }
 
-/** Keeps lists, boards and the bell current while the app is open (see lib/live.ts). */
-function useLiveUpdates() {
-  const qc = useQueryClient();
-  useEffect(() => {
-    // Bursts (imports, bulk actions) collapse into one refresh per entity.
-    const pending = new Set<string>();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const flush = () => {
-      for (const e of pending) {
-        void qc.invalidateQueries({ queryKey: ["list", e] });
-        void qc.invalidateQueries({ queryKey: ["view", e] });
-      }
-      pending.clear();
-      timer = undefined;
-    };
-    const offs = [
-      live.onEvent((e) => {
-        pending.add(e.entity);
-        timer ??= setTimeout(flush, 400);
-      }),
-      live.onNotification((n) => {
-        void qc.invalidateQueries({ queryKey: ["notifications"] });
-        toast(n.title, "info");
-      }),
-      live.onResync(() => {
-        void qc.invalidateQueries({ queryKey: ["list"] });
-        void qc.invalidateQueries({ queryKey: ["view"] });
-        void qc.invalidateQueries({ queryKey: ["notifications"] });
-      }),
-    ];
-    live.start();
-    return () => {
-      offs.forEach((off) => off());
-      clearTimeout(timer);
-      live.stop();
-    };
-  }, [qc]);
-}
-
 function Shell() {
   const location = useLocation();
   const meta = useMetaIndex();
-  useLiveUpdates();
   const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => setNavOpen(false), [location.pathname]);

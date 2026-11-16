@@ -233,8 +233,7 @@ src/
   components/ui/      the shadcn building blocks, exported as @ferrum/kit/primitives
   ui/kit.tsx          the design system's small, accessible building blocks
   lib/
-    api.ts            HTTP client: the browser's session, uniform error parsing, retries on connection
-                      errors, authenticated downloads, print via blob URL
+    api.ts            the API client: @ferrum/client's, re-exported
     meta.ts           metadata types and hooks, field state (visible / required / read-only)
     expr.ts           evaluator for the common CEL subset used by visible_if / required_if /
                       read_only_if and action/workflow conditions
@@ -244,8 +243,6 @@ src/
     formLayout.ts     the form designer's model; formTabs.ts the form's tabs and sections
     views.ts          board, calendar and timeline views
     studio.ts         Studio's API and its saved records
-    live.ts           live updates (/ws/live), one socket per tab
-    files.ts          uploads, through the API or straight to object storage
     prefs.ts          per-user preferences; theme.ts WCAG contrast (for the token tests)
     pwa.ts            online state
     *.test.ts         unit tests

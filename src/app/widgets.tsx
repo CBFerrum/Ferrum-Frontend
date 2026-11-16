@@ -26,7 +26,6 @@ import { cn } from "../lib/utils";
 import { stateTone, stateWords } from "../lib/targetDraft";
 import { docstatusTone } from "../lib/statusTones";
 import { formatValue, fromZonedInput, humanize, NUMERIC_TYPES, shortId, toZonedInput, zoneLabel } from "../lib/format";
-import { uploadFile } from "../lib/files";
 import { RichText, RichTextEditor } from "../ui/richtext";
 import {
   DOCSTATUS_LABEL,
@@ -40,7 +39,7 @@ import {
   type ListResponse,
 } from "../lib/meta";
 import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, StatusBadge, toast, useDebounced, useDismiss } from "../ui/kit";
-import { t as tr, isolate } from "@ferrum/client";
+import { t as tr, isolate, uploadFile } from "@ferrum/client";
 
 export interface ControlProps {
   field: Field;

@@ -1,215 +1,25 @@
-// HTTP client for the Ferrum API with the browser's session (the cookie): uniform error parsing, retries on connection
-// errors (the dev server restarts now and then), authenticated downloads and print previews.
+// The API client of the shell, Studio and the records screens: @ferrum/client's, the one apps use, so a
+// request behaves the same from either (the interface's version header, step-up, a 401 asking the shell
+// to sign in again).
 
-export { ApiError, errorMessage, isStale, parseApiError, type FieldError } from "@ferrum/client";
-import { askStepUp, parseApiError, t as tr } from "@ferrum/client";
-
-// ── an ended session ──
-
-let onUnauthorized: () => void = () => {};
-
-export function setUnauthorizedHandler(fn: () => void): void {
-  onUnauthorized = fn;
-}
-
-// ── requests ──
-
-type QueryValue = string | number | boolean | null | undefined;
-
-export interface RequestOptions {
-  method?: string;
-  body?: unknown;
-  query?: Record<string, QueryValue>;
-  /** Document version for optimistic concurrency (`If-Match: "v<version>"`). */
-  ifMatch?: number;
-  /** Makes a create, an update or an action safe to send again (done once, the same answer each time). */
-  idempotencyKey?: string;
-  /** What the request does, for one whose body is rebuilt on each try: the key is bound to this. */
-  idempotencyDigest?: string;
-  signal?: AbortSignal;
-  /** Do not treat a 401 as an expired session (login, password checks). */
-  noAuthRedirect?: boolean;
-  /** Not sent again on a 503 or a dropped connection: a refusal that waits on a person (a closed vault) is shown at once. */
-  once?: boolean;
-  /** Further request headers (X-Ferrum-App for the calls of an app's screen). */
-  headers?: Record<string, string>;
-}
-
-export function queryString(query?: Record<string, QueryValue>): string {
-  if (!query) return "";
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  const s = sp.toString();
-  return s ? `?${s}` : "";
-}
-
-const sleep = (ms: number, signal?: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(t);
-      reject(signal.reason);
-    });
-  });
-
-/** What the server's refusal said, whole (ApiError keeps only the parts every screen uses). */
-const bodies = new WeakMap<object, unknown>();
-export const errorBody = (e: unknown): Record<string, unknown> | null => {
-  const b = typeof e === "object" && e ? bodies.get(e) : null;
-  return b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : null;
-};
-
-const RETRY_STATUS = new Set([429, 502, 503, 504]);
-
-async function send(path: string, o: RequestOptions = {}): Promise<Response> {
-  const method = o.method ?? "GET";
-  const headers: Record<string, string> = { accept: "application/json", ...o.headers };
-  if (o.ifMatch !== undefined) headers["if-match"] = `"v${o.ifMatch}"`;
-  if (o.idempotencyKey) headers["idempotency-key"] = o.idempotencyKey;
-  if (o.idempotencyKey && o.idempotencyDigest) headers["idempotency-digest"] = o.idempotencyDigest;
-  let body: BodyInit | undefined;
-  if (o.body instanceof FormData || o.body instanceof Blob) body = o.body;
-  else if (o.body !== undefined) {
-    headers["content-type"] = "application/json";
-    body = JSON.stringify(o.body);
-  }
-  // Safe to repeat: reads, and writes that carry an idempotency key.
-  const retryable = (method === "GET" || !!o.idempotencyKey) && !o.once;
-  const url = path + queryString(o.query);
-  let askedAgain = false;
-  for (let attempt = 0; ; attempt++) {
-    let res: Response;
-    try {
-      res = await fetch(url, { method, headers, body, signal: o.signal });
-    } catch (e) {
-      if (o.signal?.aborted) throw e;
-      if (retryable && attempt < 4) {
-        await sleep(500 * 2 ** attempt, o.signal);
-        continue;
-      }
-      throw parseApiError(0, null);
-    }
-    if (res.ok) return res;
-    // A dev proxy answers a bare 500 while the backend restarts; the API's own 500s are JSON.
-    const unreachable = res.status === 500 && !(res.headers.get("content-type") ?? "").includes("json");
-    if (retryable && attempt < 4 && (RETRY_STATUS.has(res.status) || unreachable)) {
-      const after = Number(res.headers.get("retry-after"));
-      await sleep(Number.isFinite(after) && after > 0 ? Math.min(after, 10) * 1000 : 500 * 2 ** attempt, o.signal);
-      continue;
-    }
-    // A refusal that is not JSON (the framework's own, for a body it could not read) is shown in its own words, as long as it is words.
-    const raw = await res.text().catch(() => "");
-    let data: unknown = null;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      if (res.status < 500 && raw.trim() && raw.length <= 500 && !raw.trimStart().startsWith("<")) data = { message: raw.trim() };
-    }
-    const err = parseApiError(unreachable ? 502 : res.status, data);
-    bodies.set(err, data);
-    // Refused before anything was done (the rights check, in memory): sent again once whatever the method, after the person confirms it is them
-    // in one of the ways the refusal lists.
-    if (res.status === 403 && err.code === "step_up" && !askedAgain) {
-      askedAgain = true;
-      if ((await askStepUp(data)) && !o.signal?.aborted) continue;
-      throw err;
-    }
-    if (res.status === 401 && !o.noAuthRedirect) onUnauthorized();
-    throw err;
-  }
-}
-
-/** The whole response (a print format's ETag, a PDF), its refusals parsed as every request's. */
-export const requestRaw = (path: string, o: RequestOptions = {}) => send(path, o);
-
-export async function request<T>(path: string, o: RequestOptions = {}): Promise<T> {
-  const res = await send(path, o);
-  if (res.status === 204) return undefined as T;
-  const type = res.headers.get("content-type") ?? "";
-  return (type.includes("json") ? await res.json() : await res.text()) as T;
-}
-
-type Opts = Omit<RequestOptions, "method" | "body">;
-
-export const api = {
-  get: <T>(path: string, query?: Record<string, QueryValue>, signal?: AbortSignal) => request<T>(path, { query, signal }),
-  post: <T>(path: string, body?: unknown, o?: Opts) => request<T>(path, { ...o, method: "POST", body }),
-  patch: <T>(path: string, body?: unknown, o?: Opts) => request<T>(path, { ...o, method: "PATCH", body }),
-  put: <T>(path: string, body?: unknown, o?: Opts) => request<T>(path, { ...o, method: "PUT", body }),
-  del: <T = void>(path: string, o?: Opts) => request<T>(path, { ...o, method: "DELETE" }),
-};
-
-/** Path for a document collection or record, with every segment encoded. */
-export function docPath(entity: string, ...rest: string[]): string {
-  return ["/api/v1", entity, ...rest].map((s, i) => (i === 0 ? s : encodeURIComponent(s))).join("/");
-}
-
-export function newKey(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** Passkeys travel as base64url; the browser speaks ArrayBuffers. */
-export const b64 = {
-  decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
-  encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
-};
-
-// ── downloads & print ──
-
-export function saveBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
-
-function fileNameFrom(disposition: string | null): string | undefined {
-  const m = disposition && /filename="?([^";]+)"?/i.exec(disposition);
-  return m ? m[1] : undefined;
-}
-
-/** An authenticated resource as a blob (an image preview: an <img> cannot send the session). */
-export async function fetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
-  return (await send(path, { signal })).blob();
-}
-
-/** Downloads an authenticated resource (CSV export, attachment) as a file. */
-export async function download(path: string, fallbackName: string, query?: Record<string, QueryValue>): Promise<void> {
-  const res = await send(path, { query });
-  saveBlob(await res.blob(), fileNameFrom(res.headers.get("content-disposition")) ?? fallbackName);
-}
-
-/**
- * Print HTML may contain tenant-authored templates. The response's CSP header does not travel
- * with a blob URL (which shares our origin), so the same policy is injected as a meta tag placed
- * before any other markup: no scripts can run in the print window.
- */
-export function withPrintCsp(html: string): string {
-  const meta =
-    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; base-uri 'none'; form-action 'none'">`;
-  const m = /^\s*<!doctype[^>]*>/i.exec(html);
-  return m ? m[0] + meta + html.slice(m[0].length) : `<!doctype html>${meta}${html}`;
-}
-
-/** Fetches print HTML with auth and shows it in a new window via a blob URL. */
-export async function openPrint(path: string): Promise<void> {
-  // Open synchronously (inside the click) so pop-up blockers allow it, then fill it in.
-  const win = window.open("", "_blank");
-  if (!win) throw new Error(tr("The print window was blocked. Allow pop-ups for this site and try again."));
-  win.document.title = tr("Preparing print…");
-  win.document.body.textContent = tr("Preparing print preview…");
-  try {
-    const html = await request<string>(path);
-    const url = URL.createObjectURL(new Blob([withPrintCsp(html)], { type: "text/html" }));
-    win.location.href = url;
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  } catch (e) {
-    win.close();
-    throw e;
-  }
-}
+export {
+  api,
+  ApiError,
+  b64,
+  docPath,
+  download,
+  errorBody,
+  errorMessage,
+  fetchBlob,
+  isStale,
+  newKey,
+  openPrint,
+  parseApiError,
+  queryString,
+  request,
+  requestRaw,
+  saveBlob,
+  withPrintCsp,
+  type FieldError,
+  type RequestOptions,
+} from "@ferrum/client";

@@ -426,6 +426,8 @@ export interface RequestOptions {
   idempotencyDigest?: string;
   /** A 401 is this call's answer (a wrong password), not an ended session: the shell is not asked to sign in again. */
   noAuthRedirect?: boolean;
+  /** Not sent again on a 503 or a dropped connection: a refusal that waits on a person (a closed vault) is shown at once. */
+  once?: boolean;
 }
 
 export function queryString(query?: Record<string, QueryValue>): string {
@@ -467,6 +469,13 @@ export function askStepUp(refusal?: unknown): Promise<boolean> {
   return stepUpAsking;
 }
 
+/** What the server's refusal said, whole (ApiError keeps only the parts every screen uses). */
+const bodies = new WeakMap<object, unknown>();
+export const errorBody = (e: unknown): Record<string, unknown> | null => {
+  const b = typeof e === "object" && e ? bodies.get(e) : null;
+  return b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : null;
+};
+
 /**
  * A request to the API with the browser's session (the cookie). Retries reads (and writes with
  * an idempotency key) on connection errors and on 429, 502–504 (with `Retry-After`); asks the shell
@@ -488,7 +497,7 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
     body = JSON.stringify(init.body);
   }
   const url = path + queryString(init.query);
-  const retryable = method === "GET" || !!init.idempotencyKey;
+  const retryable = (method === "GET" || !!init.idempotencyKey) && !init.once;
   let askedAgain = false;
   for (let attempt = 0; ; attempt++) {
     let res: Response;
@@ -501,8 +510,16 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
       continue;
     }
     if (res.ok) return res;
-    const data: unknown = await res.json().catch(() => null);
+    // A refusal that is not JSON (the framework's own, for a body it could not read) is shown in its own words, as long as it is words.
+    const raw = await res.text().catch(() => "");
+    let data: unknown = null;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (res.status < 500 && raw.trim() && raw.length <= 500 && !raw.trimStart().startsWith("<")) data = { message: raw.trim() };
+    }
     const err = parseApiError(res.status, data);
+    bodies.set(err, data);
     const after = Number(res.headers.get("retry-after"));
     const wait = Number.isFinite(after) && after > 0 ? Math.min(after, 30) * 1000 : 500 * 2 ** attempt;
     if (retryable && attempt < 4 && [429, 502, 503, 504].includes(res.status)) {
@@ -520,6 +537,9 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
     throw err;
   }
 }
+
+/** The whole response (a print format's ETag, a PDF), its refusals parsed as every request's. */
+export const requestRaw = (path: string, init: RequestOptions = {}) => send(path, init);
 
 export async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
   const res = await send(path, init);
@@ -546,6 +566,12 @@ export function newKey(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Passkeys travel as base64url; the browser speaks ArrayBuffers. */
+export const b64 = {
+  decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
+  encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+};
 
 export function saveBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -636,7 +662,13 @@ function uploadLimits(): Promise<Limits> {
 }
 
 export function megabytes(bytes: number): string {
-  return bytes >= 1024 ** 3 ? `${Math.floor(bytes / 1024 ** 3)} GB` : `${Math.floor(bytes / 1024 ** 2)} MB`;
+  return bytes >= 1024 ** 3 ? tr("{n} GB", { n: Math.floor(bytes / 1024 ** 3) }) : tr("{n} MB", { n: Math.floor(bytes / 1024 ** 2) });
+}
+
+/** Which way a file of this size goes, or why it cannot be uploaded. */
+export function uploadRoute(size: number, l: Limits): "api" | "parts" | { tooLarge: number } {
+  if (size <= l.max_bytes) return "api";
+  return size <= l.parts_max_bytes ? "parts" : { tooLarge: l.parts_max_bytes };
 }
 
 /**
@@ -646,8 +678,9 @@ export function megabytes(bytes: number): string {
  * hand them to `shell().uploads` instead.
  */
 export async function uploadFile(file: File, attach?: { entity: string; id: string }): Promise<StoredFile> {
-  const l = await uploadLimits();
-  if (file.size <= l.max_bytes) {
+  const route = uploadRoute(file.size, await uploadLimits());
+  if (typeof route === "object") throw new Error(tr("Files must be {value} or smaller.", { value: megabytes(route.tooLarge) }));
+  if (route === "api") {
     const fd = new FormData();
     fd.append("file", file);
     if (attach) {
@@ -656,7 +689,6 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
     }
     return api.post<StoredFile>("/api/files", fd);
   }
-  if (file.size > l.parts_max_bytes) throw new Error(`Files must be ${megabytes(l.parts_max_bytes)} or smaller.`);
   return uploadInParts(file, attach);
 }
 

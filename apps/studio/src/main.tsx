@@ -12,7 +12,6 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider, useLocation, useRouteError, type RouteObject } from "react-router";
 import { bootstrap, routeBase, shell, t, wordsReady } from "@ferrum/client";
 import { RequireAuth, setFrameMode } from "@/app/Shell";
-import { setUnauthorizedHandler } from "@/lib/api";
 import "@/index.css";
 import { ConfirmHost, EmptyState, ErrorState, PageLoading, Toaster } from "@/ui/kit";
 
@@ -144,8 +143,6 @@ const studioRouter = () => createBrowserRouter([
 ]);
 
 const router = onPortal ? createBrowserRouter(portalRoutes, { basename: routeBase(RECORDS) }) : studioRouter();
-
-setUnauthorizedHandler(() => shell().session.reauthenticate());
 
 // Drawn once the page's words are in (its language's catalogs, fetched as the page starts).
 void wordsReady().then(() =>
