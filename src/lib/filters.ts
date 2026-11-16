@@ -5,7 +5,7 @@
 // or `@set`, for any field. Numbers take `>=10`, `<=10`, `>10`, `<10` and `10..20`.
 
 import { t } from "@ferrum/client";
-import { isDecimalString } from "./format";
+import { fromZonedInput, isDecimalString, todayIso } from "./format";
 
 export interface FilterField {
   name: string;
@@ -78,7 +78,7 @@ export const isWord = (raw: string | undefined) => !!raw && (raw === EMPTY || ra
 const dayText = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const shifted = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
 
-/** The days a period covers, in the viewer's own calendar; weeks start on Monday. */
+/** The days a period covers, counted from `now`'s calendar day (the workspace's, as `toApiFilters` gives it); weeks start on Monday. */
 export function periodRange(word: string, now: Date): [string, string] | null {
   const day = (n: number) => dayText(shifted(now, n));
   const monday = -((now.getDay() + 6) % 7);
@@ -147,7 +147,7 @@ function numberFilters(name: string, raw: string, valid: (s: string) => boolean,
   return valid(a) ? [[name, op, as(a)]] : [];
 }
 
-export function toApiFilters(fields: FilterField[], state: FilterState, now = new Date()): ApiFilter[] {
+export function toApiFilters(fields: FilterField[], state: FilterState, now = new Date(`${todayIso()}T00:00:00`)): ApiFilter[] {
   const out: ApiFilter[] = [];
   for (const f of fields) {
     const raw = state[f.name]?.trim();
@@ -164,9 +164,10 @@ export function toApiFilters(fields: FilterField[], state: FilterState, now = ne
       case "datetime": {
         const [from, to] = periodRange(raw, now) ?? splitRange(raw);
         const dt = f.type === "datetime";
-        // A day is the viewer's day: "today" at 01:00 in Kolkata began the evening before in UTC.
-        if (from) out.push([f.name, ">=", dt ? new Date(`${from}T00:00:00`).toISOString() : from]);
-        if (to) out.push([f.name, "<=", dt ? new Date(`${to}T23:59:59.999`).toISOString() : to]);
+        // A day is the workspace's day, from its midnight to its last millisecond, as the calendar views and the server count
+        // it; what is not a day goes as it is, for the server to refuse.
+        if (from) out.push([f.name, ">=", dt ? (fromZonedInput(`${from}T00:00`) ?? from) : from]);
+        if (to) out.push([f.name, "<=", dt ? (fromZonedInput(`${to}T23:59:59`)?.replace(/\.000Z$/, ".999Z") ?? to) : to]);
         break;
       }
       case "int":
@@ -189,7 +190,7 @@ export function toApiFilters(fields: FilterField[], state: FilterState, now = ne
 }
 
 /** The `filters` query parameter, or `undefined` when nothing is filtered. */
-export function serializeFilters(fields: FilterField[], state: FilterState, now = new Date()): string | undefined {
+export function serializeFilters(fields: FilterField[], state: FilterState, now?: Date): string | undefined {
   const f = toApiFilters(fields, state, now);
   return f.length ? JSON.stringify(f) : undefined;
 }

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { filterable, isWord, joinNumber, periodRange, splitNumber, joinRange, readFilters, serializeFilters, splitRange, toApiFilters, writeFilters } from "./filters";
+import { setTimeZone } from "./format";
 
 const fields = [
   { name: "status", type: "select" },
@@ -96,10 +97,28 @@ describe("words a filter can use", () => {
     expect(toApiFilters(date, { due: "@overdue" }, now)).toEqual([["due", "<=", "2026-11-03"]]);
   });
 
-  it("use the viewer's day for a moment in time", () => {
+  it("bound a moment in time by the day's own midnights", () => {
     const [[, , lo], [, , hi]] = toApiFilters([{ name: "at", type: "datetime" }], { at: "@today" }, now);
     expect(new Date(lo as string).getTime()).toBe(new Date(2026, 10, 4).getTime());
     expect(new Date(hi as string).getTime()).toBe(new Date(2026, 10, 4, 23, 59, 59, 999).getTime());
+  });
+
+  it("count today as the workspace's day, from its midnight to the next one's, whatever the browser's day", () => {
+    // 11:00 UTC on 5 Nov is already 6 Nov in Kiritimati (UTC+14), and still 5 Nov in any browser west of UTC+13.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-05T11:00:00Z"));
+    setTimeZone("Pacific/Kiritimati");
+    try {
+      expect(JSON.parse(serializeFilters([{ name: "due", type: "date" }, { name: "at", type: "datetime" }], { due: "@today", at: "@today" })!)).toEqual([
+        ["due", ">=", "2026-11-06"],
+        ["due", "<=", "2026-11-06"],
+        ["at", ">=", "2026-11-05T10:00:00.000Z"],
+        ["at", "<=", "2026-11-06T09:59:59.999Z"],
+      ]);
+    } finally {
+      setTimeZone(undefined);
+      vi.useRealTimers();
+    }
   });
 
   it("ask whether any field holds a value", () => {
