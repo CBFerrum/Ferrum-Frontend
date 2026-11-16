@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EntityMeta, Field, Me } from "../../lib/meta";
+import type { EntityMeta, Field } from "../../lib/meta";
 import { bulkActions, chunk, countOf, describeOp, mergeResults, pageState, parseTags, retryIds, rowErrorText, togglePage, toggleRow } from "./bulk";
 
 const order = ["a", "b", "c", "d", "e"];
@@ -29,7 +29,6 @@ describe("selection", () => {
 });
 
 const f = (name: string, type: Field["type"], extra: Partial<Field> = {}): Field => ({ name, label: name, type, can_read: true, can_write: true, ...extra });
-const me = (roles: string[], is_admin = false) => ({ user: { id: "u", email: "u@x.test", full_name: "U", is_admin, roles } }) as Me;
 const base = {
   name: "Claim",
   label: "Claim",
@@ -51,38 +50,37 @@ const base = {
 
 describe("bulk actions", () => {
   it("offers settable fields and the lifecycle the viewer may use", () => {
-    const a = bulkActions(base, me([]));
+    const a = bulkActions(base);
     expect(a.fields.map((x) => x.name)).toEqual(["approver", "status"]);
     expect(a).toMatchObject({ delete: true, submit: true, cancel: false, workflow: [] });
   });
-  it("offers workflow actions by role instead of submit and cancel", () => {
+  it("offers the workflow steps the server says the viewer may take instead of submit and cancel", () => {
     const workflow = {
       initial_state: "Draft",
       states: [],
       transitions: [
-        { action: "Approve", from: "Draft", to: "Approved", roles: ["Approver"] },
-        { action: "Cancel", from: "Approved", to: "Cancelled", roles: ["Approver"] },
-        { action: "Cancel", from: "Rejected", to: "Cancelled", roles: ["Approver"] },
-        { action: "Reopen", from: "Cancelled", to: "Draft", roles: ["Manager"] },
+        { action: "Approve", from: "Draft", to: "Approved", roles: ["Approver"], may_take: true },
+        { action: "Cancel", from: "Approved", to: "Cancelled", roles: ["Approver"], may_take: true },
+        { action: "Cancel", from: "Rejected", to: "Cancelled", roles: ["Approver"], may_take: true },
+        { action: "Reopen", from: "Cancelled", to: "Draft", roles: ["Manager"], may_take: false },
       ],
     };
     const m = { ...base, workflow } as EntityMeta;
-    expect(bulkActions(m, me(["Approver"]))).toMatchObject({ submit: false, cancel: false, workflow: ["Approve", "Cancel"] });
-    expect(bulkActions(m, me([], true)).workflow).toEqual(["Approve", "Cancel", "Reopen"]);
+    expect(bulkActions(m)).toMatchObject({ submit: false, cancel: false, workflow: ["Approve", "Cancel"] });
   });
   it("bulk workflow: may_take false is left out; a step naming no roles needs the write right", () => {
     const workflow = { initial_state: "Draft", states: [], transitions: [
       { action: "Approve", from: "Draft", to: "Approved", roles: ["Approver"], may_take: false },
       { action: "Reject", from: "Draft", to: "Rejected", roles: ["Approver"], may_take: true },
-      { action: "Submit", from: "Draft", to: "Review", roles: [] },
+      { action: "Submit", from: "Draft", to: "Review", roles: [], may_take: true },
     ] };
     const m = { ...base, workflow } as EntityMeta;
-    expect(bulkActions(m, me(["Approver"])).workflow).toEqual(["Reject", "Submit"]);
+    expect(bulkActions(m).workflow).toEqual(["Reject", "Submit"]);
     const ro = { ...m, permissions: { ...base.permissions, write: "none" } } as EntityMeta;
-    expect(bulkActions(ro, me(["Approver"])).workflow).toEqual(["Reject"]);
+    expect(bulkActions(ro).workflow).toEqual(["Reject"]);
   });
   it("offers nothing that writes on a ledger", () => {
-    const a = bulkActions({ ...base, kind: "ledger" } as EntityMeta, me([]));
+    const a = bulkActions({ ...base, kind: "ledger" } as EntityMeta);
     expect(a.fields).toEqual([]);
     expect(a.delete).toBe(false);
   });

@@ -42,7 +42,7 @@ export function Home() {
   const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
   const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
   const modules = [...meta.modules]
-    .filter((m) => ownModule(m, meta))
+    .filter((m) => ownModule(m))
     .sort((a, b) => a.order - b.order)
     .map((m) => {
       const links = moduleLinks(m, readable, reportLabel, meet, me);

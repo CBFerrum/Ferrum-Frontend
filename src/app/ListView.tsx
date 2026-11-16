@@ -588,7 +588,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
 
         {/* The bar takes the filter bar's place (same box), so the table does not move when rows are selected. */}
         {view === "list" && selected.size > 0 && (
-          <BulkBar meta={meta} me={me} selected={selected} rows={rows} total={total} hasMore={!!list.hasNextPage} filters={filters} q={q} sort={sort} onSelect={setSelected} />
+          <BulkBar meta={meta} selected={selected} rows={rows} total={total} hasMore={!!list.hasNextPage} filters={filters} q={q} sort={sort} onSelect={setSelected} />
         )}
         </div>
 

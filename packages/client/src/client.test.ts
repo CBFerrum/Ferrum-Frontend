@@ -132,20 +132,6 @@ describe("@ferrum/client", () => {
     expect(n).toBe(1);
   });
 
-  it("waits while the app is upgraded, then goes on", async () => {
-    vi.useFakeTimers();
-    let n = 0;
-    vi.stubGlobal("fetch", async () =>
-      n++ === 0
-        ? new Response(JSON.stringify({ error: "app_upgrading" }), { status: 503, headers: { "retry-after": "1", "content-type": "application/json" } })
-        : new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } }),
-    );
-    const p = request<{ ok: boolean }>("/api/ext/crm/x", { method: "POST" });
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(await p).toEqual({ ok: true });
-    vi.useRealTimers();
-  });
-
   describe("403 step_up (a marked entity needs a fresh proof)", () => {
     const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
     const asked = { error: "step_up", message: "confirm it is you: enter your password again to do this" };

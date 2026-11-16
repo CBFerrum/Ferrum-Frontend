@@ -94,7 +94,7 @@ export function ActionCard({ a, index, count, entities, chips, fields, onChange,
   earlier?: DraftAction[];
   /** An effect inside a loop: no loop of its own, and `item` besides. */
   nested?: boolean;
-  /** The record's table fields with their line entities (`children` of its description); absent on an older server. */
+  /** The record's table fields with their line entities (`children` of its description); absent while it loads. */
   lines?: EntityMeta["children"];
   error?: string; entity: string; owner?: string; inButton?: boolean;
   a: DraftAction; index: number; count: number; entities: { value: string; label: string }[]; chips: MetaField[]; fields: MetaField[];

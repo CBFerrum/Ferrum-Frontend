@@ -39,23 +39,15 @@ describe("which buttons a record shows", () => {
 });
 
 describe("which workflow steps are offered", () => {
-  const step = (o: Partial<Parameters<typeof transitionOffered>[0]> = {}) => ({ action: "Approve", from: "A", to: "B", roles: ["Approver"], ...o });
-  const who = (o = {}) => ({ isAdmin: false, roles: ["Approver"], canWrite: true, ...o });
-  it("a step naming roles needs one of them", () => {
-    expect(transitionOffered(step(), who())).toBe(true);
-    expect(transitionOffered(step(), who({ roles: [] }))).toBe(false);
-    expect(transitionOffered(step(), who({ roles: [], isAdmin: true }))).toBe(true);
-  });
+  const step = (o: Partial<Parameters<typeof transitionOffered>[0]> = {}) => ({ action: "Approve", from: "A", to: "B", roles: ["Approver"], may_take: true, ...o });
+  const who = (o = {}) => ({ canWrite: true, ...o });
   it("a step naming no roles needs the right to change this record", () => {
     expect(transitionOffered(step({ roles: [] }), who())).toBe(true);
     expect(transitionOffered(step({ roles: [] }), who({ canWrite: false }))).toBe(false);
   });
   it("the server's may_take false hides the step; true stands for the roles", () => {
     expect(transitionOffered(step({ may_take: false }), who())).toBe(false);
-    expect(transitionOffered(step({ may_take: true }), who({ roles: [] }))).toBe(true);
+    expect(transitionOffered(step({ may_take: true }), who({ canWrite: false }))).toBe(true);
     expect(transitionOffered(step({ roles: [], may_take: true }), who({ canWrite: false }))).toBe(false);
-  });
-  it("an older server sends no may_take: the roles decide", () => {
-    expect(transitionOffered(step({ may_take: undefined }), who({ roles: ["Other"] }))).toBe(false);
   });
 });

@@ -44,7 +44,7 @@ type Row = Record<string, unknown> & { host: string };
 const row = (host: string, over: Record<string, unknown> = {}): Row => ({
   host, kind: "subdomain", target: "shell", primary: false, is_primary: false, status: "verified", verify_token: "", verified_at: "2026-11-14T09:00:00Z",
   checked_at: null, failures: 0, released_at: null, created_at: "2026-11-14T09:00:00Z", leaving_until: null, zone: null, home: null, apps: null, label: null,
-  base_name: null, can: { edit: true, remove: false, make_primary: false }, ...over,
+  base_name: null, can: { edit: true, remove: false, make_primary: false }, waiting: null, record: null, proved_at: null, forward: false, redirecting: null, ...over,
 });
 const main = row(MAIN, { primary: true, is_primary: true });
 const operator = row(OPERATOR, { kind: "operator", zone: "office", can: { edit: false, remove: false, make_primary: true } });
@@ -54,7 +54,7 @@ const listing = (domains: Row[], over: Record<string, unknown> = {}) => ({
   domains, point_to: "edge.ferrum.test", sites: [], base: "ferrum.test", name_form: "{name}--beta.ferrum.test",
   reserved_names: ["accounts", "admin", "api", "hooks", "login", "mail", "www", "xn"],
   homes: [{ id: "crm", name: "CRM", route: "crm" }, { id: "helpdesk", name: "Helpdesk", route: "helpdesk" }],
-  limits: { addresses: 20, paths: 50 }, used: { addresses: domains.filter((d) => !d.released_at).length, paths: 0 }, ...over,
+  limits: { addresses: 20, paths: 50 }, used: { addresses: domains.filter((d) => !d.released_at).length, paths: 0 }, proof: "points", read_only: null, leaving_days: 14, ...over,
 });
 const TAKEN = ["account", "admin", "api", "crm", "data", "helpdesk", "open", "portal", "store"];
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -64,7 +64,7 @@ type Answer = (body: any) => Response | Promise<Response>; // eslint-disable-lin
 /** The screen against `routes` ("METHOD /path" → an answer, or a body to answer 200 with); each change sent is kept. */
 async function open(routes: Record<string, Answer | object>) {
   const sent: { method: string; path: string; body: unknown }[] = [];
-  const all: Record<string, Answer | object> = { "GET /api/admin/usage": { state: "active" }, "GET /api/admin/paths": { paths: [], limit: 50, taken: TAKEN }, ...routes };
+  const all: Record<string, Answer | object> = { "GET /api/admin/paths": { paths: [], limit: 50, taken: TAKEN }, ...routes };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
     const path = new URL(url, "http://x").pathname;
@@ -87,7 +87,7 @@ async function open(routes: Record<string, Answer | object>) {
       </QueryClientProvider>,
     );
   });
-  // Two rounds: an older server's list is read before its account state (useFrozen).
+  // Two rounds: the list, then what its answer starts.
   await settle();
   await settle();
   return { host, sent };
@@ -325,7 +325,7 @@ describe("the addresses of a workspace", () => {
     await menu(host, SALES, "Remove…");
     expect(dialog().textContent).toContain("Remove sales--beta.ferrum.test?");
     expect(dialog().textContent).toContain(
-      "People already signed in on it keep working there until its leaving period ends, and new visitors go to beta.ferrum.test from now on. Then it stops, and for 90 days only sends visitors on.",
+      `People already signed in on it keep working there until ${inDays(14)}, and new visitors go to beta.ferrum.test from now on. Then it stops, and for 90 days only sends visitors on.`,
     );
     expect(sent).toEqual([]);
     await click(button(dialog(), "Remove"));
@@ -437,8 +437,7 @@ describe("the addresses of a workspace", () => {
 
   it("in a closed or restricted workspace shows everything, with nothing to press and one sentence why", async () => {
     const { host } = await open({
-      "GET /api/admin/usage": { state: "restricted" },
-      "GET /api/admin/domains": listing([main, operator, sales, pending]),
+      "GET /api/admin/domains": listing([main, operator, sales, pending], { read_only: "restricted" }),
       "GET /api/admin/paths": { paths: [{ alias: "q4-sales", target: "/crm/", works: true }], limit: 50, taken: TAKEN },
     });
     expect(host.textContent).toContain("While this workspace is closed or restricted, its addresses and short paths keep working and cannot be changed.");
@@ -479,9 +478,6 @@ describe("the addresses of a workspace", () => {
   });
 });
 
-// A server that knows proof by record, forwarding and the rest (docs/api.md, /api/admin/domains and /api/admin/paths).
-const newer = (r: Row): Row => ({ waiting: null, record: null, proved_at: null, forward: false, redirecting: null, ...r });
-const newerListing = (domains: Row[], over: Record<string, unknown> = {}) => listing(domains.map(newer), { proof: "points", read_only: null, leaving_days: 14, ...over });
 const RECORD = { name: `_ferrum.${OWN}`, type: "TXT", value: "ferrum-domain=4f1c2a" };
 const asked = (path: string) => vi.mocked(fetch).mock.calls.some(([url]) => new URL(String(url), "http://x").pathname === path);
 const inDays = (n: number) => formatMoment(Date.now() + n * 86_400_000, { dateStyle: "medium" });
@@ -497,7 +493,7 @@ describe("what a newer server says", () => {
       { host: OWN, answers: true, points: true, waiting: null },
     ];
     const { host, sent } = await open({
-      "GET /api/admin/domains": () => json(200, newerListing([main, own], { proof: "record" })),
+      "GET /api/admin/domains": () => json(200, listing([main, own], { proof: "record" })),
       [`POST /api/admin/domains/${OWN}/check`]: () => {
         const a = answers.shift()!;
         own = a.answers ? { ...own, status: "verified", verified_at: "2026-11-15T09:00:00Z", waiting: null, record: null } : { ...own, waiting: a.waiting };
@@ -534,7 +530,7 @@ describe("what a newer server says", () => {
 
   it("says in the Add dialog that a DNS record is asked for, only where it is", async () => {
     for (const proof of ["record", "points"]) {
-      const { host } = await open({ "GET /api/admin/domains": newerListing([main], { proof }) });
+      const { host } = await open({ "GET /api/admin/domains": listing([main], { proof }) });
       await click(button(host, "Add an address"));
       await click(field("A domain of your own"));
       const said = dialog().textContent!.includes("This installation also asks for a DNS record that proves the domain is yours.");
@@ -547,8 +543,8 @@ describe("what a newer server says", () => {
     let rows = [main];
     const front = { ...row("front--beta.ferrum.test", { base_name: "front", home: "crm", can: { edit: true, remove: true, make_primary: false } }), forward: true };
     const { host, sent } = await open({
-      "GET /api/admin/domains": () => json(200, newerListing(rows)),
-      "POST /api/admin/domains": () => ((rows = [main, front]), json(201, newer(front))),
+      "GET /api/admin/domains": () => json(200, listing(rows)),
+      "POST /api/admin/domains": () => ((rows = [main, front]), json(201, front)),
     });
     await click(button(host, "Add an address"));
     expect(dialog().textContent).toContain("Sending people on means one sign-in, on the main address, and nothing kept separately on this address.");
@@ -572,9 +568,9 @@ describe("what a newer server says", () => {
 
   it("turns an address in use to forwarding: its apps and label go with it, the main one is never offered it, and the date it stops serving shows", async () => {
     const until = "2026-11-29T10:00:00Z";
-    let current = newer(sales);
+    let current = sales;
     const { host, sent } = await open({
-      "GET /api/admin/domains": () => json(200, newerListing([main, current])),
+      "GET /api/admin/domains": () => json(200, listing([main, current])),
       [`PATCH /api/admin/domains/${SALES}`]: (b) => ((current = { ...current, ...b, leaving_until: until, can: { edit: true, remove: true, make_primary: false } }), json(200, current)),
     });
     await click(button(rowOf(host, MAIN), "Change"));
@@ -600,12 +596,12 @@ describe("what a newer server says", () => {
   });
 
   it("takes whether changes are refused from the list, not the account state", async () => {
-    const closed = await open({ "GET /api/admin/usage": { state: "active" }, "GET /api/admin/domains": newerListing([main, sales], { read_only: "closed" }) });
+    const closed = await open({ "GET /api/admin/usage": { state: "active" }, "GET /api/admin/domains": listing([main, sales], { read_only: "closed" }) });
     expect(closed.host.textContent).toContain("While this workspace is closed or restricted, its addresses and short paths keep working and cannot be changed.");
     expect(closed.host.querySelectorAll("button, input, select")).toHaveLength(0);
     expect(asked("/api/admin/usage")).toBe(false);
 
-    const open_ = await open({ "GET /api/admin/usage": { state: "restricted" }, "GET /api/admin/domains": newerListing([main, sales]) });
+    const open_ = await open({ "GET /api/admin/usage": { state: "restricted" }, "GET /api/admin/domains": listing([main, sales]) });
     expect(open_.host.textContent).not.toContain("cannot be changed");
     expect(button(rowOf(open_.host, SALES), "Change")).toBeDefined();
     expect(asked("/api/admin/usage")).toBe(false);
@@ -616,7 +612,7 @@ describe("what a newer server says", () => {
       [14, `People already signed in on it keep working there until ${inDays(14)}, and new visitors go to beta.ferrum.test from now on.`],
       [0, "It stops at once, and for 90 days only sends visitors on to beta.ferrum.test."],
     ] as const) {
-      const { host, sent } = await open({ "GET /api/admin/domains": newerListing([main, sales], { leaving_days: days }) });
+      const { host, sent } = await open({ "GET /api/admin/domains": listing([main, sales], { leaving_days: days }) });
       await menu(host, SALES, "Remove…");
       expect(dialog().textContent).toContain(said);
       expect(dialog().textContent).not.toContain("leaving period");
@@ -627,7 +623,7 @@ describe("what a newer server says", () => {
 
   it("tells a removed address that still sends visitors on from one that no longer answers", async () => {
     const gone = (host: string, redirecting: boolean) => row(host, { kind: "custom", status: "released", released_at: "2026-06-01T10:00:00Z", can: { edit: false, remove: false, make_primary: false }, redirecting });
-    const { host } = await open({ "GET /api/admin/domains": newerListing([main, gone("old.acme.example", true), gone("older.acme.example", false)]) });
+    const { host } = await open({ "GET /api/admin/domains": listing([main, gone("old.acme.example", true), gone("older.acme.example", false)]) });
     expect(rowOf(host, "old.acme.example").textContent).toContain("It only sends visitors on to beta.ferrum.test, for 90 days after it stopped.");
     expect(rowOf(host, "older.acme.example").textContent).toContain("It no longer answers.");
     expect(rowOf(host, "older.acme.example").textContent).not.toContain("sends visitors on");
@@ -635,7 +631,7 @@ describe("what a newer server says", () => {
 
   it("marks the short path the server names by its place in the list, and names the app that took a word", async () => {
     const { host, sent } = await open({
-      "GET /api/admin/domains": newerListing([main]),
+      "GET /api/admin/domains": listing([main]),
       "GET /api/admin/paths": { paths: [{ alias: "helpdesk", target: "/crm/", works: false, taken_by: "helpdesk" }, { alias: "desk", target: "/crm/", works: false, taken_by: null }], limit: 50, taken: TAKEN },
       "PUT /api/admin/paths": () => json(422, { error: "validation_failed", message: "Please correct the highlighted fields", fields: [{ field: "paths", message: "must lead to a page of this workspace", row: ["paths", 1] }] }),
     });
@@ -659,38 +655,6 @@ describe("what a newer server says", () => {
     expect(alias(1).getAttribute("aria-invalid")).toBeNull();
     expect(document.getElementById(alias(3).getAttribute("aria-describedby")!)!.textContent).toBe("must lead to a page of this workspace");
     expect(document.activeElement).toBe(alias(3));
-  });
-});
-
-describe("an older server, which sends none of the newer fields", () => {
-  it("works as before: the list, checking, adding, changing and removing", async () => {
-    const { host, sent } = await open({
-      "GET /api/admin/domains": listing([main, sales, pending]),
-      [`POST /api/admin/domains/${OWN}/check`]: { host: OWN, answers: false },
-    });
-    expect(asked("/api/admin/usage")).toBe(true);
-    const own = rowOf(host, OWN);
-    expect(own.querySelector(".badge")!.textContent).toBe("Waiting for the domain");
-    expect(own.textContent).toContain("Point it at edge.ferrum.test with a CNAME record, then check it.");
-    expect(host.textContent).not.toContain("DNS record");
-    expect(rowOf(host, SALES).textContent).toContain("The workspace, landing on CRM");
-    await click(button(own, "Check now"));
-    expect(toasts(host)).toContain("erp.acme.example does not point here yet");
-
-    await click(button(host, "Add an address"));
-    expect(dialog().textContent).not.toContain("What this address does");
-    await click(field("A domain of your own"));
-    expect(dialog().textContent).not.toContain("DNS record");
-    await click(button(dialog(), "Cancel"));
-    await click(button(rowOf(host, SALES), "Change"));
-    expect(dialog().textContent).not.toContain("What this address does");
-    expect(field("Label")).toBeTruthy();
-    await click(button(dialog(), "Cancel"));
-
-    await menu(host, SALES, "Remove…");
-    expect(dialog().textContent).toContain("People already signed in on it keep working there until its leaving period ends");
-    await click(button(dialog(), "Cancel"));
-    expect(sent.map((s) => s.path)).toEqual([`/api/admin/domains/${OWN}/check`]);
   });
 });
 

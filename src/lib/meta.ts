@@ -79,7 +79,8 @@ export interface ActionDef {
   group?: string | null;
   /** Called by code, never offered as a button. */
   hidden?: boolean;
-  /** Whether the caller may press it at all (permission, rules and roles); absent from an older server. */
+  /** Whether the caller may press it at all (permission, rules and roles): the server's description always says; a
+   *  definition being edited (Customize) has none. */
   may_run?: boolean;
   /** The roles that may press it (an administrator always may); none: whoever may edit the record. */
   roles?: string[];
@@ -307,7 +308,7 @@ const LONG = 5 * 60_000;
 export const useServerInfo = () =>
   useQuery({
     queryKey: ["version"],
-    queryFn: ({ signal }) => api.get<{ version: string; pdf?: boolean; mail?: boolean; mail_attachments?: boolean; mail_html?: boolean; print?: number; packages: { name: string; version: string }[] }>("/api/version", undefined, signal),
+    queryFn: ({ signal }) => api.get<{ version: string; pdf: boolean; mail: boolean; mail_attachments: boolean; print: number; packages: { name: string; version: string }[] }>("/api/version", undefined, signal),
     staleTime: LONG,
   });
 

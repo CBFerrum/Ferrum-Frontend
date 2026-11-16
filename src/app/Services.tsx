@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { t as tr, isolate } from "@ferrum/client";
 import { api } from "../lib/api";
 import { Badge, Button, type Tone } from "../ui/kit";
-import { ListSkeleton, LoadFailed, StatePanel } from "../ui/patterns";
+import { ListSkeleton, LoadFailed } from "../ui/patterns";
 
 /** One finding as the server sends it (server/src/doctor.rs). `level` is `ok`, `warning`, `blocker` or `off` (switched off on purpose); `fix` only when there is something to do. */
 export interface ServiceFinding {
@@ -33,17 +33,9 @@ export const checkName = (check: string): string => (Object.prototype.hasOwnProp
 
 type Q = { data?: { services: ServiceFinding[] }; error: unknown; isLoading: boolean; isFetching?: boolean; refetch: () => unknown };
 
-/** What the server answered, in every state: loading, an older server without the endpoint (404), refused (403), failed, the rows. */
+/** What the server answered, in every state: loading, refused (403), failed, the rows. */
 export function ServicesBody({ q }: { q: Q }) {
   if (q.isLoading) return <ListSkeleton rows={3} />;
-  const status = (q.error as { status?: unknown } | null)?.status;
-  if (status === 404) {
-    return (
-      <StatePanel kind="empty" title={tr("This server does not report its services yet")}>
-        {tr("Update the server to see here whether the office editor and the PDF renderer answer.")}
-      </StatePanel>
-    );
-  }
   if (q.error || !q.data) return <LoadFailed error={q.error} onRetry={() => void q.refetch()} />;
   return (
     <ul className="m-0 list-none p-0" aria-label={tr("Services")}>

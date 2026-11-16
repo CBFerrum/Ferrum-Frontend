@@ -116,17 +116,12 @@ function appName(): string {
   return bootstrap()?.app?.title ?? "Ferrum";
 }
 
-/** Whether a module is the app's own: one of the frame's `modules` when it has them (a workspace's own menu), else one its packages define (from a server that does not say,
- *  one listing entities of its packages or custom ones). */
-export function ownModule(m: Module, meta: MetaIndex): boolean {
+/** Whether a module is the app's own: one of the frame's `modules` when it has them (a workspace's own menu), else one its packages define
+ *  (the server names every module's package). */
+export function ownModule(m: Module): boolean {
   if (frameModules) return frameModules.has(m.name);
   if (m.name === STUDIO) return showsStudio();
-  if (!framePackages) return true;
-  if (m.package) return framePackages.has(m.package);
-  return m.items.some((i) => {
-    const pkg = meta.entities.find((e) => e.name === i)?.package;
-    return !!pkg && (framePackages!.has(pkg) || pkg === "tenant");
-  });
+  return !framePackages || framePackages.has(m.package ?? "");
 }
 
 /** The frame around an app's routes; the shell signs the person in (a 401 asks it to, see setFrameMode). */
@@ -307,7 +302,7 @@ function Sidebar() {
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
     const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
     return [...meta.modules]
-      .filter((m) => ownModule(m, meta))
+      .filter((m) => ownModule(m))
       .sort((a, b) => a.order - b.order)
       .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet, me) }))
       .filter((g) => g.items.length);

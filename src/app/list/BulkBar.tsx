@@ -9,7 +9,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { api, docPath, errorMessage } from "../../lib/api";
 import { shortId } from "../../lib/format";
-import { recordTitle, type Doc, type EntityMeta, type Field, type ListResponse, type Me } from "../../lib/meta";
+import { recordTitle, type Doc, type EntityMeta, type Field, type ListResponse } from "../../lib/meta";
 import { Alert, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, Spinner, toast } from "../../ui/kit";
 import { usePeople } from "../Collab";
 import { FieldControl } from "../widgets";
@@ -66,7 +66,6 @@ interface Run {
 
 export function BulkBar({
   meta,
-  me,
   selected,
   rows,
   total,
@@ -77,7 +76,6 @@ export function BulkBar({
   onSelect,
 }: {
   meta: EntityMeta;
-  me: Me | undefined;
   selected: ReadonlySet<string>;
   /** The rows loaded, in list order. */
   rows: Doc[];
@@ -92,7 +90,7 @@ export function BulkBar({
 }) {
   const E = meta.name;
   const qc = useQueryClient();
-  const actions = bulkActions(meta, me);
+  const actions = bulkActions(meta);
   const [dialog, setDialog] = useState<"edit" | "assign" | "tags" | null>(null);
   const [merging, setMerging] = useState(false);
   const [run, setRun] = useState<Run | null>(null);

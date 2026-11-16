@@ -517,7 +517,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
       ? wf.transitions.filter(
           (t) =>
             t.from === wfState &&
-            transitionOffered(t, { isAdmin: !!me.user.is_admin, roles: me.user.roles, canWrite: allowed("write") }) &&
+            transitionOffered(t, { canWrite: allowed("write") }) &&
             !(t.not_creator && base?.created_by === me.user.id) &&
             (!t.condition || evaluate(t.condition, { doc, user }) !== false),
         )
@@ -624,8 +624,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  // The record type's formats: a server before print formats (§6.4) still has a dialog when it has document templates, and the
-  // e-mail dialog names the default format the attachment prints as.
+  // The record type's formats: the e-mail dialog names the default format the attachment prints as.
   const oldChoices = useQuery({
     queryKey: ["print", "choices", E, null],
     queryFn: ({ signal }) => api.get<Choices>(`/api/documents/choices/${encodeURIComponent(E)}`, undefined, signal),
@@ -633,7 +632,7 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
     staleTime: 30_000,
     retry: false,
   });
-  const printDialog = !isNew && (printLevel >= 1 || !!oldChoices.data?.templates.some((x) => x.output === "page"));
+  const printDialog = !isNew && printLevel >= 1;
   const printDialogRef = useRef(printDialog);
   printDialogRef.current = printDialog;
 
@@ -1012,7 +1011,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                 entityLabel={meta.label}
                 id={String(id)}
                 title={`${meta.label} ${typeof doc.number === "string" ? doc.number : ""}`.trim()}
-                level={printLevel}
                 pdf={pdf}
                 canEmail={server?.mail === true && can(meta.permissions, "export")}
                 canAttach={pdf && server?.mail_attachments === true}
@@ -1032,7 +1030,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               title={`${meta.label} ${typeof doc.number === "string" ? doc.number : ""}`.trim()}
               defaultTo={meta.fields.filter((f) => f.type === "email").map((f) => doc[f.name]).find((v): v is string => typeof v === "string" && v.includes("@"))}
               pdf={pdf && server?.mail_attachments === true}
-              html={server?.mail_html === true}
               doc={doc}
               fields={meta.fields}
               print={emailPrint?.print}

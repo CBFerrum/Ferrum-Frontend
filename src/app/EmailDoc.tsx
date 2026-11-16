@@ -2,7 +2,7 @@
 // kit's RichTextEditor (merge fields filled in from the record), a template to start from, what goes attached, a preview as the
 // recipient sees it, and Send that says "Sent" only once the server has taken the mail. The text is never lost: a draft is kept
 // per record for the session, a message is not discarded without asking, and a failure keeps everything with its reason.
-// The server cleans the HTML again (crates/kernel/src/richtext.rs); a server that does not advertise `mail_html` gets plain text.
+// The server cleans the HTML again (crates/kernel/src/richtext.rs).
 
 import { useQuery } from "@tanstack/react-query";
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
@@ -41,7 +41,6 @@ export function EmailDocDialog({
   title,
   defaultTo,
   pdf,
-  html: richMail,
   doc,
   fields,
   attachmentName,
@@ -53,8 +52,6 @@ export function EmailDocDialog({
   title: string;
   defaultTo?: string;
   pdf: boolean;
-  /** The server takes `message_html` (`GET /api/version` → `mail_html`); else the message goes as plain text. */
-  html?: boolean;
   /** The record and its fields: merge fields and address suggestions. */
   doc?: Doc;
   fields?: MetaField[];
@@ -165,7 +162,7 @@ export function EmailDocDialog({
     if (problems.to || problems.subject) return;
     setStage("sending");
     setFailed([]);
-    const body = richMail ? { message_html: sanitizeRichText(resolved, { mail: true }), message: richTextToPlain(resolved) } : { message: richTextToPlain(resolved) };
+    const body = { message_html: sanitizeRichText(resolved, { mail: true }), message: richTextToPlain(resolved) };
     const left: { to: string; why: string }[] = [];
     // One mail per recipient (the server sends to one address at a time): each is said to have gone only once it has.
     for (const address of recipients) {

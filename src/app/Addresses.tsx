@@ -39,15 +39,14 @@ export interface Address {
   label: string | null;
   base_name: string | null;
   can: { edit: boolean; remove: boolean; make_primary: boolean };
-  // Each of these is left out by an older server, and the screen then shows what it did before.
   /** A domain of its own that does not work yet waits for this: to point here, then (where a record is asked) its DNS record. */
-  waiting?: "domain" | "record" | null;
+  waiting: "domain" | "record" | null;
   /** The DNS record that proves a domain of its own, while it has not proven it. */
-  record?: { name: string; type: string; value: string } | null;
+  record: { name: string; type: string; value: string } | null;
   /** It opens nothing and sends people on to the main address (`home` still says where `/` lands there). */
-  forward?: boolean;
+  forward: boolean;
   /** A removed address: true while it still sends visitors on, false once it no longer answers; null for a live one. */
-  redirecting?: boolean | null;
+  redirecting: boolean | null;
 }
 
 export interface Listing {
@@ -64,11 +63,11 @@ export interface Listing {
   limits: { addresses: number; paths: number };
   used: { addresses: number; paths: number };
   /** What a domain of the workspace's own needs before it works: to point here, or its DNS record as well. */
-  proof?: "points" | "record";
+  proof: "points" | "record";
   /** Why every change is refused now, or null. */
-  read_only?: "closed" | "restricted" | null;
+  read_only: "closed" | "restricted" | null;
   /** How many days a removed address keeps serving the people signed in there (0: it stops at once). */
-  leaving_days?: number;
+  leaving_days: number;
 }
 
 interface PathList {
@@ -114,20 +113,10 @@ export function domainProblem(host: string, base: string | null): string | null 
   return null;
 }
 
-/** Changes are refused (403) while the workspace is closed or restricted: GET /api/admin/domains says so (`read_only`); from an
- *  older server that does not, the account state does. */
+/** Changes are refused (403) while the workspace is closed or restricted: GET /api/admin/domains says so (`read_only`). */
 function useFrozen(q: UseQueryResult<Listing>) {
-  const said = q.data?.read_only !== undefined;
-  const usage = useQuery({
-    queryKey: ["admin", "usage"],
-    queryFn: ({ signal }) => api.get<{ state?: string }>("/api/admin/usage", undefined, signal),
-    retry: false,
-    enabled: !q.isPending && !said,
-  });
-  if (said) return { frozen: !!q.data!.read_only, canChange: !q.data!.read_only };
-  const frozen = usage.data?.state === "restricted" || usage.data?.state === "closed";
-  // Changes are offered once the state is known; when it cannot be read the server's refusal says it.
-  return { frozen, canChange: usage.isError || (usage.isSuccess && !frozen) };
+  if (!q.data) return { frozen: false, canChange: false };
+  return { frozen: !!q.data.read_only, canChange: !q.data.read_only };
 }
 
 export function Addresses() {
@@ -208,16 +197,15 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   const remove = async (d: Address) => {
     const others = rows.some((r) => r.host !== d.host && r.target === d.target && !r.released_at && (r.kind === "subdomain" || r.verified_at));
     const main = mainOf(d.target, d.host);
-    // The day it stops, from the server's leaving period (an older server does not say it: then "its leaving period").
+    // The day it stops, from the server's leaving period.
     const days = data?.leaving_days;
     const date = days ? formatMoment(Date.now() + days * 86_400_000, { dateStyle: "medium" }) : "";
     const message =
       d.kind === "custom" && !d.verified_at ? tr("It has never reached this workspace, so it is removed at once.")
       : days === 0 ? (main ? tr("It stops at once, and for 90 days only sends visitors on to {main}.", { main: isolate(main) }) : others ? tr("It stops at once. Another of the workspace's addresses becomes the main one, and for 90 days this one only sends visitors on to it.") : tr("It stops at once. No other address can take its place, so visitors are told the workspace has moved."))
-      : date ? (main ? tr("People already signed in on it keep working there until {date}, and new visitors go to {main} from now on. Then it stops, and for 90 days only sends visitors on.", { date, main: isolate(main) }) : others ? tr("People already signed in on it keep working there until {date}. Another of the workspace's addresses becomes the main one, and new visitors go there. Then it stops, and for 90 days only sends visitors on.", { date }) : tr("People already signed in on it keep working there until {date}. No other address can take its place, so new visitors are told the workspace has moved.", { date }))
-      : main ? tr("People already signed in on it keep working there until its leaving period ends, and new visitors go to {main} from now on. Then it stops, and for 90 days only sends visitors on.", { main: isolate(main) })
-      : others ? tr("People already signed in on it keep working there until its leaving period ends. Another of the workspace's addresses becomes the main one, and new visitors go there. Then it stops, and for 90 days only sends visitors on.")
-      : tr("People already signed in on it keep working there until its leaving period ends. No other address can take its place, so new visitors are told the workspace has moved.");
+      : main ? tr("People already signed in on it keep working there until {date}, and new visitors go to {main} from now on. Then it stops, and for 90 days only sends visitors on.", { date, main: isolate(main) })
+      : others ? tr("People already signed in on it keep working there until {date}. Another of the workspace's addresses becomes the main one, and new visitors go there. Then it stops, and for 90 days only sends visitors on.", { date })
+      : tr("People already signed in on it keep working there until {date}. No other address can take its place, so new visitors are told the workspace has moved.", { date });
     if (!(await confirmDialog({ title: tr("Remove {host}?", { host: isolate(d.host) }), message, confirmLabel: tr("Remove"), danger: true }))) return;
     await change(d, async () => {
       const r = await api.del<{ host: string; leaving_until: string | null }>(at(d.host));
@@ -464,9 +452,9 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
   const typedName = name.trim().toLowerCase();
   const typedHost = host.trim().replace(/\.$/, "").toLowerCase();
   const shell = target === "shell";
-  // Forwarding, offered where the server knows it (an older one sends no `forward`) on a `shell` address that is not the main one.
+  // Forwarding, offered on a `shell` address that is not the main one.
   const main = listing.domains.find((d) => d.primary && d.target === "shell" && !d.released_at)?.host;
-  const forwardable = shell && listing.domains.some((d) => typeof d.forward === "boolean") && !row?.primary;
+  const forwardable = shell && !row?.primary;
   const forwards = forwardable && forward;
   const choices = shell && listing.homes.length > 0;
   /** What is wrong before asking the server: as it is typed, and on Add for what is still missing. */
@@ -497,7 +485,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     if (shape.home !== (row.home ?? null)) patch.home = shape.home;
     if (sorted(shape.apps) !== sorted(row.apps)) patch.apps = shape.apps;
     if (shape.label !== (row.label ?? null)) patch.label = shape.label;
-    if (forwardable && forwards !== (row.forward ?? false)) patch.forward = forwards;
+    if (forwardable && forwards !== row.forward) patch.forward = forwards;
   }
 
   const submit = async (e: FormEvent) => {

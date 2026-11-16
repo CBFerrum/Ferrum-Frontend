@@ -1,5 +1,5 @@
-// Administration, Services: the level decides the tone (never the text), an unknown check or level reads plainly, and an older
-// server (404), a refusal (403) and a failure are each their own state.
+// Administration, Services: the level decides the tone (never the text), an unknown check or level reads plainly, and a
+// refusal (403) and a failure are each their own state.
 
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -44,13 +44,6 @@ describe("the services card", () => {
     expect(html).toContain("text-muted-foreground");
     expect(html).not.toContain("What to do");
     expect(html).not.toMatch(/badge-(amber|red)/);
-  });
-
-  it("says quietly that a server without the endpoint does not report yet, and does not fail", () => {
-    const html = body({ error: new ApiError(404, "not_found", "Not found") });
-    expect(html).toContain("This server does not report its services yet");
-    expect(html).not.toContain('role="alert"');
-    expect(html).not.toContain("Try again");
   });
 
   it("is the denied state on 403, with no retry and no server text, and a failure with a retry", () => {
