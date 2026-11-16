@@ -5726,6 +5726,17 @@ const words: Record<string, string> = {
   "How {name} may be used is saved": "تم حفظ طريقة استخدام {name}",
   "How {name} may be used": "كيف يمكن استخدام {name}",
   "Only how it may be used changes. Its value and version stay.": "تتغير طريقة استخدامه فقط. وتبقى قيمته وإصداره كما هما.",
+  "Apps using each other": "التطبيقات التي تستخدم بعضها بعضًا",
+  "Uses other apps' operations": "يستخدم عمليات تطبيقات أخرى",
+  "What each app uses": "ما يستخدمه كل تطبيق",
+  "Hooks on other apps' records": "الخطافات على سجلات تطبيقات أخرى",
+  "Calls in the last 30 days": "الاستدعاءات في آخر 30 يومًا",
+  "{app} uses {capability}, built for {range}, installed {installed}": "{app} يستخدم {capability}، المبني للإصدار {range}، والمثبّت {installed}",
+  "{app} uses {capability}, built for {range}, which is not installed here: the call would be refused": "{app} يستخدم {capability}، المبني للإصدار {range}، وهو غير مثبّت هنا: سيُرفض الاستدعاء",
+  "{app} runs {hook} on {entity}": "{app} ينفّذ {hook} على {entity}",
+  "every record": "كل سجل",
+  "{app} called {capability}, {count} in all, latest {when}": "{app} استدعى {capability}، {count} في المجموع، وآخرها {when}",
+  "by {app}": "بواسطة {app}",
 };
 
 export default words;

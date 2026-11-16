@@ -519,9 +519,12 @@ interface Operation {
   events: { id: number; topic: string; state: string; attempts: number; last_error: string | null }[];
   jobs: { id: string; kind: string; status: string; attempts: number; last_error: string | null }[];
   runs: { id: string; solution: string; process: string; status: string }[];
-  effects: { capability: string; status: string }[];
+  effects: { capability: string; status: string; caller: string | null }[];
   deliveries: { id: string; webhook_name: string; topic: string; status: string; attempts: number; last_error: string | null }[];
 }
+
+/** One effect of an operation, with the app whose call it was when it was another app's. */
+export const effectLine = (f: Operation["effects"][number]): string => `${tr("Effect")} ${f.capability}: ${f.status}${f.caller ? `, ${tr("by {app}", { app: f.caller })}` : ""}`;
 
 /** Everything one operation set off, found by the id a person was shown with an error. */
 function FindOperation() {
@@ -545,7 +548,7 @@ function FindOperation() {
         ...found.events.map((e) => `${tr("Event")} ${e.topic}: ${e.state}${e.last_error ? ` (${e.last_error})` : ""}`),
         ...found.jobs.map((j) => `${tr("Job")} ${j.kind}: ${j.status}${j.last_error ? ` (${j.last_error})` : ""}`),
         ...found.runs.map((r) => `${tr("Process")} ${r.solution} ${r.process}: ${r.status}`),
-        ...found.effects.map((f) => `${tr("Effect")} ${f.capability}: ${f.status}`),
+        ...found.effects.map(effectLine),
         ...found.deliveries.map((d) => `${tr("Webhook")} ${d.webhook_name} ${d.topic}: ${d.status}${d.last_error ? ` (${d.last_error})` : ""}`),
       ]
     : [];

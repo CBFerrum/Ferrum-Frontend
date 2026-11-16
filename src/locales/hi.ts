@@ -5727,6 +5727,17 @@ const words: Record<string, string> = {
   "How {name} may be used is saved": "{name} के इस्तेमाल का तरीका सहेजा गया",
   "How {name} may be used": "{name} का इस्तेमाल कैसे हो सकता है",
   "Only how it may be used changes. Its value and version stay.": "केवल इसके इस्तेमाल का तरीका बदलता है। इसका मान और संस्करण वही रहते हैं।",
+  "Apps using each other": "एक-दूसरे का उपयोग करने वाले ऐप",
+  "Uses other apps' operations": "दूसरे ऐप के ऑपरेशन इस्तेमाल करता है",
+  "What each app uses": "हर ऐप क्या इस्तेमाल करता है",
+  "Hooks on other apps' records": "दूसरे ऐप के रिकॉर्ड पर हुक",
+  "Calls in the last 30 days": "पिछले 30 दिनों की कॉल",
+  "{app} uses {capability}, built for {range}, installed {installed}": "{app} {capability} इस्तेमाल करता है, जो {range} के लिए बना है; स्थापित: {installed}",
+  "{app} uses {capability}, built for {range}, which is not installed here: the call would be refused": "{app} {capability} इस्तेमाल करता है, जो {range} के लिए बना है और यहाँ स्थापित नहीं है: कॉल अस्वीकार हो जाएगी",
+  "{app} runs {hook} on {entity}": "{app} {entity} पर {hook} चलाता है",
+  "every record": "हर रिकॉर्ड",
+  "{app} called {capability}, {count} in all, latest {when}": "{app} ने {capability} को कॉल किया, कुल {count}, सबसे हाल की {when}",
+  "by {app}": "{app} द्वारा",
 };
 
 export default words;
