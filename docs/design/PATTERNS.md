@@ -308,11 +308,11 @@ The same home compiles and runs in `src/ui/home.test.tsx`; the gallery's "Work h
 
 These are compositions of what exists, not components.
 
-- **Inbox** (Mail): a list pane and a reader pane in `resizable.tsx` (`ResizablePanelGroup`), `ListSkeleton` while loading, `ReaderSkeleton` for the reader, `StatePanel` for empty, no matches and failed, `SelectionToolbar` for multi-select.
+- **Inbox** (Mail): a list pane and a reader pane, `ListSkeleton` while loading, `ReaderSkeleton` for the reader, `StatePanel` for empty, no matches and failed, `SelectionToolbar` for multi-select.
 - **File browser** (Drive): a `FilterBar`/breadcrumb above a list or table, `TableSkeleton`, `Menu` for row actions, `SelectionToolbar`, `StatePanel kind="empty"` with the upload action.
-- **Editor** (Docs, designers): the document in the main area, `SaveStatus` in the header, `useUnsavedGuard` for leaving, `Dialog` for decisions; a `resizable.tsx` inspector beside it where there is one.
+- **Editor** (Docs, designers): the document in the main area, `SaveStatus` in the header, `useUnsavedGuard` for leaving, `Dialog` for decisions; an inspector beside it where there is one.
 - **Record workspace** (ERP, CRM): `PageHeader`, `Tabs` with `TabPanel`, the record form (`FormSkeleton` while loading), `RecordPeek` and `Related` for context, `Alert` for stale and conflicts.
-- **Builder** (Studio): a canvas, a palette and an inspector in `resizable.tsx`, `SaveStatus`, `Dialog` for publish decisions.
+- **Builder** (Studio): a canvas, a palette and an inspector, `SaveStatus`, `Dialog` for publish decisions.
 - **Analytics** (dashboards, reports): `PageHeader`, `FilterBar`, chart cards, `StatePanel` per card for loading, no data and failed, so one failing card does not blank the page.
 
 ## Not built yet

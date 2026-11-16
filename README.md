@@ -246,7 +246,7 @@ src/
     studio.ts         Studio's API and its saved records
     live.ts           live updates (/ws/live), one socket per tab
     files.ts          uploads, through the API or straight to object storage
-    prefs.ts          per-user preferences; theme.ts the theme in effect and WCAG contrast
+    prefs.ts          per-user preferences; theme.ts WCAG contrast (for the token tests)
     pwa.ts            online state
     *.test.ts         unit tests
   app/

@@ -1,18 +1,4 @@
-// The theme in effect, as the shell's runtime (server/shell/runtime.js) writes it to <html data-theme>
-// from the person's appearance on this device; and WCAG contrast, which the token tests check.
-
-import { useSyncExternalStore } from "react";
-
-function subscribe(l: () => void) {
-  const o = new MutationObserver(l);
-  o.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => o.disconnect();
-}
-
-/** The theme in effect ("system" resolved). */
-export function useResolvedTheme(): "light" | "dark" {
-  return useSyncExternalStore(subscribe, () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light"), () => "light");
-}
+// WCAG contrast between two colours, which the token tests check.
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);

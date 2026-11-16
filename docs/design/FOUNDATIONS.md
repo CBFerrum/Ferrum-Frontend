@@ -116,6 +116,6 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
-- `packages/build/*` and a few primitives (`command.tsx` input at `h-10`, `calendar.tsx` text) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
+- `packages/build/*` and a few primitives (`command.tsx` input at `h-10`) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
 - Legacy CSS that keeps px sizes on purpose: the 44px touch overrides in the narrow-screen block of `src/styles.css`. (`.page-title` is the `text-2xl` role now, and the shell home's greeting uses the same size, weight and tracking.)
 - Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.

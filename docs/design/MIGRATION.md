@@ -93,6 +93,6 @@ New, additive: `EmptyRun` (`src/app/EmptyRun.tsx`), `.read-text`, `.field-empty`
 
 ## Rollback
 
-- Spacing unit: delete the `--spacing: calc(4 / 14 * 1rem);` line in `src/index.css` (Tailwind's default returns). Also restore `--control-h-sm` to `calc(28 / 14 * 1rem)` and `SIDEBAR_WIDTH_ICON` to `"3rem"` in `src/components/ui/sidebar.tsx`.
+- Spacing unit: delete the `--spacing: calc(4 / 14 * 1rem);` line in `src/index.css` (Tailwind's default returns). Also restore `--control-h-sm` to `calc(28 / 14 * 1rem)`.
 - Type scale: delete the `--text-*` lines in the `@theme static` block of `src/index.css`.
 - Palette: revert the colour tokens in `:root` of `src/index.css` (`src/tokens.test.ts` shows which pairs then fail).
