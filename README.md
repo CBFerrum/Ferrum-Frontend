@@ -27,7 +27,7 @@ changes.
 | At a glance | |
 |---|---|
 | 🖥️ Interfaces | The shell's (`apps/shell`): Home at `/`, the store at `/store/`, administration at `/admin/`, the account at `/account/` and the records of any entity at `/data/`; and Studio's (`apps/studio`) at `/studio/` |
-| 📦 Packages | `@ferrum/client`, `@ferrum/kit`, `@ferrum/records`, `@ferrum/bridge`, `@ferrum/calc`, `@ferrum/testing`, `@ferrum/build` |
+| 📦 Packages | `@ferrum/client`, `@ferrum/kit`, `@ferrum/records`, `@ferrum/calc`, `@ferrum/testing`, `@ferrum/build` |
 | 🧩 Built with them | The interfaces of ERP, CRM, Helpdesk, HR, Projects, Point of Sale, Commerce, Mail, Drive and Docs, each in its app's repository |
 | 🧱 Stack | Vite + React + TypeScript (strict), react-router, TanStack Query, Table and Virtual, Tailwind CSS with shadcn/ui on Radix, Recharts, TipTap and Yjs for documents edited together, LiveKit for meetings |
 | 🚢 Ships in | Ferrum's server image, built at the commit its Dockerfile pins (`FRONTEND_REV`) |
@@ -159,7 +159,6 @@ build:apps`), and the packages every interface uses:
 | 🔌 | `@ferrum/client` | The bootstrap, the shell API with fallbacks, requests with the browser's session, errors, formatting, uploads |
 | 🎨 | `@ferrum/kit` | The components and the look: design tokens and React components; `@ferrum/kit/primitives` for the shadcn building blocks |
 | 🗃️ | `@ferrum/records` | Lists, forms, reports, people, comments and the record picker, from any entity's metadata; `@ferrum/records/frame` is the whole records frame, its routes and the modules' home |
-| 🪟 | `@ferrum/bridge` | Frames, slots, intents and screens between apps and their hosts |
 | 🧮 | `@ferrum/calc` | Ferrum's pricing engine in the browser: `crates/calc` built for WebAssembly, the same totals as the server |
 | 🧪 | `@ferrum/testing` | A fake bootstrap and shell for apps' tests |
 | 🛠️ | `@ferrum/build` | Builds, checks and tests an app's own interface (`ui/` in its repository) with this checkout's packages |
@@ -226,7 +225,7 @@ apps/
   shell/              the shell's own interface: Home (/), the store (/store/), administration
                       (/admin/), the account (/account/) and the records of any entity (/data/)
   studio/             Studio (/studio/): reports, charts, number cards, dashboards and spaces
-packages/             the entry points interfaces import: client, kit, records, bridge, calc, testing,
+packages/             the entry points interfaces import: client, kit, records, calc, testing,
                       build (their modules mostly still live in src/ and move in over time)
 scripts/              releases.mjs (dist-apps/index.json for the server), budgets.mjs (size budgets)
 src/
@@ -249,7 +248,6 @@ src/
     live.ts           live updates (/ws/live), one socket per tab
     files.ts          uploads, through the API or straight to object storage
     prefs.ts          per-user preferences; theme.ts theme, contrast and density
-    screens.ts        apps' screens: pages, dashboard widgets, form panels
     pwa.ts            install prompt, online state, a newer version deployed
     *.test.ts         unit tests
   app/
@@ -266,7 +264,7 @@ src/
     FormDesigner.tsx  /customize/:entity/form: tabs, sections and fields by drag and drop (designer/)
     Admin.tsx         users, roles, packages, webhooks, automations, plugins, API keys, single sign-on
     Apps.tsx          installed apps, the store and uploads
-    Screen.tsx        apps' screens in sandboxed frames
+    Screen.tsx        the two pages apps still route to for the screens that are gone
     studio/           Studio's builders: reports, charts, number cards, dashboards, spaces
     recordsRoutes.tsx the records frame's routes (@ferrum/records/frame)
     records.css       phone layouts of lists, forms and child tables

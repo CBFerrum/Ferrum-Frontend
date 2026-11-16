@@ -12,10 +12,8 @@ import { evaluate, evaluateValue } from "../lib/expr";
 import { useLiveEntity, type LiveEvent } from "../lib/live";
 import { formatDateTime, formatValue, humanize, shortId } from "../lib/format";
 import { formSections } from "../lib/formTabs";
-import { useContributions } from "../lib/screens";
 import { t } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { ScreenFrame } from "./Screen";
 import { FOLD_EMPTY_MIN, formDesignerLink, isEmptyValue, runLength } from "../lib/formLayout";
 import { can, DOCSTATUS_LABEL, fieldLabel, fieldState, inWorkflowState, recordTitle, SYSTEM_FIELD_LABELS, useCurrencyPrecision, useEntityMeta, useMe, userScope, type ActionDef, type Doc, type EntityMeta, type Field, type FieldState, type Me, type PermKey, type Workflow, useServerInfo } from "../lib/meta";
 import {
@@ -246,7 +244,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
   const [busy, setBusy] = useState<string | null>(null);
   const [calc, setCalc] = useState<{ pending: boolean; error?: string }>({ pending: false });
   const [tab, setTab] = useState("details");
-  const panels = (useContributions("ui.panel").data ?? []).filter((p) => p.entity === meta.name);
   const [focusError, setFocusError] = useState(0);
   const precisionOf = useCurrencyPrecision();
   const layout = useMemo(() => formSections(meta), [meta]);
@@ -690,7 +687,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
                 { id: "discussion", label: t("Discussion") },
                 { id: "activity", label: t("Activity") },
               ]),
-          ...panels.map((p) => ({ id: `screen:${p.app}/${p.id}`, label: p.title ?? p.id })),
         ]),
   ];
   const active = tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? "details");
@@ -1156,17 +1152,6 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
               <Related meta={meta} id={String(id)} />
             ) : active === "activity" ? (
               <AuditPanel meta={meta} id={String(id)} />
-            ) : active.startsWith("screen:") ? (
-              panels
-                .filter((p) => `screen:${p.app}/${p.id}` === active)
-                .map((p) => (
-                  <ScreenFrame
-                    key={active}
-                    c={p}
-                    slot="ui.panel"
-                    record={{ entity: E, id: String(id), version: typeof doc.version === "number" ? doc.version : undefined }}
-                  />
-                ))
             ) : (
               details(active)
             )}

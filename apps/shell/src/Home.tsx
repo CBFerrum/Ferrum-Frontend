@@ -4,7 +4,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AppIcon } from "@ferrum/kit";
 import { FirstRun } from "@/app/FirstRun";
-import { ScreenWidgets } from "@/app/Screen";
 import { api, errorMessage } from "@/lib/api";
 import { formatMoment } from "@/lib/format";
 import { EmptyState, Spinner } from "@/ui/kit";
@@ -84,7 +83,6 @@ export function ShellHome() {
         </EmptyState>
       )}
       {info.data && <MyWork providers={info.data.work ?? []} apps={info.data.apps} />}
-      <ScreenWidgets />
     </div>
   );
 }

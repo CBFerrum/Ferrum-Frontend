@@ -8,7 +8,6 @@ import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
 import { api, errorMessage, setUnauthorizedHandler } from "../lib/api";
 import { humanize } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MenuPage, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
-import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
 import { useOnline, useOutdated } from "../lib/pwa";
 import {
@@ -299,7 +298,6 @@ function Sidebar() {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
   const me = useMe().data;
-  const pages = useContributions("ui.page").data ?? [];
   // Mail, Chat, Calendar and Meet are Comms' own pages now (their links lead there): shown with
   // Comms, which says itself when hosted mail or meetings are not set up.
   const comms = !!meta?.packages.includes("comms") && !!meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read"));
@@ -354,20 +352,6 @@ function Sidebar() {
           )}
         </details>
       ))}
-      {pages.length > 0 && (
-        <details className="nav-group" open>
-          <summary>
-            <span>{tr("Add-ons")}</span>
-            <Icon name="chevronRight" size={12} />
-          </summary>
-          {pages.map((p) => (
-            <NavLink key={`${p.app}/${p.id}`} to={`/x/${p.app}/${p.id}`} className="nav-link">
-              <NavIcon icon={p.icon} to={`/x/${p.app}/${p.id}`} />
-              <span className="nav-label">{isolate(p.title ?? "")}</span>
-            </NavLink>
-          ))}
-        </details>
-      )}
       {me?.user.is_admin && (
         <details className="nav-group" open>
           <summary>

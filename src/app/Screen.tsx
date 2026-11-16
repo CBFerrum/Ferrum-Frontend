@@ -1,125 +1,27 @@
-// Apps' screens (lib/screens.ts): the sandboxed frame with its bridge, and where screens appear —
-// pages (/x/<app>/<page>), settings pages (/apps/<app>/settings), widgets on Home, panels on forms.
+// The pages apps' screens had (/x/<app>/<page>, /apps/<app>/settings). Screens are gone; these two stay,
+// saying the page is not available, while addresses still lead here: apps' own routes (their records.ts),
+// the shell's store and ERP's frame (recordsRoutes), the server's old-address redirects (legacy.rs) and
+// Drive's link to its settings.
 
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { request } from "../lib/api";
-import { useMe } from "../lib/meta";
-import { SCREEN_PROTOCOL, screenTheme, screenUrl, serveScreen, useContributions, type Contribution, type Slot } from "../lib/screens";
-import { useResolvedTheme } from "../lib/theme";
-import { EmptyState, Spinner, confirmDialog, toast } from "../ui/kit";
-import { t, isolate } from "@ferrum/client";
+import { EmptyState } from "../ui/kit";
+import { t } from "@ferrum/client";
 
-export function ScreenFrame({ c, slot, record, fill }: { c: Contribution; slot: Slot; record?: { entity: string; id: string; version?: number }; fill?: boolean }) {
-  const frame = useRef<HTMLIFrameElement>(null);
-  const bridge = useRef<ReturnType<typeof serveScreen> | null>(null);
-  const navigate = useNavigate();
-  const me = useMe().data;
-  const theme = useResolvedTheme();
-  // Widgets start at their declared height (grid rows of 80 px); any screen may resize itself.
-  const [height, setHeight] = useState(slot === "ui.widget" ? (c.size?.[1] ?? 2) * 80 : 320);
-  // A screen's address named the bearer session's workspace, and no session has one (sessions are the cookie).
-  const tenant: string | null = null;
-  // The bridge reads the latest values when the screen asks, not those of the render that connected it.
-  const latest = useRef({ me, record, navigate });
-  latest.current = { me, record, navigate };
-
-  const connect = () => {
-    const win = frame.current?.contentWindow;
-    if (!win) return;
-    bridge.current?.close();
-    const channel = new MessageChannel();
-    bridge.current = serveScreen(channel.port1, {
-      app: c.app,
-      context: () => {
-        const { me, record } = latest.current;
-        return {
-          app: c.app,
-          slot,
-          user: { email: me?.user.email ?? "", name: me?.user.full_name ?? "" },
-          locale: navigator.language,
-          theme: screenTheme(),
-          record: record && { entity: record.entity, id: record.id },
-        };
-      },
-      call: (r) => request(r.path, { method: r.method, query: r.query, body: r.body, headers: { "x-ferrum-app": c.app } }),
-      navigate: (to) => latest.current.navigate(to),
-      toast,
-      confirm: (o) => confirmDialog(o),
-      resize: (h) => setHeight(h),
-    });
-    // The frame's origin is opaque, so "*": the port goes to whatever document the frame holds, and the
-    // web app's Content Security Policy keeps that document one of ours.
-    win.postMessage({ ferrum: "init", version: SCREEN_PROTOCOL }, "*", [channel.port2]);
-  };
-
-  useEffect(() => () => bridge.current?.close(), []);
-  useEffect(() => bridge.current?.emit("theme", screenTheme()), [theme]);
-  useEffect(() => {
-    if (record) bridge.current?.emit("record", { entity: record.entity, id: record.id, version: record.version });
-  }, [record?.entity, record?.id, record?.version]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!tenant) return null;
+function Unavailable({ title }: { title: string }) {
   return (
-    <iframe
-      ref={frame}
-      className={fill ? "screen-frame fill" : "screen-frame"}
-      title={isolate(c.title ?? c.id)}
-      src={screenUrl(tenant, c)}
-      sandbox="allow-scripts allow-downloads"
-      referrerPolicy="no-referrer"
-      style={fill ? undefined : { height }}
-      onLoad={connect}
-    />
+    <EmptyState title={t("{title} is not available", { title })} icon="apps">
+      <p className="muted">
+        {t("The app that adds it may be disabled or removed.")} <a href="/store/">{t("Open Apps")}</a>
+      </p>
+    </EmptyState>
   );
 }
 
-function ScreenRoute({ slot, title, find }: { slot: Slot; title: string; find: (c: Contribution) => boolean }) {
-  const q = useContributions(slot);
-  if (q.isPending) return <Spinner label={t("Loading")} />;
-  const c = q.data?.find(find);
-  if (!c) {
-    return (
-      <EmptyState title={t("{title} is not available", { title })} icon="apps">
-        <p className="muted">
-          {t("The app that adds it may be disabled or removed.")} <a href="/store/">{t("Open Apps")}</a>
-        </p>
-      </EmptyState>
-    );
-  }
-  return (
-    <div className="screen-page">
-      <ScreenFrame c={c} slot={slot} fill />
-    </div>
-  );
-}
-
-/** `/x/:app/:page`: an app's page. */
+/** `/x/:app/:page`: was an app's screen page. */
 export function ScreenPage() {
-  const { app, page } = useParams();
-  return <ScreenRoute slot="ui.page" title={t("This page")} find={(c) => c.app === app && c.id === page} />;
+  return <Unavailable title={t("This page")} />;
 }
 
-/** `/apps/:app/settings`: an app's own settings page. */
+/** `/apps/:app/settings`: was an app's own settings screen. */
 export function AppSettingsPage() {
-  const { app } = useParams();
-  return <ScreenRoute slot="ui.settings" title={t("This app's settings")} find={(c) => c.app === app} />;
-}
-
-/** Apps' widgets, on a 12-column grid. */
-export function ScreenWidgets() {
-  const widgets = useContributions("ui.widget").data ?? [];
-  if (!widgets.length) return null;
-  return (
-    <div className="screen-widgets">
-      {widgets.map((w) => (
-        <section key={`${w.app}/${w.id}`} className="card" style={{ gridColumn: `span ${w.size?.[0] ?? 4}` }} aria-label={isolate(w.title)}>
-          <div className="card-head">
-            <h2>{isolate(w.title ?? "")}</h2>
-          </div>
-          <ScreenFrame c={w} slot="ui.widget" />
-        </section>
-      ))}
-    </div>
-  );
+  return <Unavailable title={t("This app's settings")} />;
 }
