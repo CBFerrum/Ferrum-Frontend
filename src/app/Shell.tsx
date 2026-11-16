@@ -1,18 +1,16 @@
-// App shell: auth guard, sidebar built from metadata modules, top bar (search, notifications,
-// user menu), keyboard shortcuts (`/` search, Ctrl/Cmd+K command palette).
+// The records frame of an app's interface under the platform's bar: the sidebar built from metadata
+// modules, and on a phone the button that opens it. Search, notifications and the account are the bar's.
 
-import { placed } from "../lib/placed";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from "react";
-import { Navigate, NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { bootstrap, shell, t as tr, isolate } from "@ferrum/client";
-import { api, errorMessage, getSession, setSession, setUnauthorizedHandler } from "../lib/api";
-import { notificationPath } from "../lib/links";
-import { humanize, initials, relativeTime } from "../lib/format";
+import { api, errorMessage, setUnauthorizedHandler } from "../lib/api";
+import { humanize } from "../lib/format";
 import { can, useMe, useMetaIndex, useReports, type EntitySummary, type Me, type MenuPage, type MetaIndex, type Module, type ReportDef } from "../lib/meta";
 import { useContributions } from "../lib/screens";
 import { live } from "../lib/live";
-import { useInstall, useOnline, useOutdated } from "../lib/pwa";
+import { useOnline, useOutdated } from "../lib/pwa";
 import {
   Alert,
   Button,
@@ -22,23 +20,11 @@ import {
   ErrorState,
   Field,
   Icon,
-  Menu,
-  MenuItem,
   PageLoading,
-  Spinner,
   toast,
-  useDismiss,
 } from "../ui/kit";
-import { Kbd } from "@/components/ui/kbd";
-import { FormSkeleton, ListSkeleton, TableSkeleton } from "../ui/patterns";
 import { NavIcon } from "../../packages/kit/src/NavIcon";
 import { dashboardNav, reportNav, solutionNav, spaceNav } from "./studio/nav";
-
-// The person's menu's dialogs load when one is opened: every interface's first script holds this
-// frame (docs/plan/apps-ui.md §12.9).
-const TwoFactorSettings = lazy(() => import("./TwoFactor").then((m) => ({ default: m.TwoFactorSettings })));
-const ApiKeys = lazy(() => import("./Admin").then((m) => ({ default: m.ApiKeys })));
-const CalendarApps = lazy(() => import("./Admin").then((m) => ({ default: m.CalendarApps })));
 
 type NavItem = { label: string; to: string; icon?: string; entity?: string; kind?: string; submittable?: boolean; /** Another app's or route's page: loaded, not routed to. */ href?: string };
 
@@ -72,7 +58,7 @@ export const docsNav: NavItem = { get label() { return tr("Documents"); }, to: "
 export function pageLink(p: MenuPage): NavItem {
   const app = bootstrap()?.app;
   const [route, ...rest] = p.path.split("/");
-  const own = frameMode === "app" && app?.id === p.app && app.entry === route;
+  const own = app?.id === p.app && app.entry === route;
   return own ? { to: `/${rest.join("/")}`, label: p.label, icon: p.icon ?? undefined, kind: "page" } : { to: `/${p.path}`, href: `/${p.path}`, label: p.label, icon: p.icon ?? undefined, kind: "page" };
 }
 
@@ -101,29 +87,24 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
   return links;
 }
 
-/**
- * How the frame is used: `classic`, today's web app at /app/ with its own sign-in and account
- * menu; `app`, an app's interface under the platform's bar (docs/plan/apps-ui.md), whose session
- * is the browser's cookie and whose account menu, launcher and other apps are the bar's.
- */
-export type FrameMode = "classic" | "app";
-let frameMode: FrameMode = "classic";
-/** In app mode, the packages whose modules the sidebar shows (the app's own); null: all. */
+/* The frame is an app's interface under the platform's bar (docs/plan/apps-ui.md), whose session
+ * is the browser's cookie and whose account menu, launcher and other apps are the bar's. */
+/** The packages whose modules the sidebar shows (the app's own); null: all. */
 let framePackages: Set<string> | null = null;
 /** A workspace's own menu's page (`/data/{menu}/`): the modules it shows, and nothing else; null: by packages. */
 let frameModules: Set<string> | null = null;
 /** Whether the frame's routes include the records pages beyond lists, forms and reports
- *  (`recordsRoutes`): Customize, Studio's builders and the POS till. Today's web app has them. */
-let frameHasPages = true;
+ *  (`recordsRoutes`): Customize, Studio's builders and the POS till. */
+let frameHasPages = false;
 
 /** Set once, before the first render. An app's interface runs under the shell, which signs the
- *  person in again when the session ends; `pages` when its routes are `recordsRoutes`. */
-export function setFrameMode(mode: FrameMode, packages?: string[], { pages = false, modules }: { pages?: boolean; modules?: string[] } = {}): void {
-  frameMode = mode;
+ *  person in again when the session ends; `pages` when its routes are `recordsRoutes`. The mode is
+ *  always `"app"` (the only one there is; apps still name it). */
+export function setFrameMode(_mode: "app", packages?: string[], { pages = false, modules }: { pages?: boolean; modules?: string[] } = {}): void {
   framePackages = packages ? new Set(packages) : null;
   frameModules = modules ? new Set(modules) : null;
-  frameHasPages = mode === "classic" || pages;
-  if (mode === "app") setUnauthorizedHandler(() => shell().session.reauthenticate());
+  frameHasPages = pages;
+  setUnauthorizedHandler(() => shell().session.reauthenticate());
 }
 
 /** Whether the frame shows Studio's pages: they are among its routes, and Studio is its app's. */
@@ -131,7 +112,7 @@ function showsStudio(): boolean {
   return frameHasPages && (!framePackages || framePackages.has(STUDIO));
 }
 
-/** The app's name, as the bootstrap gives it (app mode). */
+/** The app's name, as the bootstrap gives it. */
 function appName(): string {
   return bootstrap()?.app?.title ?? "Ferrum";
 }
@@ -149,9 +130,8 @@ export function ownModule(m: Module, meta: MetaIndex): boolean {
   });
 }
 
+/** The frame around an app's routes; the shell signs the person in (a 401 asks it to, see setFrameMode). */
 export function RequireAuth() {
-  const location = useLocation();
-  if (frameMode === "classic" && !getSession()) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return <Shell />;
 }
 
@@ -208,8 +188,6 @@ function Shell() {
   const meta = useMetaIndex();
   useLiveUpdates();
   const [navOpen, setNavOpen] = useState(false);
-  const [palette, setPalette] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setNavOpen(false), [location.pathname]);
   // After a route change the keyboard and a screen reader start in the new page, not where the old page's
@@ -228,55 +206,37 @@ function Shell() {
   }, [navOpen]);
 
   useEffect(() => {
+    // Search and "Go to" are the platform's bar's (⌘K); Escape closes the drawer.
     const onKey = (e: globalThis.KeyboardEvent) => {
-      // Under the platform's bar, search and "Go to" are the bar's (⌘K).
-      if (frameMode !== "classic" && e.key !== "Escape") return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPalette((p) => !p);
-      } else if (e.key === "/" && !isTyping(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      } else if (e.key === "Escape") setNavOpen(false);
+      if (e.key === "Escape") setNavOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const TopBar = frameMode === "classic" ? "header" : "div";
-
   return (
     <div className="shell" data-nav-open={navOpen}>
-      {/* Under the platform's bar, the bar has the skip link, inside its banner. */}
-      {frameMode === "classic" && (
-        <a className="skip-link" href="#main">
-          {tr("Skip to content")}
-        </a>
-      )}
-      {/* Any link closes the drawer, the current page's too (its path does not change). */}
+      {/* The platform's bar has the skip link, inside its banner. Any link closes the drawer, the current page's too
+          (its path does not change). */}
       <aside className="sidebar" aria-label={tr("Sidebar")} onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
         <NavLink to="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
-            {frameMode === "app" ? Array.from(appName())[0] : tr("Fe")}
+            {Array.from(appName())[0]}
           </span>
-          {frameMode === "app" ? isolate(appName()) : tr("Ferrum")}
+          {isolate(appName())}
         </NavLink>
         <Sidebar />
       </aside>
       <div className="scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
       <div className="main-col">
-        {/* Under the platform's bar the frame's own bar only opens the sidebar on a phone, and the platform's
-            bar is the page's one banner. */}
-        <TopBar className={frameMode === "classic" ? "topbar" : "topbar topbar-nav-only"}>
+        {/* The frame's own bar only opens the sidebar on a phone, and the platform's bar is the page's one banner
+            (with notifications and the account). */}
+        <div className="topbar topbar-nav-only">
           <button type="button" className="icon-btn nav-toggle" aria-label={tr("Open navigation")} aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
             <Icon name="menu" size={18} />
           </button>
-          {frameMode === "classic" && <NavPicker mode="inline" inputRef={searchRef} />}
           <span className="spacer" />
-          {/* Under the platform's bar, notifications and the account are the bar's. */}
-          {frameMode === "classic" && <Notifications />}
-          {frameMode === "classic" && <UserMenu />}
-        </TopBar>
+        </div>
         <OfflineBanner />
         <UpdateBanner />
         <main id="main" tabIndex={-1}>
@@ -291,11 +251,6 @@ function Shell() {
           )}
         </main>
       </div>
-      {frameMode === "classic" && (
-        <Dialog open={palette} onClose={() => setPalette(false)} title={tr("Go to…")}>
-          <NavPicker mode="palette" onDone={() => setPalette(false)} />
-        </Dialog>
-      )}
     </div>
   );
 }
@@ -340,11 +295,6 @@ function UpdateBanner() {
   );
 }
 
-function isTyping(t: EventTarget | null): boolean {
-  const el = t as HTMLElement | null;
-  return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-}
-
 function Sidebar() {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
@@ -382,19 +332,7 @@ function Sidebar() {
         <NavIcon to="/" />
         <span className="nav-label">{tr("Home")}</span>
       </NavLink>
-      {/* Under the platform's bar, other apps are in its launcher. */}
-      {frameMode === "classic" && comms && (
-        <NavLink to="/mail" className="nav-link">
-          <NavIcon icon="mail" />
-          <span className="nav-label">{tr("Mail")}</span>
-        </NavLink>
-      )}
-      {frameMode === "classic" && meta?.packages.includes("drive") && (
-        <NavLink to="/drive" className="nav-link">
-          <NavIcon icon="folder" />
-          <span className="nav-label">{tr("Files")}</span>
-        </NavLink>
-      )}
+      {/* Other apps are in the platform's bar's launcher. */}
       {groups.map((g) => (
         <details key={g.name} className="nav-group" open>
           <summary>
@@ -436,32 +374,17 @@ function Sidebar() {
             <span>{tr("Administration")}</span>
             <Icon name="chevronRight" size={12} />
           </summary>
-          {frameMode === "classic" ? (
-            <>
-              <a href="/store/" className="nav-link">
-                <NavIcon icon="layout-grid" />
-                <span className="nav-label">{tr("Apps")}</span>
-              </a>
-              <NavLink to="/admin" className="nav-link">
-                <NavIcon icon="shield" />
-                <span className="nav-label">{tr("Admin")}</span>
-              </NavLink>
-            </>
-          ) : (
-            <>
-              {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
-              <a href="/store/" className="nav-link">
-                <NavIcon icon="layout-grid" />
-                <span className="nav-label">{tr("Apps")}</span>
-                <NavGlyph external />
-              </a>
-              <a href="/admin/" className="nav-link">
-                <NavIcon icon="shield" />
-                <span className="nav-label">{tr("Admin")}</span>
-                <NavGlyph external />
-              </a>
-            </>
-          )}
+          {/* The shell's pages, outside this app's routes: a page load, not a client-side route. */}
+          <a href="/store/" className="nav-link">
+            <NavIcon icon="layout-grid" />
+            <span className="nav-label">{tr("Apps")}</span>
+            <NavGlyph external />
+          </a>
+          <a href="/admin/" className="nav-link">
+            <NavIcon icon="shield" />
+            <span className="nav-label">{tr("Admin")}</span>
+            <NavGlyph external />
+          </a>
           {frameHasPages ? (
             <NavLink to="/customize" className="nav-link">
               <NavIcon icon="sliders-horizontal" />
@@ -485,414 +408,7 @@ function NavGlyph({ external }: { external?: boolean }) {
   return external ? <Icon name="external" size={14} /> : null;
 }
 
-// ── search / command palette ──
-
-interface NavTarget {
-  label: string;
-  hint: string;
-  to: string;
-  /** Another page (the shell's, another app's): loaded rather than routed to. */
-  href?: string;
-}
-
-function useNavTargets(): NavTarget[] {
-  const meta = useMetaIndex().data;
-  const reports = useReports().data?.reports;
-  const me = useMe().data;
-  const meet = !!meta?.packages.includes("comms");
-  return useMemo(() => {
-    if (!meta) return [];
-    const modLabel = new Map(meta.modules.map((m) => [m.name, m.label]));
-    const out: NavTarget[] = [{ label: tr("Home"), hint: tr("Page"), to: "/" }];
-    for (const e of meta.entities) {
-      if (!can(e.permissions, "read") || e.module === STUDIO) continue;
-      const hint = (e.module && modLabel.get(e.module)) || tr("Entity");
-      out.push({ label: e.label_plural, hint, to: `/e/${e.name}` });
-      if (can(e.permissions, "create") && e.kind !== "ledger") out.push({ label: tr("New {label}", { label: e.label }), hint, to: `/e/${e.name}/new` });
-    }
-    for (const r of reportItems(meta, reports)) out.push({ label: r.label, hint: tr("Report"), to: `/r/${r.name}` });
-    if (meta.packages.includes(STUDIO) && showsStudio()) for (const n of studioLinks(me)) out.push({ label: n.label, hint: tr("Studio"), to: n.to });
-    if (frameHasPages && meta.packages.includes(POS) && meta.entities.some((e) => e.name === "PosInvoice" && can(e.permissions, "create")))
-      out.push({ label: tr("POS Register"), hint: tr("POS"), to: registerNav.to });
-    // Under the platform's bar, Comms and Docs are apps of their own, in its launcher.
-    if (frameMode === "classic" && meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read")))
-      out.push({ label: tr("Chat"), hint: tr("Communication"), to: chatNav.to }, { label: tr("Calendar"), hint: tr("Communication"), to: calendarNav.to });
-    if (frameMode === "classic" && meet) out.push({ label: tr("Meet"), hint: tr("Communication"), to: meetNav.to });
-    if (frameMode === "classic" && meta.entities.some((e) => e.name === "DocsTemplate" && can(e.permissions, "read")))
-      out.push({ label: tr("Documents"), hint: tr("Docs"), to: docsNav.to });
-    if (me?.user.is_admin) {
-      if (frameMode === "classic") out.push({ label: tr("Apps"), hint: tr("Page"), to: "", href: "/store/" }, { label: tr("Administration"), hint: tr("Page"), to: "/admin" });
-      else out.push({ label: tr("Apps"), hint: tr("Page"), to: "", href: "/store/" }, { label: tr("Administration"), hint: tr("Page"), to: "", href: "/admin/" });
-      out.push(frameHasPages ? { label: tr("Customize"), hint: tr("Page"), to: "/customize" } : { label: tr("Customize"), hint: tr("Page"), to: "", href: "/data/customize/" });
-    }
-    return out;
-  }, [meta, reports, me, meet]);
-}
-
-function matchTargets(targets: NavTarget[], q: string): NavTarget[] {
-  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const first = terms[0] ?? "";
-  return targets
-    .filter((t) => {
-      const hay = `${t.label} ${t.hint}`.toLowerCase();
-      return terms.every((w) => hay.includes(w));
-    })
-    .sort((a, b) => Number(!a.label.toLowerCase().startsWith(first)) - Number(!b.label.toLowerCase().startsWith(first)));
-}
-
-function NavPicker({ mode, onDone, inputRef }: { mode: "inline" | "palette"; onDone?: () => void; inputRef?: RefObject<HTMLInputElement | null> }) {
-  const targets = useNavTargets();
-  const meta = useMetaIndex().data;
-  const navigate = useNavigate();
-  const entityMatch = useMatch("/e/:entity/*");
-  const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
-  const [open, setOpen] = useState(mode === "palette");
-  const wrap = useRef<HTMLDivElement>(null);
-  const listId = useId();
-  useDismiss(wrap, open && mode === "inline", () => setOpen(false));
-
-  const items = useMemo(() => {
-    const text = q.trim();
-    const list = text ? matchTargets(targets, text) : mode === "palette" ? targets : [];
-    const e = meta?.entities.find((x) => x.name === entityMatch?.params.entity);
-    const search: NavTarget[] =
-      text && e ? [{ label: tr("Search {label_plural} for “{text}”", { label_plural: e.label_plural, text }), hint: tr("Search"), to: `/e/${e.name}?q=${encodeURIComponent(text)}` }] : [];
-    return [...list.slice(0, 59), ...search];
-  }, [q, targets, mode, meta, entityMatch?.params.entity]);
-
-  const go = (t: NavTarget | undefined) => {
-    if (!t) return;
-    if (t.href) return window.location.assign(t.href);
-    navigate(t.to);
-    setQ("");
-    setOpen(mode === "palette");
-    inputRef?.current?.blur();
-    onDone?.();
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      setOpen(true);
-      const n = items.length || 1;
-      setActive((a) => (a + (e.key === "ArrowDown" ? 1 : -1) + n) % n);
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      go(items[active]);
-    } else if (e.key === "Escape" && mode === "inline") {
-      setQ("");
-      setOpen(false);
-      e.currentTarget.blur();
-    }
-  };
-
-  const showList = open && items.length > 0;
-  return (
-    <div className={mode === "inline" ? "search-box" : "palette"} ref={wrap}>
-      {mode === "inline" && <Icon name="search" />}
-      <input
-        ref={inputRef}
-        className="input"
-        role="combobox"
-        aria-label={mode === "inline" ? tr("Search or jump to (press /)") : tr("Go to entity, report or page")}
-        aria-expanded={showList}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={showList ? `${listId}-${active}` : undefined}
-        placeholder={mode === "inline" ? tr("Search or jump to…") : tr("Type to filter…")}
-        value={q}
-        data-autofocus={mode === "palette" || undefined}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setActive(0);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-      />
-      {mode === "inline" && !q && <Kbd className="search-kbd" aria-hidden="true">/</Kbd>}
-      {showList && (
-        <ul className="listbox" role="listbox" id={listId}>
-          {items.map((t, i) => (
-            <li
-              key={`${t.to}|${t.label}`}
-              id={`${listId}-${i}`}
-              role="option"
-              aria-selected={i === active}
-              className="option"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                go(t);
-              }}
-              onMouseEnter={() => setActive(i)}
-            >
-              <span>{isolate(t.label)}</span>
-              <small>{isolate(t.hint)}</small>
-            </li>
-          ))}
-        </ul>
-      )}
-      {mode === "palette" && q.trim() && !items.length && <p className="option-empty">{tr("No matches.")}</p>}
-      {mode === "palette" && (
-        <p className="field-hint" style={{ marginTop: 8 }}>
-          {placed(tr("{p1} {p2} to move, {p3} to open, {p4} to close"), { p1: <span className="kbd">↑</span>, p2: <span className="kbd">↓</span>, p3: <span className="kbd">{tr("Enter")}</span>, p4: <span className="kbd">{tr("Esc")}</span> })}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ── notifications ──
-
-interface Notification {
-  id: string;
-  title: string;
-  body?: string | null;
-  entity?: string | null;
-  record_id?: string | null;
-  read_at?: string | null;
-  created_at: string;
-}
-
-function Notifications() {
-  const qc = useQueryClient();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const panelId = useId();
-  useDismiss(ref, open, () => setOpen(false));
-  const q = useQuery({
-    queryKey: ["notifications"],
-    queryFn: ({ signal }) => api.get<{ notifications: Notification[] }>("/api/notifications", undefined, signal),
-    refetchInterval: 60_000,
-  });
-  const markRead = useMutation({
-    mutationFn: (id: string) => api.post(`/api/notifications/${id}/read`),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
-  });
-  const list = q.data?.notifications ?? [];
-  const unread = list.filter((n) => !n.read_at);
-
-  const openOne = (n: Notification) => {
-    if (!n.read_at) markRead.mutate(n.id);
-    if (n.entity && n.record_id) {
-      setOpen(false);
-      navigate(notificationPath(n.entity, n.record_id));
-    }
-  };
-
-  return (
-    <div className="menu" ref={ref}>
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label={(unread.length ? tr("Notifications, {length} unread", { length: unread.length }) : tr("Notifications"))}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <Icon name="bell" size={18} />
-        {unread.length > 0 && (
-          <span className="count-dot" aria-hidden="true">
-            {unread.length > 99 ? "99+" : unread.length}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="popover" id={panelId} role="region" aria-label={tr("Notifications")}>
-          <div className="card-head">
-            <h2>{tr("Notifications")}</h2>
-            <span className="spacer" />
-            {unread.length > 0 && (
-              <Button size="sm" variant="ghost" onClick={() => Promise.all(unread.map((n) => markRead.mutateAsync(n.id))).catch(() => undefined)}>
-                {tr("Mark all read")}
-              </Button>
-            )}
-          </div>
-          {q.isLoading ? (
-            <div className="state">
-              <Spinner label={tr("Loading notifications")} />
-            </div>
-          ) : q.error ? (
-            <p className="option-empty">{isolate(errorMessage(q.error))}</p>
-          ) : !list.length ? (
-            <p className="option-empty">{tr("You’re all caught up.")}</p>
-          ) : (
-            list.map((n) => (
-              <button key={n.id} type="button" className={`notif ${n.read_at ? "" : "notif-unread"}`} onClick={() => openOne(n)}>
-                <strong>{isolate(n.title)}</strong>
-                {n.body && <div className="muted">{isolate(n.body)}</div>}
-                <div className="faint text-xs">
-                  {isolate(relativeTime(n.created_at))}
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── user menu ──
-
-function UserMenu() {
-  const me = useMe().data;
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [dialog, setDialog] = useState<"password" | "2fa" | "keys" | "cal" | "ai" | null>(null);
-  const comms = !!useMetaIndex().data?.packages.includes("comms");
-  const install = useInstall();
-
-  const signOut = () => {
-    // The browser's session ends too (the cookie, and every token bound to it).
-    void api.post("/api/auth/logout", undefined, { noAuthRedirect: true }).catch(() => {});
-    setSession(null);
-    navigate("/login", { replace: true });
-    qc.clear();
-  };
-  const signOutEverywhere = async () => {
-    const ok = await confirmDialog({
-      title: tr("Sign out everywhere?"),
-      message: tr("This ends every session of your account on all devices, including this one. API keys keep working."),
-      confirmLabel: tr("Sign out everywhere"),
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await api.post("/api/auth/logout_all");
-      toast(tr("Signed out of all sessions"));
-      signOut();
-    } catch (e) {
-      toast(errorMessage(e), "error");
-    }
-  };
-
-  return (
-    <>
-      <Menu ariaLabel={tr("Account menu")} label={<span className="avatar-initial">{initials(me?.user.full_name ?? "")}</span>} buttonClass="icon-btn avatar-btn">
-        {(close) => (
-          <>
-            <div className="menu-head">
-              <strong>{me?.user.full_name ?? "…"}</strong>
-              <div className="muted text-xs">
-                {isolate(me?.user.email ?? "")}
-              </div>
-              <div className="faint text-xs">
-                {tr("Workspace: {tenant}", { tenant: getSession()?.tenant ?? "" })}
-              </div>
-            </div>
-            <MenuItem
-              onSelect={() => {
-                close();
-                navigate("/approvals");
-              }}
-            >
-              {tr("Approvals")}
-            </MenuItem>
-            <MenuItem
-              onSelect={() => {
-                close();
-                setDialog("password");
-              }}
-            >
-              {tr("Change password")}
-            </MenuItem>
-            <MenuItem
-              onSelect={() => {
-                close();
-                setDialog("2fa");
-              }}
-            >
-              {tr("Two-factor sign-in")}
-            </MenuItem>
-            {comms && (
-              <MenuItem
-                onSelect={() => {
-                  close();
-                  setDialog("cal");
-                }}
-              >
-                {tr("Calendar and contacts apps")}
-              </MenuItem>
-            )}
-            <MenuItem
-              onSelect={() => {
-                close();
-                setDialog("keys");
-              }}
-            >
-              {tr("API keys")}
-            </MenuItem>
-            <MenuItem
-              onSelect={() => {
-                close();
-                setDialog("ai");
-              }}
-            >
-              {tr("Connect an AI assistant")}
-            </MenuItem>
-            {install && (
-              <MenuItem
-                onSelect={() => {
-                  close();
-                  void install();
-                }}
-              >
-                {tr("Install the app")}
-              </MenuItem>
-            )}
-            <MenuItem
-              onSelect={() => {
-                close();
-                signOut();
-              }}
-            >
-              {tr("Sign out")}
-            </MenuItem>
-            <MenuItem
-              danger
-              onSelect={() => {
-                close();
-                void signOutEverywhere();
-              }}
-            >
-              {tr("Sign out everywhere")}
-            </MenuItem>
-          </>
-        )}
-      </Menu>
-      <ChangePasswordDialog open={dialog === "password"} onClose={() => setDialog(null)} onSignedOut={signOut} />
-      <Dialog open={dialog === "2fa"} onClose={() => setDialog(null)} title={tr("Two-factor sign-in")}>
-        {dialog === "2fa" && (
-          <Suspense fallback={<FormSkeleton fields={2} />}>
-            <TwoFactorSettings />
-          </Suspense>
-        )}
-      </Dialog>
-      <Dialog open={dialog === "keys"} onClose={() => setDialog(null)} title={tr("Your API keys")} wide>
-        {dialog === "keys" && (
-          <Suspense fallback={<TableSkeleton columns={4} rows={4} />}>
-            <ApiKeys />
-          </Suspense>
-        )}
-      </Dialog>
-      <Dialog open={dialog === "cal"} onClose={() => setDialog(null)} title={tr("Calendar and contacts apps")} wide>
-        {dialog === "cal" && (
-          <Suspense fallback={<ListSkeleton rows={3} />}>
-            <CalendarApps email={me?.user.email ?? ""} />
-          </Suspense>
-        )}
-      </Dialog>
-      <Dialog open={dialog === "ai"} onClose={() => setDialog(null)} title={tr("Connect an AI assistant")}>
-        <ConnectAi />
-      </Dialog>
-    </>
-  );
-}
-
-export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boolean; onClose: () => void; onSignedOut: () => void }) {
+export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -915,23 +431,6 @@ export function ChangePasswordDialog({ open, onClose, onSignedOut }: { open: boo
     setErrors({});
     try {
       await api.post("/api/auth/password", { current_password: current, new_password: next }, { noAuthRedirect: true });
-      // Changing the password revokes every session, this one included: sign in again with it
-      // (with two-factor sign-in, or one still to set up, through the sign-in page).
-      const s = getSession();
-      if (s) {
-        const res = await api.post<{ token?: string; second_factor?: boolean; two_factor_setup?: boolean }>(
-          "/api/auth/login",
-          { tenant: s.tenant, email: s.email, password: next },
-          { noAuthRedirect: true },
-        );
-        if (res.token && !res.two_factor_setup) setSession({ ...s, token: res.token });
-        else {
-          toast(tr("Password changed; sign in again"));
-          close();
-          onSignedOut();
-          return;
-        }
-      }
       toast(tr("Password changed"));
       close();
     } catch (err) {

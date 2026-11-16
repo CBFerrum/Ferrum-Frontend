@@ -67,11 +67,6 @@
   font-size: var(--text-sm);
   line-height: 16px;
 }
-.shell-app-note {
-  margin-top: -6px;
-  color: var(--muted-foreground);
-  font-size: var(--text-xs);
-}
 .shell-account {
   display: grid;
   gap: 16px;

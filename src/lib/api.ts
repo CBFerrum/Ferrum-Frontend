@@ -1,45 +1,12 @@
-// HTTP client for the Ferrum API: bearer auth, uniform error parsing, retries on connection
+// HTTP client for the Ferrum API with the browser's session (the cookie): uniform error parsing, retries on connection
 // errors (the dev server restarts now and then), authenticated downloads and print previews.
 
 export { ApiError, errorMessage, isStale, parseApiError, type FieldError } from "@ferrum/client";
 import { askStepUp, parseApiError, t as tr } from "@ferrum/client";
 
-// ── session ──
+// ── an ended session ──
 
-export interface Session {
-  token: string;
-  tenant: string;
-  email: string;
-}
-
-const SESSION_KEY = "ferrum.session";
-
-function loadSession(): Session | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    const s = raw ? (JSON.parse(raw) as Session) : null;
-    return s && typeof s.token === "string" ? s : null;
-  } catch {
-    return null;
-  }
-}
-
-let session: Session | null = loadSession();
 let onUnauthorized: () => void = () => {};
-
-export function getSession(): Session | null {
-  return session;
-}
-
-export function setSession(s: Session | null): void {
-  session = s;
-  try {
-    if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // storage unavailable (private mode, disabled): the in-memory token still works
-  }
-}
 
 export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn;
@@ -62,8 +29,6 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Do not treat a 401 as an expired session (login, password checks). */
   noAuthRedirect?: boolean;
-  /** A bearer token instead of the session's (the steps of signing in). */
-  token?: string;
   /** Not sent again on a 503 or a dropped connection: a refusal that waits on a person (a closed vault) is shown at once. */
   once?: boolean;
   /** Further request headers (X-Ferrum-App for the calls of an app's screen). */
@@ -99,8 +64,6 @@ const RETRY_STATUS = new Set([429, 502, 503, 504]);
 async function send(path: string, o: RequestOptions = {}): Promise<Response> {
   const method = o.method ?? "GET";
   const headers: Record<string, string> = { accept: "application/json", ...o.headers };
-  const token = o.token ?? session?.token;
-  if (token) headers.authorization = `Bearer ${token}`;
   if (o.ifMatch !== undefined) headers["if-match"] = `"v${o.ifMatch}"`;
   if (o.idempotencyKey) headers["idempotency-key"] = o.idempotencyKey;
   if (o.idempotencyKey && o.idempotencyDigest) headers["idempotency-digest"] = o.idempotencyDigest;
@@ -151,10 +114,7 @@ async function send(path: string, o: RequestOptions = {}): Promise<Response> {
       if ((await askStepUp(data)) && !o.signal?.aborted) continue;
       throw err;
     }
-    if (res.status === 401 && !o.noAuthRedirect) {
-      setSession(null);
-      onUnauthorized();
-    }
+    if (res.status === 401 && !o.noAuthRedirect) onUnauthorized();
     throw err;
   }
 }

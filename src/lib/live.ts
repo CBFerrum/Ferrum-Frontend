@@ -2,7 +2,6 @@
 // to entities; messages carry ids only — data always comes through the API, with its permissions.
 
 import { useEffect } from "react";
-import { getSession } from "./api";
 
 export interface LiveEvent {
   event: string;
@@ -51,7 +50,8 @@ class LiveClient {
   }
 
   private connect() {
-    const token = getSession()?.token;
+    // It signed in with a bearer token in its first message, and no session has one (sessions are the cookie).
+    const token: string | null = null;
     if (!token || !this.running || typeof WebSocket === "undefined") return;
     const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/live`);
     this.ws = ws;

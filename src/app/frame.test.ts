@@ -22,7 +22,8 @@ describe("the records frame's sidebar", () => {
     expect(ownModule(mod("crm", ["Lead", "Customer"], "crm"), meta)).toBe(false);
     // From a server that does not say which package defines a module: by the entities it lists.
     expect(ownModule(mod("crm", ["Lead", "Customer"]), meta)).toBe(true);
-    setFrameMode("classic");
+    // Without packages: every module.
+    setFrameMode("app");
     expect(ownModule(mod("crm", ["Lead"], "crm"), meta)).toBe(true);
   });
 
@@ -33,7 +34,7 @@ describe("the records frame's sidebar", () => {
     expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(true);
     setFrameMode("app", [STUDIO]);
     expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
-    setFrameMode("classic");
+    setFrameMode("app", undefined, { pages: true });
     expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(true);
   });
 });
@@ -47,7 +48,7 @@ describe("a workspace's own menu's page", () => {
     expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
     setFrameMode("app", ["tenant"], { pages: true });
     expect(ownModule(mod("x_other", ["XRisk"], "tenant"), meta)).toBe(true);
-    setFrameMode("classic");
+    setFrameMode("app");
   });
 });
 
@@ -90,7 +91,7 @@ describe("an app's own pages in its module", () => {
 
   it("loads the page from anywhere else, and a module without rows is as it was", () => {
     setBootstrap({ app: { id: "crm", entry: "crm", routes: { crm: "/crm/" } } });
-    setFrameMode("classic");
+    setFrameMode("app", ["crm"]);
     expect(moduleLinks(social, readable, new Map())[0]).toMatchObject({ to: "/social/compose", href: "/social/compose" });
     expect(moduleLinks({ ...social, pages: undefined }, readable, new Map()).map((r) => r.to)).toEqual(["/e/SocialPost", "/e/SocialFeed"]);
     setBootstrap(null);

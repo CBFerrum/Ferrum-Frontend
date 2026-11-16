@@ -235,7 +235,7 @@ src/
   components/ui/      the shadcn building blocks, exported as @ferrum/kit/primitives
   ui/kit.tsx          the design system's small, accessible building blocks
   lib/
-    api.ts            HTTP client: bearer auth, uniform error parsing, retries on connection
+    api.ts            HTTP client: the browser's session, uniform error parsing, retries on connection
                       errors, authenticated downloads, print via blob URL
     meta.ts           metadata types and hooks, field state (visible / required / read-only)
     expr.ts           evaluator for the common CEL subset used by visible_if / required_if /
@@ -253,7 +253,7 @@ src/
     pwa.ts            install prompt, online state, a newer version deployed
     *.test.ts         unit tests
   app/
-    Shell.tsx         auth guard, sidebar from metadata modules, top bar, keyboard shortcuts
+    Shell.tsx         the records frame: sidebar from metadata modules under the platform's bar
     Home.tsx          the modules' quick links and recent documents
     ListView.tsx      /e/:entity: columns, filters, search, sort, saved views, bulk actions, CSV export
     Views.tsx         board, calendar and timeline views of any entity

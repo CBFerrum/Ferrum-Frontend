@@ -20,7 +20,6 @@ interface LauncherEntry {
   icon?: string | null;
   color?: string | null;
   url: string;
-  classic?: boolean;
 }
 
 interface ShellInfo {
@@ -76,7 +75,6 @@ export function ShellHome() {
             <a key={`${a.app}/${a.id}`} className="shell-app" href={a.url} title={isolate(a.description ?? undefined)}>
               <AppIcon name={a.icon} color={tileColour(a)} title={isolate(a.title)} tile size={24} />
               <span className="shell-app-title">{isolate(a.title)}</span>
-              {a.classic && <span className="shell-app-note">{t("classic")}</span>}
             </a>
           ))}
         </nav>

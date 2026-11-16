@@ -99,8 +99,8 @@ export function RecoveryCodes({ codes, onDone, doneLabel = "Done" }: { codes: st
 }
 
 /** Setting up an authenticator app: scan (or type) the secret, confirm with a code, keep the
- *  recovery codes. `token` is a session that may only do this (a workspace that requires it). */
-export function TwoFactorSetup({ token, onEnabled, onCancel }: { token?: string; onEnabled: (res: Enabled) => void; onCancel?: () => void }) {
+ *  recovery codes. */
+export function TwoFactorSetup({ onEnabled, onCancel }: { onEnabled: (res: Enabled) => void; onCancel?: () => void }) {
   const [begun, setBegun] = useState<Begun | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -110,20 +110,20 @@ export function TwoFactorSetup({ token, onEnabled, onCancel }: { token?: string;
 
   useEffect(() => {
     let live = true;
-    request<Begun>("/api/auth/2fa/begin", { method: "POST", token, noAuthRedirect: !!token })
+    request<Begun>("/api/auth/2fa/begin", { method: "POST" })
       .then((b) => live && setBegun(b))
       .catch((e: unknown) => live && setError(errorMessage(e, false)));
     return () => {
       live = false;
     };
-  }, [token]);
+  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setCodeError(undefined);
     try {
-      setDone(await request<Enabled>("/api/auth/2fa/enable", { method: "POST", body: { code: code.trim() }, token, noAuthRedirect: !!token }));
+      setDone(await request<Enabled>("/api/auth/2fa/enable", { method: "POST", body: { code: code.trim() } }));
     } catch (err) {
       setCodeError(fieldError(err, "code"));
     } finally {

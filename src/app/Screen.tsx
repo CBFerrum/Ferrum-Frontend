@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { getSession, request } from "../lib/api";
+import { request } from "../lib/api";
 import { useMe } from "../lib/meta";
 import { SCREEN_PROTOCOL, screenTheme, screenUrl, serveScreen, useContributions, type Contribution, type Slot } from "../lib/screens";
 import { useResolvedTheme } from "../lib/theme";
@@ -18,7 +18,8 @@ export function ScreenFrame({ c, slot, record, fill }: { c: Contribution; slot: 
   const theme = useResolvedTheme();
   // Widgets start at their declared height (grid rows of 80 px); any screen may resize itself.
   const [height, setHeight] = useState(slot === "ui.widget" ? (c.size?.[1] ?? 2) * 80 : 320);
-  const tenant = getSession()?.tenant;
+  // A screen's address named the bearer session's workspace, and no session has one (sessions are the cookie).
+  const tenant: string | null = null;
   // The bridge reads the latest values when the screen asks, not those of the render that connected it.
   const latest = useRef({ me, record, navigate });
   latest.current = { me, record, navigate };

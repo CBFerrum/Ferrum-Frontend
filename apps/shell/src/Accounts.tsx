@@ -254,7 +254,7 @@ function Home() {
           }}
         />
       </Card>
-      <ChangePasswordDialog open={password} onClose={() => setPassword(false)} onSignedOut={() => location.assign("/login")} />
+      <ChangePasswordDialog open={password} onClose={() => setPassword(false)} />
     </main>
   );
 }
