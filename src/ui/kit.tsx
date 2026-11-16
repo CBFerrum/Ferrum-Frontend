@@ -1004,8 +1004,9 @@ export function ConfirmHost() {
       title={isolate(req?.title ?? "")}
       footer={
         <>
-          {!req?.noCancel && <Button onClick={() => close(false)}>{req?.cancelLabel ?? t("Cancel")}</Button>}
-          <Button variant={req?.danger ? "danger" : "primary"} data-autofocus onClick={() => close(true)}>
+          {/* A destructive question starts on Cancel, as an alert dialog does, so Enter does not do it. */}
+          {!req?.noCancel && <Button onClick={() => close(false)} data-autofocus={req?.danger || undefined}>{req?.cancelLabel ?? t("Cancel")}</Button>}
+          <Button variant={req?.danger ? "danger" : "primary"} data-autofocus={!req?.danger || req.noCancel || undefined} onClick={() => close(true)}>
             {req?.confirmLabel ?? t("Confirm")}
           </Button>
         </>
