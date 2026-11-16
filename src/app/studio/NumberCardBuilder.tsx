@@ -382,6 +382,7 @@ function CardEditor({
                 </Section>
                 <Section title={t("Accent colour")} action={rec.color ? <Button type="button" variant="ghost" size="sm" onClick={() => setRec({ color: null })}>{t("Use the theme")}</Button> : undefined}>
                   <Label className="flex w-fit items-center gap-2 text-sm font-normal">
+                    {/* ui-lint-allow raw-color: a colour input holds a colour, and this is the one it starts at */}
                     <input type="color" value={rec.color && /^#[0-9a-f]{6}$/i.test(rec.color) ? rec.color : "#2f5bea"} onChange={(e) => setRec({ color: e.target.value.toLowerCase() }, "color")} className="size-8 cursor-pointer rounded border-0 bg-transparent p-0" aria-label={t("Accent colour")} />
                     {rec.color ? rec.color : t("The theme's colour")}
                   </Label>

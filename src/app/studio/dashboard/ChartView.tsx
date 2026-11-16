@@ -445,6 +445,7 @@ function HeatChart({ data, o, title, onPoint }: { data: ResultLike; o: ChartOpti
   h.weeks.forEach((week, wi) => {
     const firstDay = week.find((c) => c)?.date;
     if (firstDay && (wi === 0 || firstDay.slice(8) <= "07")) {
+      // ui-lint-allow browser-zone: a day with no time, built and written on the same local calendar, so never shifted
       const label = new Intl.DateTimeFormat(o.locale, { month: "short" }).format(new Date(`${firstDay}T00:00:00`));
       if (!months.length || months[months.length - 1].label !== label) months.push({ x: 28 + wi * step, label });
     }

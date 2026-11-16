@@ -5,7 +5,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Dialog } from "./kit";
+import { ConfirmHost, confirmDialog, Dialog } from "./kit";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
@@ -52,5 +52,25 @@ describe("Dialog over another layer", () => {
     press();
     expect(seen).toHaveBeenCalledTimes(1); // a Radix layer is open: the document never hears it
     document.removeEventListener("keydown", seen, true);
+  });
+});
+
+describe("a confirmation", () => {
+  /** The button that has focus once the question is asked; the question is then answered, so the next one starts afresh. */
+  const focused = async (danger: boolean) => {
+    await act(() => root.render(<ConfirmHost />));
+    await act(async () => void confirmDialog({ title: "Delete 3 records?", confirmLabel: "Delete", danger }));
+    await flush();
+    const name = document.activeElement?.textContent;
+    await act(async () => [...host.querySelectorAll("button")].find((b) => b.textContent === "Cancel")!.click());
+    return name;
+  };
+
+  it("puts focus on Cancel when what it confirms is destructive, so Enter does not do it", async () => {
+    expect(await focused(true)).toBe("Cancel");
+  });
+
+  it("puts focus on the confirming button otherwise", async () => {
+    expect(await focused(false)).toBe("Delete");
   });
 });

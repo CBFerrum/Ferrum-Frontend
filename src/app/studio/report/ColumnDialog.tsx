@@ -148,6 +148,7 @@ export function ColumnDialog({ column, setting, defaultLabel, sample, options, o
                   type="color"
                   aria-label={t("Rule {value}: color", { value: i + 1 })}
                   className="h-9 w-11 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-1"
+                  // ui-lint-allow raw-color: a colour input holds a colour, and this is the one it starts at
                   value={/^#[0-9a-f]{6}$/i.test(r.color) ? r.color : "#16a34a"}
                   onChange={(e) => setRules(rules.map((x, j) => (j === i ? { ...x, color: e.target.value.toLowerCase() } : x)))}
                 />

@@ -16,5 +16,5 @@
 4. Keep these states apart, each with its own look and words: loading, first-use empty, no matches, denied, stale, failed. A blank Suspense fallback is not a loading state; shape it like the content.
 5. Status tone comes from a stable state id, never from matching label text (labels are translated and edited).
 6. Never block browser zoom (`user-scalable=no`, `maximum-scale=1`).
-7. Run `npm run lint:ui` here, or `node .../packages/build/cli.mjs lint` in an app's `ui/` (the app's `check` runs it too). It fails when a file has more findings than `ui-lint-baseline.json` allows; when counts drop, run it with `--update-baseline` so the baseline only goes down.
+7. Run `npm run lint:ui` here, or `node .../packages/build/cli.mjs lint` in an app's `ui/` (the app's `check` runs it too). It fails on any finding.
 8. An exception needs a reason, written where it is: `// ui-lint-allow raw-color: a user's own colour is data`.

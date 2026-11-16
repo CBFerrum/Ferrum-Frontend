@@ -265,6 +265,7 @@ export function formatPeriod(from: string | null | undefined, to: string | null 
     const f = new Date(`${from}T00:00:00`);
     const t = new Date(`${to}T00:00:00`);
     try {
+      // ui-lint-allow browser-zone: a day with no time, built and written on the same local calendar, so never shifted
       return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).formatRange(f, t);
     } catch {
       return `${formatDate(from, locale)} – ${formatDate(to, locale)}`;

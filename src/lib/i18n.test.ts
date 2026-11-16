@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ar from "../locales/ar";
 import hi from "../locales/hi";
-import { formatDate, formatDecimal } from "./format";
+import { formatDate, formatDecimal, formatValue } from "./format";
 import { addCatalog, addCatalogs, addNames, applyLocale, arrowStep, baseLanguage, currentLanguage, direction, isolate, setLanguage, t, wordsReady } from "./i18n";
 
 afterEach(() => applyLocale(null, undefined));
@@ -15,6 +15,12 @@ describe("the interface's language", () => {
     expect([t("Save"), t("Try again"), t("Nothing like this in any catalog")]).toEqual(["सहेजें", "फिर से कोशिश करें", "Nothing like this in any catalog"]);
     setLanguage("fr");
     expect(t("Save")).toBe("Save");
+  });
+
+  it("writes a yes-or-no field's value in the page's language", async () => {
+    setLanguage("hi-IN");
+    await wordsReady();
+    expect([formatValue({ type: "check" }, true), formatValue({ type: "check" }, false)]).toEqual(["हाँ", "नहीं"]);
   });
 
   it("fills in names", () => {

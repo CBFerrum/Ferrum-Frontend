@@ -304,8 +304,8 @@ describe("what is checked before saving", () => {
 describe("numbering", () => {
   it("shows the next number it would give", () => {
     expect(nextNumber("MEM-{seq:5}")).toBe("MEM-00001");
-    expect(nextNumber("{YYYY}/{MM}/{DD}-{seq:3}", new Date(2026, 10, 9))).toBe("2026/11/09-001");
-    expect(nextNumber("{YY}{seq:2}", new Date(2026, 0, 1))).toBe("2601");
+    expect(nextNumber("{YYYY}/{MM}/{DD}-{seq:3}", "2026-11-09")).toBe("2026/11/09-001");
+    expect(nextNumber("{YY}{seq:2}", "2026-01-01")).toBe("2601");
   });
 
   it("reads back a template the designer builds", () => {

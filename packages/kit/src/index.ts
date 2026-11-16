@@ -4,12 +4,11 @@
 // primitives (Button, Dialog… as plain building blocks) are `@ferrum/kit/primitives`.
 export * from "../../../src/ui/kit";
 export type { Tone } from "../../../src/ui/kit";
-export { ButtonLink, failureKind, FormSkeleton, HomeSection, HomeSkeleton, PageSplit, PageStack, Progress, type ProgressTone, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid, ListSkeleton, LoadFailed, ReaderSkeleton, SaveStatus, SelectionToolbar, type SelectionAction, StatePanel, TableSkeleton, TargetCard, type SaveState, type StateKind } from "../../../src/ui/patterns";
-export { rovingStep, shortcutLabel, Toolbar, ToolbarButton, ToolbarGroup, ToolbarOverflow, ToolbarSeparator } from "../../../src/ui/toolbar";
-export { isRichTextEmpty, mergeChips, mergeToken, plainToRichText, preloadRichTextEditor, resolveMergeFields, RichText, RichTextEditor, richTextToPlain, sanitizeRichText, type MergeField, type RichTextEditorProps, type SanitizeOptions } from "../../../src/ui/richtext";
-export { gridStep, normalizeColor, rememberColor, SwatchPalette, type Swatch } from "../../../src/ui/swatches";
-export { cn, insideNativeDialog } from "../../../src/lib/utils";
-export { PortalContainer, usePortalContainer } from "../../../src/lib/portal";
+export { ButtonLink, failureKind, FormSkeleton, HomeSection, HomeSkeleton, PageSplit, PageStack, Progress, Queue, QueueGrid, QueueItem, Stat, StatGrid, Tile, TileGrid, ListSkeleton, LoadFailed, ReaderSkeleton, SaveStatus, SelectionToolbar, type SelectionAction, StatePanel, TableSkeleton, TargetCard, type SaveState, type StateKind } from "../../../src/ui/patterns";
+export { Toolbar, ToolbarButton, ToolbarGroup, ToolbarOverflow, ToolbarSeparator } from "../../../src/ui/toolbar";
+export { isRichTextEmpty, plainToRichText, preloadRichTextEditor, resolveMergeFields, RichText, RichTextEditor, richTextToPlain, sanitizeRichText } from "../../../src/ui/richtext";
+export { normalizeColor, rememberColor, SwatchPalette } from "../../../src/ui/swatches";
+export { cn } from "../../../src/lib/utils";
 export { placed } from "../../../src/lib/placed";
 export { Markdown } from "../../../src/app/studio/dashboard/MarkdownView";
 export { goBack, PageHeader, PageHeader as PageHead, useUnsavedGuard } from "../../../src/app/studio/dashboard/ui";
@@ -18,4 +17,4 @@ export { FamilyNav } from "./FamilyNav";
 export { useLiveEntity, useLivePush, type LiveEvent } from "./live";
 export { useCanIntent, useShellTitle } from "./hooks";
 export { NavIcon, navIconsReady } from "./NavIcon";
-export { navIcon, conceptIcon, reportIcon, NAV_ICON_NAMES, type NavIconInput } from "./navIconName";
+export { navIcon } from "./navIconName";

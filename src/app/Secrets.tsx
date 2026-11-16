@@ -11,7 +11,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { currentLanguage, isolate, t as tr } from "@ferrum/client";
 import { ApiError, errorMessage, request, api, type FieldError } from "../lib/api";
-import { formatDate, formatMoment } from "../lib/format";
+import { formatDate, formatMoment, fromZonedInput, toZonedInput } from "../lib/format";
 import { Alert, Button, confirmDialog, Dialog, Field, ScrollRegion, toast } from "../ui/kit";
 import { LoadFailed, StatePanel, TableSkeleton } from "../ui/patterns";
 import type { AppsResponse } from "./Apps";
@@ -250,12 +250,6 @@ export function Secrets() {
   );
 }
 
-/** A time as a datetime-local field holds it, in the page's time zone. */
-const localTime = (iso: string) => {
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-};
-
 /** Adds a secret (`secret` null), makes a new version of one, or changes only its rule (`ruleOnly`: no value asked for). A value the
  *  server made is shown here once; it goes with the dialog. */
 function SecretDialog({
@@ -288,7 +282,7 @@ function SecretDialog({
   const [hosts, setHosts] = useState(was?.hosts.join(", ") ?? "");
   const [sandbox, setSandbox] = useState<Rule["sandbox"]>(was?.sandbox ?? "blank");
   const [overlap, setOverlap] = useState(was?.overlap_secs ?? 0);
-  const [expires, setExpires] = useState(was?.expires_at ? localTime(was.expires_at) : "");
+  const [expires, setExpires] = useState(toZonedInput(was?.expires_at));
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [tries, setTries] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -335,10 +329,10 @@ function SecretDialog({
     hosts: hosts.split(/[\s,]+/).map((h) => h.trim().toLowerCase()).filter(Boolean),
     sandbox,
     overlap_secs: overlap,
-    expires_at: expires ? new Date(expires).toISOString() : null,
+    expires_at: fromZonedInput(expires),
   };
   // Nothing to save while the rule is as it was (the expiry compared as the field shows it).
-  const same = !!was && JSON.stringify({ ...rule, expires_at: expires }) === JSON.stringify({ ...was, expires_at: was.expires_at ? localTime(was.expires_at) : "" });
+  const same = !!was && JSON.stringify({ ...rule, expires_at: expires }) === JSON.stringify({ ...was, expires_at: toZonedInput(was.expires_at) });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

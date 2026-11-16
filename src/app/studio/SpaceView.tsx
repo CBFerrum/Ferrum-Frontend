@@ -144,22 +144,3 @@ export function SpaceView() {
     </div>
   );
 }
-
-/** A space's blocks alone, for a module's home page (see `useModuleSpace`); nothing while it has none. */
-export function SpaceContent({ id }: { id: string }) {
-  const q = useSpace(id);
-  if (q.isLoading) return <SpaceSkeleton />;
-  if (!q.data)
-    return (
-      <Alert>
-        <AlertTitle>{t("This module’s space could not be loaded")}</AlertTitle>
-        <AlertDescription>
-          {isolate(errorMessage(q.error))}{isolate(" ")}
-          <Button variant="link" className="h-auto p-0" onClick={() => void q.refetch()}>
-            {t("Try again")}
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  return q.data.blocks.length ? <SpaceBlocks blocks={q.data.blocks} /> : null;
-}

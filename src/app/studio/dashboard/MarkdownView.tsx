@@ -14,7 +14,7 @@ function InlineView({ nodes }: { nodes: Inline[] }) {
         n.t === "text" ? (
           <span key={i}>{isolate(n.v)}</span>
         ) : n.t === "code" ? (
-          <code key={i} className="rounded bg-muted px-1 font-mono text-[0.9em]">
+          <code key={i} className="rounded bg-muted px-1 font-mono text-xs">
             {isolate(n.v)}
           </code>
         ) : n.t === "a" ? (

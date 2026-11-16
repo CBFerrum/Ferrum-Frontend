@@ -184,6 +184,3 @@ export const captureMinutes = (s: string): number | null => (/^\d{1,2}$/.test(s.
 export const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export const AUTH_KINDS = ["none", "header", "basic", "bearer", "signed", "oauth", "session"] as const;
 export type AuthKind = (typeof AUTH_KINDS)[number];
-
-/** A new description for a new connection: nothing called, one operation to start from. */
-export const newDescription = (): Desc => ({ base: "https://", auth: { type: "none" }, operations: {} });

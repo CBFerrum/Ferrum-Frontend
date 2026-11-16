@@ -19,7 +19,6 @@ export type Value = Path | Path[];
 export type Cel = string;
 
 export const SIZES: Size[] = ["xs", "sm", "md", "lg", "xl", "2xl"];
-export const SIZE_PT: Record<Size, number> = { xs: 8, sm: 9, md: 10.5, lg: 12, xl: 14, "2xl": 18 };
 export const SPACES: Space[] = [0, 1, 2, 3, 4, 6, 8];
 export const LINE_HEIGHTS = [1.2, 1.3, 1.45, 1.6] as const;
 export const FORMAT_AS = ["auto", "text", "multiline", "number", "amount", "percent", "date", "datetime", "words", "check"] as const;

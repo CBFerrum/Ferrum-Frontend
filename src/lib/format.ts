@@ -2,6 +2,9 @@
 // arithmetic on them, we only compare (exactly) and format (Intl.NumberFormat accepts decimal
 // strings and rounds them exactly, without going through binary floating point).
 
+// i18n sets this module's locale (setFormatLocale) and this module asks it for words: each uses the other only when called.
+import { t } from "./i18n";
+
 const DECIMAL = /^[-+]?\d+(\.\d+)?$/;
 
 export function isDecimalString(v: unknown): v is string {
@@ -104,7 +107,7 @@ export function formatValue(
       return s ? `${s}%` : s;
     }
     case "check":
-      return value === true ? "Yes" : value === false ? "No" : String(value);
+      return value === true ? t("Yes") : value === false ? t("No") : String(value);
     case "date":
       return formatDate(value, opts.locale);
     case "datetime":
@@ -122,6 +125,7 @@ export function formatDate(value: unknown, locale?: string): string {
   const m = typeof value === "string" ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
   if (!m) return value == null ? "" : String(value);
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  // ui-lint-allow browser-zone: a day with no time, built and written on the same local calendar, so never shifted
   return new Intl.DateTimeFormat(locale ?? defaultLocale, { dateStyle: "medium" }).format(d);
 }
 

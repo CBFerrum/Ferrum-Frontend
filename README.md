@@ -158,7 +158,7 @@ build:apps`), and the packages every interface uses:
 |---|---|---|
 | 🔌 | `@ferrum/client` | The bootstrap, the shell API with fallbacks, requests with the browser's session, errors, formatting, uploads |
 | 🎨 | `@ferrum/kit` | The components and the look: design tokens and React components; `@ferrum/kit/primitives` for the shadcn building blocks |
-| 🗃️ | `@ferrum/records` | Lists, forms, reports, people, comments and the record picker, from any entity's metadata; `@ferrum/records/frame` is the whole records frame, its routes and the modules' home |
+| 🗃️ | `@ferrum/records` | Lists, forms, reports, people, comments and the record picker, from any entity's metadata; `@ferrum/records/frame` is the whole records frame, its routes, the modules' home and `mountApp`, an app's start |
 | 🧪 | `@ferrum/testing` | A fake bootstrap and shell for apps' tests |
 | 🛠️ | `@ferrum/build` | Builds, checks and tests an app's own interface (`ui/` in its repository) with this checkout's packages |
 
@@ -263,6 +263,7 @@ src/
     Screen.tsx        the two pages apps still route to for the screens that are gone
     studio/           Studio's builders: reports, charts, number cards, dashboards, spaces
     recordsRoutes.tsx the records frame's routes (@ferrum/records/frame)
+    mountApp.tsx      an app's start: its words, its router at its address, the page (@ferrum/records/frame)
     records.css       phone layouts of lists, forms and child tables
 ```
 

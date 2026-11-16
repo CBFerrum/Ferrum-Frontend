@@ -6,11 +6,14 @@ export { RequireAuth, setFrameMode } from "../../../../src/app/Shell";
 // Apps' screens are gone; apps' records.ts still route to these two pages, which say so (app/Screen.tsx).
 export { AppSettingsPage, ScreenPage } from "../../../../src/app/Screen";
 // The whole records frame, as ERP's interface draws it (its repository, ferrum-app-erp): every
-// route (lists, forms, reports, Customize; Studio's and the till's
-// links lead to their interfaces), and the home of an app's modules. A frame with these routes says
+// route (lists, forms, reports, Customize; Studio's links lead to its
+// interface), and the home of an app's modules. A frame with these routes says
 // so: setFrameMode("app", packages, { pages: true }).
 export { recordsRoutes } from "../../../../src/app/recordsRoutes";
 export { Home as ModulesHome } from "../../../../src/app/Home";
 // The router for an app's routes, with the wait page React Router wants on the first load: use it instead of
 // createBrowserRouter(routes, { basename }).
 export { createAppRouter } from "../../../../src/app/appRouter";
+// An app's whole start: its words, that router at its address, and the page under the platform's toasts and
+// confirmations once the words are in. The last call of an app's entry file.
+export { mountApp } from "../../../../src/app/mountApp";

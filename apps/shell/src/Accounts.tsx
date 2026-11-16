@@ -77,6 +77,7 @@ export function initials(name: string): string {
 function Monogram({ name, size = 40 }: { name: string; size?: number }) {
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   return (
+    // ui-lint-allow raw-color: a monogram's colour is computed from the workspace's name
     <span className="acct-mono" style={{ width: size, height: size, background: `oklch(0.6 0.13 ${hue})`, fontSize: Math.round(size * 0.4) }} aria-hidden>
       {isolate(initials(name))}
     </span>

@@ -134,5 +134,3 @@ export function saveBatch(d: MenuDraft, note = "") {
 export function removeBatch(name: string, note = "") {
   return [{ entity: name, op: { op: "remove_module", name } as Raw, ...(note ? { note } : {}) }];
 }
-
-export const menusLink = "/customize/menus";

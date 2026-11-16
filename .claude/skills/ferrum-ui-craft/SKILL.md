@@ -14,7 +14,7 @@ For work on how a Ferrum interface looks, behaves and recovers. It is a developm
 3. Pick an existing task layout from `docs/design/PATTERNS.md`. A new layout needs a reason drawn from the real content.
 4. Use kit exports and semantic tokens. If the kit lacks a pattern, add a governed one to the kit (`src/` here) instead of forking in the app. Compare upstream before changing a locally owned shadcn component.
 5. Build a small vertical slice. Do not change business ownership, permissions, money precision or file formats.
-6. Run `npm run typecheck`, `npm test` and `npm run lint:ui` here; in an app's `ui/`, `cli.mjs typecheck`, `test` and `check`. A lint finding is fixed or explained with `ui-lint-allow <rule>: <reason>`; never raise the baseline to make a run pass.
+6. Run `npm run typecheck`, `npm test` and `npm run lint:ui` here; in an app's `ui/`, `cli.mjs typecheck`, `test` and `check`. A lint finding is fixed or explained with `ui-lint-allow <rule>: <reason>`.
 7. Exercise keyboard, touch, locale (RTL, Arabic, Hindi), narrow viewports, slow network and conflict cases that the task touches. Keep drafts through navigation and failure; never show success before the durable milestone.
 8. Record the result against the matching scenarios in `docs/design/ACCEPTANCE.md`, with evidence. Leave the rest `not_run`.
 

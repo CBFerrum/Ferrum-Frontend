@@ -22,7 +22,7 @@ export function fakeBootstrap(over: Partial<Bootstrap> = {}): Bootstrap {
 }
 
 /** What an app asked the fake shell. */
-export interface ShellCalls {
+interface ShellCalls {
   ready: number;
   titles: string[];
   navigations: unknown[];

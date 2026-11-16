@@ -774,8 +774,8 @@ button.peek-value:hover {
 }
 
 /* The way to the help center from a list or a form. */
-.help-link { display: inline-flex; margin-inline-start: 8px; color: var(--muted, #6b7280); vertical-align: middle; }
-.help-link:hover, .help-link:focus-visible { color: var(--accent, #2563eb); }
+.help-link { display: inline-flex; margin-inline-start: 8px; color: var(--muted-foreground); vertical-align: middle; }
+.help-link:hover, .help-link:focus-visible { color: var(--primary); }
 
 /* A date-and-time box on the workspace's clock, its zone named beside it. */
 .zoned {

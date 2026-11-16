@@ -6,6 +6,7 @@
 // before anything is sent. What the server additionally refuses is shown as it words it.
 
 import { t as tr } from "@ferrum/client";
+import { todayIso } from "./format";
 
 export type Raw = Record<string, unknown>;
 
@@ -140,14 +141,15 @@ const isFieldName = (s: string) => /^[a-z][a-z0-9_]{0,62}$/.test(s);
 
 export const numberingTemplate = (n: { prefix: string; digits: number }) => `${n.prefix}{seq:${n.digits}}`;
 
-/** The next number a template gives (the first one of the series, today's date for date tokens). */
-export function nextNumber(template: string, now: Date = new Date()): string {
-  const two = (n: number) => String(n).padStart(2, "0");
+/** The next number a template gives (the first one of the series, its date tokens today's date on the
+ *  workspace's clock, as the server dates a number). */
+export function nextNumber(template: string, today: string = todayIso()): string {
+  const [y, m, d] = today.split("-");
   return template
-    .replace(/\{YYYY\}/g, String(now.getFullYear()))
-    .replace(/\{YY\}/g, two(now.getFullYear() % 100))
-    .replace(/\{MM\}/g, two(now.getMonth() + 1))
-    .replace(/\{DD\}/g, two(now.getDate()))
+    .replace(/\{YYYY\}/g, y)
+    .replace(/\{YY\}/g, y.slice(2))
+    .replace(/\{MM\}/g, m)
+    .replace(/\{DD\}/g, d)
     .replace(/\{seq:(\d+)\}/g, (_, w: string) => "1".padStart(Number(w), "0"));
 }
 

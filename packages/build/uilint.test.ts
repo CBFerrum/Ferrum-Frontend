@@ -1,8 +1,8 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { baselineText, lintUi, ratchet } from "./uilint.mjs";
+import { describe, expect, it, vi } from "vitest";
+import { lintUi, runLint } from "./uilint.mjs";
 
 function tree(files: Record<string, string>) {
   const dir = mkdtempSync(join(tmpdir(), "ferrum-uilint-"));
@@ -73,6 +73,29 @@ describe("forked-primitive", () => {
   });
 });
 
+describe("browser-zone", () => {
+  const files = {
+    "src/A.tsx": [
+      "const a = new Date(at).toLocaleString();",
+      'const b = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });',
+      'const c = d.toLocaleTimeString([], { hour: "2-digit", timeZone: zone });',
+      'const e = new Intl.DateTimeFormat(locale, { month: "short" }).format(d);',
+      'const f = new Intl.DateTimeFormat("en-US", {',
+      "  timeZone: shownTimeZone(),",
+      "});",
+      "const g = count.toLocaleString();",
+      'const h = d.toLocaleString("en", { weekday: "long" });',
+      "const i = Intl.DateTimeFormat().resolvedOptions().timeZone;",
+    ].join("\n"),
+  };
+  it("flags a date written on the browser's clock in Ferrum-Frontend's sources, not a number or a named zone", () => {
+    expect(rules(files)).toEqual(["browser-zone src/A.tsx:1", "browser-zone src/A.tsx:2", "browser-zone src/A.tsx:4", "browser-zone src/A.tsx:9"]);
+  });
+  it("leaves apps alone until their pages pass it", () => {
+    expect(rules(files, { app: true })).toEqual([]);
+  });
+});
+
 describe("allow comments", () => {
   it("suppress on the same or previous line when they give a reason", () => {
     expect(
@@ -101,20 +124,11 @@ describe("what is skipped", () => {
   });
 });
 
-describe("the ratchet", () => {
-  const f = (file: string, n: number) => Array.from({ length: n }, (_, i) => ({ rule: "raw-color", file, line: i + 1, text: "", hint: "" }));
-  const baseline = { "raw-color": { "a.css": 2 } };
-  it("fails over the baseline, including a file it does not list", () => {
-    expect(ratchet([...f("a.css", 3), ...f("b.css", 1)], baseline).over).toEqual([
-      { rule: "raw-color", file: "a.css", count: 3, allowed: 2 },
-      { rule: "raw-color", file: "b.css", count: 1, allowed: 0 },
-    ]);
-  });
-  it("passes equal, and notes what dropped", () => {
-    expect(ratchet(f("a.css", 2), baseline)).toEqual({ over: [], improved: [] });
-    expect(ratchet(f("a.css", 1), baseline)).toEqual({ over: [], improved: [{ rule: "raw-color", file: "a.css", count: 1, allowed: 2 }] });
-  });
-  it("writes sorted two-space JSON with a trailing newline", () => {
-    expect(baselineText([...f("b.css", 1), ...f("a.css", 2)])).toBe('{\n  "raw-color": {\n    "a.css": 2,\n    "b.css": 1\n  }\n}\n');
+describe("a run", () => {
+  it("fails on any finding and passes without one", () => {
+    const quiet = [vi.spyOn(console, "log").mockImplementation(() => {}), vi.spyOn(console, "error").mockImplementation(() => {})];
+    expect(runLint(tree({ "a.css": "a { color: #fff; }" }))).toBe(1);
+    expect(runLint(tree({ "a.css": "a { color: var(--text); }" }))).toBe(0);
+    for (const s of quiet) s.mockRestore();
   });
 });

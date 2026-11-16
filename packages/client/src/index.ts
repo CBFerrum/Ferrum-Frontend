@@ -8,7 +8,7 @@ import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
-export { cacheName, pendingName, sweep, type OfflineEnv, type OfflineLease } from "./offline";
+export { cacheName, pendingName, sweep, type OfflineEnv } from "./offline";
 import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
   formatDate,
@@ -27,9 +27,8 @@ export {
   todayIso,
   toZonedInput,
   zoneLabel,
-  type FormatOptions,
 } from "../../../src/lib/format";
-export { addCatalogs, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
+export { addCatalogs, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady } from "../../../src/lib/i18n";
 import { applyLocale, namesFrom } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
@@ -158,14 +157,14 @@ export function isPublicPage(): boolean {
 
 // ───────────────────────── the shell ─────────────────────────
 
-export interface IntentOutcome<T = unknown> {
+interface IntentOutcome<T = unknown> {
   status: "done" | "cancelled";
   result?: T;
   app?: string;
 }
 
 /** An upload the shell carries on with across page loads (§12.6). */
-export interface Upload {
+interface Upload {
   id: string;
   app: string | null;
   label: string;
@@ -189,7 +188,7 @@ export interface UploadRequest {
   label?: string;
 }
 
-export interface FamilyEntry {
+interface FamilyEntry {
   id: string;
   app: string;
   title: string;
@@ -205,7 +204,7 @@ export interface Family {
   entries: FamilyEntry[];
 }
 
-export interface SidePanel {
+interface SidePanel {
   id: string;
   app: string;
   title: string;
@@ -222,7 +221,7 @@ export interface IntentRequest {
 }
 
 /** Starts an intent; on the handler's page, `request`, `done` and `cancel` answer one (§11.3). */
-export interface Intent {
+interface Intent {
   <T = unknown>(request: { action: string; type: string; data?: unknown }): Promise<IntentOutcome<T>>;
   request(): Promise<IntentRequest>;
   done(result?: unknown): void;
@@ -241,7 +240,7 @@ export interface LauncherEntry {
 }
 
 /** A transfer an app runs itself, shown in the bar's upload tray (`uploads.track`). Calls after `done()` or `fail()` do nothing. */
-export interface TrackedUpload {
+interface TrackedUpload {
   id: string;
   /** Bytes sent so far. */
   progress(bytes: number): void;
@@ -459,7 +458,7 @@ export function setStepUpHandler(fn: StepUpHandler | null): void {
 
 /** Asks once however many requests were refused: they all wait for the same answer, asked with the first refusal (the server's
  *  body: why, and the ways the person has to confirm it is them). True when the person proved themselves. */
-export function askStepUp(refusal?: unknown): Promise<boolean> {
+function askStepUp(refusal?: unknown): Promise<boolean> {
   if (!stepUpHandler) return Promise.resolve(false);
   stepUpAsking ??= stepUpHandler(refusal)
     .catch(() => false)

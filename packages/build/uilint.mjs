@@ -2,13 +2,12 @@
 // that drift silently, over an interface's sources (.ts, .tsx, .css, .html).
 //
 // Rules: raw-color, small-text, arbitrary-text-size, blank-fallback, zoom-lock, forked-primitive
-// (apps only), allow-reason. A finding is suppressed by `ui-lint-allow <rule>: <reason>` in a
-// comment on the same or the previous line; an allow without a reason is a finding itself.
-//
-// A baseline (ui-lint-baseline.json: { rule: { file: count } }) is a ratchet: a file may not have
-// more findings of a rule than its baseline says, and the baseline only goes down.
+// (apps only), browser-zone (not apps yet: their own pages still write dates on the browser's clock),
+// allow-reason. A finding is suppressed by `ui-lint-allow <rule>: <reason>` in a
+// comment on the same or the previous line; an allow without a reason is a finding itself. Any
+// finding fails the run.
 
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const HINTS = {
@@ -18,6 +17,7 @@ const HINTS = {
   "blank-fallback": "show a content-shaped loading state",
   "zoom-lock": "do not block browser zoom: remove user-scalable=no and maximum-scale=1",
   "forked-primitive": "compose from @ferrum/kit or @ferrum/kit/primitives; add a governed pattern to the kit instead of forking one",
+  "browser-zone": "show a moment on the workspace's clock: formatMoment or formatDateTime, or pass timeZone: shownTimeZone()",
   "allow-reason": "write why: ui-lint-allow <rule>: <reason>",
 };
 
@@ -26,6 +26,8 @@ const SKIP_FILE = /\.(test|spec|gen|generated)\.|\.d\.ts$/;
 const COLOR_CONTEXT = /color|colour|fill|stroke|background|border|shadow|outline|gradient|\bstop\b|\b(?:bg|text|from|via|to|ring|decoration|accent|caret|border|shadow|outline|fill|stroke)-\[/i;
 const HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z_-])/gi;
 const FUNC_COLOR = /\b(?:rgba?|hsla?|oklch)\(\s*[\d.]/g;
+// A date written in the browser's zone: a line naming no timeZone that formats one.
+const BROWSER_ZONE = /\.toLocale(?:Date|Time)String\(|\bIntl\.DateTimeFormat\(\s*[^)\s]|\bDate\b.*\.toLocaleString\(|\.toLocaleString\(.*\b(?:weekday|month|hour|minute|dateStyle|timeStyle)\s*:/;
 
 function walk(dir, root, out) {
   for (const name of readdirSync(dir).sort()) {
@@ -78,6 +80,8 @@ function scan(file, text, app) {
     if (/fallback=\{\s*(null|<span\s*\/>|<span>\s*<\/span>|<div\s*\/>|<>\s*<\/>)\s*\}/.test(raw)) add("blank-fallback", i, raw);
     if (!css && (html || file.endsWith(".tsx")) && /user-scalable\s*=\s*(no|0)\b|maximum-scale\s*=\s*1(\.0)?(?![\d.])/.test(raw)) add("zoom-lock", i, raw);
     if (app && !css && !html && /(?:\bfrom\s+|^\s*import\s+|\bimport\(\s*)["'](radix-ui|@radix-ui\/[^"']+|class-variance-authority)["']/.test(raw)) add("forked-primitive", i, raw);
+    // An options object opened at the line's end may name its zone on the next line.
+    if (!app && !css && !html && BROWSER_ZONE.test(raw) && !/\btimeZone\b/.test(/[{(]\s*$/.test(raw) ? `${raw}${lines[i + 1] ?? ""}` : raw)) add("browser-zone", i, raw);
   });
   return { found, lines };
 }
@@ -110,65 +114,17 @@ export function lintUi(root, options = {}) {
   return out;
 }
 
-/** { rule: { file: count } } */
-export function counts(findings) {
-  const c = {};
-  for (const f of findings) {
-    c[f.rule] ??= {};
-    c[f.rule][f.file] = (c[f.rule][f.file] ?? 0) + 1;
-  }
-  return c;
-}
-
-/** over: files with more findings of a rule than the baseline allows; improved: fewer. */
-export function ratchet(findings, baseline) {
-  const now = counts(findings);
-  const over = [];
-  const improved = [];
-  for (const rule of new Set([...Object.keys(now), ...Object.keys(baseline)])) {
-    for (const file of new Set([...Object.keys(now[rule] ?? {}), ...Object.keys(baseline[rule] ?? {})])) {
-      const count = now[rule]?.[file] ?? 0;
-      const allowed = baseline[rule]?.[file] ?? 0;
-      if (count > allowed) over.push({ rule, file, count, allowed });
-      else if (count < allowed) improved.push({ rule, file, count, allowed });
-    }
-  }
-  return { over, improved };
-}
-
-const sorted = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k] && typeof o[k] === "object" ? sorted(o[k]) : o[k]]));
-export const baselineText = (findings) => `${JSON.stringify(sorted(counts(findings)), null, 2)}\n`;
-
-/** The shared command: lint `root`, then update, enforce or just report the baseline.
- *  Returns the process exit code. options: { dirs, app, update, label (message prefix), command (how the author runs it) }. */
-export function runLint(root, baselinePath, options = {}) {
+/** The shared command: lint `root` and list what it finds. Returns the process exit code: 1 on any
+ *  finding. options: { dirs, app, label (message prefix) }. */
+export function runLint(root, options = {}) {
   const prefix = options.label ?? "ferrum-ui:";
   const findings = lintUi(root, options);
-  const total = {};
-  for (const f of findings) total[f.rule] = (total[f.rule] ?? 0) + 1;
-  const summary = Object.keys(total).sort().map((r) => `${r} ${total[r]}`).join(", ") || "no findings";
-  if (options.update) {
-    writeFileSync(baselinePath, baselineText(findings));
-    console.log(`${prefix} wrote ${baselinePath} (${summary})`);
+  if (!findings.length) {
+    console.log(`${prefix} interface lint: no findings`);
     return 0;
   }
-  if (!existsSync(baselinePath)) {
-    for (const f of findings.slice(0, 40)) console.log(`  ${f.file}:${f.line}  ${f.rule}  ${f.text}`);
-    if (findings.length > 40) console.log(`  … and ${findings.length - 40} more`);
-    console.log(`${prefix} interface lint: ${summary}. To adopt the ratchet (CI then fails on new findings): ${options.command ?? "lint"} --update-baseline`);
-    return 0;
-  }
-  const { over, improved } = ratchet(findings, JSON.parse(readFileSync(baselinePath, "utf8")));
-  if (over.length) {
-    console.error(`${prefix} interface lint is over its baseline:`);
-    for (const o of over) {
-      console.error(`  ${o.file}: ${o.rule} ${o.count} (baseline ${o.allowed})`);
-      for (const f of findings.filter((x) => x.rule === o.rule && x.file === o.file).slice(0, 8)) console.error(`    ${f.file}:${f.line}  ${f.text}\n      ${f.hint}`);
-    }
-    console.error(`${prefix} fix them, or explain one with a comment: ui-lint-allow <rule>: <reason>`);
-    return 1;
-  }
-  console.log(`${prefix} interface lint within its baseline (${summary})`);
-  if (improved.length) console.log(`${prefix} ${improved.length} file/rule counts dropped below the baseline: run ${options.command ?? "lint"} --update-baseline to lower it`);
-  return 0;
+  console.error(`${prefix} interface lint:`);
+  for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.text}\n    ${f.hint}`);
+  console.error(`${prefix} fix them, or explain one with a comment: ui-lint-allow <rule>: <reason>`);
+  return 1;
 }

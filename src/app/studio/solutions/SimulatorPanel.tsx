@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, fromZonedInput, toZonedInput } from "@/lib/format";
 import { defaultScenario, describe, outline, simulate, type Scenario, type Simulation, type Source } from "@/lib/solutions";
 import { Alert } from "@/ui/kit";
 import { Field } from "./field";
@@ -71,7 +71,7 @@ export function SimulatorPanel({ source, parsed }: { source: string; parsed?: So
           </Field>
         )}
         <Field label={tr("Starts at")} hint={tr("The virtual clock moves only to the next thing that happens.")}>
-          <Input type="datetime-local" value={scenario.start.slice(0, 16)} onChange={(e) => update({ ...scenario, start: new Date(e.target.value).toISOString() })} />
+          <Input type="datetime-local" value={toZonedInput(scenario.start)} onChange={(e) => update({ ...scenario, start: fromZonedInput(e.target.value) ?? scenario.start })} />
         </Field>
         <Field label={tr("The triggering record (JSON)")}>
           <Input

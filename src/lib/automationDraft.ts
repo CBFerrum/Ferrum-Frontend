@@ -530,7 +530,7 @@ const condition = (field: string, op: string, value: unknown): string => {
 };
 
 /** The weekday's name in the page's language (1 = Monday). */
-export const weekday = (n: number) => new Intl.DateTimeFormat(currentLanguage(), { weekday: "long" }).format(new Date(2024, 0, n));
+export const weekday = (n: number) => new Intl.DateTimeFormat(currentLanguage(), { weekday: "long" }).format(new Date(2024, 0, n)); // ui-lint-allow browser-zone: a weekday's name, not a moment
 
 /** One plain sentence that reads a schedule back, or null for a trigger that is not a schedule the editor shows. */
 export function readBack(t: Trigger, c: CheckContext): string | null {
