@@ -6,20 +6,8 @@
 export { ListView } from "../../../src/app/ListView";
 export { FormView } from "../../../src/app/FormView";
 export { ReportView } from "../../../src/app/ReportView";
-export {
-  can,
-  recordTitle,
-  useEntityMeta,
-  useMe,
-  useMetaIndex,
-  type Doc,
-  type EntityMeta,
-  type EntitySummary,
-  type Me,
-  type MetaIndex,
-  type Perms,
-} from "../../../src/lib/meta";
-export { CollabPanel, Composer, mentionedIn, usePeople, type Person } from "../../../src/app/Collab";
+export { can, useEntityMeta, useMe, useMetaIndex, type Doc, type EntityMeta, type Me, type Perms } from "../../../src/lib/meta";
+export { CollabPanel, Composer, usePeople, type Person } from "../../../src/app/Collab";
 export { LinkInput, LinkTitle, useLinkTitle } from "../../../src/app/widgets";
 export { RecordFields, useRecord } from "../../../src/app/list/RecordPeek";
 export { Related } from "../../../src/app/list/Related";
