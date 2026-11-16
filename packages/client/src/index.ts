@@ -8,10 +8,9 @@ import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
-export { cacheName, currentLease, mayKeep, pendingName, stale, sweep, type OfflineEnv, type OfflineLease } from "./offline";
+export { cacheName, pendingName, sweep, type OfflineEnv, type OfflineLease } from "./offline";
 import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
-  compareDecimal,
   formatDate,
   formatDateTime,
   formatDecimal,
@@ -20,8 +19,6 @@ export {
   fromZonedInput,
   humanize,
   initials,
-  isDecimalString,
-  NUMERIC_TYPES,
   relativeTime,
   setDisplayZone,
   setTimeZone,
@@ -32,7 +29,7 @@ export {
   zoneLabel,
   type FormatOptions,
 } from "../../../src/lib/format";
-export { addCatalog, addCatalogs, addNames, applyLocale, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
+export { addCatalogs, currentLanguage, direction, isolate, LANGUAGES, t, wordsReady, type Direction } from "../../../src/lib/i18n";
 import { applyLocale, namesFrom } from "../../../src/lib/i18n";
 import { setDisplayZone, setTimeZone } from "../../../src/lib/format";
 
@@ -61,7 +58,7 @@ export interface Bootstrap {
   /** `hooks`: the origin outside callers (webhooks, payment and connector callbacks) use for the
    *  workspace's endpoints, which no change of its addresses moves; `accounts`: the accounts host
    *  (shapes B and C), where the person signs in and finds their other workspaces. */
-  api: { base: string; live: string | null; auth: "cookie" | "bearer" | "none"; hooks?: string | null; accounts?: string | null };
+  api: { base: string; live: string | null; auth: "cookie" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
   /** `words`: the workspace's own words in the language (Admin, Interface words), over the catalogs. */
   locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null };
@@ -429,6 +426,8 @@ export interface RequestOptions {
   idempotencyDigest?: string;
   /** A 401 is this call's answer (a wrong password), not an ended session: the shell is not asked to sign in again. */
   noAuthRedirect?: boolean;
+  /** Not sent again on a 503 or a dropped connection: a refusal that waits on a person (a closed vault) is shown at once. */
+  once?: boolean;
 }
 
 export function queryString(query?: Record<string, QueryValue>): string {
@@ -470,11 +469,17 @@ export function askStepUp(refusal?: unknown): Promise<boolean> {
   return stepUpAsking;
 }
 
+/** What the server's refusal said, whole (ApiError keeps only the parts every screen uses). */
+const bodies = new WeakMap<object, unknown>();
+export const errorBody = (e: unknown): Record<string, unknown> | null => {
+  const b = typeof e === "object" && e ? bodies.get(e) : null;
+  return b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : null;
+};
+
 /**
  * A request to the API with the browser's session (the cookie). Retries reads (and writes with
- * an idempotency key) on connection errors and on 429, 502–504 (with `Retry-After`); waits while
- * the app is being upgraded (503 `app_upgrading`); asks the shell to sign in again on 401; tells
- * the shell on 409 `ui_outdated`; on 403 `step_up` asks the person to confirm it is them (one dialog for
+ * an idempotency key) on connection errors and on 429, 502–504 (with `Retry-After`); asks the shell
+ * to sign in again on 401; on 403 `step_up` asks the person to confirm it is them (one dialog for
  * all the refused requests) and sends the request again once.
  */
 async function send(path: string, init: RequestOptions = {}): Promise<Response> {
@@ -492,7 +497,7 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
     body = JSON.stringify(init.body);
   }
   const url = path + queryString(init.query);
-  const retryable = method === "GET" || !!init.idempotencyKey;
+  const retryable = (method === "GET" || !!init.idempotencyKey) && !init.once;
   let askedAgain = false;
   for (let attempt = 0; ; attempt++) {
     let res: Response;
@@ -505,14 +510,18 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
       continue;
     }
     if (res.ok) return res;
-    const data: unknown = await res.json().catch(() => null);
+    // A refusal that is not JSON (the framework's own, for a body it could not read) is shown in its own words, as long as it is words.
+    const raw = await res.text().catch(() => "");
+    let data: unknown = null;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (res.status < 500 && raw.trim() && raw.length <= 500 && !raw.trimStart().startsWith("<")) data = { message: raw.trim() };
+    }
     const err = parseApiError(res.status, data);
+    bodies.set(err, data);
     const after = Number(res.headers.get("retry-after"));
     const wait = Number.isFinite(after) && after > 0 ? Math.min(after, 30) * 1000 : 500 * 2 ** attempt;
-    if (res.status === 503 && err.code === "app_upgrading" && attempt < 10) {
-      await sleep(wait, init.signal);
-      continue;
-    }
     if (retryable && attempt < 4 && [429, 502, 503, 504].includes(res.status)) {
       await sleep(wait, init.signal);
       continue;
@@ -525,11 +534,12 @@ async function send(path: string, init: RequestOptions = {}): Promise<Response> 
       throw err;
     }
     if (res.status === 401 && !init.noAuthRedirect && !isPublicPage()) shell().session.reauthenticate();
-    // The runtime checks the version when the page becomes visible: the same check, now.
-    if (res.status === 409 && err.code === "ui_outdated" && typeof document !== "undefined") document.dispatchEvent(new Event("visibilitychange"));
     throw err;
   }
 }
+
+/** The whole response (a print format's ETag, a PDF), its refusals parsed as every request's. */
+export const requestRaw = (path: string, init: RequestOptions = {}) => send(path, init);
 
 export async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
   const res = await send(path, init);
@@ -556,6 +566,12 @@ export function newKey(): string {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Passkeys travel as base64url; the browser speaks ArrayBuffers. */
+export const b64 = {
+  decode: (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0)),
+  encode: (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""),
+};
 
 export function saveBlob(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -623,22 +639,21 @@ export interface StoredFile {
   sha256: string;
 }
 
+/** `uploads` of /api/version (the server's system.rs `version`), the parts this client reads. */
 interface Limits {
   max_bytes: number;
-  direct: boolean;
-  direct_max_bytes: number | null;
   /** In parts through the server, on any store, going on after a dropped connection. */
-  parts?: boolean;
-  parts_max_bytes?: number | null;
+  parts_max_bytes: number;
 }
 
 let limits: Promise<Limits> | null = null;
-const FALLBACK_LIMITS: Limits = { max_bytes: 25 * 1024 * 1024, direct: false, direct_max_bytes: null };
+/** While the server cannot be asked: nothing bigger than its default request limit. */
+const FALLBACK_LIMITS: Limits = { max_bytes: 25 * 1024 * 1024, parts_max_bytes: 25 * 1024 * 1024 };
 
 function uploadLimits(): Promise<Limits> {
   limits ??= api
-    .get<{ uploads?: Limits }>("/api/version")
-    .then((v) => v.uploads ?? FALLBACK_LIMITS)
+    .get<{ uploads: Limits }>("/api/version")
+    .then((v) => v.uploads)
     .catch(() => {
       limits = null;
       return FALLBACK_LIMITS;
@@ -647,19 +662,25 @@ function uploadLimits(): Promise<Limits> {
 }
 
 export function megabytes(bytes: number): string {
-  return bytes >= 1024 ** 3 ? `${Math.floor(bytes / 1024 ** 3)} GB` : `${Math.floor(bytes / 1024 ** 2)} MB`;
+  return bytes >= 1024 ** 3 ? tr("{n} GB", { n: Math.floor(bytes / 1024 ** 3) }) : tr("{n} MB", { n: Math.floor(bytes / 1024 ** 2) });
+}
+
+/** Which way a file of this size goes, or why it cannot be uploaded. */
+export function uploadRoute(size: number, l: Limits): "api" | "parts" | { tooLarge: number } {
+  if (size <= l.max_bytes) return "api";
+  return size <= l.parts_max_bytes ? "parts" : { tooLarge: l.parts_max_bytes };
 }
 
 /**
  * Stores a file in the platform's file store (`/api/files`), attached to a record when `attach`
  * is given: through the API when it fits its request limit, else in parts that survive a dropped
- * connection ({@link uploadInParts}), or straight to object storage with a presigned URL from a
- * server without them. For files that must survive the page (a big upload to Drive), hand them to
- * `shell().uploads` instead.
+ * connection ({@link uploadInParts}). For files that must survive the page (a big upload to Drive),
+ * hand them to `shell().uploads` instead.
  */
 export async function uploadFile(file: File, attach?: { entity: string; id: string }): Promise<StoredFile> {
-  const l = await uploadLimits();
-  if (file.size <= l.max_bytes) {
+  const route = uploadRoute(file.size, await uploadLimits());
+  if (typeof route === "object") throw new Error(tr("Files must be {value} or smaller.", { value: megabytes(route.tooLarge) }));
+  if (route === "api") {
     const fd = new FormData();
     fd.append("file", file);
     if (attach) {
@@ -668,28 +689,7 @@ export async function uploadFile(file: File, attach?: { entity: string; id: stri
     }
     return api.post<StoredFile>("/api/files", fd);
   }
-  if (l.parts && l.parts_max_bytes != null) {
-    if (file.size > l.parts_max_bytes) throw new Error(`Files must be ${megabytes(l.parts_max_bytes)} or smaller.`);
-    return uploadInParts(file, attach);
-  }
-  if (!l.direct || l.direct_max_bytes == null || file.size > l.direct_max_bytes) {
-    throw new Error(`Files must be ${megabytes(l.direct && l.direct_max_bytes != null ? l.direct_max_bytes : l.max_bytes)} or smaller.`);
-  }
-  const up = await api.post<{ upload_id: string; method: string; url: string; headers: Record<string, string> }>("/api/files/uploads", {
-    file_name: file.name,
-    content_type: file.type,
-    size: file.size,
-    entity: attach?.entity,
-    record_id: attach?.id,
-  });
-  let res: Response;
-  try {
-    res = await fetch(up.url, { method: up.method, headers: up.headers, body: file });
-  } catch {
-    throw new Error(tr("Could not reach the file storage service. Check your connection, or ask an administrator to allow uploads from this site."));
-  }
-  if (!res.ok) throw new Error(`The file storage service refused the upload (${res.status}).`);
-  return api.post<StoredFile>(`/api/files/uploads/${up.upload_id}/complete`);
+  return uploadInParts(file, attach);
 }
 
 // ───────────────────────── uploads in parts ─────────────────────────

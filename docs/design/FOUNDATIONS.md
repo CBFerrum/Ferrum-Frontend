@@ -103,9 +103,9 @@ Keyboard focus is always visible and is one indicator everywhere: a 2px solid ou
 
 ## Theming
 
-- Every colour is defined once with `light-dark()`; `lib/theme.ts` writes `data-theme` (which pins `color-scheme`) and `data-contrast`.
+- Every colour is defined once with `light-dark()`; the shell's runtime (`server/shell/runtime.js`) writes `data-theme` (which pins `color-scheme`), `data-contrast` and `data-density`.
 - High contrast (`:root[data-contrast="more"]`) overrides text, borders, `--border-control` and the focus ring. New text tokens must be added to the test and to this block if they need it.
-- A brand accent is set inline by `lib/theme.ts` (`--primary`, `--primary-hover`, `--primary-soft`, `--primary-text`, `--focus-ring`, `--chart-1`). It adjusts the colour until it passes 4.5:1 with its text and 3:1 on the dark surface; keep the constants in that file in step with `--surface` and `--primary-text` in dark mode.
+- There is no brand accent yet: nothing sets one.
 - Fonts are the system stack (`--font`, `--mono`); no font files are shipped.
 
 ## What must not use UI tokens
@@ -116,6 +116,6 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
-- `packages/build/*` and a few primitives (`command.tsx` input at `h-10`, `calendar.tsx` text) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
+- `packages/build/*` and a few primitives (`command.tsx` input at `h-10`) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
 - Legacy CSS that keeps px sizes on purpose: the 44px touch overrides in the narrow-screen block of `src/styles.css`. (`.page-title` is the `text-2xl` role now, and the shell home's greeting uses the same size, weight and tracking.)
 - Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.

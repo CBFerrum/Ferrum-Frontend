@@ -1,6 +1,6 @@
 // The records frame's pages (docs/plan/apps-ui.md §13), exported as @ferrum/records/frame: ERP's
 // interface (in ERP's repository) and the shell's records of an app without an interface of its own
-// (/data/{app}/). Lists, forms and reports; Customize; other apps' screens and settings. Studio's
+// (/data/{app}/). Lists, forms and reports; Customize; the pages apps' screens had (app/Screen.tsx). Studio's
 // builders and the POS till are their apps' own interfaces' (/studio/, /pos/): their links lead
 // there. A frame with these routes says so: setFrameMode("app", packages, { pages: true }).
 

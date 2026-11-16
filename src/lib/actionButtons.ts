@@ -38,10 +38,9 @@ export function actionButtons(actions: ActionDef[], c: ButtonContext): ButtonSta
 type Step = Workflow["transitions"][number];
 
 /** Whether a workflow step is offered to the caller. The server's `may_take` (entity-wide, same function as when the step is
- *  taken) wins when sent; an older server sends none, so the roles are tested here. Either way a step naming no roles needs
- *  the right to change THIS record (`canWrite`), which `may_take` cannot know for own-rows rules. Guard and state: the caller's. */
-export function transitionOffered(t: Step, c: { isAdmin: boolean; roles: string[]; canWrite: boolean }): boolean {
-  if (t.may_take === false) return false;
-  if (!t.roles.length) return c.canWrite;
-  return t.may_take === true || c.isAdmin || t.roles.some((r) => c.roles.includes(r));
+ *  taken; its description always says) decides, and a step naming no roles also needs the right to change THIS record
+ *  (`canWrite`), which `may_take` cannot know for own-rows rules. Guard and state: the caller's. */
+export function transitionOffered(t: Step, c: { canWrite: boolean }): boolean {
+  if (!t.may_take) return false;
+  return t.roles.length > 0 || c.canWrite;
 }

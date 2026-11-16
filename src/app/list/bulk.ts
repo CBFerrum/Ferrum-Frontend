@@ -3,7 +3,7 @@
 // results. Pure functions, tested without a browser.
 
 import type { FieldError } from "../../lib/api";
-import { can, fieldLabel, type EntityMeta, type Field, type Me } from "../../lib/meta";
+import { can, fieldLabel, type EntityMeta, type Field } from "../../lib/meta";
 import { transitionOffered } from "../../lib/actionButtons";
 import { t as tr } from "@ferrum/client";
 
@@ -93,17 +93,16 @@ export interface BulkActions {
 }
 
 /** The actions worth offering on a selection; the server still checks every record. */
-export function bulkActions(meta: EntityMeta, me: Me | undefined): BulkActions {
+export function bulkActions(meta: EntityMeta): BulkActions {
   const p = meta.permissions;
   const wf = meta.workflow;
-  const roles = me?.user.roles ?? [];
     const writable = can(p, "write") && meta.kind !== "ledger";
   return {
     fields: writable ? meta.fields.filter(bulkEditable).sort((a, b) => a.label.localeCompare(b.label)) : [],
     delete: can(p, "delete") && meta.kind !== "ledger",
     submit: meta.submittable && !wf && can(p, "submit"),
     cancel: meta.submittable && !wf && can(p, "cancel"),
-    workflow: wf ? [...new Set(wf.transitions.filter((t) => transitionOffered(t, { isAdmin: !!me?.user.is_admin, roles, canWrite: can(p, "write") })).map((t) => t.action))] : [],
+    workflow: wf ? [...new Set(wf.transitions.filter((t) => transitionOffered(t, { canWrite: can(p, "write") })).map((t) => t.action))] : [],
   };
 }
 

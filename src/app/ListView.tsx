@@ -10,7 +10,6 @@ import { Link, NavigationType, useNavigate, useNavigationType, useParams, useSea
 import { api, ApiError, docPath, download, errorMessage } from "../lib/api";
 import { filterable, isWord, readFilters, serializeFilters, writeFilters } from "../lib/filters";
 import { NUMERIC_TYPES } from "../lib/format";
-import { useLiveEntity } from "../lib/live";
 import { usePref, type Pref } from "../lib/prefs";
 import { viewOptions, type ViewKind } from "../lib/views";
 import {
@@ -60,10 +59,9 @@ import { BoardView, CalendarView, TimelineView, VIEW_LABELS } from "./Views";
 import { CellValue, MissingEntity, NotInstalled, notInstalled } from "./widgets";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
-import { t as tr, isolate } from "@ferrum/client";
+import { shell, t as tr, isolate } from "@ferrum/client";
 
 const PAGE = 50;
-const noop = () => {};
 const NO_PREFS: Record<string, unknown> = {};
 const NO_VIEWS: Record<string, SavedView> = {};
 const NONE: ReadonlySet<string> = new Set();
@@ -197,8 +195,23 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
   const sort = sp.get("sort") ?? (active ? undefined : validSort(meta, prefs.sort)) ?? meta.list.sort ?? "created_at desc";
   const [sortField, sortDir = "asc"] = sort.split(/\s+/);
 
-  // Changes by anyone show up here: the shell refreshes this entity's lists on each event.
-  useLiveEntity(E, noop);
+  // Changes by anyone show up here, a burst (an import, a bulk action) as one refresh, and everything again after the
+  // live channel comes back from a break.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const later = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["list", E] });
+        void qc.invalidateQueries({ queryKey: ["view", E] });
+      }, 400);
+    };
+    const off = shell().live.subscribe(E, later, { resync: later });
+    return () => {
+      clearTimeout(timer);
+      off();
+    };
+  }, [qc, E]);
   const opts = useMemo(() => viewOptions(meta.fields), [meta]);
   const by = sp.get("by") ?? "";
   const boardField = opts.board.find((f) => f.name === by) ?? opts.board[0];
@@ -588,7 +601,7 @@ function ListInner({ meta, pref }: { meta: EntityMeta; pref: Pref<Record<string,
 
         {/* The bar takes the filter bar's place (same box), so the table does not move when rows are selected. */}
         {view === "list" && selected.size > 0 && (
-          <BulkBar meta={meta} me={me} selected={selected} rows={rows} total={total} hasMore={!!list.hasNextPage} filters={filters} q={q} sort={sort} onSelect={setSelected} />
+          <BulkBar meta={meta} selected={selected} rows={rows} total={total} hasMore={!!list.hasNextPage} filters={filters} q={q} sort={sort} onSelect={setSelected} />
         )}
         </div>
 

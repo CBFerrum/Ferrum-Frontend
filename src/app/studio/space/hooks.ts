@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { live } from "@/lib/live";
+import { shell } from "@ferrum/client";
 import { sameObject, studio, studioKeys, useStudioList, type StudioListRow } from "@/lib/studio";
 import { PATHS, widgetEntities } from "./model";
 
@@ -59,23 +59,16 @@ export function useLiveRefresh(entities: string[], refresh: () => void, delay = 
   const key = entities.join("|");
   useEffect(() => {
     if (!key) return;
-    const names = new Set(key.split("|"));
-    const unsubscribe = [...names].map((e) => live.subscribe(e));
     let timer: ReturnType<typeof setTimeout> | undefined;
     const later = () => {
       clearTimeout(timer);
       timer = setTimeout(() => cb.current(), delay);
     };
-    const offs = [
-      live.onEvent((e) => {
-        if (names.has(e.entity)) later();
-      }),
-      live.onResync(later),
-    ];
+    // The shell's one channel per browser, on the session's cookie: only these entities' changes reach `later`.
+    const off = shell().live.subscribe([...new Set(key.split("|"))], later, { resync: later });
     return () => {
       clearTimeout(timer);
-      offs.forEach((off) => off());
-      unsubscribe.forEach((u) => u());
+      off();
     };
   }, [key, delay]);
 }

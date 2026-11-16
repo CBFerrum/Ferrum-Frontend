@@ -14,12 +14,12 @@
 @source "../packages";
 @source ".";
 
-/* `dark:` follows the effective theme, which lib/theme.ts always writes to <html data-theme>. */
+/* `dark:` follows the effective theme, which the shell's runtime always writes to <html data-theme>. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* ── tokens ──
-   Each color is defined once with light-dark(): the page follows the system until lib/theme.ts sets
-   data-theme, which pins color-scheme. Brand overrides (lib/theme.ts) set --primary* inline. */
+   Each color is defined once with light-dark(): the page follows the system until the shell's runtime
+   sets data-theme, which pins color-scheme. */
 
 :root {
   color-scheme: light dark;

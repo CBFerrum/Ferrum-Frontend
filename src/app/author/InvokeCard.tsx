@@ -12,7 +12,7 @@ import { ExprInput } from "./ExprInput";
 
 type Invoke = Extract<DraftAction, { kind: "invoke" }>;
 
-/** The catalog, fetched once when first wanted (administrators; an older server answers 404). */
+/** The catalog, fetched once when first wanted (administrators). */
 export function useCapabilities(enabled: boolean) {
   return useQuery({ queryKey: ["admin", "capabilities"], queryFn: ({ signal }) => api.get<{ capabilities: Capability[] }>("/api/admin/capabilities", undefined, signal), enabled, retry: false, staleTime: 60_000 });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MetaIndex, Module } from "../lib/meta";
+import type { Module } from "../lib/meta";
 import type { EntitySummary } from "../lib/meta";
 import { navIcon } from "../../packages/kit/src/navIconName";
 import { moduleLinks, ownModule, setFrameMode, STUDIO, studioLinks } from "./Shell";
@@ -11,43 +11,41 @@ function setBootstrap(b: unknown) {
   resetBootstrap();
 }
 
-const meta = { entities: [{ name: "Lead", package: "crm" }, { name: "Customer", package: "parties" }] } as unknown as MetaIndex;
 const mod = (name: string, items: string[], pkg?: string): Module => ({ name, label: name, order: 0, items, package: pkg });
 
 describe("the records frame's sidebar", () => {
   it("shows the modules the app's packages define", () => {
     setFrameMode("app", ["parties", "selling"], { pages: true });
-    expect(ownModule(mod("masters", ["Customer"], "parties"), meta)).toBe(true);
+    expect(ownModule(mod("masters", ["Customer"], "parties"))).toBe(true);
     // CRM's module lists customers too, but CRM defines it.
-    expect(ownModule(mod("crm", ["Lead", "Customer"], "crm"), meta)).toBe(false);
-    // From a server that does not say which package defines a module: by the entities it lists.
-    expect(ownModule(mod("crm", ["Lead", "Customer"]), meta)).toBe(true);
-    setFrameMode("classic");
-    expect(ownModule(mod("crm", ["Lead"], "crm"), meta)).toBe(true);
+    expect(ownModule(mod("crm", ["Lead", "Customer"], "crm"))).toBe(false);
+    // Without packages: every module.
+    setFrameMode("app");
+    expect(ownModule(mod("crm", ["Lead"], "crm"))).toBe(true);
   });
 
   it("shows Studio's pages where they are among the frame's routes and Studio is the app's", () => {
     setFrameMode("app", ["parties"], { pages: true });
-    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
+    expect(ownModule(mod(STUDIO, [], STUDIO))).toBe(false);
     setFrameMode("app", ["parties", STUDIO], { pages: true });
-    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(true);
+    expect(ownModule(mod(STUDIO, [], STUDIO))).toBe(true);
     setFrameMode("app", [STUDIO]);
-    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
-    setFrameMode("classic");
-    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(true);
+    expect(ownModule(mod(STUDIO, [], STUDIO))).toBe(false);
+    setFrameMode("app", undefined, { pages: true });
+    expect(ownModule(mod(STUDIO, [], STUDIO))).toBe(true);
   });
 });
 
 describe("a workspace's own menu's page", () => {
   it("shows the modules it names and nothing else, whatever their packages", () => {
     setFrameMode("app", ["tenant"], { pages: true, modules: ["x_grc"] });
-    expect(ownModule({ ...mod("x_grc", ["XRisk"], "tenant") }, meta)).toBe(true);
-    expect(ownModule(mod("x_other", ["XRisk"], "tenant"), meta)).toBe(false);
-    expect(ownModule(mod("crm", ["Lead"], "crm"), meta)).toBe(false);
-    expect(ownModule(mod(STUDIO, [], STUDIO), meta)).toBe(false);
+    expect(ownModule({ ...mod("x_grc", ["XRisk"], "tenant") })).toBe(true);
+    expect(ownModule(mod("x_other", ["XRisk"], "tenant"))).toBe(false);
+    expect(ownModule(mod("crm", ["Lead"], "crm"))).toBe(false);
+    expect(ownModule(mod(STUDIO, [], STUDIO))).toBe(false);
     setFrameMode("app", ["tenant"], { pages: true });
-    expect(ownModule(mod("x_other", ["XRisk"], "tenant"), meta)).toBe(true);
-    setFrameMode("classic");
+    expect(ownModule(mod("x_other", ["XRisk"], "tenant"))).toBe(true);
+    setFrameMode("app");
   });
 });
 
@@ -90,7 +88,7 @@ describe("an app's own pages in its module", () => {
 
   it("loads the page from anywhere else, and a module without rows is as it was", () => {
     setBootstrap({ app: { id: "crm", entry: "crm", routes: { crm: "/crm/" } } });
-    setFrameMode("classic");
+    setFrameMode("app", ["crm"]);
     expect(moduleLinks(social, readable, new Map())[0]).toMatchObject({ to: "/social/compose", href: "/social/compose" });
     expect(moduleLinks({ ...social, pages: undefined }, readable, new Map()).map((r) => r.to)).toEqual(["/e/SocialPost", "/e/SocialFeed"]);
     setBootstrap(null);

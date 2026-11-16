@@ -4,11 +4,10 @@
 import { placed } from "../lib/placed";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { api, errorMessage } from "../lib/api";
 import { formatDate, formatDateTime } from "../lib/format";
 import { useMe } from "../lib/meta";
-import { useContributions } from "../lib/screens";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, Icon, PageLoading, TabPanel, Tabs, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 
@@ -401,9 +400,8 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
   });
   const lapsed = new Map((licences.data?.licences ?? []).filter((l) => !l.live).map((l) => [l.app, l.last_error ?? tr("Its store says the licence has lapsed: renew it there.")]));
   const [busy, setBusy] = useState<string | null>(null);
-  const settings = new Set((useContributions("ui.settings").data ?? []).map((c) => c.app));
   const refresh = () =>
-    Promise.all([qc.invalidateQueries({ queryKey: ["apps"] }), qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["contributions"] })]);
+    Promise.all([qc.invalidateQueries({ queryKey: ["apps"] }), qc.invalidateQueries({ queryKey: ["meta"] })]);
   const toggle = async (a: Installed) => {
     setBusy(a.id);
     try {
@@ -481,11 +479,6 @@ function InstalledApps({ data, onInstall }: { data: AppsResponse; onInstall: (r:
             </Badge>
           )}
           <span className="spacer" />
-          {a.enabled && settings.has(a.id) && (
-            <Link className="btn btn-default btn-sm" to={`/apps/${a.id}/settings`}>
-              {tr("Settings")}
-            </Link>
-          )}
           {a.update && (
             <Button size="sm" variant="primary" icon="upload" onClick={() => onInstall({ id: a.id, version: a.update!.version, upgrade: true, packages: a.update!.packages })}>
               {updateLabel(a.version, a.update)}

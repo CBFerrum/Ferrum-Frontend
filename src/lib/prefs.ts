@@ -6,7 +6,7 @@
 
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { api, ApiError, getSession, parseApiError } from "./api";
+import { api, ApiError, parseApiError } from "./api";
 
 export interface PrefEntry {
   value: unknown;
@@ -198,11 +198,10 @@ async function putPref(scope: string, value: unknown, version: number, keepalive
   const body = JSON.stringify({ value, version });
   if (!keepalive || body.length > 60_000) return api.put<PrefEntry>(path(scope), { value, version });
   // The page is being hidden, maybe closed: a keepalive request outlives it (bodies up to 64 KB).
-  const session = getSession();
   const res = await fetch(path(scope), {
     method: "PUT",
     keepalive: true,
-    headers: { accept: "application/json", "content-type": "application/json", ...(session ? { authorization: `Bearer ${session.token}` } : {}) },
+    headers: { accept: "application/json", "content-type": "application/json" },
     body,
   });
   const data: unknown = await res.json().catch(() => null);

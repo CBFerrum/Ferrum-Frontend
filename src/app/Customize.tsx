@@ -28,7 +28,7 @@ interface Customization {
   is_active: boolean;
   note?: string | null;
   created_at: string;
-  /** The id of the later change that replaced this one: it no longer applies (an older server sends none). */
+  /** The id of the later change that replaced this one: it no longer applies (absent when none did). */
   superseded_by?: string | null;
 }
 interface Warning {

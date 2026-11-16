@@ -27,7 +27,7 @@ changes.
 | At a glance | |
 |---|---|
 | 🖥️ Interfaces | The shell's (`apps/shell`): Home at `/`, the store at `/store/`, administration at `/admin/`, the account at `/account/` and the records of any entity at `/data/`; and Studio's (`apps/studio`) at `/studio/` |
-| 📦 Packages | `@ferrum/client`, `@ferrum/kit`, `@ferrum/records`, `@ferrum/bridge`, `@ferrum/calc`, `@ferrum/testing`, `@ferrum/build` |
+| 📦 Packages | `@ferrum/client`, `@ferrum/kit`, `@ferrum/records`, `@ferrum/testing`, `@ferrum/build` |
 | 🧩 Built with them | The interfaces of ERP, CRM, Helpdesk, HR, Projects, Point of Sale, Commerce, Mail, Drive and Docs, each in its app's repository |
 | 🧱 Stack | Vite + React + TypeScript (strict), react-router, TanStack Query, Table and Virtual, Tailwind CSS with shadcn/ui on Radix, Recharts, TipTap and Yjs for documents edited together, LiveKit for meetings |
 | 🚢 Ships in | Ferrum's server image, built at the commit its Dockerfile pins (`FRONTEND_REV`) |
@@ -159,8 +159,6 @@ build:apps`), and the packages every interface uses:
 | 🔌 | `@ferrum/client` | The bootstrap, the shell API with fallbacks, requests with the browser's session, errors, formatting, uploads |
 | 🎨 | `@ferrum/kit` | The components and the look: design tokens and React components; `@ferrum/kit/primitives` for the shadcn building blocks |
 | 🗃️ | `@ferrum/records` | Lists, forms, reports, people, comments and the record picker, from any entity's metadata; `@ferrum/records/frame` is the whole records frame, its routes and the modules' home |
-| 🪟 | `@ferrum/bridge` | Frames, slots, intents and screens between apps and their hosts |
-| 🧮 | `@ferrum/calc` | Ferrum's pricing engine in the browser: `crates/calc` built for WebAssembly, the same totals as the server |
 | 🧪 | `@ferrum/testing` | A fake bootstrap and shell for apps' tests |
 | 🛠️ | `@ferrum/build` | Builds, checks and tests an app's own interface (`ui/` in its repository) with this checkout's packages |
 
@@ -172,7 +170,7 @@ flowchart TB
         STUDIO["apps/studio"]
         APPS["Apps' ui/<br/><small>ERP · CRM · Helpdesk · HR · Projects<br/>Point of Sale · Commerce · Mail · Drive · Docs</small>"]
     end
-    PK["@ferrum/records · @ferrum/kit · @ferrum/client · @ferrum/calc<br/><small>the packages an interface imports</small>"]
+    PK["@ferrum/records · @ferrum/kit · @ferrum/client<br/><small>the packages an interface imports</small>"]
     SRC["src/<br/><small>the modules behind the packages</small>"]
     BUILD -.->|builds| APPS
     IF --> PK --> SRC
@@ -226,7 +224,7 @@ apps/
   shell/              the shell's own interface: Home (/), the store (/store/), administration
                       (/admin/), the account (/account/) and the records of any entity (/data/)
   studio/             Studio (/studio/): reports, charts, number cards, dashboards and spaces
-packages/             the entry points interfaces import: client, kit, records, bridge, calc, testing,
+packages/             the entry points interfaces import: client, kit, records, testing,
                       build (their modules mostly still live in src/ and move in over time)
 scripts/              releases.mjs (dist-apps/index.json for the server), budgets.mjs (size budgets)
 src/
@@ -235,8 +233,7 @@ src/
   components/ui/      the shadcn building blocks, exported as @ferrum/kit/primitives
   ui/kit.tsx          the design system's small, accessible building blocks
   lib/
-    api.ts            HTTP client: bearer auth, uniform error parsing, retries on connection
-                      errors, authenticated downloads, print via blob URL
+    api.ts            the API client: @ferrum/client's, re-exported
     meta.ts           metadata types and hooks, field state (visible / required / read-only)
     expr.ts           evaluator for the common CEL subset used by visible_if / required_if /
                       read_only_if and action/workflow conditions
@@ -246,14 +243,11 @@ src/
     formLayout.ts     the form designer's model; formTabs.ts the form's tabs and sections
     views.ts          board, calendar and timeline views
     studio.ts         Studio's API and its saved records
-    live.ts           live updates (/ws/live), one socket per tab
-    files.ts          uploads, through the API or straight to object storage
-    prefs.ts          per-user preferences; theme.ts theme, contrast and density
-    screens.ts        apps' screens: pages, dashboard widgets, form panels
-    pwa.ts            install prompt, online state, a newer version deployed
+    prefs.ts          per-user preferences; theme.ts WCAG contrast (for the token tests)
+    pwa.ts            online state
     *.test.ts         unit tests
   app/
-    Shell.tsx         auth guard, sidebar from metadata modules, top bar, keyboard shortcuts
+    Shell.tsx         the records frame: sidebar from metadata modules under the platform's bar
     Home.tsx          the modules' quick links and recent documents
     ListView.tsx      /e/:entity: columns, filters, search, sort, saved views, bulk actions, CSV export
     Views.tsx         board, calendar and timeline views of any entity
@@ -266,7 +260,7 @@ src/
     FormDesigner.tsx  /customize/:entity/form: tabs, sections and fields by drag and drop (designer/)
     Admin.tsx         users, roles, packages, webhooks, automations, plugins, API keys, single sign-on
     Apps.tsx          installed apps, the store and uploads
-    Screen.tsx        apps' screens in sandboxed frames
+    Screen.tsx        the two pages apps still route to for the screens that are gone
     studio/           Studio's builders: reports, charts, number cards, dashboards, spaces
     recordsRoutes.tsx the records frame's routes (@ferrum/records/frame)
     records.css       phone layouts of lists, forms and child tables

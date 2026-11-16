@@ -6,7 +6,6 @@ import { api, docPath, errorMessage } from "../lib/api";
 import { relativeTime, todayIso } from "../lib/format";
 import { can, DOCSTATUS_LABEL, recordTitle, useEntityMeta, useMe, useMetaIndex, useReports, type EntitySummary, type ListResponse } from "../lib/meta";
 import { FirstRun } from "./FirstRun";
-import { ScreenWidgets } from "./Screen";
 import { useStudioList } from "../lib/studio";
 import { Badge, EmptyState } from "../ui/kit";
 import { docstatusTone } from "../lib/statusTones";
@@ -43,7 +42,7 @@ export function Home() {
   const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
   const reportLabel = new Map(reportItems(meta, reports).map((r) => [r.name, r.label]));
   const modules = [...meta.modules]
-    .filter((m) => ownModule(m, meta))
+    .filter((m) => ownModule(m))
     .sort((a, b) => a.order - b.order)
     .map((m) => {
       const links = moduleLinks(m, readable, reportLabel, meet, me);
@@ -62,7 +61,6 @@ export function Home() {
       <h1 className="sr-only">{t("Home")}</h1>
       <FirstRun />
       <MyWork />
-      <ScreenWidgets />
       {!modules.length ? (
         <EmptyState title={t("Nothing to show yet")}>
           <p className="muted">{t("You do not have access to any module. Ask an administrator for a role.")}</p>

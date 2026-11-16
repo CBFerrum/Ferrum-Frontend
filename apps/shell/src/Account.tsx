@@ -543,7 +543,7 @@ export function AccountPage() {
       <Section id="acct-ai" title={t("Connect an AI assistant")}>
         <ConnectAi />
       </Section>
-      <ChangePasswordDialog open={password} onClose={() => setPassword(false)} onSignedOut={() => location.assign("/login")} />
+      <ChangePasswordDialog open={password} onClose={() => setPassword(false)} />
     </div>
   );
 }

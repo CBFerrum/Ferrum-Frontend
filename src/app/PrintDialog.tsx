@@ -1,8 +1,6 @@
 // The print dialog on every record (PRINT-FORMATS-SPEC §7.1): the server's render of the record in the chosen format on paper,
 // and beside it the format, letter head, language and copies; Print, Download PDF and E-mail as PDF. It remembers the last
 // choice per record type and person (`print:<Entity>`) and opens with it while it is still offered.
-// A server before print formats (no `print` in /api/version) still offers what its document templates give (a format, the
-// standard one only where no template is the default); without templates the form prints as before and this is not opened.
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
@@ -21,16 +19,11 @@ export const choicesQuery = (entity: string, record?: string) => ({
   retry: false,
 });
 
-/** Page formats a server before print formats offers (level 0): there is a dialog only when there is one. */
-export const hasPageTemplates = (c: Choices | undefined) => !!c?.templates.some((x) => x.output === "page");
-
-export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEmail, canAttach = true, onEmail, onClose }: {
+export function PrintDialog({ entity, entityLabel, id, title, pdf, canEmail, canAttach = true, onEmail, onClose }: {
   entity: string;
   entityLabel: string;
   id: string;
   title: string;
-  /** The server's print level (§6.4). */
-  level: number;
   pdf: boolean;
   canEmail: boolean;
   /** The server's mailer can attach the PDF (`mail_attachments` and `pdf`); else the e-mail goes without it. */
@@ -41,7 +34,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
   onClose: () => void;
 }) {
   const ids = useId();
-  const choices = useQuery(choicesQuery(entity, level >= 1 ? id : undefined));
+  const choices = useQuery(choicesQuery(entity, id));
   const pref = usePref<PrintChoice>(printPrefScope(entity), {});
   const [choice, setChoice] = useState<Required<PrintChoice> | null>(null);
   const c = choices.data;
@@ -54,15 +47,11 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
   }, [!!choice]);
   const set = (patch: Partial<PrintChoice>) => setChoice((x) => (x ? { ...x, ...patch, ...(patch.template !== undefined ? { copies: [] } : {}) } : x));
 
-  // A server before print formats knows no "standard" key: the standard format is asked for by naming none, which it gives only
-  // when no template is the default.
-  const offerStandard = level >= 1 || !c?.default;
-  const ask = choice && { ...choice, template: level >= 1 ? choice.template : (choice.template ?? undefined), ...(level >= 1 ? {} : { letterhead: "default", copies: [] }) };
-  const path = (format: "html" | "pdf") => docPath(entity, id, "print") + printQuery({ ...ask!, format });
+  const path = (format: "html" | "pdf") => docPath(entity, id, "print") + printQuery({ ...choice!, format });
   const render = useQuery({
-    queryKey: ["print", "render", entity, id, ask],
+    queryKey: ["print", "render", entity, id, choice],
     queryFn: ({ signal }) => request<string>(path("html"), { signal, headers: { accept: "text/html" } }),
-    enabled: !!ask,
+    enabled: !!choice,
     placeholderData: keepPreviousData,
     retry: false,
   });
@@ -114,7 +103,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
         <>
           {using && <span className="print-using me-auto">{tr("Prints as {format}", { format: using })}</span>}
           {canEmail && (
-            <Button icon="mail" disabled={!choice || refused} title={!canAttach ? tr("This server's mailer cannot attach files: the e-mail goes without the PDF.") : using ? tr("E-mail {format} as a PDF", { format: using }) : undefined} onClick={() => (remember(), onEmail(ask!, using!))}>
+            <Button icon="mail" disabled={!choice || refused} title={!canAttach ? tr("This server's mailer cannot attach files: the e-mail goes without the PDF.") : using ? tr("E-mail {format} as a PDF", { format: using }) : undefined} onClick={() => (remember(), onEmail(choice!, using!))}>
               {canAttach ? tr("E-mail as PDF") : tr("E-mail")}
             </Button>
           )}
@@ -147,28 +136,24 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
                       {x.key === c.default ? ` (${tr("default")})` : ""}
                     </option>
                   ))}
-                  {offerStandard && (
-                    <option value="">
-                      {isolate(c.standard?.label || tr("Standard"))}
-                      {c.default === null ? ` (${tr("default")})` : ""}
-                    </option>
-                  )}
+                  <option value="">
+                    {isolate(c.standard?.label || tr("Standard"))}
+                    {c.default === null ? ` (${tr("default")})` : ""}
+                  </option>
                 </select>
               </Field>
-              {level >= 1 && (
-                <Field label={tr("Letter head")} htmlFor={`${ids}-lh`}>
-                  <select id={`${ids}-lh`} className="select" value={choice.letterhead} onChange={(e) => set({ letterhead: e.target.value })}>
-                    <option value="default">{defaultLh ? tr("Default: {name}", { name: defaultLh.name }) : tr("Default: none set")}</option>
-                    <option value="none">{tr("None")}</option>
-                    {(c.letterheads ?? []).map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {isolate(l.name)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              {level >= 1 && languages.length > 0 && (
+              <Field label={tr("Letter head")} htmlFor={`${ids}-lh`}>
+                <select id={`${ids}-lh`} className="select" value={choice.letterhead} onChange={(e) => set({ letterhead: e.target.value })}>
+                  <option value="default">{defaultLh ? tr("Default: {name}", { name: defaultLh.name }) : tr("Default: none set")}</option>
+                  <option value="none">{tr("None")}</option>
+                  {(c.letterheads ?? []).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {isolate(l.name)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {languages.length > 0 && (
                 <Field label={tr("Language")} htmlFor={`${ids}-lang`} hint={tr("The paper reads in this language, whatever yours is.")}>
                   <select id={`${ids}-lang`} className="select" value={choice.language} onChange={(e) => set({ language: e.target.value })}>
                     <option value="">{tr("Your language")}</option>
@@ -178,7 +163,7 @@ export function PrintDialog({ entity, entityLabel, id, title, level, pdf, canEma
                   </select>
                 </Field>
               )}
-              {level >= 1 && copies.length > 0 && (
+              {copies.length > 0 && (
                 <fieldset>
                   <legend className="field-label">{tr("Copies")}</legend>
                   <div className="grid gap-1">

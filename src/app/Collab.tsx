@@ -6,9 +6,8 @@ import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "r
 import { api, docPath, download, errorMessage } from "../lib/api";
 import { formatDate, relativeTime } from "../lib/format";
 import { useMe } from "../lib/meta";
-import { uploadFile } from "../lib/files";
 import { Badge, Button, confirmDialog, Dialog, Field as FieldWrap, Icon, PageLoading, toast, useDismiss } from "../ui/kit";
-import { t as tr, isolate } from "@ferrum/client";
+import { t as tr, isolate, uploadFile } from "@ferrum/client";
 
 export interface Person {
   id: string;
