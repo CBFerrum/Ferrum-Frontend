@@ -115,7 +115,7 @@ function render(url: string, seed: (qc: QueryClient) => void = () => {}): string
 describe("report screens", () => {
   it("exports routes and a sidebar entry", () => {
     expect(reportRoutes.map((r) => r.path)).toEqual(["studio/reports", "studio/reports/new", "studio/reports/:id"]);
-    expect(reportNav).toEqual([{ label: "Reports", to: "/studio/reports", icon: "chart" }]);
+    expect(reportNav).toEqual([{ label: "Reports", to: "/studio/reports", icon: "chart-column" }]);
   });
 
   it("starts a new report by asking what to report on", () => {

@@ -1,14 +1,13 @@
 // The records frame's pages (docs/plan/apps-ui.md §13), exported as @ferrum/records/frame: ERP's
 // interface (in ERP's repository) and the shell's records of an app without an interface of its own
 // (/data/{app}/). Lists, forms and reports; Customize; the pages apps' screens had (app/Screen.tsx). Studio's
-// builders and the POS till are their apps' own interfaces' (/studio/, /pos/): their links lead
-// there. A frame with these routes says so: setFrameMode("app", packages, { pages: true }).
+// builders are Studio's own interface's (/studio/): their links lead there. A frame with these
+// routes says so: setFrameMode("app", packages, { pages: true }).
 
 import { useEffect } from "react";
 import { useLocation, type RouteObject } from "react-router";
 
-/** `…/studio/…` and `…/pos` in a frame: the same page in Studio's, or the till in the Point of
- *  Sale's, own interface (a page load). */
+/** `…/studio/…` in a frame: the same page in Studio's own interface (a page load). */
 function ToOwnInterface() {
   const { pathname, search, hash } = useLocation();
   useEffect(() => location.replace(pathname + search + hash), [pathname, search, hash]);
@@ -41,7 +40,6 @@ export const recordsRoutes: RouteObject[] = [
   { path: "customize/:entity/buttons", lazy: () => import("./ButtonsDesigner").then((m) => ({ Component: m.ButtonsDesignerPage })) },
   { path: "customize/:entity/approvals", lazy: () => import("./DocumentApprovals").then((m) => ({ Component: m.DocumentApprovalsPage })) },
   { path: "studio/*", element: <ToOwnInterface /> },
-  { path: "pos", element: <ToOwnInterface /> },
   { path: "apps/:app/settings", lazy: () => import("./Screen").then((m) => ({ Component: m.AppSettingsPage })) },
   { path: "x/:app/:page", lazy: () => import("./Screen").then((m) => ({ Component: m.ScreenPage })) },
 ];

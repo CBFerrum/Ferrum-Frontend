@@ -35,20 +35,6 @@ export function studioLinks(me: Me | null | undefined): NavItem[] {
   return author ? studioNav : studioNav.filter((n) => n.to !== "/studio/solutions");
 }
 
-/** The POS app's till, first in its module. */
-export const POS = "pos";
-export const registerNav: NavItem = { get label() { return tr("Register"); }, to: "/pos", icon: "store" };
-
-/** The Mail app's team chat, first in its module (its API checks who may chat). */
-export const COMMS_MODULE = "communication";
-export const chatNav: NavItem = { get label() { return tr("Chat"); }, to: "/chat", icon: "chat" };
-export const calendarNav: NavItem = { get label() { return tr("Calendar"); }, to: "/calendar", icon: "calendar" };
-export const meetNav: NavItem = { get label() { return tr("Meet"); }, to: "/meet", icon: "video" };
-
-/** The Docs app's page, first in its module. */
-export const DOCS_MODULE = "docs";
-export const docsNav: NavItem = { get label() { return tr("Documents"); }, to: "/docs", icon: "doc" };
-
 /** A row for a page of an app's own interface (`shell.menu`): routed to inside this page's app and route, loaded
  *  from anywhere else (another app's frame, today's web app). Its label is the app's English, in the page's words. */
 export function pageLink(p: MenuPage): NavItem {
@@ -59,9 +45,8 @@ export function pageLink(p: MenuPage): NavItem {
 }
 
 /** A module's links (sidebar group, home card): its readable entities and reports, and the rows of its app's own pages
- *  the server gave this person, each after the item it names (first when it names none or one not shown); `meet` when
- *  video meetings are set up. */
-export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, meet = false, me?: Me | null): NavItem[] {
+ *  the server gave this person, each after the item it names (first when it names none or one not shown). */
+export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, reportLabel: Map<string, string>, me?: Me | null): NavItem[] {
   if (m.name === STUDIO) return studioLinks(me);
   const keyed = m.items.flatMap((item): [string, NavItem][] => {
     if (item.startsWith("report:")) {
@@ -76,11 +61,7 @@ export function moduleLinks(m: Module, readable: Map<string, EntitySummary>, rep
     const at = p.after ? keyed.findIndex(([k]) => k === p.after) : -1;
     keyed.splice(at >= 0 ? at + 1 : first++, 0, [p.id, pageLink(p)]);
   }
-  const links = keyed.map(([, l]) => l);
-  if (m.name === POS && readable.has("PosInvoice")) return [registerNav, ...links];
-  if (m.name === COMMS_MODULE && readable.has("CalendarEvent")) return [chatNav, calendarNav, ...(meet ? [meetNav] : []), ...links];
-  if (m.name === DOCS_MODULE && readable.has("DocsTemplate")) return [docsNav, ...links];
-  return links;
+  return keyed.map(([, l]) => l);
 }
 
 /* The frame is an app's interface under the platform's bar (docs/plan/apps-ui.md), whose session
@@ -90,7 +71,7 @@ let framePackages: Set<string> | null = null;
 /** A workspace's own menu's page (`/data/{menu}/`): the modules it shows, and nothing else; null: by packages. */
 let frameModules: Set<string> | null = null;
 /** Whether the frame's routes include the records pages beyond lists, forms and reports
- *  (`recordsRoutes`): Customize, Studio's builders and the POS till. */
+ *  (`recordsRoutes`): Customize and Studio's builders. */
 let frameHasPages = false;
 
 /** Set once, before the first render. An app's interface runs under the shell, which signs the
@@ -217,10 +198,6 @@ function Sidebar() {
   const meta = useMetaIndex().data;
   const reports = useReports().data?.reports;
   const me = useMe().data;
-  // Mail, Chat, Calendar and Meet are Comms' own pages now (their links lead there): shown with
-  // Comms, which says itself when hosted mail or meetings are not set up.
-  const comms = !!meta?.packages.includes("comms") && !!meta.entities.some((e) => e.name === "CalendarEvent" && can(e.permissions, "read"));
-  const meet = comms;
   const groups = useMemo(() => {
     if (!meta) return [];
     const readable = new Map(meta.entities.filter((e) => can(e.permissions, "read")).map((e) => [e.name, e]));
@@ -228,9 +205,9 @@ function Sidebar() {
     return [...meta.modules]
       .filter((m) => ownModule(m))
       .sort((a, b) => a.order - b.order)
-      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, meet, me) }))
+      .map((m) => ({ name: m.name, label: m.label, items: moduleLinks(m, readable, reportLabel, me) }))
       .filter((g) => g.items.length);
-  }, [meta, reports, meet, me]);
+  }, [meta, reports, me]);
 
   // The page's own entry is in view when the page opens, and after a move to a page whose entry is not.
   const { pathname } = useLocation();
