@@ -1735,7 +1735,6 @@ const words: Record<string, string> = {
   "This fiscal year": "यह वित्तीय वर्ष",
   "This help is not for you": "यह सहायता आपके लिए नहीं है",
   "This layout was changed elsewhere": "यह लेआउट कहीं और बदला गया",
-  "This module’s space could not be loaded": "इस मॉड्यूल का स्पेस लोड नहीं हो सका",
   "This month": "यह महीना",
   "This one goes": "यह जाता है",
   "This one stays": "यह रहता है",

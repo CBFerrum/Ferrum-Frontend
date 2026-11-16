@@ -785,9 +785,6 @@ export const useDashboardData = (id: string | undefined, values: FilterValues = 
     },
   });
 
-export const useSpaceData = (id: string | undefined) =>
-  useQuery({ queryKey: studioKeys.space(id ?? ""), queryFn: ({ signal }) => studio.spaceData(id ?? "", signal), enabled: !!id });
-
 // ───────────────────────────── builder state → spec ─────────────────────────────
 
 /**

@@ -1735,7 +1735,6 @@ const words: Record<string, string> = {
   "This fiscal year": "هذه السنة المالية",
   "This help is not for you": "هذه المساعدة ليست لك",
   "This layout was changed elsewhere": "غُيّر هذا التخطيط في مكان آخر",
-  "This module’s space could not be loaded": "تعذّر تحميل مساحة هذه الوحدة",
   "This month": "هذا الشهر",
   "This one goes": "هذا يُزال",
   "This one stays": "هذا يبقى",

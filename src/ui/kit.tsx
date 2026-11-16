@@ -500,16 +500,16 @@ function createStore<T>(initial: T) {
 
 type ToastItem = { id: number; message: string; tone: "success" | "error" | "info"; action?: ToastAction; duration: number };
 /** A button in the toast ("Undo"): pressing it dismisses the toast and calls `onSelect` once. */
-export interface ToastAction {
+interface ToastAction {
   label: string;
   onSelect: () => void;
 }
-export interface ToastOptions {
+interface ToastOptions {
   action?: ToastAction;
   /** Milliseconds it stays. A toast with an action stays at least `ACTION_TOAST_MS` (8 s), so Undo can be reached. */
   duration?: number;
 }
-export const ACTION_TOAST_MS = 8000;
+const ACTION_TOAST_MS = 8000;
 const toasts = createStore<ToastItem[]>([]);
 let toastSeq = 0;
 
