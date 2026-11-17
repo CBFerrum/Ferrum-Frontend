@@ -1,11 +1,11 @@
 // Customize (administrators): inspect fields, add custom fields, set field properties, add
-// validation rules, toggle customizations, and export/import the change set.
+// validation rules and toggle customizations.
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { api, errorMessage, saveBlob } from "../lib/api";
-import { formatDateTime, todayIso } from "../lib/format";
+import { api, errorMessage } from "../lib/api";
+import { formatDateTime } from "../lib/format";
 import { useEntityMeta, useMe, useMetaIndex, type EntityMeta, type Field, type FieldType } from "../lib/meta";
 import { formDesignerLink } from "../lib/formLayout";
 import { buttonsLink } from "../lib/buttonDraft";
@@ -13,7 +13,7 @@ import { listsLink } from "../lib/publishedListDraft";
 import { targetsLink } from "../lib/targetDraft";
 import { documentApprovalsLink } from "../lib/approvalDraft";
 import { workflowDesignerLink } from "../lib/workflowDraft";
-import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
+import { Alert, Badge, Button, Dialog, EmptyState, ErrorState, Field as FieldWrap, PageLoading, toast } from "../ui/kit";
 import { t as tr, isolate } from "@ferrum/client";
 import { useApply } from "./author/apply";
 import { CheckInput, checkText, startCheck } from "./author/CheckBuilder";
@@ -145,7 +145,6 @@ export function CustomizePage() {
           <Link className="btn" to="/customize/packs">
             {tr("Packs")}
           </Link>
-          <ChangeSet />
         </div>
       </div>
       <Warnings />
@@ -307,54 +306,6 @@ function UpdateConflicts() {
         </table>
       </div>
     </section>
-  );
-}
-
-function ChangeSet() {
-  const qc = useQueryClient();
-  const input = useRef<HTMLInputElement>(null);
-  const exportSet = async () => {
-    try {
-      const data = await api.get<unknown>("/api/customize/export");
-      saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), `ferrum-customizations-${todayIso()}.json`);
-    } catch (e) {
-      toast(errorMessage(e), "error");
-    }
-  };
-  const importSet = async (file: File) => {
-    try {
-      const bundle = JSON.parse(await file.text()) as { customizations?: unknown[] };
-      const n = Array.isArray(bundle.customizations) ? bundle.customizations.length : 0;
-      if (!(await confirmDialog({ title: tr("Import customizations?"), message: tr("{name} contains {n} customization{value}.", { name: file.name, n, value: n === 1 ? "" : "s" }), confirmLabel: tr("Import") })))
-        return;
-      const res = await api.post<{ imported: number }>("/api/customize/import", bundle);
-      toast(tr("Imported {imported} customization{value}", { imported: res.imported, value: res.imported === 1 ? "" : "s" }));
-      await Promise.all([qc.invalidateQueries({ queryKey: ["meta"] }), qc.invalidateQueries({ queryKey: ["customize"] })]);
-    } catch (e) {
-      toast(e instanceof SyntaxError ? tr("That file is not valid JSON.") : errorMessage(e), "error");
-    }
-  };
-  return (
-    <div className="row" role="group" aria-label={tr("Only the customizations")} style={{ gap: 8, flexWrap: "wrap" }}>
-      <span className="muted">{tr("Only the customizations")}</span>
-      <Button icon="download" onClick={() => void exportSet()}>
-        {tr("Export")}
-      </Button>
-      <Button icon="upload" onClick={() => input.current?.click()}>
-        {tr("Import")}
-      </Button>
-      <input
-        ref={input}
-        type="file"
-        accept="application/json,.json"
-        hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void importSet(f);
-          e.target.value = "";
-        }}
-      />
-    </div>
   );
 }
 

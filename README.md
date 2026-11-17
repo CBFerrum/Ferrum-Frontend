@@ -260,7 +260,7 @@ src/
     widgets.tsx       field widgets, link autocomplete, child-table grid (cards on phones), attachments
     Collab.tsx        discussion on any record: assignees, tags, following, attachments, comments
     ReportView.tsx    /r/:name: parameter form, tree/bold rows, totals, CSV download
-    Customize.tsx     /customize/:entity: fields, custom fields, properties, rules, change sets
+    Customize.tsx     /customize/:entity: fields, custom fields, properties, rules
     FormDesigner.tsx  /customize/:entity/form: tabs, sections and fields by drag and drop (designer/)
     Admin.tsx         users, roles, packages, webhooks, automations, plugins, API keys, single sign-on
     Apps.tsx          installed apps, the store and uploads
