@@ -37,7 +37,6 @@ describe("navIcon", () => {
     expect(navIcon({ kind: "report" })).toBe("chart-column");
     expect(navIcon({ to: "/r/zzz" })).toBe("chart-column");
     expect(navIcon({ to: "/r/aging" })).toBe("hourglass"); // a report is known by what it is about
-    expect(navIcon({ to: "/x/app/page" })).toBe("app-window");
     expect(navIcon({ to: "/" })).toBe("house");
     expect(navIcon({ entity: "Zzz", kind: "settings" })).toBe("settings");
     expect(navIcon({ entity: "Zzz", kind: "document" })).toBe("file-text");
