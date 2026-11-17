@@ -67,7 +67,6 @@ const pages: Record<string, RouteObject[]> = {
   store: [
     { index: true, lazy: apps },
     { path: "apps", lazy: apps },
-    { path: "apps/:app/settings", lazy: () => import("@/app/Screen").then((m) => ({ Component: m.AppSettingsPage })) },
     ...toRecord,
   ],
   admin: [{ index: true, lazy: () => import("@/app/Admin").then((m) => ({ Component: m.AdminPage })) }, ...toRecord],

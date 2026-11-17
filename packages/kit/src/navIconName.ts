@@ -268,7 +268,7 @@ export interface NavIconInput {
   /** Report, page of the app's own, Home, or an entity's kind. */
   kind?: NavKind | string | null;
   submittable?: boolean;
-  /** The row's address, which says what it is when nothing else does (`/r/…` a report, `/x/…` a page, `/` Home). */
+  /** The row's address, which says what it is when nothing else does (`/r/…` a report, `/` Home). */
   to?: string;
 }
 
@@ -328,7 +328,7 @@ export function navIcon({ icon, entity, kind, submittable, to }: NavIconInput): 
       console.info(`navIcon: "${declared}" is not an icon the menu draws; using the row's concept or kind`);
     }
   }
-  const asKind = kind ?? (icon === "chart" || to?.startsWith("/r/") ? "report" : to === "/" ? "home" : to?.startsWith("/x/") ? "page" : null);
+  const asKind = kind ?? (icon === "chart" || to?.startsWith("/r/") ? "report" : to === "/" ? "home" : null);
   const name = entity ?? (to?.startsWith("/e/") ? decodeURIComponent(to.slice(3).split(/[/?#]/)[0] ?? "") : null);
   const byConcept = asKind === "report" || asKind === "home" || asKind === "page" ? null : name ? conceptIcon(name) : null;
   if (byConcept) return byConcept;
