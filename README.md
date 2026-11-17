@@ -26,9 +26,9 @@ changes.
 
 | At a glance | |
 |---|---|
-| 🖥️ Interfaces | The shell's (`apps/shell`): Home at `/`, the store at `/store/`, administration at `/admin/`, the account at `/account/` and the records of any entity at `/data/`; and Studio's (`apps/studio`) at `/studio/` |
+| 🖥️ Interfaces | The shell's (`apps/shell`): Home at `/`, the store at `/store/`, administration at `/admin/`, the account at `/account/` and the records of any entity at `/data/`; and Studio's (`apps/studio`) at `/studio/`; `apps/gallery` shows the kit's components and needs no server (`npm run gallery`) |
 | 📦 Packages | `@ferrum/client`, `@ferrum/kit`, `@ferrum/records`, `@ferrum/testing`, `@ferrum/build` |
-| 🧩 Built with them | The interfaces of ERP, CRM, Helpdesk, HR, Projects, Point of Sale, Commerce, Mail, Drive and Docs, each in its app's repository |
+| 🧩 Built with them | The interfaces of 42 apps, each in its app's repository |
 | 🧱 Stack | Vite + React + TypeScript (strict), react-router, TanStack Query, Table and Virtual, Tailwind CSS with shadcn/ui on Radix, Recharts, TipTap and Yjs for documents edited together, LiveKit for meetings |
 | 🚢 Ships in | Ferrum's server image, built at the commit its Dockerfile pins (`FRONTEND_REV`) |
 
@@ -92,10 +92,12 @@ small).
 |---|---|
 | `npm run typecheck` | `tsc --noEmit` (strict) |
 | `npm test` | vitest: expression evaluator, API errors, decimal formatting, filters, document diff/merge, the form designer, Studio, views and more |
+| `npm run lint:ui` | the design system's lint over `src/`, `apps/` and `packages/`; fails on any finding (explain an exception with `ui-lint-allow <rule>: <reason>`) |
 | `npm run build` | type-check, then `build:apps` |
 | `npm run build:apps` | the shell's and Studio's interfaces into `dist-apps/`, with their release list and size budgets checked |
+| `npm run gallery` | the component gallery on port 5199 |
 
-CI runs all of them and `npm audit`, then builds Ferrum's image from this checkout and runs Ferrum's
+CI runs typecheck, lint, test, build and `npm audit`, then builds Ferrum's image from this checkout and runs Ferrum's
 smoke test against it.
 
 ## Phones
@@ -160,7 +162,7 @@ build:apps`), and the packages every interface uses:
 | 🎨 | `@ferrum/kit` | The components and the look: design tokens and React components; `@ferrum/kit/primitives` for the shadcn building blocks |
 | 🗃️ | `@ferrum/records` | Lists, forms, reports, people, comments and the record picker, from any entity's metadata; `@ferrum/records/frame` is the whole records frame, its routes, the modules' home and `mountApp`, an app's start |
 | 🧪 | `@ferrum/testing` | A fake bootstrap and shell for apps' tests |
-| 🛠️ | `@ferrum/build` | Builds, checks and tests an app's own interface (`ui/` in its repository) with this checkout's packages |
+| 🛠️ | `@ferrum/build` | Builds, checks, lints and tests an app's own interface (`ui/` in its repository) with this checkout's packages |
 
 ```mermaid
 flowchart TB
@@ -168,7 +170,7 @@ flowchart TB
     subgraph IF["Interfaces"]
         SHELL["apps/shell"]
         STUDIO["apps/studio"]
-        APPS["Apps' ui/<br/><small>ERP · CRM · Helpdesk · HR · Projects<br/>Point of Sale · Commerce · Mail · Drive · Docs</small>"]
+        APPS["Apps' ui/<br/><small>each in its app's repository</small>"]
     end
     PK["@ferrum/records · @ferrum/kit · @ferrum/client<br/><small>the packages an interface imports</small>"]
     SRC["src/<br/><small>the modules behind the packages</small>"]
@@ -183,7 +185,8 @@ sibling (`../../ferrum/web` from their `ui/`), until the packages are published:
 
 ```
 node ../../ferrum/web/packages/build/cli.mjs build      # vite build into dist/, stamped with its sources
-node ../../ferrum/web/packages/build/cli.mjs check      # CI: dist/ was built from the sources as they are
+node ../../ferrum/web/packages/build/cli.mjs check      # CI: dist/ was built from the sources as they are, within the size budgets, and lint finds nothing
+node ../../ferrum/web/packages/build/cli.mjs lint       # the design system's lint over the sources
 node ../../ferrum/web/packages/build/cli.mjs typecheck
 node ../../ferrum/web/packages/build/cli.mjs test
 node ../../ferrum/web/packages/build/cli.mjs dev        # Vite behind the real bar and session (ferrum-app dev --ui)
@@ -196,9 +199,8 @@ refuses it.
 
 > [!IMPORTANT]
 > An interface compiled into an app's crate is the one Ferrum serves: a copy of it in
-> `FERRUM_UI_DIR` is skipped. ERP's interface moved from here to
-> [ferrum-app-erp](https://github.com/CBFerrum/ferrum-app-erp), and an image built from an older
-> commit of this repository still serves ERP's from its crate.
+> `FERRUM_UI_DIR` is skipped. ERP's interface lives in
+> [ferrum-app-erp](https://github.com/CBFerrum/ferrum-app-erp).
 
 ## Conventions
 
@@ -224,9 +226,11 @@ apps/
   shell/              the shell's own interface: Home (/), the store (/store/), administration
                       (/admin/), the account (/account/) and the records of any entity (/data/)
   studio/             Studio (/studio/): reports, charts, number cards, dashboards and spaces
+  gallery/            the kit's components on one page (npm run gallery)
 packages/             the entry points interfaces import: client, kit, records, testing,
                       build (their modules mostly still live in src/ and move in over time)
-scripts/              releases.mjs (dist-apps/index.json for the server), budgets.mjs (size budgets)
+scripts/              releases.mjs (dist-apps/index.json for the server), budgets.mjs (size budgets),
+                      ui-lint.mjs (npm run lint:ui), nav-icon-entities.py (the menu icons' entity names)
 src/
   index.css           Tailwind and the design tokens (light/dark, contrast, density)
   styles.css          layout and components
@@ -260,7 +264,7 @@ src/
     FormDesigner.tsx  /customize/:entity/form: tabs, sections and fields by drag and drop (designer/)
     Admin.tsx         users, roles, packages, webhooks, automations, plugins, API keys, single sign-on
     Apps.tsx          installed apps, the store and uploads
-    Screen.tsx        the two pages apps still route to for the screens that are gone
+    Screen.tsx        the "not available" pages for /x/:app/:page and /apps/:app/settings
     studio/           Studio's builders: reports, charts, number cards, dashboards, spaces
     recordsRoutes.tsx the records frame's routes (@ferrum/records/frame)
     mountApp.tsx      an app's start: its words, its router at its address, the page (@ferrum/records/frame)

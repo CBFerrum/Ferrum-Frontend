@@ -42,7 +42,7 @@ Larger steps stay at Tailwind's defaults. Do not write `text-[Npx]`; pick a role
 | `--primary`, `--primary-hover`, `--primary-text` | the accent as a fill, its hover, and text on it. `--primary` is also accent text on surfaces |
 | `--primary-soft` | selected surface; `--primary` text must pass on it |
 | `--success`, `--warning`, `--danger`, `--purple` | status text and icons; each has a `-soft` background they must pass on. `--danger-hover` for destructive buttons |
-| `--focus-ring` | the focus box-shadow; its blended colour is held to 3:1 |
+| `--focus-ring` | the focus colour the contrast test holds to 3:1; the controls draw the focus outline (see Focus) |
 | `--chart-1` to `--chart-8` | data series, 3:1 on `--surface` |
 
 The shadcn names (`--background`, `--card`, `--input`, `--ring`, `--sidebar-*`...) are aliases of these tokens; change the token, not the alias.
@@ -68,8 +68,6 @@ The shadcn names (`--background`, `--card`, `--input`, `--ring`, `--sidebar-*`..
 | high contrast: `--text` on surfaces | 7 | 19.59 | 18.59 |
 | high contrast: `--border-strong` | 3 | 8.08 | 8.91 |
 
-Before this change `--faint` was 3.11:1 on white (2.87:1 on the page) and the control border (`--input`, then `--border-strong`) 1.65:1.
-
 ## Geometry and density
 
 | Token | Standard | Compact | Coarse pointer |
@@ -84,7 +82,7 @@ Before this change `--faint` was 3.11:1 on white (2.87:1 on the page) and the co
 
 Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's mapping gives `rounded-sm` 4, `rounded-md` 6, `rounded-lg` 8, `rounded-xl` 12 (large dialogs). Density is `data-density="compact"` on `<html>`; touch targets are 44px whatever the density.
 
-### The crafted kit: what the foundations now say about composition
+### Composition
 
 - **Page frame.** `main` has 20px above, 24px at the sides and 48px below; `.page-title` is `text-2xl`, weight 600, tracking -0.015em, line height 1.25, in a box one `--control-h` tall so a title and its buttons share a centre line. The rest of the anatomy (header action row, 16px to content, cards, gaps) is in PATTERNS.md, "Page anatomy".
 - **One control family.** `.input`, `.select` and `.textarea` share boundary (`--border-control`), radius (`--radius-sm`), height (`--control-h`), side padding (10px) and fill. `.select` drops the native arrow and draws a chevron from two token-coloured gradient strokes at its inline end (mirrored under `:dir(rtl)`), so it follows the theme and forced colours; `multiple` and `size` selects keep their native list.
@@ -99,7 +97,7 @@ Radii: `--radius` 8px for panels, `--radius-sm` 6px for controls. Tailwind's map
 
 ## Focus
 
-Keyboard focus is always visible and is one indicator everywhere: a 2px solid outline in `--ring` (the accent) with a 2px offset. The legacy layer draws it with the global `:focus-visible` rule; the shadcn primitives with `focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring` (the former `ring-[3px] ring-ring/50` blended to under 3:1). It is an outline, not a box-shadow, so forced-colors mode keeps it. An invalid control keeps its destructive border and its focus outline turns destructive. `--focus-ring` (the old 3px box-shadow) is no longer used by the controls. Never remove focus styling without replacing it.
+Keyboard focus is always visible and is one indicator everywhere: a 2px solid outline in `--ring` (the accent) with a 2px offset. The legacy layer draws it with the global `:focus-visible` rule; the shadcn primitives with `focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring`. It is an outline, not a box-shadow, so forced-colors mode keeps it. An invalid control keeps its destructive border and its focus outline turns destructive. The controls do not use `--focus-ring`; it exists for the contrast test. Never remove focus styling without replacing it.
 
 ## Theming
 
@@ -117,5 +115,5 @@ Authored content keeps its own styling and must not follow the UI's theme, densi
 - Root at 100%: moving `html` from 87.5% to 100% changes every rem value and needs a separate rem and geometry audit (Tailwind spacing, fixed px, icon sizes).
 - Geist (or another webfont): needs licensed self-hosted files, a review of script fallback for non-Latin languages, and a check against the bundle budgets.
 - `packages/build/*` and a few primitives (`command.tsx` input at `h-10`) still use their own sizes; moving them to the roles and `--control-h` is the next step. The kit and the primitives render the same buttons, inputs, badges and dialogs: see `MIGRATION.md`.
-- Legacy CSS that keeps px sizes on purpose: the 44px touch overrides in the narrow-screen block of `src/styles.css`. (`.page-title` is the `text-2xl` role now, and the shell home's greeting uses the same size, weight and tracking.)
-- Inline `fontSize` in TSX (`app/Shell.tsx`, `app/Collab.tsx`, SVG chart labels at 9 to 11) is not covered by the class sweep.
+- Legacy CSS that keeps px sizes on purpose: the 44px touch overrides in the narrow-screen block of `src/styles.css`.
+- Inline `fontSize` in TSX (`app/Collab.tsx`, SVG chart labels at 9 to 12) is not covered by the class sweep.

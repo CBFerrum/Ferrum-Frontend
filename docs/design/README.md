@@ -1,11 +1,11 @@
 # Ferrum design
 
-`@ferrum/kit` is the public design system, and the contract that about 37 separate app repositories build against (through `packages/build/cli.mjs`). It is layered: tokens, then primitives, then patterns, then task layouts, then each app's own experience. A layer uses only the ones below it. A fix made in the kit reaches every app on its next build; a fork made in one app reaches none and drifts.
+`@ferrum/kit` is the public design system, and the contract that 42 separate app repositories build against (through `packages/build/cli.mjs`). It is layered: tokens, then primitives, then patterns, then task layouts, then each app's own experience. A layer uses only the ones below it. A fix made in the kit reaches every app on its next build; a fork made in one app reaches none and drifts.
 
 - [FOUNDATIONS.md](FOUNDATIONS.md): tokens, type roles, density, geometry
 - [PATTERNS.md](PATTERNS.md): governed patterns and task layouts
 - [EVIDENCE.md](EVIDENCE.md): which kinds of proof exist and what each can claim
-- [SKILLS.md](SKILLS.md): the rules for coding agents, and the `ferrum-ui-craft` skill
+- [SKILLS.md](SKILLS.md): the outside skills reviewed for development work, and the rules for using them. This repository's own skill is `.claude/skills/ferrum-ui-craft`
 - [ACCEPTANCE.md](ACCEPTANCE.md): the 58 scenarios and their state
 
 ## How to stay consistent
