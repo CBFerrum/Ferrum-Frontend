@@ -5736,6 +5736,8 @@ const words: Record<string, string> = {
   "{host} is added: it is proven once its DNS record is added": "{host} जोड़ा गया: इसका DNS रिकॉर्ड जुड़ने पर यह प्रमाणित होगा",
   "Mail only (no web address)": "केवल मेल (वेब पता नहीं)",
   "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "केवल इसके DNS रिकॉर्ड से प्रमाणित। इस पर कुछ नहीं परोसा जाता और यह कभी मुख्य पता नहीं बनता।",
+  "Not recorded": "दर्ज नहीं किया जाता",
+  "Set by its app": "इसके ऐप द्वारा तय",
 };
 
 export default words;

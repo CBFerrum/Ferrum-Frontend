@@ -18,7 +18,8 @@ export interface StepUp {
   minutes: number;
   entities: Record<string, { work: string[]; keys: boolean }>;
 }
-export type ReadLevel = "open" | "all";
+/** `off` is the workspace stopping what an entity's app declares. */
+export type ReadLevel = "open" | "all" | "off";
 
 export const STEP_UP_MINUTES = { min: 1, max: 60, standard: 10 } as const;
 /** At most this many entities in either list. */
@@ -34,6 +35,8 @@ export interface StepUpRow {
 export interface ReadRow {
   entity: string;
   level: ReadLevel;
+  /** The row is what its app declares, not set by the workspace: it is not saved until the level is changed. */
+  declared?: boolean;
 }
 
 /** The access part of `GET /api/admin/settings`. */
@@ -46,6 +49,8 @@ export interface AccessSettings {
   /** Absent from servers that do not have the setting. */
   step_up?: StepUp | null;
   record_reads?: Record<string, ReadLevel> | null;
+  /** What entities declare for themselves, in force where `record_reads` does not name them. Read only. */
+  record_reads_declared?: Record<string, Exclude<ReadLevel, "off">> | null;
 }
 
 export const IDLE_MIN = 5;
@@ -83,7 +88,10 @@ export function stepUpRows(setting: StepUp | null | undefined): StepUpRow[] {
 }
 export const stepUpMinutes = (setting: StepUp | null | undefined): string => String(setting?.minutes ?? STEP_UP_MINUTES.standard);
 
-export const readRows = (setting: Record<string, ReadLevel> | null | undefined): ReadRow[] => Object.entries(setting ?? {}).map(([entity, level]) => ({ entity, level }));
+export const readRows = (setting: Record<string, ReadLevel> | null | undefined, declared?: Record<string, ReadLevel> | null): ReadRow[] => [
+  ...Object.entries(setting ?? {}).map(([entity, level]) => ({ entity, level })),
+  ...Object.entries(declared ?? {}).filter(([entity]) => !(setting && entity in setting)).map(([entity, level]) => ({ entity, level, declared: true })),
+];
 
 /** The value `step_up` is saved as: none, when no entity is named. Work is in the order shown, so that equal rules compare equal. */
 export function stepUpValue(minutes: string, rows: StepUpRow[]): StepUp | null {
@@ -95,7 +103,7 @@ export function stepUpValue(minutes: string, rows: StepUpRow[]): StepUp | null {
 
 /** The value `record_reads` is saved as: none, when no entity is named. */
 export const readsValue = (rows: ReadRow[]): Record<string, ReadLevel> | null => {
-  const named = rows.filter((r) => r.entity !== "");
+  const named = rows.filter((r) => r.entity !== "" && !r.declared);
   return named.length ? Object.fromEntries(named.map((r) => [r.entity, r.level])) : null;
 };
 

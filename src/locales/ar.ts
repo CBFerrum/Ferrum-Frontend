@@ -5735,6 +5735,8 @@ const words: Record<string, string> = {
   "{host} is added: it is proven once its DNS record is added": "أُضيف {host}: يثبت بعد إضافة سجل DNS الخاص به",
   "Mail only (no web address)": "للبريد فقط (بلا عنوان ويب)",
   "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "يثبت بسجل DNS الخاص به وحده. لا يُقدَّم عليه شيء ولا يكون عنوانًا رئيسيًا أبدًا.",
+  "Not recorded": "غير مسجَّل",
+  "Set by its app": "حدّده تطبيقه",
 };
 
 export default words;

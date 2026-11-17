@@ -87,11 +87,11 @@ interface Admin {
 export const nameable = (users: Admin[]): Admin[] => users.filter((u) => u.is_admin && u.is_active && (u.kind ?? "member") === "member");
 
 /** One entity of the workspace, chosen from its list (the way the other admin screens do: record types, not their parts). Those already used elsewhere in the list are not offered again. */
-function EntityChoice({ label, value, taken, onChange }: { label: string; value: string; taken: string[]; onChange: (entity: string) => void }) {
+function EntityChoice({ label, value, taken, onChange, locked }: { label: string; value: string; taken: string[]; onChange: (entity: string) => void; locked?: boolean }) {
   const index = useMetaIndex();
   const list = [...(index.data?.entities ?? [])].filter((e) => e.kind !== "child").sort((a, b) => a.label.localeCompare(b.label));
   return (
-    <select className="select" style={{ flex: 1, minWidth: 0 }} aria-label={label} value={value} disabled={index.isLoading || !!index.error} aria-invalid={index.error ? true : undefined} onChange={(e) => onChange(e.target.value)}>
+    <select className="select" style={{ flex: 1, minWidth: 0 }} aria-label={label} value={value} disabled={locked || index.isLoading || !!index.error} aria-invalid={index.error ? true : undefined} onChange={(e) => onChange(e.target.value)}>
       <option value="">{index.isLoading ? tr("Loading…") : index.error ? isolate(errorMessage(index.error)) : tr("Choose a record type…")}</option>
       {value && !list.some((x) => x.name === value) && <option value={value}>{isolate(value)}</option>}
       {list.map((x) => (
@@ -104,7 +104,7 @@ function EntityChoice({ label, value, taken, onChange }: { label: string; value:
 }
 
 const WORK_LABEL = (): Record<Work, string> => ({ write: tr("Change"), delete: tr("Delete"), export: tr("Export"), read: tr("Read") });
-const LEVEL_LABEL = (): Record<ReadLevel, string> => ({ open: tr("Each record opened"), all: tr("Everything: records, lists, searches, reports, exports") });
+const LEVEL_LABEL = (): Record<ReadLevel, string> => ({ open: tr("Each record opened"), all: tr("Everything: records, lists, searches, reports, exports"), off: tr("Not recorded") });
 
 export function AccessSettings({ initial }: { initial: Access }) {
   const qc = useQueryClient();
@@ -115,7 +115,7 @@ export function AccessSettings({ initial }: { initial: Access }) {
   const [notice, setNotice] = useState(!!initial.new_device_notice);
   const [stepMinutes, setStepMinutes] = useState(stepUpMinutes(initial.step_up));
   const [stepRows, setStepRows] = useState<StepUpRow[]>(stepUpRows(initial.step_up));
-  const [reads, setReads] = useState<ReadRow[]>(readRows(initial.record_reads));
+  const [reads, setReads] = useState<ReadRow[]>(readRows(initial.record_reads, initial.record_reads_declared));
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
@@ -307,15 +307,16 @@ export function AccessSettings({ initial }: { initial: Access }) {
             const set = (change: Partial<ReadRow>) => setReads(reads.map((x, j) => (j === i ? { ...x, ...change } : x)));
             return (
               <div key={i} className="row" role="group" aria-label={tr("Recorded record type {n}", { n: i + 1 })} style={{ gap: 8, flexWrap: "wrap" }}>
-                <EntityChoice label={tr("Record type {n}", { n: i + 1 })} value={r.entity} taken={reads.map((x) => x.entity)} onChange={(entity) => set({ entity })} />
-                <select className="select" aria-label={tr("What is recorded for record type {n}", { n: i + 1 })} value={r.level} onChange={(e) => set({ level: e.target.value as ReadLevel })}>
-                  {(["open", "all"] as const).map((l) => (
+                <EntityChoice label={tr("Record type {n}", { n: i + 1 })} value={r.entity} taken={reads.map((x) => x.entity)} locked={r.declared} onChange={(entity) => set({ entity })} />
+                <select className="select" aria-label={tr("What is recorded for record type {n}", { n: i + 1 })} value={r.level} onChange={(e) => set({ level: e.target.value as ReadLevel, declared: false })}>
+                  {/* `off` means something only for an entity whose app declares reads recorded; for any other, no row says it. */}
+                  {(["open", "all", "off"] as const).filter((l) => l !== "off" || r.level === "off" || r.entity in (initial.record_reads_declared ?? {})).map((l) => (
                     <option key={l} value={l}>
                       {LEVEL_LABEL()[l]}
                     </option>
                   ))}
                 </select>
-                <Button size="sm" icon="trash" aria-label={tr("Stop recording record type {n}", { n: i + 1 })} onClick={() => setReads(reads.filter((_, j) => j !== i))} />
+                {r.declared ? <span className="faint">{tr("Set by its app")}</span> : <Button size="sm" icon="trash" aria-label={tr("Stop recording record type {n}", { n: i + 1 })} onClick={() => setReads(reads.filter((_, j) => j !== i))} />}
               </div>
             );
           })}

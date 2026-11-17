@@ -145,3 +145,39 @@ describe("the access settings", () => {
     expect(puts.at(-1)).toEqual({ step_up: null, record_reads: { Payslip: "all" } });
   });
 });
+
+describe("reads an app's declaration records", () => {
+  const level = (host: HTMLElement, n: number) => host.querySelector(`select[aria-label="What is recorded for record type ${n}"]`) as HTMLSelectElement;
+  const choose = (el: HTMLSelectElement, value: string) =>
+    act(async () => {
+      el.value = value;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  const declared = { record_reads_declared: { Patient: "open" as const } };
+
+  it("shows a declared level as set by its app, saves nothing for it, and lets an administrator stop it with off", async () => {
+    const { host, puts } = await open(undefined, declared);
+    expect((host.querySelector('select[aria-label="Record type 1"]') as HTMLSelectElement).value).toBe("Patient");
+    expect(level(host, 1).value).toBe("open");
+    expect([...level(host, 1).options].map((o) => o.value)).toEqual(["open", "all", "off"]);
+    expect(host.textContent).toContain("Set by its app");
+    expect(host.textContent).not.toContain("No reads are recorded.");
+    expect(host.querySelector('[aria-label="Stop recording record type 1"]')).toBeNull();
+    expect((host.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBe(true);
+    await choose(level(host, 1), "off");
+    expect(host.textContent).not.toContain("Set by its app");
+    await submit(host);
+    expect(puts).toEqual([{ record_reads: { Patient: "off" } }]);
+  });
+
+  it("shows the workspace's own value over the declared one, and leaves an undeclared entity as it was: no off, removable", async () => {
+    const { host, puts } = await open(undefined, { ...declared, record_reads: { Payslip: "all", Patient: "off" } });
+    expect(level(host, 1).value).toBe("all");
+    expect([...level(host, 1).options].map((o) => o.value)).toEqual(["open", "all"]);
+    expect(level(host, 2).value).toBe("off");
+    expect(host.textContent).not.toContain("Set by its app");
+    await click(host.querySelector('[aria-label="Stop recording record type 1"]')!);
+    await submit(host);
+    expect(puts).toEqual([{ record_reads: { Patient: "off" } }]);
+  });
+});
