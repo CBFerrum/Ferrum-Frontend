@@ -1,6 +1,6 @@
 # Ferrum-Frontend
 
-React 19 / Vite 7 / Tailwind v4 / shadcn-Radix web interfaces (shell, Studio) and `@ferrum/kit`, the public design-system contract that ~37 app repositories build against via `packages/build/cli.mjs`.
+React 19 / Vite 7 / Tailwind v4 / shadcn-Radix web interfaces (shell, Studio) and `@ferrum/kit`, the public design-system contract that 42 app repositories build against via `packages/build/cli.mjs`.
 
 Start with `docs/design/README.md`; for any interface change use the `ferrum-ui-craft` skill (`.claude/skills/ferrum-ui-craft/SKILL.md`).
 
@@ -14,7 +14,7 @@ Start with `docs/design/README.md`; for any interface change use the `ferrum-ui-
 - Keep TanStack Query and virtualization; no new animation or component library for one flourish.
 - Never weaken iframe sandbox/CSP for an editor. No customer CSS over warnings or host chrome.
 - Evidence classes differ: source review, component test, real-browser capture, human review. Claim only what was done. Compiling is not "done".
-- `src/**` token and kit changes are versioned: record the kit version in what you ship.
+- `src/**` token and kit changes ship as a Ferrum-Frontend revision (the packages are all `0.1.0` and private; an app's `dist/.source` records the commit it was built with): record that revision in what you ship.
 
 ## Commands
 - `npm run typecheck`
