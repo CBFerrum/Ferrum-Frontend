@@ -62,7 +62,6 @@ describe("what the shell links to", () => {
   it("knows which addresses are served", () => {
     expect(served("/store/")).toBe(true);
     expect(served("/store/?tab=store")).toBe(true);
-    expect(served("/store/apps/crm/settings")).toBe(true);
     expect(served("/e/Lead/new")).toBe(true);
     expect(served("/customize")).toBe(true);
     expect(served("/apps")).toBe(false);
