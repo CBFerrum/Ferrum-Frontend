@@ -5729,6 +5729,13 @@ const words: Record<string, string> = {
   "every record": "हर रिकॉर्ड",
   "{app} called {capability}, {count} in all, latest {when}": "{app} ने {capability} को कॉल किया, कुल {count}, सबसे हाल की {when}",
   "by {app}": "{app} द्वारा",
+  "Mail only: nothing is served on it": "केवल मेल के लिए: इस पर कुछ नहीं परोसा जाता",
+  "It is proven once its DNS record is added and checked.": "इसका DNS रिकॉर्ड जोड़े और जाँचे जाने पर यह प्रमाणित हो जाता है।",
+  "{host}'s DNS record is not there yet": "{host} का DNS रिकॉर्ड अभी नहीं है",
+  "{host} is proven for mail": "{host} मेल के लिए प्रमाणित हो गया",
+  "{host} is added: it is proven once its DNS record is added": "{host} जोड़ा गया: इसका DNS रिकॉर्ड जुड़ने पर यह प्रमाणित होगा",
+  "Mail only (no web address)": "केवल मेल (वेब पता नहीं)",
+  "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "केवल इसके DNS रिकॉर्ड से प्रमाणित। इस पर कुछ नहीं परोसा जाता और यह कभी मुख्य पता नहीं बनता।",
 };
 
 export default words;

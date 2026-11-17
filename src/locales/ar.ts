@@ -5728,6 +5728,13 @@ const words: Record<string, string> = {
   "every record": "كل سجل",
   "{app} called {capability}, {count} in all, latest {when}": "{app} استدعى {capability}، {count} في المجموع، وآخرها {when}",
   "by {app}": "بواسطة {app}",
+  "Mail only: nothing is served on it": "للبريد فقط: لا يُقدَّم عليه شيء",
+  "It is proven once its DNS record is added and checked.": "يثبت بعد إضافة سجل DNS الخاص به والتحقق منه.",
+  "{host}'s DNS record is not there yet": "سجل DNS الخاص بـ {host} غير موجود بعد",
+  "{host} is proven for mail": "ثبت {host} للبريد",
+  "{host} is added: it is proven once its DNS record is added": "أُضيف {host}: يثبت بعد إضافة سجل DNS الخاص به",
+  "Mail only (no web address)": "للبريد فقط (بلا عنوان ويب)",
+  "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "يثبت بسجل DNS الخاص به وحده. لا يُقدَّم عليه شيء ولا يكون عنوانًا رئيسيًا أبدًا.",
 };
 
 export default words;
