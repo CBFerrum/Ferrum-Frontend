@@ -22,7 +22,7 @@ export interface Address {
   host: string;
   /** `subdomain`: the workspace's own, or a name under the base (with `base_name`); `custom`: a domain of its own; `operator`: the operator's. */
   kind: "subdomain" | "custom" | "operator";
-  /** `shell` (the workspace), `portal` or `site:{app}`. */
+  /** `shell` (the workspace), `portal`, `site:{app}`, or `mail`: a domain claimed for mail, proven by its DNS record alone and never served. */
   target: string;
   /** The main address of its target. */
   primary: boolean;
@@ -182,8 +182,8 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
       const r = await api.post<{ answers: boolean; points?: boolean }>(`${at(d.host)}/check`);
       const host = isolate(d.host);
       toast(
-        r.answers ? tr("{host} now opens this workspace", { host })
-        : r.points ? tr("{host} points here, but its DNS record is not there yet", { host })
+        r.answers ? d.target === "mail" ? tr("{host} is proven for mail", { host }) : tr("{host} now opens this workspace", { host })
+        : r.points ? d.target === "mail" ? tr("{host}'s DNS record is not there yet", { host }) : tr("{host} points here, but its DNS record is not there yet", { host })
         : tr("{host} does not point here yet", { host }),
         r.answers ? "success" : "info",
       );
@@ -242,10 +242,12 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
     }
     return d.target === "shell" ? (d.home ? tr("The workspace, landing on {app}", { app: appName(d.home) }) : tr("The whole workspace"))
       : d.target === "portal" ? tr("The portal")
+      : d.target === "mail" ? tr("Mail only: nothing is served on it")
       : tr("{title}'s public site", { title: data?.sites.find((s) => `site:${s.app}` === d.target)?.title ?? d.target.slice(5) });
   };
   const detail = (d: Address) => {
     if (d.status === "pending" || d.status === "failing") {
+      if (d.target === "mail") return tr("It is proven once its DNS record is added and checked.");
       if (d.waiting === "record") return tr("It points here. It works once its DNS record is added and checked.");
       return data?.point_to ? placed(tr("Point it at {address} with a CNAME record, then check it."), { address: code(data.point_to) }) : tr("Point it at this server, then check it.");
     }
@@ -314,12 +316,18 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
                       <tr key={d.host}>
                         <td className="card-lead">
                           <div className="row" style={{ gap: 8 }}>
-                            <a ref={(el) => void (el ? links.current.set(d.host, el) : links.current.delete(d.host))} href={link(d.host)} target="_blank" rel="noopener noreferrer">
+                            {d.target === "mail" ? (
                               <span id={id} className="mono" dir="ltr">
                                 {d.host}
                               </span>
-                              <span className="sr-only"> {tr("(opens in a new tab)")}</span>
-                            </a>
+                            ) : (
+                              <a ref={(el) => void (el ? links.current.set(d.host, el) : links.current.delete(d.host))} href={link(d.host)} target="_blank" rel="noopener noreferrer">
+                                <span id={id} className="mono" dir="ltr">
+                                  {d.host}
+                                </span>
+                                <span className="sr-only"> {tr("(opens in a new tab)")}</span>
+                              </a>
+                            )}
                             {d.primary && <Badge tone="blue">{tr("Main")}</Badge>}
                           </div>
                           {d.label && <div>{tr("Shown in the bar as {label}", { label: isolate(d.label) })}</div>}
@@ -515,6 +523,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
         r = await api.post<Address>("/api/admin/domains", body);
         toast(
           r.status === "verified" ? tr("{host} is added and works now", { host: isolate(r.host) })
+          : r.target === "mail" ? tr("{host} is added: it is proven once its DNS record is added", { host: isolate(r.host) })
           : r.record ? tr("{host} is added: it works once the domain points here and its DNS record is added", { host: isolate(r.host) })
           : tr("{host} is added: it works once the domain points here and is checked", { host: isolate(r.host) }),
         );
@@ -557,7 +566,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
             <legend className="field-label">{tr("Kind of address")}</legend>
             <div className="stack" style={{ gap: 8 }}>
               <label className="row" style={{ gap: 8 }}>
-                <input type="radio" name={`${id}-way`} checked={way === "name"} onChange={() => edit(setWay)("name")} />
+                <input type="radio" name={`${id}-way`} checked={way === "name"} onChange={() => (edit(setWay)("name"), target === "mail" && setTarget("shell"))} />
                 {placed(tr("A name under {base}"), { base: code(listing.base ?? "") })}
               </label>
               <label className="row" style={{ gap: 8 }}>
@@ -577,12 +586,12 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
             <Field label={tr("Domain")} required error={error("host")} hint={tr("A name you own, such as erp.example.com")}>
               <input id={`${id}-host`} data-autofocus className="input mono" dir="ltr" value={host} autoComplete="off" spellCheck={false} autoCapitalize="none" placeholder="erp.example.com" onChange={(e) => edit(setHost)(e.target.value)} />
             </Field>
-            <p className="field-hint">{pointHere}</p>
-            {listing.proof === "record" && <p className="field-hint">{tr("This installation also asks for a DNS record that proves the domain is yours. Once the domain is added, the list of addresses shows the record to add at the domain's DNS provider.")}</p>}
+            {target !== "mail" && <p className="field-hint">{pointHere}</p>}
+            {listing.proof === "record" && target !== "mail" && <p className="field-hint">{tr("This installation also asks for a DNS record that proves the domain is yours. Once the domain is added, the list of addresses shows the record to add at the domain's DNS provider.")}</p>}
           </>
         )}
         {!row && (
-          <Field label={tr("What it opens")} error={error("target")}>
+          <Field label={tr("What it opens")} error={error("target")} hint={target === "mail" ? tr("Proven by its DNS record alone. Nothing is served on it, and it is never the main address.") : undefined}>
             <select id={`${id}-target`} className="select" value={target} onChange={(e) => edit(setTarget)(e.target.value)}>
               <option value="shell">{tr("The whole workspace")}</option>
               <option value="portal">{tr("The portal (customers, suppliers)")}</option>
@@ -591,6 +600,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
                   {tr("{title}'s public site", { title: s.title })}
                 </option>
               ))}
+              {way === "host" && <option value="mail">{tr("Mail only (no web address)")}</option>}
             </select>
           </Field>
         )}

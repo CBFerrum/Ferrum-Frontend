@@ -666,3 +666,46 @@ describe("a name under the base", () => {
     expect(nameProblem("-sales", "{name}--beta.ferrum.test", [])).not.toBeNull();
   });
 });
+
+describe("a domain claimed for mail", () => {
+  const MAIL = "mail.acme.example";
+  const claim = row(MAIL, {
+    kind: "custom", target: "mail", status: "pending", verified_at: null, waiting: "record",
+    record: { name: `_ferrum.${MAIL}`, type: "TXT", value: "ferrum-domain=9d2e" }, can: { edit: false, remove: true, make_primary: false },
+  });
+  const mailRow = (host: HTMLElement) => [...host.querySelectorAll("tbody tr")].find((r) => r.querySelector(".mono")?.textContent === MAIL) as HTMLTableRowElement;
+
+  it("reads as mail with the record to add: not a link, no public site, no make-main, nothing about redirecting or a certificate", async () => {
+    const { host } = await open({ "GET /api/admin/domains": listing([main, claim]) });
+    const r = mailRow(host);
+    expect(r.querySelector("a")).toBeNull();
+    expect(r.textContent).toContain("Mail only: nothing is served on it");
+    expect(r.textContent).not.toContain("public site");
+    expect(r.textContent).toContain("Waiting for its DNS record");
+    expect(r.textContent).toContain("It is proven once its DNS record is added and checked.");
+    expect([...r.querySelectorAll("dd .mono")].map((m) => m.textContent)).toEqual([`_ferrum.${MAIL}`, "TXT", "ferrum-domain=9d2e"]);
+    expect(r.textContent).not.toMatch(/points here|CNAME|certificate|redirect|sends visitors/i);
+    await click(button(r, `Actions for ${MAIL}`));
+    expect([...host.querySelectorAll('[role="menuitem"]')].map((m) => m.textContent)).toEqual(["Remove…"]);
+  });
+
+  it("is offered beside the other targets for a domain of the workspace's own, and sends target mail", async () => {
+    const { host, sent } = await open({
+      "GET /api/admin/domains": listing([main]),
+      "POST /api/admin/domains": () => json(201, claim),
+    });
+    await click(button(host, "Add an address"));
+    const target = () => field<HTMLSelectElement>("What it opens");
+    // A name under the base is always served: mail is offered for a domain only.
+    expect([...target().options].map((o) => o.value)).not.toContain("mail");
+    await click(field("A domain of your own"));
+    expect([...target().options].map((o) => o.value)).toContain("mail");
+    await pick(target(), "mail");
+    expect(dialog().textContent).toContain("Proven by its DNS record alone. Nothing is served on it, and it is never the main address.");
+    expect(dialog().textContent).not.toContain("serves it with its own certificate");
+    await type(field("Domain"), MAIL);
+    await submit();
+    expect(sent).toEqual([{ method: "POST", path: "/api/admin/domains", body: { host: MAIL, target: "mail" } }]);
+    expect(toasts(host)).toContain(`${MAIL} is added: it is proven once its DNS record is added`);
+  });
+});
