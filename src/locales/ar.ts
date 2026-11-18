@@ -5751,6 +5751,13 @@ const words: Record<string, string> = {
   "How public pages show this colour": "كيف تعرض الصفحات العامة هذا اللون",
   // A phone field's call (S14 slice 17).
   "Call {number}": "اتصل بـ {number}",
+  // The kit's map (S6 K1).
+  "The map's style could not be read ({status}).": "تعذّرت قراءة نمط الخريطة ({status}).",
+  "This device cannot draw the map: the list shows every place.": "لا يستطيع هذا الجهاز رسم الخريطة: القائمة تعرض كل مكان.",
+  "Maps is not installed": "تطبيق الخرائط غير مثبّت",
+  "Install the Maps app to see these places on a map. The list shows every place.": "ثبّت تطبيق الخرائط لترى هذه الأماكن على خريطة. القائمة تعرض كل مكان.",
+  "No base map yet: an administrator adds one in Maps": "لا توجد خريطة أساس بعد: يضيفها مسؤول في الخرائط",
+  "Places on the map": "الأماكن على الخريطة",
 };
 
 export default words;
