@@ -5738,6 +5738,18 @@ const words: Record<string, string> = {
   "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "केवल इसके DNS रिकॉर्ड से प्रमाणित। इस पर कुछ नहीं परोसा जाता और यह कभी मुख्य पता नहीं बनता।",
   "Not recorded": "दर्ज नहीं किया जाता",
   "Set by its app": "इसके ऐप द्वारा तय",
+  // Public pages: the brand, the frame and the snippet (S4 F1).
+  "Wears the brand {brand}": "ब्रांड {brand} दिखाता है",
+  "Brand": "ब्रांड",
+  "The logo, colour and footer its pages show to people outside the workspace.": "लोगो, रंग और फ़ुटर जो इसके पेज वर्कस्पेस के बाहर के लोगों को दिखाते हैं।",
+  "The workspace's default ({brand})": "वर्कस्पेस का डिफ़ॉल्ट ({brand})",
+  "No brand yet: public pages use the standard look.": "अभी कोई ब्रांड नहीं: सार्वजनिक पेज मानक रूप दिखाते हैं।",
+  "Code copied": "कोड कॉपी हो गया",
+  "Select the code and copy it yourself": "कोड चुनें और खुद कॉपी करें",
+  "Code to paste into your site": "आपकी साइट में चिपकाने के लिए कोड",
+  "Light mode": "लाइट मोड",
+  "Dark mode": "डार्क मोड",
+  "How public pages show this colour": "सार्वजनिक पेज यह रंग कैसे दिखाते हैं",
 };
 
 export default words;

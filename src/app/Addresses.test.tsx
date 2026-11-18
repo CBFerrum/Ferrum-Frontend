@@ -709,3 +709,56 @@ describe("a domain claimed for mail", () => {
     expect(toasts(host)).toContain(`${MAIL} is added: it is proven once its DNS record is added`);
   });
 });
+
+// S4 F1 (gapclose/design/S4-public-side.md §2.3, §2.17): an address names the brand its pages wear, for every target but mail;
+// PATCH /api/admin/domains/{host} {brand} (a Brand's id, or null for the workspace's default), only when it changed.
+describe("the brand an address wears", () => {
+  const PORTAL = "portal--beta.ferrum.test";
+  const MAIL = "mail.acme.example";
+  const portal = row(PORTAL, { target: "portal", base_name: "portal", brand: "b2", can: { edit: false, remove: true, make_primary: false } });
+  const claim = row(MAIL, { kind: "custom", target: "mail", status: "pending", verified_at: null, waiting: "record", brand: null, can: { edit: false, remove: true, make_primary: false } });
+  const mailRow = (host: HTMLElement) => [...host.querySelectorAll("tbody tr")].find((r) => r.querySelector(".mono")?.textContent === MAIL) as HTMLTableRowElement;
+  const BRANDS = { rows: [{ id: "b1", brand_name: "Acme", is_default: true }, { id: "b2", brand_name: "Acme Shop", is_default: false }] };
+
+  it("brand_select_not_for_mail", async () => {
+    const { host, sent } = await open({
+      "GET /api/admin/domains": listing([main, portal, claim]),
+      "GET /api/v1/Brand": BRANDS,
+      [`PATCH /api/admin/domains/${PORTAL}`]: (body: { brand: string | null }) => json(200, { ...portal, brand: body.brand }),
+      [`PATCH /api/admin/domains/${MAIN}`]: (body: { brand: string | null }) => json(200, { ...main, brand: body.brand }),
+    });
+    // Mail shows no pages: nothing to change, and no brand said.
+    expect(button(mailRow(host), "Change")).toBeUndefined();
+    expect(mailRow(host).textContent).not.toContain("Wears");
+    // The portal's address: its brand in the row, and a dialog with only the brand to choose.
+    expect(rowOf(host, PORTAL).textContent).toContain("Wears the brand Acme Shop");
+    await click(button(rowOf(host, PORTAL), "Change"));
+    const brand = field<HTMLSelectElement>("Brand");
+    expect([...brand.options].map((o) => [o.value, o.textContent])).toEqual([["", "The workspace's default (Acme)"], ["b1", "Acme"], ["b2", "Acme Shop"]]);
+    expect(brand.value).toBe("b2");
+    expect(field("Label")).toBeFalsy();
+    await pick(brand, "");
+    await submit();
+    expect(sent).toEqual([{ method: "PATCH", path: `/api/admin/domains/${PORTAL}`, body: { brand: null } }]);
+    // The workspace's own address offers it too, beside what it shows; a change of label alone sends no brand.
+    sent.length = 0;
+    await click(button(rowOf(host, MAIN), "Change"));
+    expect(field<HTMLSelectElement>("Brand").value).toBe("");
+    await pick(field<HTMLSelectElement>("Brand"), "b1");
+    await submit();
+    expect(sent).toEqual([{ method: "PATCH", path: `/api/admin/domains/${MAIN}`, body: { brand: "b1" } }]);
+  });
+
+  it("says where the brands are when there are none, and offers no select when brands cannot be read", async () => {
+    let { host } = await open({ "GET /api/admin/domains": listing([main]), "GET /api/v1/Brand": { rows: [] } });
+    await click(button(rowOf(host, MAIN), "Change"));
+    expect(dialog().textContent).toContain("No brand yet: public pages use the standard look.");
+    expect(field("Brand")).toBeFalsy();
+    act(() => roots.splice(0).forEach((r) => r.unmount()));
+    document.body.innerHTML = "";
+    ({ host } = await open({ "GET /api/admin/domains": listing([main]), "GET /api/v1/Brand": () => json(403, { error: "forbidden", message: "no" }) }));
+    await click(button(rowOf(host, MAIN), "Change"));
+    expect(field("Brand")).toBeFalsy();
+    expect(dialog().textContent).not.toContain("No brand yet");
+  });
+});

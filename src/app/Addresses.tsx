@@ -47,7 +47,28 @@ export interface Address {
   forward: boolean;
   /** A removed address: true while it still sends visitors on, false once it no longer answers; null for a live one. */
   redirecting: boolean | null;
+  /** The Brand its pages wear (any target but mail); null: the workspace's default (Ferrum docs/builder/decisions.md BD-79). */
+  brand?: string | null;
 }
+
+interface BrandRow {
+  id: string;
+  brand_name: string;
+  is_default?: boolean;
+}
+
+/** The workspace's brands, for the address that wears one; null when they cannot be read (no Brand record type, or no right). */
+function useBrands(): BrandRow[] | null | undefined {
+  const q = useQuery({
+    queryKey: ["admin", "brands"],
+    queryFn: ({ signal }) => api.get<{ rows: BrandRow[] }>("/api/v1/Brand", { fields: "id,brand_name,is_default", limit: 100 }, signal),
+  });
+  return q.error ? null : q.data?.rows;
+}
+
+/** An address whose brand an administrator chooses here: a live one of the workspace's that shows pages (never mail). The operator's
+ *  own addresses are changed by whoever runs the installation. */
+const brandable = (d: Address) => !d.released_at && d.target !== "mail" && d.kind !== "operator";
 
 export interface Listing {
   domains: Address[];
@@ -233,6 +254,8 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
   );
   const accounts = !!bootstrap()?.api.accounts;
   const appName = (id: string) => data?.homes.find((h) => h.id === id)?.name ?? id;
+  const brands = useBrands();
+  const brandName = (id: string | null | undefined) => (id ? brands?.find((b) => b.id === id)?.brand_name : undefined);
   const opens = (d: Address) => {
     if (d.forward) {
       const to = mainOf(d.target, d.host);
@@ -340,6 +363,7 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
                           <div>
                             <div>{opens(d)}</div>
                             {d.target === "shell" && d.apps && <div className="muted">{d.apps.length ? tr("Lists only {apps}", { apps: d.apps.map((a) => isolate(appName(a))).join(", ") }) : tr("Lists no apps")}</div>}
+                            {d.target !== "mail" && brandName(d.brand) && <div className="muted">{tr("Wears the brand {brand}", { brand: isolate(brandName(d.brand)!) })}</div>}
                           </div>
                         </td>
                         <td data-label={tr("Status")}>
@@ -351,7 +375,7 @@ function AddressList({ q, canChange, refresh }: { q: UseQueryResult<Listing>; ca
                         <td>
                           {canChange && (
                             <div className="row-actions">
-                              {d.can.edit && (
+                              {(d.can.edit || brandable(d)) && (
                                 <Button size="sm" aria-describedby={id} disabled={busy === d.host} onClick={() => setDialog({ row: d })}>
                                   {tr("Change")}
                                 </Button>
@@ -445,6 +469,9 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
   const [apps, setApps] = useState<string[]>(row?.apps ?? []);
   const [label, setLabel] = useState(row?.label ?? "");
   const [forward, setForward] = useState(row?.forward ?? false);
+  const brands = useBrands();
+  const [brand, setBrand] = useState(row?.brand ?? "");
+  const wearsBrand = !!row && brandable(row) && !!brands?.length;
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [busy, setBusy] = useState(false);
   const [tries, setTries] = useState(0);
@@ -475,7 +502,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     return out;
   };
   const live = local(false);
-  const visible = [...(row ? [] : [way, "target"]), ...(forwardable ? ["forward"] : []), ...(choices ? ["home"] : []), ...(choices && !forwards ? ["apps"] : []), ...(shell && !forwards ? ["label"] : [])];
+  const visible = [...(row ? [] : [way, "target"]), ...(wearsBrand ? ["brand"] : []), ...(forwardable ? ["forward"] : []), ...(choices ? ["home"] : []), ...(choices && !forwards ? ["apps"] : []), ...(shell && !forwards ? ["label"] : [])];
   const error = (field: string) => (live.find((e) => e.field === field) ?? errors.find((e) => e.field === field))?.message;
   const elsewhere = errors.filter((e) => !visible.includes(e.field));
   useEffect(() => {
@@ -494,6 +521,7 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
     if (sorted(shape.apps) !== sorted(row.apps)) patch.apps = shape.apps;
     if (shape.label !== (row.label ?? null)) patch.label = shape.label;
     if (forwardable && forwards !== row.forward) patch.forward = forwards;
+    if (wearsBrand && (brand || null) !== (row.brand ?? null)) patch.brand = brand || null;
   }
 
   const submit = async (e: FormEvent) => {
@@ -665,6 +693,19 @@ function AddressDialog({ listing, row, onClose, onDone, onRefused }: { listing: 
             )}
           </>
         )}
+        {wearsBrand && (
+          <Field label={tr("Brand")} error={error("brand")} hint={tr("The logo, colour and footer its pages show to people outside the workspace.")}>
+            <select id={`${id}-brand`} className="select" value={brand} onChange={(e) => edit(setBrand)(e.target.value)}>
+              <option value="">{brands!.find((b) => b.is_default) ? tr("The workspace's default ({brand})", { brand: brands!.find((b) => b.is_default)!.brand_name }) : tr("The workspace's default")}</option>
+              {brands!.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.brand_name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {row && brandable(row) && brands?.length === 0 && <p className="field-hint">{tr("No brand yet: public pages use the standard look.")}</p>}
         {shell && !forwards && (
           <Field label={tr("Label")} error={error("label")} hint={tr("A short name shown beside the workspace's name in the bar, such as Sales.")}>
             <input id={`${id}-label`} className="input" value={label} maxLength={40} autoComplete="off" onChange={(e) => edit(setLabel)(e.target.value)} />

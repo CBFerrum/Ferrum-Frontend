@@ -60,18 +60,33 @@ export interface Bootstrap {
   api: { base: string; live: string | null; auth: "cookie" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
   /** `words`: the workspace's own words in the language (Admin, Interface words), over the catalogs. */
-  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null };
+  /** `languages`: on a public page, the languages it is offered in (a switcher shows when there are two or more). */
+  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null; languages?: string[] };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
   /** On a public page: which of the app's public pages (`drive/s`). */
   public?: string;
+  /** On a public or portal page: the brand it wears (null: the platform's own look; Ferrum crates/kernel/src/brand.rs `boot`). */
+  brand?: PublicBrand | null;
   /** What this device may keep for the person while offline, and until when (docs/offline.md). */
   offline?: OfflineLease | null;
   /** On the accounts host (shapes B and C): the Ferrum account signed in. */
   accounts?: { email: string; verified: boolean; two_factor: boolean; region: string; regions: { name: string; url: string }[]; mail: boolean };
   /** On the accounts host: the step of entering a workspace that needs the person. */
   request?: EnterRequest | null;
+}
+
+/** A workspace's brand as a public page's bootstrap carries it: its colours come in its stylesheet (`css`), not here. */
+export interface PublicBrand {
+  id: string;
+  name: string;
+  css: string;
+  logo: string | null;
+  logo_dark: string | null;
+  favicon: string | null;
+  footer_text: string;
+  links: { label: string; url: string }[];
 }
 
 /** A step of entering a workspace at the accounts host (`/authorize`). */
