@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
-import { LANGUAGES, shell, t, isolate } from "@ferrum/client";
+import { forgetHere, LANGUAGES, shell, t, isolate } from "@ferrum/client";
 import { ApiKeys, CalendarApps } from "@/app/Admin";
 import { MyConnections } from "@/app/Connections";
 import { ChangePasswordDialog, ConnectAi } from "@/app/Shell";
@@ -67,6 +67,8 @@ export function Devices({
     if (!ok) return;
     try {
       await api.post(everywhere.path);
+      // This leaves without the runtime's sign-out, so it forgets what the device kept for the person itself (S13 §2.1).
+      await forgetHere().catch(() => []);
       location.assign("/login");
     } catch (e) {
       toast(errorMessage(e), "error");

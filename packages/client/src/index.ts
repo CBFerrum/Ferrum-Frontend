@@ -8,7 +8,9 @@ import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
-export { cacheName, pendingName, sweep, type OfflineEnv } from "./offline";
+export { cacheName, forgetCached, pendingName, sweep, type OfflineEnv } from "./offline";
+export { forgetHere, outbox, type OutboxStore, type Refused, type Step } from "./outbox";
+import { forgetHere } from "./outbox";
 import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
   formatDate,
@@ -60,18 +62,33 @@ export interface Bootstrap {
   api: { base: string; live: string | null; auth: "cookie" | "none"; hooks?: string | null; accounts?: string | null };
   /** The interface's language and direction; `chosen` when the person or the workspace picked it. */
   /** `words`: the workspace's own words in the language (Admin, Interface words), over the catalogs. */
-  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null };
+  /** `languages`: on a public page, the languages it is offered in (a switcher shows when there are two or more). */
+  locale: { language: string; timezone: string; display_timezone?: string; dir: "ltr" | "rtl"; chosen?: boolean; words?: Record<string, string>; names?: string | null; languages?: string[] };
   theme: { appearance: "light" | "dark" | "system"; hash: string };
   company: string | null;
   flags: Record<string, unknown>;
   /** On a public page: which of the app's public pages (`drive/s`). */
   public?: string;
+  /** On a public or portal page: the brand it wears (null: the platform's own look; Ferrum crates/kernel/src/brand.rs `boot`). */
+  brand?: PublicBrand | null;
   /** What this device may keep for the person while offline, and until when (docs/offline.md). */
   offline?: OfflineLease | null;
   /** On the accounts host (shapes B and C): the Ferrum account signed in. */
   accounts?: { email: string; verified: boolean; two_factor: boolean; region: string; regions: { name: string; url: string }[]; mail: boolean };
   /** On the accounts host: the step of entering a workspace that needs the person. */
   request?: EnterRequest | null;
+}
+
+/** A workspace's brand as a public page's bootstrap carries it: its colours come in its stylesheet (`css`), not here. */
+export interface PublicBrand {
+  id: string;
+  name: string;
+  css: string;
+  logo: string | null;
+  logo_dark: string | null;
+  favicon: string | null;
+  footer_text: string;
+  links: { label: string; url: string }[];
 }
 
 /** A step of entering a workspace at the accounts host (`/authorize`). */
@@ -295,7 +312,13 @@ export interface Shell {
   assistant(context?: unknown): Promise<boolean>;
   /** The launcher's entries: the apps the person may use. */
   apps(): Promise<LauncherEntry[]>;
-  /** Events: "ready", "outdated", "sidepanel" (the panel open now, or null), "panel-context"…;
+  /** The device's camera and share sheet (S13 §2.2): the native shell's, else the browser's where it has them; absent on an older
+   *  shell. `supports("device.scan")` / `supports("device.share")` say whether each works here. */
+  device?: {
+    scan(o?: { formats?: string[] }): Promise<{ text: string; format: string } | null>;
+    share(o: { title?: string; text?: string; url?: string } | { file: { name: string; type: string; url: string } }): Promise<boolean>;
+  };
+  /** Events: "ready", "outdated", "flush" (send what waits now), "sidepanel" (the panel open now, or null), "panel-context"…;
    *  returns a function that stops listening (older shells return nothing). */
   on(event: string, cb: (detail: unknown) => void): (() => void) | void;
 }
@@ -370,7 +393,8 @@ const fallback: Shell = {
   toast: noop,
   leaveGuard: () => noop,
   session: {
-    signOut: () => location.assign("/login"),
+    // Nothing personal outlives signing out on the device (S13 §2.1): what was cached goes first; work not sent stays.
+    signOut: () => void forgetHere().catch(() => []).then(() => location.assign("/login")),
     reauthenticate: () => location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`),
     on: noop,
   },

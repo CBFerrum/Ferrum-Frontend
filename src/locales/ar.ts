@@ -5737,6 +5737,20 @@ const words: Record<string, string> = {
   "Proven by its DNS record alone. Nothing is served on it, and it is never the main address.": "يثبت بسجل DNS الخاص به وحده. لا يُقدَّم عليه شيء ولا يكون عنوانًا رئيسيًا أبدًا.",
   "Not recorded": "غير مسجَّل",
   "Set by its app": "حدّده تطبيقه",
+  // Public pages: the brand, the frame and the snippet (S4 F1).
+  "Wears the brand {brand}": "يحمل العلامة {brand}",
+  "Brand": "العلامة",
+  "The logo, colour and footer its pages show to people outside the workspace.": "الشعار واللون والتذييل التي تعرضها صفحاته للأشخاص من خارج مساحة العمل.",
+  "The workspace's default ({brand})": "الافتراضية لمساحة العمل ({brand})",
+  "No brand yet: public pages use the standard look.": "لا توجد علامة بعد: تستخدم الصفحات العامة المظهر القياسي.",
+  "Code copied": "نُسخ الرمز",
+  "Select the code and copy it yourself": "حدّد الرمز وانسخه بنفسك",
+  "Code to paste into your site": "رمز للصقه في موقعك",
+  "Light mode": "الوضع الفاتح",
+  "Dark mode": "الوضع الداكن",
+  "How public pages show this colour": "كيف تعرض الصفحات العامة هذا اللون",
+  // A phone field's call (S14 slice 17).
+  "Call {number}": "اتصل بـ {number}",
 };
 
 export default words;

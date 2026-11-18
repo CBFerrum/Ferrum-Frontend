@@ -12,3 +12,9 @@ describe("@ferrum/kit", () => {
     expect(placement).toBe("bottom-start");
   });
 });
+
+describe("@ferrum/kit's public pieces (S4 F1)", () => {
+  it("exports the frame, the language switch, the snippet and the accent the server serves", () => {
+    for (const name of ["PublicFrame", "LanguageSwitch", "EmbedSnippet", "embedSnippet", "BrandPreview", "accentTokens"] as const) expect(typeof kit[name], name).toBe("function");
+  });
+});

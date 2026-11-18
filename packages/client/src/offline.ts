@@ -76,32 +76,77 @@ export function stale(env: OfflineEnv, name: string, now = Date.now()): boolean 
   return !lease || !mayKeep(lease, now) || key !== lease.key;
 }
 
+/** Cache Storage, the parts this module uses (a worker's and a page's `caches`). */
+export type CacheNames = Pick<CacheStorage, "keys" | "delete">;
+
 /** Forgets the cached reads the lease no longer covers, every app's on this device for the
- *  workspace: storage keys and IndexedDB databases named by `cacheName`. Returns what went. */
-export async function sweep(env: OfflineEnv, databases?: Pick<IDBFactory, "databases" | "deleteDatabase">, now = Date.now()): Promise<string[]> {
+ *  workspace: storage keys, IndexedDB databases and Cache Storage caches named by `cacheName`.
+ *  Returns what went. */
+export async function sweep(env: OfflineEnv, databases?: Pick<IDBFactory, "databases" | "deleteDatabase">, now = Date.now(), caches?: CacheNames): Promise<string[]> {
+  return forget(env, (name) => stale(env, name, now), databases, caches);
+}
+
+/** A kept page of an app's worker (`ferrum:{route}:page`): it holds the page's bootstrap, so the person's name, email and workspace. */
+const KEPT_PAGE = /^ferrum:[a-z0-9-]+:page$/;
+
+/**
+ * Signing out (S13 §2.1): forgets the lease and everything cached for the workspace on this device (storage keys, IndexedDB
+ * databases and Cache Storage caches named by `cacheName`, whatever their lease) and every app's kept page. Work not sent
+ * (`pendingName`, `.person-` names) stays for its person: it is never forgotten without their choice. Other workspaces' are
+ * left alone. Returns what went.
+ */
+export async function forgetCached(env: OfflineEnv, databases?: Pick<IDBFactory, "databases" | "deleteDatabase">, caches?: CacheNames): Promise<string[]> {
+  const gone: string[] = [];
+  const ws = env.workspace;
+  if (ws) {
+    try {
+      if (env.storage?.getItem(leaseKey(ws)) != null) gone.push(leaseKey(ws));
+      env.storage?.removeItem(leaseKey(ws));
+    } catch {
+      // Storage that cannot be written cannot have been written either.
+    }
+  }
+  // Without a lease every cached read of the workspace is stale; `stale` never names pending work or another workspace's.
+  const none = { ...env, lease: null };
+  gone.push(...(await forget(none, (name) => stale(none, name) || KEPT_PAGE.test(name), databases, caches)));
+  return gone;
+}
+
+async function forget(env: OfflineEnv, drop: (name: string) => boolean, databases?: Pick<IDBFactory, "databases" | "deleteDatabase">, caches?: CacheNames): Promise<string[]> {
   const gone: string[] = [];
   const storage = env.storage;
   if (storage) {
-    const names: string[] = [];
-    for (let i = 0; i < storage.length; i++) {
-      const name = storage.key(i);
-      if (name && stale(env, name, now)) names.push(name);
-    }
-    for (const name of names) {
-      storage.removeItem(name);
-      gone.push(name);
+    try {
+      const names: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const name = storage.key(i);
+        if (name && drop(name)) names.push(name);
+      }
+      for (const name of names) {
+        storage.removeItem(name);
+        gone.push(name);
+      }
+    } catch {
+      // Storage the browser refuses (a private window's): nothing was kept there.
     }
   }
   if (databases?.databases) {
     try {
       for (const db of await databases.databases()) {
-        if (db.name && stale(env, db.name, now)) {
+        if (db.name && drop(db.name)) {
           databases.deleteDatabase(db.name);
           gone.push(db.name);
         }
       }
     } catch {
       // A browser that cannot list its databases keeps them until the app opens one by name.
+    }
+  }
+  if (caches) {
+    try {
+      for (const name of await caches.keys()) if (drop(name) && (await caches.delete(name))) gone.push(name);
+    } catch {
+      // Cache Storage is only there on a secure page.
     }
   }
   return gone;

@@ -45,6 +45,7 @@ import { EmailDocDialog } from "./EmailDoc";
 import { formatLabel, pdfFileName, type Choices, type PrintChoice } from "../lib/printLayout";
 import { preloadRichTextEditor } from "../ui/richtext";
 import { EmptyRun } from "./EmptyRun";
+import { BrandPreview } from "../ui/public";
 import { HelpLink } from "./HelpLink";
 import { useRecordsBase } from "@/lib/recordsBase";
 import { docstatusTone } from "@/lib/statusTones";
@@ -800,11 +801,15 @@ function DocForm({ meta, me, initial, reload }: { meta: EntityMeta; me: Me; init
         </div>
       );
     }
-    return (
+    const wrapped = (
       <FieldWrap key={f.name} label={isolate(f.label)} htmlFor={fid} required={st.required} error={err} hint={isolate(f.description)} className={cn(WIDE.has(f.type) && "span-all", isQuiet(f, st) && "field-empty", !st.required && !f.kept_by_target && isEmptyValue(doc[f.name]) && "print-blank")}>
         {control}
       </FieldWrap>
     );
+    // A brand's colours as public pages will show them, under the colour fields, as they are typed (S4 F1).
+    if (E === "Brand" && f.name === "primary_color_dark")
+      return [wrapped, <BrandPreview key="brand-preview" primary={doc.primary_color} primaryDark={doc.primary_color_dark} />];
+    return wrapped;
   };
 
   /** Consecutive read-only money fields (totals) read as one summary: labels and figures in a single column, in their own order. */
