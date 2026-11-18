@@ -72,6 +72,14 @@ const byApp = entities as Record<string, string[]>;
 const MAX_PER_ICON = 3;
 const EXCEPTIONS: Record<string, Record<string, number>> = {};
 
+// Payments' rows (gapclose/design/S1-payments.md M6): eight entities, the icons the design names, at most three on one.
+it("draws Payments' entities as designed", () => {
+  const want = { PaymentIntent: "credit-card", PaymentMethod: "credit-card", PaymentRefund: "rotate-ccw", PaymentDispute: "shield-alert", PaymentPayout: "landmark", PaymentAccount: "landmark", PaymentTerminal: "monitor-smartphone", PaymentGrant: "key-round" };
+  expect(Object.fromEntries(byApp.payments.map((n) => [n, conceptIcon(n)]))).toEqual(want);
+  expect(byApp.commerce).not.toContain("PaymentRequest");
+  expect(byApp.commerce).not.toContain("PaymentException");
+});
+
 describe("every entity of every app", () => {
   it("resolves through a concept, never the fallback", () => {
     const names = Object.values(byApp).flat();

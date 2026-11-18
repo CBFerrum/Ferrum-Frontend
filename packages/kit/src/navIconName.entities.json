@@ -42,8 +42,6 @@
   "ItemCategory",
   "ItemReview",
   "OrderRefund",
-  "PaymentException",
-  "PaymentRequest",
   "ReturnReason",
   "ShippingRule",
   "ShoppingCart",
@@ -479,6 +477,16 @@
   "KeyResult",
   "Objective",
   "ObjectivesSettings"
+ ],
+ "payments": [
+  "PaymentAccount",
+  "PaymentDispute",
+  "PaymentGrant",
+  "PaymentIntent",
+  "PaymentMethod",
+  "PaymentPayout",
+  "PaymentRefund",
+  "PaymentTerminal"
  ],
  "pos": [
   "ItemBarcode",
