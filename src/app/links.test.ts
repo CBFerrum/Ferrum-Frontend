@@ -18,9 +18,9 @@ const files = (dir: string): string[] =>
     return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(n) && !/\.test\./.test(n) ? [p] : [];
   });
 
-/** The route patterns the shell's pages declare (the shell's entry file), with the records frame's. */
+/** The route patterns the shell's pages declare (its route table), with the records frame's. */
 const paths = (src: string) => [...src.matchAll(/path: "([^"]*)"/g)].map((m) => m[1]).filter((p) => p !== "*" && p !== "/");
-const shell = readFileSync(join(root, "apps/shell/src/main.tsx"), "utf8");
+const shell = readFileSync(join(root, "apps/shell/src/routes.tsx"), "utf8");
 const storeBlock = /\bstore: \[([\s\S]*?)\n  \],/.exec(shell)?.[1] ?? "";
 /** The app manager's pages, relative to /store/. */
 const storePages = ["", ...paths(storeBlock)];

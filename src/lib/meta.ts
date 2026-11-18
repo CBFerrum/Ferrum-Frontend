@@ -253,6 +253,8 @@ export interface MetaIndex {
   modules: Module[];
   entities: EntitySummary[];
   warnings: unknown[];
+  /** Whether AI assistants may connect as agents (A2-A3 §2.10): absent means closed. */
+  agents?: { open?: boolean };
 }
 
 export interface Me {
