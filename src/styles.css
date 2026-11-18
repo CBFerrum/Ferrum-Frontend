@@ -4272,3 +4272,19 @@ a.queue-name:focus-visible::after {
     break-after: avoid;
   }
 }
+
+/* ── the kit's map (packages/kit/src/map): a place is a dot in its kind's colour, ringed when chosen ── */
+.map-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--primary);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.map-marker-person { background: var(--success); }
+.map-marker-vehicle { background: var(--warning); }
+.map-marker-depot { background: var(--purple); border-radius: 3px; }
+.map-marker-stop { background: var(--text); }
+.map-marker-selected { width: 20px; height: 20px; box-shadow: var(--focus-ring); }

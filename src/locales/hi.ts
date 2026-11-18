@@ -5752,6 +5752,13 @@ const words: Record<string, string> = {
   "How public pages show this colour": "सार्वजनिक पेज यह रंग कैसे दिखाते हैं",
   // A phone field's call (S14 slice 17).
   "Call {number}": "{number} पर कॉल करें",
+  // The kit's map (S6 K1).
+  "The map's style could not be read ({status}).": "मानचित्र की शैली पढ़ी नहीं जा सकी ({status})।",
+  "This device cannot draw the map: the list shows every place.": "यह डिवाइस मानचित्र नहीं बना सकता: सूची हर जगह दिखाती है।",
+  "Maps is not installed": "Maps इंस्टॉल नहीं है",
+  "Install the Maps app to see these places on a map. The list shows every place.": "इन जगहों को मानचित्र पर देखने के लिए Maps ऐप इंस्टॉल करें। सूची हर जगह दिखाती है।",
+  "No base map yet: an administrator adds one in Maps": "अभी कोई आधार मानचित्र नहीं: कोई व्यवस्थापक इसे Maps में जोड़ता है",
+  "Places on the map": "मानचित्र पर जगहें",
 };
 
 export default words;
