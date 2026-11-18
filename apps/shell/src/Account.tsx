@@ -477,7 +477,10 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export function AccountPage() {
   const me = useMe().data;
-  const comms = !!useMetaIndex().data?.packages.includes("comms");
+  const index = useMetaIndex().data;
+  const comms = !!index?.packages.includes("comms");
+  // Agents connect only once the build opens them; until then /mcp admits no one, so nothing offers it (AG-3a).
+  const agentsOpen = index?.agents?.open === true;
   const [password, setPassword] = useState(false);
   return (
     <div className="shell-account">
@@ -540,9 +543,11 @@ export function AccountPage() {
           <CalendarApps email={me?.user.email ?? ""} />
         </Section>
       )}
-      <Section id="acct-ai" title={t("Connect an AI assistant")}>
-        <ConnectAi />
-      </Section>
+      {agentsOpen && (
+        <Section id="acct-ai" title={t("Connect an AI assistant")}>
+          <ConnectAi />
+        </Section>
+      )}
       <ChangePasswordDialog open={password} onClose={() => setPassword(false)} />
     </div>
   );
