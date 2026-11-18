@@ -5750,6 +5750,8 @@ const words: Record<string, string> = {
   "Light mode": "लाइट मोड",
   "Dark mode": "डार्क मोड",
   "How public pages show this colour": "सार्वजनिक पेज यह रंग कैसे दिखाते हैं",
+  // A phone field's call (S14 slice 17).
+  "Call {number}": "{number} पर कॉल करें",
 };
 
 export default words;

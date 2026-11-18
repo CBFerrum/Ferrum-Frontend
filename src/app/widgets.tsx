@@ -39,7 +39,8 @@ import {
   type ListResponse,
 } from "../lib/meta";
 import { Badge, Button, confirmDialog, Dialog, EmptyState, Field as FieldWrap, Icon, Spinner, StatusBadge, toast, useDebounced, useDismiss } from "../ui/kit";
-import { t as tr, isolate, uploadFile } from "@ferrum/client";
+import { t as tr, isolate, shell, uploadFile } from "@ferrum/client";
+import { useCanIntent } from "../../packages/kit/src/hooks";
 
 export interface ControlProps {
   field: Field;
@@ -100,6 +101,41 @@ function PrintValue({ field, value }: { field: Field; value: unknown }) {
 }
 
 export function FieldControl(p: ControlProps) {
+  if (p.field.type !== "phone") return <Control {...p} />;
+  return (
+    <div className="row" style={{ flexWrap: "nowrap", gap: 4 }}>
+      <Control {...p} />
+      <CallPhone number={text(p.value)} entity={p.entity} id={p.recordId} />
+    </div>
+  );
+}
+
+/** A number's Call control (S14-S15-S16 slice 17): through the `call` intent when an app the person may use handles it (Comms'
+ *  phone line), else a `tel:` link the device dials. Nothing while the value holds no digits. */
+function CallPhone({ number, entity, id }: { number: string; entity?: string; id?: string }) {
+  const handled = useCanIntent("call", "phone");
+  const dial = number.replace(/[^\d+*#]/g, "");
+  if (!/\d/.test(dial)) return null;
+  const label = tr("Call {number}", { number });
+  if (handled)
+    return (
+      <Button
+        variant="ghost"
+        className="icon-btn"
+        icon="phone"
+        aria-label={label}
+        title={label}
+        onClick={() => void shell().intent({ action: "call", type: "phone", data: { number, entity, id } }).catch((e) => toast(errorMessage(e), "error"))}
+      />
+    );
+  return (
+    <a className="btn btn-ghost btn-md icon-btn" href={`tel:${dial}`} aria-label={label} title={label}>
+      <Icon name="phone" />
+    </a>
+  );
+}
+
+function Control(p: ControlProps) {
   const { field: f, value, onChange, disabled } = p;
   const common = {
     id: p.id,

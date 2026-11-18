@@ -5749,6 +5749,8 @@ const words: Record<string, string> = {
   "Light mode": "الوضع الفاتح",
   "Dark mode": "الوضع الداكن",
   "How public pages show this colour": "كيف تعرض الصفحات العامة هذا اللون",
+  // A phone field's call (S14 slice 17).
+  "Call {number}": "اتصل بـ {number}",
 };
 
 export default words;
