@@ -191,3 +191,28 @@ describe("@ferrum/client", () => {
     });
   });
 });
+
+// S13 §2.1 (CLOSE REVIEW): signing out where no shell runs still forgets what the device kept for the person, before leaving.
+describe("signing out without a shell", () => {
+  it("forgets the kept pages and cached reads, keeps work not sent, then goes to sign-in", async () => {
+    const names = ["ferrum:crm:page", "ferrum:crm:files", "ferrum.offline.acme.crm.k1.leads"];
+    const caches = { keys: async () => [...names], delete: async (n: string) => (names.splice(names.indexOf(n), 1), true) };
+    const kept = new Map([["ferrum.offline.acme.lease", "{}"], ["ferrum.offline.acme.crm.k1.calls", "[]"], ["ferrum.offline.acme.crm.person-p1.drafts", "[1]"]]);
+    const storage = { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v), removeItem: (k: string) => void kept.delete(k), key: (i: number) => [...kept.keys()][i] ?? null, get length() { return kept.size; } };
+    const assign = vi.fn();
+    vi.stubGlobal("caches", caches);
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("location", { assign, pathname: "/", search: "" });
+    (globalThis as { __FERRUM_BOOTSTRAP__?: unknown }).__FERRUM_BOOTSTRAP__ = { ...fakeBootstrap(), workspace: { id: "w", slug: "acme", name: "Acme", host: "acme.test" }, offline: null };
+    resetBootstrap();
+    try {
+      shell().session.signOut();
+      await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("/login"));
+      expect(names).toEqual(["ferrum:crm:files"]);
+      expect([...kept.keys()]).toEqual(["ferrum.offline.acme.crm.person-p1.drafts"]);
+    } finally {
+      delete (globalThis as { __FERRUM_BOOTSTRAP__?: unknown }).__FERRUM_BOOTSTRAP__;
+      resetBootstrap();
+    }
+  });
+});

@@ -8,7 +8,9 @@ import { t as tr } from "@ferrum/client";
 import { ApiError, parseApiError } from "./errors";
 
 export { ApiError, errorMessage, isStale, parseApiError, refusal, type FieldError } from "./errors";
-export { cacheName, pendingName, sweep, type OfflineEnv } from "./offline";
+export { cacheName, forgetCached, pendingName, sweep, type OfflineEnv } from "./offline";
+export { forgetHere, outbox, type OutboxStore, type Refused, type Step } from "./outbox";
+import { forgetHere } from "./outbox";
 import { currentLease, type OfflineEnv, type OfflineLease, pendingName } from "./offline";
 export {
   formatDate,
@@ -310,7 +312,13 @@ export interface Shell {
   assistant(context?: unknown): Promise<boolean>;
   /** The launcher's entries: the apps the person may use. */
   apps(): Promise<LauncherEntry[]>;
-  /** Events: "ready", "outdated", "sidepanel" (the panel open now, or null), "panel-context"…;
+  /** The device's camera and share sheet (S13 §2.2): the native shell's, else the browser's where it has them; absent on an older
+   *  shell. `supports("device.scan")` / `supports("device.share")` say whether each works here. */
+  device?: {
+    scan(o?: { formats?: string[] }): Promise<{ text: string; format: string } | null>;
+    share(o: { title?: string; text?: string; url?: string } | { file: { name: string; type: string; url: string } }): Promise<boolean>;
+  };
+  /** Events: "ready", "outdated", "flush" (send what waits now), "sidepanel" (the panel open now, or null), "panel-context"…;
    *  returns a function that stops listening (older shells return nothing). */
   on(event: string, cb: (detail: unknown) => void): (() => void) | void;
 }
@@ -385,7 +393,8 @@ const fallback: Shell = {
   toast: noop,
   leaveGuard: () => noop,
   session: {
-    signOut: () => location.assign("/login"),
+    // Nothing personal outlives signing out on the device (S13 §2.1): what was cached goes first; work not sent stays.
+    signOut: () => void forgetHere().catch(() => []).then(() => location.assign("/login")),
     reauthenticate: () => location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`),
     on: noop,
   },
