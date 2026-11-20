@@ -5763,6 +5763,8 @@ const words: Record<string, string> = {
   "Turn it off and use this one": "أوقفها واستخدم هذه",
   "At most {max} items.": "الحد الأقصى {max} عنصرًا.",
   "Add at least one item": "أضف عنصرًا واحدًا على الأقل",
+  "Code we mailed you": "الرمز الذي أرسلناه إلى بريدك",
+  "Sent to your e-mail address. It works once, for ten minutes.": "أُرسل إلى بريدك الإلكتروني. يعمل مرة واحدة ولمدة عشر دقائق.",
 };
 
 export default words;

@@ -82,4 +82,28 @@ describe("setting up two-factor sign-in with the sign-in's cookie", () => {
     expect(reauthenticate).toHaveBeenCalled();
     expect(host.querySelector("[role=alert]")?.textContent).toContain("Your session has ended. Please sign in again.");
   });
+
+  it("asks for the mailed code too when begin says one was mailed, and sends it as mailed_code", async () => {
+    const calls = stub({
+      "/api/auth/2fa/begin": json(200, { ...begun, mailed: true }),
+      "/api/auth/2fa/enable": json(422, { error: "invalid", message: "check the codes", fields: [{ field: "mailed_code", message: "that code is wrong or has expired" }] }),
+    });
+    await act(async () => root.render(<TwoFactorSetup onEnabled={() => {}} />));
+    await flush();
+    await type("tf-setup-code", "123456");
+    await type("tf-setup-mailed", "654321");
+    await press("Turn on");
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ code: "123456", mailed_code: "654321" });
+    expect(host.textContent).toContain("that code is wrong or has expired");
+  });
+
+  it("has no mailed field, and sends none, when begin says nothing was mailed", async () => {
+    const calls = stub({ "/api/auth/2fa/begin": json(200, { ...begun, mailed: false }), "/api/auth/2fa/enable": json(200, { recovery_codes: ["a"] }) });
+    await act(async () => root.render(<TwoFactorSetup onEnabled={() => {}} />));
+    await flush();
+    expect(document.getElementById("tf-setup-mailed")).toBeNull();
+    await type("tf-setup-code", "123456");
+    await press("Turn on");
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ code: "123456" });
+  });
 });

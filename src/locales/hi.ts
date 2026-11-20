@@ -5764,6 +5764,8 @@ const words: Record<string, string> = {
   "Turn it off and use this one": "इसे बंद करें और इसी को इस्तेमाल करें",
   "At most {max} items.": "अधिकतम {max} आइटम।",
   "Add at least one item": "कम से कम एक आइटम जोड़ें",
+  "Code we mailed you": "हमारा मेल किया हुआ कोड",
+  "Sent to your e-mail address. It works once, for ten minutes.": "आपके ई-मेल पते पर भेजा गया। यह दस मिनट तक, एक बार चलता है।",
 };
 
 export default words;
