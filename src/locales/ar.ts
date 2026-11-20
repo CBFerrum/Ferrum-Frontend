@@ -5761,6 +5761,8 @@ const words: Record<string, string> = {
   "Replace the enabled channel?": "استبدال القناة المفعّلة؟",
   "{name} is the enabled {kind} channel. Turn it off and use this one?": "{name} هي قناة {kind} المفعّلة. هل تريد إيقافها واستخدام هذه؟",
   "Turn it off and use this one": "أوقفها واستخدم هذه",
+  "At most {max} items.": "الحد الأقصى {max} عنصرًا.",
+  "Add at least one item": "أضف عنصرًا واحدًا على الأقل",
 };
 
 export default words;
