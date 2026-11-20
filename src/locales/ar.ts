@@ -5758,6 +5758,9 @@ const words: Record<string, string> = {
   "Install the Maps app to see these places on a map. The list shows every place.": "ثبّت تطبيق الخرائط لترى هذه الأماكن على خريطة. القائمة تعرض كل مكان.",
   "No base map yet: an administrator adds one in Maps": "لا توجد خريطة أساس بعد: يضيفها مسؤول في الخرائط",
   "Places on the map": "الأماكن على الخريطة",
+  "Replace the enabled channel?": "استبدال القناة المفعّلة؟",
+  "{name} is the enabled {kind} channel. Turn it off and use this one?": "{name} هي قناة {kind} المفعّلة. هل تريد إيقافها واستخدام هذه؟",
+  "Turn it off and use this one": "أوقفها واستخدم هذه",
 };
 
 export default words;

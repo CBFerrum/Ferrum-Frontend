@@ -5759,6 +5759,9 @@ const words: Record<string, string> = {
   "Install the Maps app to see these places on a map. The list shows every place.": "इन जगहों को मानचित्र पर देखने के लिए Maps ऐप इंस्टॉल करें। सूची हर जगह दिखाती है।",
   "No base map yet: an administrator adds one in Maps": "अभी कोई आधार मानचित्र नहीं: कोई व्यवस्थापक इसे Maps में जोड़ता है",
   "Places on the map": "मानचित्र पर जगहें",
+  "Replace the enabled channel?": "चालू चैनल बदलें?",
+  "{name} is the enabled {kind} channel. Turn it off and use this one?": "{name} चालू {kind} चैनल है। इसे बंद करके इसी को इस्तेमाल करें?",
+  "Turn it off and use this one": "इसे बंद करें और इसी को इस्तेमाल करें",
 };
 
 export default words;
