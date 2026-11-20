@@ -7,7 +7,7 @@ import { useState, type ReactNode } from "react";
 import { t as tr, isolate } from "@ferrum/client";
 import { api, ApiError, errorMessage, type FieldError } from "../lib/api";
 import {
-  checkChannel, fromChannel, newChannel, newInbound, toChannelInput, type ChannelRow, type DraftChannel, type DraftInbound, type KV,
+  checkChannel, fromChannel, newChannel, newInbound, otherEnabled, toChannelInput, type ChannelRow, type DraftChannel, type DraftInbound, type KV,
 } from "../lib/channelDraft";
 import { newKey } from "../lib/automationDraft";
 import { Alert, Badge, Button, confirmDialog, Dialog, EmptyState, ErrorState, Field, PageLoading, toast } from "../ui/kit";
@@ -140,9 +140,19 @@ export function ChannelDialog({ start, onClose, onDone }: { start: DraftChannel;
     setRefused([]);
     if (found.length) return;
     setBusy(true);
+    const send = (replace: boolean) =>
+      d.id ? api.put(`/api/admin/messages/channels/${encodeURIComponent(d.id)}`, toChannelInput(d, replace)) : api.post("/api/admin/messages/channels", toChannelInput(d, replace));
     try {
-      if (d.id) await api.put(`/api/admin/messages/channels/${encodeURIComponent(d.id)}`, toChannelInput(d));
-      else await api.post("/api/admin/messages/channels", toChannelInput(d));
+      try {
+        await send(false);
+      } catch (e) {
+        const other = e instanceof ApiError ? otherEnabled(e) : null;
+        if (other === null) throw e;
+        // Another channel of this kind is on: ask, then save again turning it off, or leave everything as it was.
+        const yes = await confirmDialog({ title: tr("Replace the enabled channel?"), message: tr("{name} is the enabled {kind} channel. Turn it off and use this one?", { name: other, kind: KINDS()[d.kind] }), confirmLabel: tr("Turn it off and use this one") });
+        if (!yes) return;
+        await send(true);
+      }
       toast(tr("Connection saved"));
       onDone();
       onClose();

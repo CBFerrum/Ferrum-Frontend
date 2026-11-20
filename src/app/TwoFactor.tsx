@@ -16,12 +16,12 @@ interface Begun {
   secret: string;
   uri: string;
   qr_svg: string;
+  /** A code was mailed to the person too: it is asked for beside the app's. */
+  mailed?: boolean;
 }
 
 export interface Enabled {
   recovery_codes: string[];
-  /** A full session, when the one setting it up could do nothing else. */
-  token?: string;
 }
 
 function fieldError(err: unknown, field: string): string {
@@ -105,6 +105,8 @@ export function TwoFactorSetup({ onEnabled, onCancel }: { onEnabled: (res: Enabl
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | undefined>();
+  const [mailed, setMailed] = useState("");
+  const [mailedError, setMailedError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Enabled | null>(null);
 
@@ -122,10 +124,13 @@ export function TwoFactorSetup({ onEnabled, onCancel }: { onEnabled: (res: Enabl
     e.preventDefault();
     setBusy(true);
     setCodeError(undefined);
+    setMailedError(undefined);
     try {
-      setDone(await request<Enabled>("/api/auth/2fa/enable", { method: "POST", body: { code: code.trim() } }));
+      setDone(await request<Enabled>("/api/auth/2fa/enable", { method: "POST", body: { code: code.trim(), ...(begun?.mailed ? { mailed_code: mailed.trim() } : {}) } }));
     } catch (err) {
-      setCodeError(fieldError(err, "code"));
+      const fields = (err as { fields?: { field: string }[] }).fields ?? [];
+      if (fields.some((f) => f.field === "mailed_code")) setMailedError(fieldError(err, "mailed_code"));
+      if (!fields.length || fields.some((f) => f.field === "code")) setCodeError(fieldError(err, "code"));
     } finally {
       setBusy(false);
     }
@@ -149,6 +154,11 @@ export function TwoFactorSetup({ onEnabled, onCancel }: { onEnabled: (res: Enabl
       <Field label={t("Code from the app")} htmlFor="tf-setup-code" required error={codeError}>
         <CodeInput id="tf-setup-code" value={code} onChange={setCode} />
       </Field>
+      {begun.mailed && (
+        <Field label={t("Code we mailed you")} htmlFor="tf-setup-mailed" required error={mailedError} hint={t("Sent to your e-mail address. It works once, for ten minutes.")}>
+          <CodeInput id="tf-setup-mailed" value={mailed} onChange={setMailed} />
+        </Field>
+      )}
       <div className="row" style={{ justifyContent: "flex-end" }}>
         {onCancel && <Button onClick={onCancel}>{t("Cancel")}</Button>}
         <Button type="submit" variant="primary" loading={busy}>

@@ -4288,3 +4288,8 @@ a.queue-name:focus-visible::after {
 .map-marker-depot { background: var(--purple); border-radius: 3px; }
 .map-marker-stop { background: var(--text); }
 .map-marker-selected { width: 20px; height: 20px; box-shadow: var(--focus-ring); }
+
+/* An action's list or row parameter: a group of the declared fields, one block for each item. */
+.param-group { border: 0; padding: 0; margin: 0; min-width: 0; }
+.param-item { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+.param-cells { flex: 1; min-width: 0; }

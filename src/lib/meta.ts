@@ -93,12 +93,18 @@ export interface ActionDef {
 export interface ActionParam {
   name: string;
   label: string;
-  type: "data" | "text" | "select" | "int" | "date" | "link";
+  type: "data" | "text" | "select" | "int" | "decimal" | "date" | "check" | "link" | "list" | "row";
   /** The entity a `link` parameter picks a record of. */
   to?: string;
   options?: string[];
   required?: boolean;
   description?: string | null;
+  /** A `list` of one value each: the type of every item. */
+  of?: "data" | "text" | "select" | "int" | "decimal" | "date" | "check" | "link";
+  /** A `list` of rows, or a `row`: the declared fields (values of `data` up to `link`, never a list or a row). */
+  fields?: ActionParam[];
+  /** A `list`'s item cap (500 at most). */
+  max_items?: number;
 }
 
 /** An approver set: exactly one of a role, a field of the record holding a user, or an expression. */

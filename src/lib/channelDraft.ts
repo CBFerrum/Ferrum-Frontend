@@ -92,7 +92,7 @@ export function fromChannel(c: ChannelRow): DraftChannel {
 }
 
 /** What `POST` and `PUT /api/admin/messages/channels` take. */
-export function toChannelInput(d: DraftChannel): Raw {
+export function toChannelInput(d: DraftChannel, replace = false): Raw {
   const description: Raw = { ...d.extra };
   if (d.test) description.test = true;
   if (!d.test) {
@@ -122,7 +122,12 @@ export function toChannelInput(d: DraftChannel): Raw {
     description.inbound = inbound;
   }
   const secrets = object(d.secrets);
-  return { kind: d.kind, name: d.name.trim(), enabled: d.enabled, description, ...(Object.keys(secrets).length ? { secrets } : {}) };
+  return { kind: d.kind, name: d.name.trim(), enabled: d.enabled, description, ...(Object.keys(secrets).length ? { secrets } : {}), ...(replace ? { replace: true } : {}) };
+}
+
+/** The name of the other enabled channel in the server's 409 ("the text channel "X" is enabled: …"), or null for any other answer. */
+export function otherEnabled(e: { status?: number; message?: string }): string | null {
+  return e.status === 409 ? /channel "(.+)" is enabled/.exec(e.message ?? "")?.[1] ?? null : null;
 }
 
 export interface Problem { message: string }
