@@ -20,8 +20,6 @@ interface Begun {
 
 export interface Enabled {
   recovery_codes: string[];
-  /** A full session, when the one setting it up could do nothing else. */
-  token?: string;
 }
 
 function fieldError(err: unknown, field: string): string {
